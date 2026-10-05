@@ -1,0 +1,694 @@
+{
+  "status": "PASS_REPRODUCED",
+  "old": {
+    "ownAt2": false,
+    "ownAt3": true,
+    "revealTick": 3,
+    "nextBeatTick": 4,
+    "nativeDamage": {
+      "id": "observed-screen:4:2",
+      "kind": "screen-damage",
+      "tick": 4,
+      "observationTick": 4,
+      "source": "screen",
+      "onScreen": true,
+      "x": 80,
+      "z": 80,
+      "unitId": 7,
+      "amount": 30,
+      "episode": "7:1",
+      "episodeTick": 4,
+      "provenance": "heavy-damage",
+      "observedDanger": {
+        "healthShare": 0.7,
+        "lossShare": 0.3,
+        "healthBand": "healthy",
+        "suppressionBand": "normal",
+        "retreatRisk": false,
+        "alreadyRetreating": false,
+        "alreadyEngaged": false,
+        "autoRetreatCovered": false
+      }
+    },
+    "decision": "unknown",
+    "reason": "missing-public-damage-baseline",
+    "baseline": {
+      "observationTick": 2,
+      "recordedTick": 2,
+      "units": []
+    },
+    "events": [
+      {
+        "id": "observed-screen:3:1",
+        "kind": "screen-contact",
+        "tick": 3,
+        "observationTick": 2,
+        "source": "screen",
+        "onScreen": true,
+        "x": 110,
+        "z": 80,
+        "targetId": 8,
+        "provenance": "entered-screen",
+        "observedDanger": {
+          "nearbyOwnUnits": [
+            7
+          ],
+          "idleOwnUnits": [
+            7
+          ]
+        }
+      },
+      {
+        "id": "observed-screen:4:2",
+        "kind": "screen-damage",
+        "tick": 4,
+        "observationTick": 4,
+        "source": "screen",
+        "onScreen": true,
+        "x": 80,
+        "z": 80,
+        "unitId": 7,
+        "amount": 30,
+        "episode": "7:1",
+        "episodeTick": 4,
+        "provenance": "heavy-damage",
+        "observedDanger": {
+          "healthShare": 0.7,
+          "lossShare": 0.3,
+          "healthBand": "healthy",
+          "suppressionBand": "normal",
+          "retreatRisk": false,
+          "alreadyRetreating": false,
+          "alreadyEngaged": false,
+          "autoRetreatCovered": false
+        }
+      }
+    ],
+    "inputs": [],
+    "commands": [],
+    "frames": [
+      {
+        "tick": 2,
+        "observationTick": 2,
+        "ids": []
+      },
+      {
+        "tick": 3,
+        "observationTick": 2,
+        "ids": [
+          7,
+          8
+        ]
+      },
+      {
+        "tick": 4,
+        "observationTick": 4,
+        "ids": [
+          7,
+          8
+        ]
+      }
+    ]
+  },
+  "fixed": {
+    "ownAt2": false,
+    "ownAt3": true,
+    "revealTick": 3,
+    "nextBeatTick": 4,
+    "nativeDamage": {
+      "id": "observed-screen:4:2",
+      "kind": "screen-damage",
+      "tick": 4,
+      "observationTick": 4,
+      "source": "screen",
+      "onScreen": true,
+      "x": 80,
+      "z": 80,
+      "unitId": 7,
+      "amount": 30,
+      "episode": "7:1",
+      "episodeTick": 4,
+      "provenance": "heavy-damage",
+      "observedDanger": {
+        "healthShare": 0.7,
+        "lossShare": 0.3,
+        "healthBand": "healthy",
+        "suppressionBand": "normal",
+        "retreatRisk": false,
+        "alreadyRetreating": false,
+        "alreadyEngaged": false,
+        "autoRetreatCovered": false
+      }
+    },
+    "decision": "required",
+    "reason": "public-heavy-or-risk-damage",
+    "baseline": {
+      "observationTick": 2,
+      "recordedTick": 3,
+      "units": [
+        {
+          "id": 7,
+          "hp": 100
+        },
+        {
+          "id": 8,
+          "hp": 75
+        }
+      ]
+    },
+    "events": [
+      {
+        "id": "observed-screen:3:1",
+        "kind": "screen-contact",
+        "tick": 3,
+        "observationTick": 2,
+        "source": "screen",
+        "onScreen": true,
+        "x": 110,
+        "z": 80,
+        "targetId": 8,
+        "provenance": "entered-screen",
+        "observedDanger": {
+          "nearbyOwnUnits": [
+            7
+          ],
+          "idleOwnUnits": [
+            7
+          ]
+        }
+      },
+      {
+        "id": "observed-screen:4:2",
+        "kind": "screen-damage",
+        "tick": 4,
+        "observationTick": 4,
+        "source": "screen",
+        "onScreen": true,
+        "x": 80,
+        "z": 80,
+        "unitId": 7,
+        "amount": 30,
+        "episode": "7:1",
+        "episodeTick": 4,
+        "provenance": "heavy-damage",
+        "observedDanger": {
+          "healthShare": 0.7,
+          "lossShare": 0.3,
+          "healthBand": "healthy",
+          "suppressionBand": "normal",
+          "retreatRisk": false,
+          "alreadyRetreating": false,
+          "alreadyEngaged": false,
+          "autoRetreatCovered": false
+        }
+      }
+    ],
+    "inputs": [],
+    "commands": [],
+    "frames": [
+      {
+        "tick": 2,
+        "observationTick": 2,
+        "ids": []
+      },
+      {
+        "tick": 3,
+        "observationTick": 2,
+        "ids": [
+          7,
+          8
+        ]
+      },
+      {
+        "tick": 4,
+        "observationTick": 4,
+        "ids": [
+          7,
+          8
+        ]
+      }
+    ]
+  },
+  "paidOld": {
+    "ownAt2": false,
+    "ownAt3": true,
+    "revealTick": 15,
+    "nextBeatTick": 16,
+    "nativeDamage": {
+      "id": "observed-screen:16:2",
+      "kind": "screen-damage",
+      "tick": 16,
+      "observationTick": 16,
+      "source": "screen",
+      "onScreen": true,
+      "x": 80,
+      "z": 80,
+      "unitId": 7,
+      "amount": 30,
+      "episode": "7:1",
+      "episodeTick": 16,
+      "provenance": "heavy-damage",
+      "observedDanger": {
+        "healthShare": 0.7,
+        "lossShare": 0.3,
+        "healthBand": "healthy",
+        "suppressionBand": "normal",
+        "retreatRisk": false,
+        "alreadyRetreating": false,
+        "alreadyEngaged": false,
+        "autoRetreatCovered": false
+      }
+    },
+    "decision": "unknown",
+    "reason": "missing-public-damage-baseline",
+    "baseline": {
+      "observationTick": 14,
+      "recordedTick": 14,
+      "units": []
+    },
+    "events": [
+      {
+        "id": "observed-screen:15:1",
+        "kind": "screen-contact",
+        "tick": 15,
+        "observationTick": 14,
+        "source": "screen",
+        "onScreen": true,
+        "x": 110,
+        "z": 80,
+        "targetId": 8,
+        "provenance": "entered-screen",
+        "observedDanger": {
+          "nearbyOwnUnits": [
+            7
+          ],
+          "idleOwnUnits": [
+            7
+          ]
+        }
+      },
+      {
+        "id": "observed-screen:16:2",
+        "kind": "screen-damage",
+        "tick": 16,
+        "observationTick": 16,
+        "source": "screen",
+        "onScreen": true,
+        "x": 80,
+        "z": 80,
+        "unitId": 7,
+        "amount": 30,
+        "episode": "7:1",
+        "episodeTick": 16,
+        "provenance": "heavy-damage",
+        "observedDanger": {
+          "healthShare": 0.7,
+          "lossShare": 0.3,
+          "healthBand": "healthy",
+          "suppressionBand": "normal",
+          "retreatRisk": false,
+          "alreadyRetreating": false,
+          "alreadyEngaged": false,
+          "autoRetreatCovered": false
+        }
+      }
+    ],
+    "inputs": [
+      {
+        "tick": 14,
+        "kind": "camera-minimap",
+        "camera": {
+          "x": 86.98654802556273,
+          "z": 76.47211363121569,
+          "yaw": 0,
+          "distance": 60
+        },
+        "selected": 0,
+        "concern": "opening",
+        "target": {
+          "x": 86.98654802556273,
+          "z": 76.47211363121569
+        },
+        "method": "minimap",
+        "input": {
+          "button": 0
+        },
+        "pointer": {
+          "from": {
+            "x": 960,
+            "y": 540
+          },
+          "to": {
+            "x": 1805.0398355674943,
+            "y": 954.4452058661623
+          },
+          "distance": 941.1998471957926,
+          "width": 9.5,
+          "seconds": 0.5019197093179011
+        },
+        "inputStartedTick": 3,
+        "motorTicks": 11,
+        "queuedTick": 2
+      }
+    ],
+    "commands": [],
+    "frames": [
+      {
+        "tick": 2,
+        "observationTick": 2,
+        "ids": []
+      },
+      {
+        "tick": 4,
+        "observationTick": 4,
+        "ids": []
+      },
+      {
+        "tick": 6,
+        "observationTick": 6,
+        "ids": []
+      },
+      {
+        "tick": 8,
+        "observationTick": 8,
+        "ids": []
+      },
+      {
+        "tick": 10,
+        "observationTick": 10,
+        "ids": []
+      },
+      {
+        "tick": 12,
+        "observationTick": 12,
+        "ids": []
+      },
+      {
+        "tick": 14,
+        "observationTick": 14,
+        "ids": []
+      },
+      {
+        "tick": 15,
+        "observationTick": 14,
+        "ids": [
+          7,
+          8
+        ]
+      },
+      {
+        "tick": 16,
+        "observationTick": 16,
+        "ids": [
+          7,
+          8
+        ]
+      }
+    ]
+  },
+  "paidFixed": {
+    "ownAt2": false,
+    "ownAt3": true,
+    "revealTick": 15,
+    "nextBeatTick": 16,
+    "nativeDamage": {
+      "id": "observed-screen:16:2",
+      "kind": "screen-damage",
+      "tick": 16,
+      "observationTick": 16,
+      "source": "screen",
+      "onScreen": true,
+      "x": 80,
+      "z": 80,
+      "unitId": 7,
+      "amount": 30,
+      "episode": "7:1",
+      "episodeTick": 16,
+      "provenance": "heavy-damage",
+      "observedDanger": {
+        "healthShare": 0.7,
+        "lossShare": 0.3,
+        "healthBand": "healthy",
+        "suppressionBand": "normal",
+        "retreatRisk": false,
+        "alreadyRetreating": false,
+        "alreadyEngaged": false,
+        "autoRetreatCovered": false
+      }
+    },
+    "decision": "required",
+    "reason": "public-heavy-or-risk-damage",
+    "baseline": {
+      "observationTick": 14,
+      "recordedTick": 15,
+      "units": [
+        {
+          "id": 7,
+          "hp": 100
+        },
+        {
+          "id": 8,
+          "hp": 75
+        }
+      ]
+    },
+    "events": [
+      {
+        "id": "observed-screen:15:1",
+        "kind": "screen-contact",
+        "tick": 15,
+        "observationTick": 14,
+        "source": "screen",
+        "onScreen": true,
+        "x": 110,
+        "z": 80,
+        "targetId": 8,
+        "provenance": "entered-screen",
+        "observedDanger": {
+          "nearbyOwnUnits": [
+            7
+          ],
+          "idleOwnUnits": [
+            7
+          ]
+        }
+      },
+      {
+        "id": "observed-screen:16:2",
+        "kind": "screen-damage",
+        "tick": 16,
+        "observationTick": 16,
+        "source": "screen",
+        "onScreen": true,
+        "x": 80,
+        "z": 80,
+        "unitId": 7,
+        "amount": 30,
+        "episode": "7:1",
+        "episodeTick": 16,
+        "provenance": "heavy-damage",
+        "observedDanger": {
+          "healthShare": 0.7,
+          "lossShare": 0.3,
+          "healthBand": "healthy",
+          "suppressionBand": "normal",
+          "retreatRisk": false,
+          "alreadyRetreating": false,
+          "alreadyEngaged": false,
+          "autoRetreatCovered": false
+        }
+      }
+    ],
+    "inputs": [
+      {
+        "tick": 14,
+        "kind": "camera-minimap",
+        "camera": {
+          "x": 86.98654802556273,
+          "z": 76.47211363121569,
+          "yaw": 0,
+          "distance": 60
+        },
+        "selected": 0,
+        "concern": "opening",
+        "target": {
+          "x": 86.98654802556273,
+          "z": 76.47211363121569
+        },
+        "method": "minimap",
+        "input": {
+          "button": 0
+        },
+        "pointer": {
+          "from": {
+            "x": 960,
+            "y": 540
+          },
+          "to": {
+            "x": 1805.0398355674943,
+            "y": 954.4452058661623
+          },
+          "distance": 941.1998471957926,
+          "width": 9.5,
+          "seconds": 0.5019197093179011
+        },
+        "inputStartedTick": 3,
+        "motorTicks": 11,
+        "queuedTick": 2
+      }
+    ],
+    "commands": [],
+    "frames": [
+      {
+        "tick": 2,
+        "observationTick": 2,
+        "ids": []
+      },
+      {
+        "tick": 4,
+        "observationTick": 4,
+        "ids": []
+      },
+      {
+        "tick": 6,
+        "observationTick": 6,
+        "ids": []
+      },
+      {
+        "tick": 8,
+        "observationTick": 8,
+        "ids": []
+      },
+      {
+        "tick": 10,
+        "observationTick": 10,
+        "ids": []
+      },
+      {
+        "tick": 12,
+        "observationTick": 12,
+        "ids": []
+      },
+      {
+        "tick": 14,
+        "observationTick": 14,
+        "ids": []
+      },
+      {
+        "tick": 15,
+        "observationTick": 14,
+        "ids": [
+          7,
+          8
+        ]
+      },
+      {
+        "tick": 16,
+        "observationTick": 16,
+        "ids": [
+          7,
+          8
+        ]
+      }
+    ]
+  },
+  "invisible": {
+    "ownAt2": false,
+    "ownAt3": false,
+    "revealTick": 3,
+    "nextBeatTick": 4,
+    "nativeDamage": null,
+    "decision": null,
+    "reason": null,
+    "baseline": null,
+    "events": [
+      {
+        "id": "4:1",
+        "kind": "attack",
+        "text": "Rifle Squad under attack",
+        "x": 80,
+        "z": 80,
+        "n": 1,
+        "tick": 4,
+        "onScreen": false,
+        "source": "alert"
+      }
+    ],
+    "inputs": [],
+    "commands": [],
+    "frames": [
+      {
+        "tick": 2,
+        "observationTick": 2,
+        "ids": []
+      },
+      {
+        "tick": 3,
+        "observationTick": 2,
+        "ids": []
+      },
+      {
+        "tick": 4,
+        "observationTick": 4,
+        "ids": []
+      }
+    ]
+  },
+  "unchanged": {
+    "ownAt2": false,
+    "ownAt3": true,
+    "revealTick": 3,
+    "nextBeatTick": 4,
+    "nativeDamage": null,
+    "decision": null,
+    "reason": null,
+    "baseline": null,
+    "events": [
+      {
+        "id": "observed-screen:3:1",
+        "kind": "screen-contact",
+        "tick": 3,
+        "observationTick": 2,
+        "source": "screen",
+        "onScreen": true,
+        "x": 110,
+        "z": 80,
+        "targetId": 8,
+        "provenance": "entered-screen",
+        "observedDanger": {
+          "nearbyOwnUnits": [
+            7
+          ],
+          "idleOwnUnits": [
+            7
+          ]
+        }
+      }
+    ],
+    "inputs": [],
+    "commands": [],
+    "frames": [
+      {
+        "tick": 2,
+        "observationTick": 2,
+        "ids": []
+      },
+      {
+        "tick": 3,
+        "observationTick": 2,
+        "ids": [
+          7,
+          8
+        ]
+      },
+      {
+        "tick": 4,
+        "observationTick": 4,
+        "ids": [
+          7,
+          8
+        ]
+      }
+    ]
+  }
+}

@@ -1,0 +1,55 @@
+
+{
+  // Public callers may supply navigation data with a different cache or height contract.
+  const publicView = (w, h, height, flags = new Uint16Array(w * h)) => ({
+    w, h, height, flags, chars: Array(w * h).fill('.'), wear: new Float32Array(w * h),
+    navigationObserved: true, worldNearWalls: new Uint8Array(w * h),
+    units: new Map(), mineSeen: new Map(), fires: new Map(), roads: false,
+    infantryRegionVersion: 0, vehicleRegionVersion: 0, navalRegionVersion: 0,
+    obstructionVersion: 0, navigationKnowledgeVersion: 0,
+  });
+  const point = (g, c) => ({ x: (c % g.w + 0.5) * CELL, z: (Math.floor(c / g.w) + 0.5) * CELL });
+  const publicRoute = (g, start, goal) => findPath(g, { type: 'rifle', ...point(g, start) }, point(g, goal)).map(p => [p.x, p.z]);
+
+  const stale = publicView(3, 1, null, Uint16Array.from([0, 0, MOVE]));
+  assert.deepEqual(publicRoute(stale, 0, 1), [[3, 1]], 'the initial public route is connected');
+  const expansions = stale.pathStats.expansions;
+  stale.flags = new Uint16Array(3);
+  assert.deepEqual(publicRoute(stale, 0, 2), [], 'replacing public flags without advancing the region version retains the cached rejection');
+  assert.equal(stale.pathStats.regionRejected, 1, 'the stale public region rejects before a fine search');
+  assert.equal(stale.pathStats.expansions, expansions);
+  stale.infantryRegionVersion++;
+  assert.deepEqual(publicRoute(stale, 0, 2).at(-1), [5, 1], 'advancing the public region version admits the newly open route');
+
+  const hole = new Array(4);
+  hole[1] = -1; hole[2] = -1; hole[3] = 1;
+  const sparse = publicView(2, 2, hole);
+  assert.deepEqual(publicRoute(sparse, 0, 3), [], 'public sparse heights retain the full-map rejection');
+  assert.equal(sparse.pathStats.regionRejected, 1);
+  assert.equal(sparse.pathStats.expansions, 0);
+  sparse.height = Int8Array.from([0, -1, -1, 1]);
+  sparse.infantryRegionVersion++; sparse.navigationKnowledgeVersion++; sparse.obstructionVersion++;
+  assert.deepEqual(publicRoute(sparse, 0, 3), [[3, 3]], 'a complete versioned height repair restores the legal uphill diagonal');
+
+  for (const [label, height] of [
+    ['flat connected', new Int8Array(4)],
+    ['uphill diagonal', Int8Array.from([0, -1, -1, 1])],
+    ['downhill diagonal', Int8Array.from([1, 2, 2, 0])],
+  ]) {
+    const g = publicView(2, 2, height);
+    assert.deepEqual(publicRoute(g, 0, 3), [[3, 3]], `${label} keeps its legal route`);
+    assert.equal(g.pathStats.regionRejected, 0);
+    if (label !== 'flat connected') assert.deepEqual(publicRoute(g, 3, 0), [], `${label} retains the reverse corner restriction`);
+  }
+
+  const map = mapWith();
+  map.heights = Array(H).fill('1'.repeat(20) + '0'.repeat(W - 20));
+  for (const type of ['rifle', 'tank']) {
+    const g = createGame(map, ['Blue', 'Red'], false, [0, 1], [0, 1], { weather: false, supply: false });
+    const u = rifle(g, 19, 15, 0, type);
+    assert.equal(g.navigationObserved, undefined, 'native commands derive their recipient navigation view');
+    assert.equal(command(g, 0, { t: 'move', face: 0, orders: [[u.id, 21.5 * CELL, 16.5 * CELL]] }), undefined);
+    assert.deepEqual(u.path.map(p => [p.x, p.z]), [[43, 33]], `${type} follows its observed downhill command route`);
+    assert.equal(g.pathStats.regionRejected, 0);
+  }
+}

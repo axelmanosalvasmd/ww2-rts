@@ -1,0 +1,67 @@
+{
+  "copiedAt": "2026-10-04T18:12:02.098375+00:00",
+  "qualification": "Original four fixed quietV16rows FAIL. Source and archive hashes match; all1000ticks/990samples retained. Precedes fresh-root copy optimization and latest grader baseline fix, neither is benchmark acceptance. No rows rerun or omitted.",
+  "files": [
+    {
+      "source": "/tmp/human-ai-final-performance-protocol-v16.py",
+      "destination": "docs/evidence/human-like-ai-v16-performance/human-ai-final-performance-protocol-v16.py",
+      "bytes": 21042,
+      "sha256": "1676f4545e7fb243bcc3ae885d7322e1a77f2710a2dc9297cdbd9d0a134467bc"
+    },
+    {
+      "source": "/tmp/human-ai-performance-v16-predeclared.json",
+      "destination": "docs/evidence/human-like-ai-v16-performance/human-ai-performance-v16-predeclared.json",
+      "bytes": 27825,
+      "sha256": "dddbc68f4f6c7e0b606da2d66035c49b983d15a8d53d7d08c9a401be28dfc9bf"
+    },
+    {
+      "source": "/tmp/human-ai-final-performance-protocol-v16.json",
+      "destination": "docs/evidence/human-like-ai-v16-performance/human-ai-final-performance-protocol-v16.json",
+      "bytes": 38209,
+      "sha256": "fa9ea18bcb8f059407f8b9d54f68439757298c6ed57d00c184d359ed58608990"
+    },
+    {
+      "source": "/tmp/human-ai-bench-v16-before.json",
+      "destination": "docs/evidence/human-like-ai-v16-performance/human-ai-bench-v16-before.json",
+      "bytes": 7597,
+      "sha256": "75e60e8afb75ff1d124c543ec3dba3963fceb18d27bbd8037da3bf6c65bf4624"
+    },
+    {
+      "source": "/tmp/human-ai-bench-v16-after.json",
+      "destination": "docs/evidence/human-like-ai-v16-performance/human-ai-bench-v16-after.json",
+      "bytes": 7607,
+      "sha256": "7c471cb308ab5052c3f65d89f5a200608526a3177fdc390384a2cd3ac281d204"
+    },
+    {
+      "source": "/tmp/human-ai-bench-v16-before-counts.json",
+      "destination": "docs/evidence/human-like-ai-v16-performance/human-ai-bench-v16-before-counts.json",
+      "bytes": 7723,
+      "sha256": "bc50957444a9be08b03f37548ef6f9328d18646ccedde6992fb48f3b929492ce"
+    },
+    {
+      "source": "/tmp/human-ai-bench-v16-after-counts.json",
+      "destination": "docs/evidence/human-like-ai-v16-performance/human-ai-bench-v16-after-counts.json",
+      "bytes": 7731,
+      "sha256": "6818544972658cf4bf289d7fa5ddfe03cd9b5952f7565e171dd3162e4db35bee"
+    },
+    {
+      "source": "/tmp/human-ai-v16-performance-root-launch.json",
+      "destination": "docs/evidence/human-like-ai-v16-performance/human-ai-v16-performance-root-launch.json",
+      "bytes": 233,
+      "sha256": "3d958d7fae8729511b7bcbeeda3e2bebb6e990a4b866205c46f5aca748298b6d"
+    },
+    {
+      "source": "/tmp/human-ai-v16-performance-root-controller.log",
+      "destination": "docs/evidence/human-like-ai-v16-performance/human-ai-v16-performance-root-controller.log",
+      "bytes": 4865,
+      "sha256": "32d37903118767186774ea7f3c4f9f19bf86e741ee4a5865120374fbcd3bc46b"
+    },
+    {
+      "source": "/tmp/human-ai-perf-v16-frozen",
+      "destination": "docs/evidence/human-like-ai-v16-performance/source.tar.gz",
+      "bytes": 4415906,
+      "sha256": "ded2424463435008dd5a24d53ce6c84abf67ae82774d1668a24b847805f8ffae",
+      "qualification": "All captured regular source members verified byte-for-byte, external node_modules excluded."
+    }
+  ]
+}

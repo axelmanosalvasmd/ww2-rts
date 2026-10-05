@@ -1,0 +1,13 @@
+{
+  "status": "PASS",
+  "archive": "root-focused-native.tar.gz",
+  "archiveBytes": 111255,
+  "archiveSHA256": "9d45141bf1c78fc1d1074f6bf49cce8d26b5dc2aacdfc261abbdb6915ba01c48",
+  "members": 46,
+  "payloadBytes": 568912,
+  "originalCopiedBytes": 550030,
+  "allRoundtripBytesMatch": true,
+  "allOriginalBytesUnchanged": true,
+  "manifestSHA256": "32ada119e2cda832bde54087847513e6c96f0417e586803380f22f169ea0dafc",
+  "manifestBytes": 12379
+}

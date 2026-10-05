@@ -1,0 +1,23 @@
+Living group recall: accepted pair moves 119/224, binding 227, switch 244, recall 256, accepted survivor move 265.
+Camera arrival: old deadline 80, paid pans 96/121, fresh plan 128, command 136.
+Interrupted camera pending-emergency: cue 78, held finish 96, paid return 120, native accepted retreat 137.
+node:internal/modules/run_main:107
+    triggerUncaughtException(
+    ^
+
+AssertionError [ERR_ASSERTION]: the stronger emergency receives the actual physical response
++ actual - expected
+
++ undefined
+- 'retreat'
+
+    at file:///tmp/r5-camera-current-visibility/only-pending-guard/test-engine-ai-response.js:280:12 {
+  generatedMessage: false,
+  code: 'ERR_ASSERTION',
+  actual: undefined,
+  expected: 'retreat',
+  operator: 'strictEqual',
+  diff: 'simple'
+}
+
+Node.js v24.21.0

@@ -1,0 +1,5282 @@
+[
+  {
+    "mode": "conquest",
+    "level": "easy",
+    "seed": 2,
+    "file": "/tmp/human-ai-final-v15/raw-matches/conquest/conquest-easy-2.json",
+    "gzipFile": "/tmp/human-ai-final-v15/raw-matches/conquest/conquest-easy-2.json.gz",
+    "raw": {
+      "sha256": "16d82d43dd9f1a953966a0039ae11181af90492eab0025a64862c879d9b203fd",
+      "bytes": 2941873
+    },
+    "gzip": {
+      "sha256": "2a7f97075b707cca03dd0e0470b4f87f986628db92064f10cac36f3b4e99d68c",
+      "bytes": 98235
+    },
+    "timelineDigests": [
+      {
+        "slot": 0,
+        "sha256": "8925809c3a75bac20d5da301487f3b03d10eeb4ffc948d80603b671bf7d88625",
+        "commands": 28,
+        "inputs": 84,
+        "events": 69,
+        "measurementFrames": 51,
+        "measurementStreamSHA256": "3423442ae3fc745da85d11580b170b48c361d3a58a9286261e520e0a00ddfd17"
+      },
+      {
+        "slot": 1,
+        "sha256": "dbe4a13e82c140bab225674db39528ba00fad82c5da0bf9eee6183bc08be2d58",
+        "commands": 26,
+        "inputs": 85,
+        "events": 52,
+        "measurementFrames": 41,
+        "measurementStreamSHA256": "a1a5f960a0ae34fc86a4e7b74a3bf6fc55e66f233dd7d9ac4769dcc75604d090"
+      },
+      {
+        "slot": 2,
+        "sha256": "1e66fe3a0992530ea2c25db46a8f0d76b7efb11c3640b0f8e38af4b3d7bf2ffe",
+        "commands": 26,
+        "inputs": 82,
+        "events": 67,
+        "measurementFrames": 47,
+        "measurementStreamSHA256": "c923707562c053435acba41de82ed759e64ee2470e9d4e4b713f423d6f28e98d"
+      }
+    ]
+  },
+  {
+    "mode": "conquest",
+    "level": "easy",
+    "seed": 1,
+    "file": "/tmp/human-ai-final-v15/raw-matches/conquest/conquest-easy-1.json",
+    "gzipFile": "/tmp/human-ai-final-v15/raw-matches/conquest/conquest-easy-1.json.gz",
+    "raw": {
+      "sha256": "c507c5f09e94ceb94659fe7cf70478063f4308ef8965ebd35dbefa7b2db802a0",
+      "bytes": 3539163
+    },
+    "gzip": {
+      "sha256": "4370964db32a56b426c97659269d36a9d723b4a89fb23e218e2cc28581e12a65",
+      "bytes": 122651
+    },
+    "timelineDigests": [
+      {
+        "slot": 0,
+        "sha256": "b048c116d96ff20d8704831a5a803d42130d3dcfd5cf76e84551bd469df0ac3d",
+        "commands": 34,
+        "inputs": 94,
+        "events": 69,
+        "measurementFrames": 54,
+        "measurementStreamSHA256": "ae0e092d54aa645c20b67025196072a39510fce2a0790c9ac3ddb62b35e1aa65"
+      },
+      {
+        "slot": 1,
+        "sha256": "44b309bbeea3e5f8812d4ba105565a8671220f08cf6e7891ffd47ae9dc7c42cd",
+        "commands": 26,
+        "inputs": 76,
+        "events": 57,
+        "measurementFrames": 42,
+        "measurementStreamSHA256": "cb58eda0ad92295e13da65a0b79bad6d4a033dcd25469047bd032c167c28f82f"
+      },
+      {
+        "slot": 2,
+        "sha256": "4939c61a110bc9d7335643ecb9bd7ce13f5e5b209b93a470c4e337a765f7c4eb",
+        "commands": 32,
+        "inputs": 87,
+        "events": 68,
+        "measurementFrames": 54,
+        "measurementStreamSHA256": "d47394642fb38da3ea6158edf048e72eb08d417df4f5bdf72cd1cb89774c8c52"
+      }
+    ]
+  },
+  {
+    "mode": "conquest",
+    "level": "easy",
+    "seed": 4,
+    "file": "/tmp/human-ai-final-v15/raw-matches/conquest/conquest-easy-4.json",
+    "gzipFile": "/tmp/human-ai-final-v15/raw-matches/conquest/conquest-easy-4.json.gz",
+    "raw": {
+      "sha256": "c7834e0f8c740400f6fd4830748662bdf2870247c4f1f6074b601dbee7c114da",
+      "bytes": 4586669
+    },
+    "gzip": {
+      "sha256": "9348eb6b43e5f5bf992dafc661947e1cfc33bc61250f395587d9f678c8de28c0",
+      "bytes": 161439
+    },
+    "timelineDigests": [
+      {
+        "slot": 0,
+        "sha256": "6d2e685f948e3f4ab3be25420b27a07ec488694067572726c1288cd25f78e398",
+        "commands": 30,
+        "inputs": 87,
+        "events": 68,
+        "measurementFrames": 54,
+        "measurementStreamSHA256": "0fc0c4e0be9842abea05cbd8bd83324934036c20b740041cc78037fac7c29959"
+      },
+      {
+        "slot": 1,
+        "sha256": "d4dbfc4dd297e0deab52d2cc07dcb0572b1a4a908a5e5edfa1500f24d2d3f25c",
+        "commands": 29,
+        "inputs": 90,
+        "events": 80,
+        "measurementFrames": 64,
+        "measurementStreamSHA256": "f4e92cfaa4b310c665f07ff656bb290175899c300a6843ead3d09348118ab5f2"
+      },
+      {
+        "slot": 2,
+        "sha256": "cdc925ce8f24d9a5706a4a82c1f78bb07abea7318dcee7f3d57f48b170b643e8",
+        "commands": 26,
+        "inputs": 89,
+        "events": 75,
+        "measurementFrames": 59,
+        "measurementStreamSHA256": "2bc6ee5bf5bca40ffdf8a7f693c814f9dc79bbb74fc41a06cf21d3dc13ee7b40"
+      }
+    ]
+  },
+  {
+    "mode": "conquest",
+    "level": "easy",
+    "seed": 3,
+    "file": "/tmp/human-ai-final-v15/raw-matches/conquest/conquest-easy-3.json",
+    "gzipFile": "/tmp/human-ai-final-v15/raw-matches/conquest/conquest-easy-3.json.gz",
+    "raw": {
+      "sha256": "34a5c0605e6ccc22a6b3b31bbcdd9007cefa697aa9d53829fcf9b1831958c3c3",
+      "bytes": 3352619
+    },
+    "gzip": {
+      "sha256": "70f1e1d41f8f06523334bf320fb4ed0cf2c7029e32e130d55790fac5fdd58def",
+      "bytes": 102654
+    },
+    "timelineDigests": [
+      {
+        "slot": 0,
+        "sha256": "b034c47072954a646959f02a076dba9f9168912525c1f10cf7e02b4bac7ee157",
+        "commands": 21,
+        "inputs": 78,
+        "events": 63,
+        "measurementFrames": 53,
+        "measurementStreamSHA256": "9ef0f6a54d909aa9e044726ccbba9862802c8ebb5bcbe2cfdaba21db5076a278"
+      },
+      {
+        "slot": 1,
+        "sha256": "1b9c0e1de85e2c53b0c1c69427032525c192773a5e40746055da41d80061f960",
+        "commands": 23,
+        "inputs": 78,
+        "events": 50,
+        "measurementFrames": 40,
+        "measurementStreamSHA256": "2334ea06c6363ab4d510ce94abf180b1d20eed3ac793034bf7b810179894b124"
+      },
+      {
+        "slot": 2,
+        "sha256": "209893abd5d0cc7401d6abaed4988b97b7a83c7d20d42e067c414f2f55372868",
+        "commands": 23,
+        "inputs": 80,
+        "events": 74,
+        "measurementFrames": 65,
+        "measurementStreamSHA256": "37ccdb5ec0da9166dd698cf40350430ebb893ba93f94f7385b60d04661eb1604"
+      }
+    ]
+  },
+  {
+    "mode": "conquest",
+    "level": "easy",
+    "seed": 6,
+    "file": "/tmp/human-ai-final-v15/raw-matches/conquest/conquest-easy-6.json",
+    "gzipFile": "/tmp/human-ai-final-v15/raw-matches/conquest/conquest-easy-6.json.gz",
+    "raw": {
+      "sha256": "84777c769df6da18928d5577a08c6511fd4ba7be12edad2dd07e02855d319e9c",
+      "bytes": 4640594
+    },
+    "gzip": {
+      "sha256": "fd37fea191a495e90e9c41075af11a137af2af3140cf5a13950363f214688356",
+      "bytes": 158600
+    },
+    "timelineDigests": [
+      {
+        "slot": 0,
+        "sha256": "2dd489a24bff8ca97fa4e84f8bfaf694942854d41ffadd8bfc5eb661b9666737",
+        "commands": 26,
+        "inputs": 86,
+        "events": 70,
+        "measurementFrames": 52,
+        "measurementStreamSHA256": "2e63bc07a1b2e2ce91e7de34a91576070a1af3b380ab93ed5e246573a9b6a9e6"
+      },
+      {
+        "slot": 1,
+        "sha256": "bdd7024bee70a6455cc905602928d16ca15b8201484a45a787b7bef71748a88d",
+        "commands": 32,
+        "inputs": 94,
+        "events": 76,
+        "measurementFrames": 66,
+        "measurementStreamSHA256": "7e428dcfe41d48584b5dbaa086777ba0fb7507e792f59cc54c9ab21d76ef98ed"
+      },
+      {
+        "slot": 2,
+        "sha256": "aedf01443860385469ed1951a286e1bae2023136d20d754eeb085469bc517ec0",
+        "commands": 22,
+        "inputs": 64,
+        "events": 76,
+        "measurementFrames": 59,
+        "measurementStreamSHA256": "85e498e6aee7a0ac4d69d09fe63efed9c220f9dfc7524864444be656de4b0d59"
+      }
+    ]
+  },
+  {
+    "mode": "conquest",
+    "level": "easy",
+    "seed": 5,
+    "file": "/tmp/human-ai-final-v15/raw-matches/conquest/conquest-easy-5.json",
+    "gzipFile": "/tmp/human-ai-final-v15/raw-matches/conquest/conquest-easy-5.json.gz",
+    "raw": {
+      "sha256": "d8125776859dbd1afe8f37b0cb4b6fa1f0bb430cd84447f3e0649aad2c76cb26",
+      "bytes": 3602461
+    },
+    "gzip": {
+      "sha256": "12ae0baf1de642b8209d07482ab38274fc31638ff048b99d3f4f601b0978cbbe",
+      "bytes": 120619
+    },
+    "timelineDigests": [
+      {
+        "slot": 0,
+        "sha256": "4bc32c4089d097572cf4b2a93939c983d02f45f1c6d5533aa8092f8281ec7cdb",
+        "commands": 26,
+        "inputs": 93,
+        "events": 66,
+        "measurementFrames": 48,
+        "measurementStreamSHA256": "bfc3e549bf9ef6670bcb1eddcf36678429fbffb96b0c2d2e64a50b7c13d7f560"
+      },
+      {
+        "slot": 1,
+        "sha256": "74e88560522173ce6c7801417610d7406ea1f473c1a929db1af2c070992c7ba9",
+        "commands": 32,
+        "inputs": 101,
+        "events": 70,
+        "measurementFrames": 51,
+        "measurementStreamSHA256": "3e55e0e8cf8ca8c2520dd215822d93351c0d2d5e1926a1f92899d75f26de2145"
+      },
+      {
+        "slot": 2,
+        "sha256": "2c604a553f77dc33fae521bd8b0685529aebd4e9de1c6b3dc74b94ce0fe00073",
+        "commands": 30,
+        "inputs": 92,
+        "events": 73,
+        "measurementFrames": 53,
+        "measurementStreamSHA256": "aab4311d92c92400544365f275014ba21817e6587af83ae61347d2a021fa54e6"
+      }
+    ]
+  },
+  {
+    "mode": "conquest",
+    "level": "easy",
+    "seed": 8,
+    "file": "/tmp/human-ai-final-v15/raw-matches/conquest/conquest-easy-8.json",
+    "gzipFile": "/tmp/human-ai-final-v15/raw-matches/conquest/conquest-easy-8.json.gz",
+    "raw": {
+      "sha256": "ebe04be46ae861773ae6593438b125472a4176d95355c28261491560132ae743",
+      "bytes": 4730244
+    },
+    "gzip": {
+      "sha256": "8c1b3ce892e38c0462aab57985371ebe5eddf9c4e2ea412ac118c35d5988fd88",
+      "bytes": 163887
+    },
+    "timelineDigests": [
+      {
+        "slot": 0,
+        "sha256": "ac87e3c3e0a535a926481b75f963d1214cec6ab73945924cd446f1f31b772e14",
+        "commands": 22,
+        "inputs": 70,
+        "events": 92,
+        "measurementFrames": 62,
+        "measurementStreamSHA256": "3d99c8447f324a31744466ebf412d32f4bbbeaf1459d0ffc1a5c6b53fccec6ff"
+      },
+      {
+        "slot": 1,
+        "sha256": "6581b7b353eb690e4fa7bcd6f2a0f431ad942a4394101f17d7e8c857a6430db5",
+        "commands": 26,
+        "inputs": 84,
+        "events": 76,
+        "measurementFrames": 58,
+        "measurementStreamSHA256": "48f499e6327c592ab3ee3ae604343d62186de205184ecd9e416ec7591bb24da6"
+      },
+      {
+        "slot": 2,
+        "sha256": "1c03c0b9b40c5b901cac00217839412c046808bf2922cc9bb6668592377e8144",
+        "commands": 26,
+        "inputs": 86,
+        "events": 70,
+        "measurementFrames": 60,
+        "measurementStreamSHA256": "8c6c0644c60d686c35c60375e30feab5a40d7810df2965c355721945acf4d3ca"
+      }
+    ]
+  },
+  {
+    "mode": "conquest",
+    "level": "easy",
+    "seed": 7,
+    "file": "/tmp/human-ai-final-v15/raw-matches/conquest/conquest-easy-7.json",
+    "gzipFile": "/tmp/human-ai-final-v15/raw-matches/conquest/conquest-easy-7.json.gz",
+    "raw": {
+      "sha256": "2a8fbb249d9d6d006a690685ac9f321e134f8ba687df09057943b9c5698ecb5f",
+      "bytes": 4116015
+    },
+    "gzip": {
+      "sha256": "d40e66bc620207346ee7f6ba2bc0a239c6ff29de9cae5fa96357b044597a86a4",
+      "bytes": 140204
+    },
+    "timelineDigests": [
+      {
+        "slot": 0,
+        "sha256": "2b60046a387dae337977f9449e7ea12915eb271f3159c95cc6274b4d5226dacf",
+        "commands": 29,
+        "inputs": 85,
+        "events": 62,
+        "measurementFrames": 52,
+        "measurementStreamSHA256": "f4034f4f1f93f40f4b4e7c8ece247d0e19afd0b51bad11217106011ef7cd5e45"
+      },
+      {
+        "slot": 1,
+        "sha256": "58050bf6c6ce38284dd24c0e2735c4080c0a239aa28658754fac54245dc76709",
+        "commands": 30,
+        "inputs": 84,
+        "events": 77,
+        "measurementFrames": 61,
+        "measurementStreamSHA256": "d5d51d05ce3b6110926df5e8cf2089eb3b4ef62fe98506e680dcd053437fc157"
+      },
+      {
+        "slot": 2,
+        "sha256": "c34236e75e37af1e46b80f2e388a50bb53afe3ed48f7ed8dc161076796ea17c5",
+        "commands": 26,
+        "inputs": 86,
+        "events": 72,
+        "measurementFrames": 54,
+        "measurementStreamSHA256": "7caf32edb4771b6a373b9afa2fd2fb795808114380344656e0fd62868b9d54f3"
+      }
+    ]
+  },
+  {
+    "mode": "conquest",
+    "level": "easy",
+    "seed": 10,
+    "file": "/tmp/human-ai-final-v15/raw-matches/conquest/conquest-easy-10.json",
+    "gzipFile": "/tmp/human-ai-final-v15/raw-matches/conquest/conquest-easy-10.json.gz",
+    "raw": {
+      "sha256": "bcd51fc9c9dbcf4f85e8e6ac1a1238daf95e025e0c3297668d46d9d7c6e60d6d",
+      "bytes": 2751306
+    },
+    "gzip": {
+      "sha256": "33ac8e385ea3604e6ea19d4d334be92930b7ec2a82f1bb4ab62e489a70be39db",
+      "bytes": 87805
+    },
+    "timelineDigests": [
+      {
+        "slot": 0,
+        "sha256": "2b4b5596cdce452310eddec436cd67eb939f491afba53aa343fa0e1aa339fa9a",
+        "commands": 30,
+        "inputs": 79,
+        "events": 46,
+        "measurementFrames": 41,
+        "measurementStreamSHA256": "741146842729e23a00002edc1ab36b7b965d72571f853ba001a155aa9dac54d8"
+      },
+      {
+        "slot": 1,
+        "sha256": "9ec9260b7f0ce6b96bdce2c6c8678dcbc9b471440185c3dd1e5677b796af3a4c",
+        "commands": 28,
+        "inputs": 81,
+        "events": 59,
+        "measurementFrames": 44,
+        "measurementStreamSHA256": "e951a38b5cfdb7fe22ca0f06f174553d4e0e0e046ab1b32543d7b2ca24c5e014"
+      },
+      {
+        "slot": 2,
+        "sha256": "3e3e79b796ff003cae1425c9ff1317733f335ac5b85a53b9d6c666605b2b1fb0",
+        "commands": 25,
+        "inputs": 79,
+        "events": 68,
+        "measurementFrames": 48,
+        "measurementStreamSHA256": "5fb8e14b5f5b59eaf66220f736271166a0b2e65fcc10a3b13a9cb714e8f7f20e"
+      }
+    ]
+  },
+  {
+    "mode": "conquest",
+    "level": "easy",
+    "seed": 9,
+    "file": "/tmp/human-ai-final-v15/raw-matches/conquest/conquest-easy-9.json",
+    "gzipFile": "/tmp/human-ai-final-v15/raw-matches/conquest/conquest-easy-9.json.gz",
+    "raw": {
+      "sha256": "74b760248614bbcc345ceae64cc9ac8da1b38918bd155de2e5a5e04f93b1ca19",
+      "bytes": 2817793
+    },
+    "gzip": {
+      "sha256": "f13bd6b973d48ebe1898edbbe894a54935319145697c695d28f6d3f0d77802ed",
+      "bytes": 88040
+    },
+    "timelineDigests": [
+      {
+        "slot": 0,
+        "sha256": "44e0f937341ad00bd210e304ff4dd6d2ad0c0ca2ee841b69d6287c745cf7d1cb",
+        "commands": 29,
+        "inputs": 82,
+        "events": 54,
+        "measurementFrames": 45,
+        "measurementStreamSHA256": "c11c6c9ed61cf901f84b9605ab9ed060d221890caff62b1bb9077dc44255a014"
+      },
+      {
+        "slot": 1,
+        "sha256": "1f0af8e01ef3feb7d5e0ddac23cb3825b3dcaf1e2a5a1b5657ef75c16c33b114",
+        "commands": 24,
+        "inputs": 85,
+        "events": 59,
+        "measurementFrames": 51,
+        "measurementStreamSHA256": "1d97082bc6b5c9eabe164ee50e963498a749482d3fb01790f00f7eda111a09aa"
+      },
+      {
+        "slot": 2,
+        "sha256": "9657dd9f401a58070662b7984d37161324cfb7f98933030b874b680adafe49da",
+        "commands": 24,
+        "inputs": 71,
+        "events": 59,
+        "measurementFrames": 41,
+        "measurementStreamSHA256": "c6bde04b4bfbbae47344d181c2f4570006f08ecf439871b7f57fcd122a8fa4b2"
+      }
+    ]
+  },
+  {
+    "mode": "conquest",
+    "level": "easy",
+    "seed": 12,
+    "file": "/tmp/human-ai-final-v15/raw-matches/conquest/conquest-easy-12.json",
+    "gzipFile": "/tmp/human-ai-final-v15/raw-matches/conquest/conquest-easy-12.json.gz",
+    "raw": {
+      "sha256": "3b9240c4c323a712ee68484e229717ae9e116ca651ce833662b94cd3f6041ea6",
+      "bytes": 2919312
+    },
+    "gzip": {
+      "sha256": "f0fb00961ae1edd88f29d8b6d440732d9c93c94f9ce9928e446649d1b4a40ffa",
+      "bytes": 86955
+    },
+    "timelineDigests": [
+      {
+        "slot": 0,
+        "sha256": "8b2b4ce3cbc5aac885c2f3f0eb81cdc568a840065bc3e50877a81db0104609cf",
+        "commands": 28,
+        "inputs": 78,
+        "events": 56,
+        "measurementFrames": 41,
+        "measurementStreamSHA256": "cd488c755567d277000f2f696e9f136277a369987fd872990bd01fc8fe9743a1"
+      },
+      {
+        "slot": 1,
+        "sha256": "b3d5e89db4b73b12cd72657d694d367d95750e00f5aec925cdadce81739d22d3",
+        "commands": 28,
+        "inputs": 82,
+        "events": 65,
+        "measurementFrames": 50,
+        "measurementStreamSHA256": "acb41122ab92438c604e99016f2ba74707f4843ef8df78ae894139181ab81ffe"
+      },
+      {
+        "slot": 2,
+        "sha256": "d446c0be66171c381318a5ec9ee988a80425e65316d8dd09bd111539218037e4",
+        "commands": 22,
+        "inputs": 75,
+        "events": 67,
+        "measurementFrames": 50,
+        "measurementStreamSHA256": "7be4bf6e7a069c208204891ba05388654f6f0664bb87b8108c5c54f192269a2c"
+      }
+    ]
+  },
+  {
+    "mode": "conquest",
+    "level": "easy",
+    "seed": 11,
+    "file": "/tmp/human-ai-final-v15/raw-matches/conquest/conquest-easy-11.json",
+    "gzipFile": "/tmp/human-ai-final-v15/raw-matches/conquest/conquest-easy-11.json.gz",
+    "raw": {
+      "sha256": "cbc9f4ffd7e5e9fda8fd32a30ffc944e4b4994d87630dc78dce00e3e718069a0",
+      "bytes": 4057029
+    },
+    "gzip": {
+      "sha256": "9bb4e69760edf8f0d5d7cb2691c778af2defafac773e818845884d698ff1bd0f",
+      "bytes": 127238
+    },
+    "timelineDigests": [
+      {
+        "slot": 0,
+        "sha256": "ab23167c22484aa6b4ba6a8630b3e40346dcb31d6ff4ad1a6be57b3418fbf0f7",
+        "commands": 19,
+        "inputs": 65,
+        "events": 67,
+        "measurementFrames": 53,
+        "measurementStreamSHA256": "150e4eb3f4ffcb8454dc1d85d5e610875953e11b5d57485453bb37266da0145d"
+      },
+      {
+        "slot": 1,
+        "sha256": "c9a29a215105285d1a87b1c45e3a5574e609ad2cacc5e92241d14d8748782ccf",
+        "commands": 25,
+        "inputs": 76,
+        "events": 77,
+        "measurementFrames": 52,
+        "measurementStreamSHA256": "767c28b7fca1e4f8410fe2b70c8d6fe0b163ac495d28b2630da69ffa8dae79bd"
+      },
+      {
+        "slot": 2,
+        "sha256": "20e4093ed9d8a4712ced3e02752c37e607654b829fc2473e5a698bab57789bba",
+        "commands": 26,
+        "inputs": 81,
+        "events": 74,
+        "measurementFrames": 65,
+        "measurementStreamSHA256": "d9a70f0ca888d638d9a24aaf521558d1e0c81d2b3d97b6b9cd8d8925e034b809"
+      }
+    ]
+  },
+  {
+    "mode": "conquest",
+    "level": "easy",
+    "seed": 14,
+    "file": "/tmp/human-ai-final-v15/raw-matches/conquest/conquest-easy-14.json",
+    "gzipFile": "/tmp/human-ai-final-v15/raw-matches/conquest/conquest-easy-14.json.gz",
+    "raw": {
+      "sha256": "72b1284c972904222d06e506565e9cf4dc7a2c9fd20439d1fbc8f37de235fb39",
+      "bytes": 3056465
+    },
+    "gzip": {
+      "sha256": "ad641f454518b2290e4b048f777b3368e92e614bbbaf08fc91ebb386fc947a50",
+      "bytes": 101951
+    },
+    "timelineDigests": [
+      {
+        "slot": 0,
+        "sha256": "f470b610e696372edd97c84cd48935c6a91a767b40ebe65a8b9bb9fc05314e54",
+        "commands": 22,
+        "inputs": 67,
+        "events": 62,
+        "measurementFrames": 49,
+        "measurementStreamSHA256": "5d525847623c3907f3467423460e34dcc1f9044084314bb6db5b233b460f7c2c"
+      },
+      {
+        "slot": 1,
+        "sha256": "a0e01e732ea169d0028e9486bca58521319e26d1b69acc12a4bd752c683f1f1e",
+        "commands": 25,
+        "inputs": 78,
+        "events": 67,
+        "measurementFrames": 56,
+        "measurementStreamSHA256": "2f9c45972a535afe9626806bcf81abf6f44f3c6cd7ff76c074eae6cbffb9a708"
+      },
+      {
+        "slot": 2,
+        "sha256": "1a5d299423bdf2487510c04304ca834b9f843bef673f8c510c24337595e3ec2b",
+        "commands": 30,
+        "inputs": 96,
+        "events": 49,
+        "measurementFrames": 40,
+        "measurementStreamSHA256": "fd92281aafa1dbeea4922f42e19e92275bcbf6616b6537d043cc0982a7a3c1fc"
+      }
+    ]
+  },
+  {
+    "mode": "conquest",
+    "level": "easy",
+    "seed": 13,
+    "file": "/tmp/human-ai-final-v15/raw-matches/conquest/conquest-easy-13.json",
+    "gzipFile": "/tmp/human-ai-final-v15/raw-matches/conquest/conquest-easy-13.json.gz",
+    "raw": {
+      "sha256": "004a69f4ef2a1c33ee91b9110f6f28c9714aaad6cdb7348ad19eca77154cbd06",
+      "bytes": 3094924
+    },
+    "gzip": {
+      "sha256": "1211aa4d4f1a72feca426ddf3b0fa6e5f9a97a66996f219e72f35084cd361155",
+      "bytes": 101694
+    },
+    "timelineDigests": [
+      {
+        "slot": 0,
+        "sha256": "1cafb30b8d8c8cd0a0232f5a5360b478cdf225b0238aa984a0062faccbf0d272",
+        "commands": 20,
+        "inputs": 75,
+        "events": 53,
+        "measurementFrames": 37,
+        "measurementStreamSHA256": "bf03e6472721957476ea7d157460a61bcb16f59e9c88309d0f20ec3e87aa60cf"
+      },
+      {
+        "slot": 1,
+        "sha256": "823c7cdffc9d7b7154c8838aeca217242fba0ed912174aafb28bdbea5bcaa035",
+        "commands": 26,
+        "inputs": 85,
+        "events": 67,
+        "measurementFrames": 54,
+        "measurementStreamSHA256": "2ef13fdc6301c0d3cbd41cd1aa7336ebf447b2066e8bbd8a5bf1560e52f1271d"
+      },
+      {
+        "slot": 2,
+        "sha256": "f55cb8ac791492dc751811bfdd142977e20e7b5b74201baa917fb64743c78391",
+        "commands": 21,
+        "inputs": 76,
+        "events": 73,
+        "measurementFrames": 51,
+        "measurementStreamSHA256": "2983136da5a8e3d33ad72559358706d4f8ad9236a9f0991a0322942a41ef2b20"
+      }
+    ]
+  },
+  {
+    "mode": "conquest",
+    "level": "easy",
+    "seed": 16,
+    "file": "/tmp/human-ai-final-v15/raw-matches/conquest/conquest-easy-16.json",
+    "gzipFile": "/tmp/human-ai-final-v15/raw-matches/conquest/conquest-easy-16.json.gz",
+    "raw": {
+      "sha256": "7d772ad8faddaf356e79958d806a20a194f9f9e020b84cd7a91e20a4d5b187fc",
+      "bytes": 4252646
+    },
+    "gzip": {
+      "sha256": "5ec11e61f5209faa12083fa1b6cd294bc8e77e6b82d55a3031e689165786cd5a",
+      "bytes": 144072
+    },
+    "timelineDigests": [
+      {
+        "slot": 0,
+        "sha256": "2905f6884caf35524a51f8ff850030310d4fd0370a869fcc9cc81b09c3cc0050",
+        "commands": 24,
+        "inputs": 81,
+        "events": 80,
+        "measurementFrames": 66,
+        "measurementStreamSHA256": "b92aaba8104c3f9871e2764bda3148bedd00bee6cd0966de9d15256e458a313e"
+      },
+      {
+        "slot": 1,
+        "sha256": "9968a69d850374f1f6f9dc11bef57ea83caefbbfe32b4a68009bddc2ea807192",
+        "commands": 23,
+        "inputs": 75,
+        "events": 62,
+        "measurementFrames": 48,
+        "measurementStreamSHA256": "53635c518edba91b901bdd2698ab42d7f7033d0309f120bb4ed56a09c5645625"
+      },
+      {
+        "slot": 2,
+        "sha256": "27568580fb0a1467e4db39352916e58372cd10bb8da5e47653210462df20eb53",
+        "commands": 24,
+        "inputs": 75,
+        "events": 78,
+        "measurementFrames": 60,
+        "measurementStreamSHA256": "f1f97681e24047b756849aef13c29f8c0070610ede5bac966d336683f9777f0d"
+      }
+    ]
+  },
+  {
+    "mode": "conquest",
+    "level": "easy",
+    "seed": 15,
+    "file": "/tmp/human-ai-final-v15/raw-matches/conquest/conquest-easy-15.json",
+    "gzipFile": "/tmp/human-ai-final-v15/raw-matches/conquest/conquest-easy-15.json.gz",
+    "raw": {
+      "sha256": "fcb5815f78e01dca4b6cd2b53c8b4e3ea530b6be65ef52b0b31f5d18dbe7b455",
+      "bytes": 4044766
+    },
+    "gzip": {
+      "sha256": "9e11baa374357d118147e48e57d137848d3da7768a3423ecd5e8d2e25b47180e",
+      "bytes": 138194
+    },
+    "timelineDigests": [
+      {
+        "slot": 0,
+        "sha256": "3b70731265285d14ba574ff18e19394b97757fd4e7cb822bdbee19b48e335300",
+        "commands": 29,
+        "inputs": 94,
+        "events": 67,
+        "measurementFrames": 49,
+        "measurementStreamSHA256": "ad43b2d24075de56777ee8ba4fb901ae3dfe8b28eca1939fb3929044c7b28d63"
+      },
+      {
+        "slot": 1,
+        "sha256": "88a53e6472650afae01a044d3317b08940e3370e0034c563b96c3e0dadc2f4e0",
+        "commands": 28,
+        "inputs": 87,
+        "events": 75,
+        "measurementFrames": 58,
+        "measurementStreamSHA256": "e0b211fee0db69124c63b60f1be584f96d5bbd9f91efe3f3d491a2cb5d25a7a9"
+      },
+      {
+        "slot": 2,
+        "sha256": "29a1164f7437eb86f867089fd6ce1d78a742db35f818164081aabccd471d788b",
+        "commands": 23,
+        "inputs": 69,
+        "events": 69,
+        "measurementFrames": 55,
+        "measurementStreamSHA256": "6a69fadd9e00d1cac9ad0f242e48b53feee25efc5f50e675ccab5770bb5ad820"
+      }
+    ]
+  },
+  {
+    "mode": "conquest",
+    "level": "easy",
+    "seed": 18,
+    "file": "/tmp/human-ai-final-v15/raw-matches/conquest/conquest-easy-18.json",
+    "gzipFile": "/tmp/human-ai-final-v15/raw-matches/conquest/conquest-easy-18.json.gz",
+    "raw": {
+      "sha256": "674791617e64d7151fe4ef4382581a44701ecac43c7702c8308aed57d241b9f7",
+      "bytes": 3427177
+    },
+    "gzip": {
+      "sha256": "fce29ff984b790edefa0cd47b4433ac2aa36d7ef294428e0cff24c930b0c6b7f",
+      "bytes": 110803
+    },
+    "timelineDigests": [
+      {
+        "slot": 0,
+        "sha256": "bfb3ba200152aaed98d1dcf776393c053660f8562a3dda66fe846735fd042573",
+        "commands": 24,
+        "inputs": 68,
+        "events": 61,
+        "measurementFrames": 43,
+        "measurementStreamSHA256": "0cdc6b3606c11b5f01f9bf2fc4959327b6e959b7df635a8a52952d9ef1e4dce0"
+      },
+      {
+        "slot": 1,
+        "sha256": "34e1fc5694f76b52839fec93931c1f9adc787285a0075ea7a9060374882820cc",
+        "commands": 23,
+        "inputs": 78,
+        "events": 68,
+        "measurementFrames": 56,
+        "measurementStreamSHA256": "59af55a2f055a4b5894afa71b3828a667e4591747b42de60adb369eb47099d4b"
+      },
+      {
+        "slot": 2,
+        "sha256": "e7faadd8c66545fe66eb621701982af9207baaad4742a73c85556f131171a4f3",
+        "commands": 23,
+        "inputs": 76,
+        "events": 66,
+        "measurementFrames": 54,
+        "measurementStreamSHA256": "6b4e03a3e8ada451a20e2bee006f1f8ab9593e437cace790340bde529dc14f90"
+      }
+    ]
+  },
+  {
+    "mode": "conquest",
+    "level": "easy",
+    "seed": 17,
+    "file": "/tmp/human-ai-final-v15/raw-matches/conquest/conquest-easy-17.json",
+    "gzipFile": "/tmp/human-ai-final-v15/raw-matches/conquest/conquest-easy-17.json.gz",
+    "raw": {
+      "sha256": "b6eaeb8a65f4945201ad783d237294cb1f727b4fc74bd92e0024d1b933b7577d",
+      "bytes": 3558401
+    },
+    "gzip": {
+      "sha256": "96b6863a99d6acee4ccb1287afe5ba757263aedb1f6135a3d20977affdf4a174",
+      "bytes": 127291
+    },
+    "timelineDigests": [
+      {
+        "slot": 0,
+        "sha256": "c6b43599dc1b3c4f16d04327fc4094f9721ef6e0df7077371dd316b3eb14c3f0",
+        "commands": 21,
+        "inputs": 73,
+        "events": 72,
+        "measurementFrames": 50,
+        "measurementStreamSHA256": "25c74da8ec3203bb302fdc2898fed569fdd9c6c35a761a55af1502b1620b9de1"
+      },
+      {
+        "slot": 1,
+        "sha256": "013066041682af1bbf05b9eaec058cb3af527480ec9b7dd0ee859e7a95a0ccc6",
+        "commands": 31,
+        "inputs": 93,
+        "events": 56,
+        "measurementFrames": 40,
+        "measurementStreamSHA256": "6236afc8272a3a5c8a64b94cd991d3cd6167fd2a13c70548b421424344898ef2"
+      },
+      {
+        "slot": 2,
+        "sha256": "0eb9149906906b9982014223c928f7df73f10194aa7444c751776d3f3b5b4340",
+        "commands": 32,
+        "inputs": 91,
+        "events": 73,
+        "measurementFrames": 63,
+        "measurementStreamSHA256": "da6b920d4411890ca49f2c92da7586c2fff4f433695a83180f3a9e51765e15bd"
+      }
+    ]
+  },
+  {
+    "mode": "conquest",
+    "level": "easy",
+    "seed": 20,
+    "file": "/tmp/human-ai-final-v15/raw-matches/conquest/conquest-easy-20.json",
+    "gzipFile": "/tmp/human-ai-final-v15/raw-matches/conquest/conquest-easy-20.json.gz",
+    "raw": {
+      "sha256": "cc44a36c31b6f2b4a50c5b8ba3ca5d109ba5d564080ad985ca2a6889b059367d",
+      "bytes": 3608714
+    },
+    "gzip": {
+      "sha256": "2f4d5c1097ad463d8c7ddeae38535eacfc5dc35f3d4668b032acb4f607e7eb5f",
+      "bytes": 132322
+    },
+    "timelineDigests": [
+      {
+        "slot": 0,
+        "sha256": "c90aaee3cb1a9186960dc68751dcf216f7c010605d571d409c50c819811eb7ed",
+        "commands": 37,
+        "inputs": 96,
+        "events": 77,
+        "measurementFrames": 56,
+        "measurementStreamSHA256": "381c0d7ee69a69f7f74ad92ed20b074b30ae1d32a4bb4f1545a5e25a20e02c4f"
+      },
+      {
+        "slot": 1,
+        "sha256": "b12b883f8c70666f2fe39da1425017450e40421876ac7c72b6c1b939b30f06b5",
+        "commands": 20,
+        "inputs": 71,
+        "events": 39,
+        "measurementFrames": 32,
+        "measurementStreamSHA256": "f555772a7c4e3ba9bf76d6a9764860b58b094cb09edd35e4e2577fbd8fb930af"
+      },
+      {
+        "slot": 2,
+        "sha256": "702548c312e7b8bade6f874af1c4b928a066ca9f2e18f690f350990dc47eb5c5",
+        "commands": 23,
+        "inputs": 77,
+        "events": 80,
+        "measurementFrames": 64,
+        "measurementStreamSHA256": "3016c93d2db01be222cdd3f2f6deb9d22caa75095bbb328618d4abdf7fc2b89b"
+      }
+    ]
+  },
+  {
+    "mode": "conquest",
+    "level": "easy",
+    "seed": 19,
+    "file": "/tmp/human-ai-final-v15/raw-matches/conquest/conquest-easy-19.json",
+    "gzipFile": "/tmp/human-ai-final-v15/raw-matches/conquest/conquest-easy-19.json.gz",
+    "raw": {
+      "sha256": "f1e237dccf93040752fe5ff3a1ab13a3bb431dee6578f27960be2653ef9f4aab",
+      "bytes": 4095633
+    },
+    "gzip": {
+      "sha256": "21f4ad71b1f410fdc5742bcb371f347b99c08eba8068c25af4b48ed757626be6",
+      "bytes": 142094
+    },
+    "timelineDigests": [
+      {
+        "slot": 0,
+        "sha256": "4c072531675fa9eb2b2ea4ca9b99cc1272acf589613578223c5f842a55ebe5dc",
+        "commands": 29,
+        "inputs": 91,
+        "events": 67,
+        "measurementFrames": 51,
+        "measurementStreamSHA256": "55055c6c85b6db60f2a387ebe2fc01e2b49e8b8e77e7d8525b9564629b200ae0"
+      },
+      {
+        "slot": 1,
+        "sha256": "a5455bec3ead8ceb2b0b54b830a44f5311e81689caff3ceaeadfe2216b8a40a6",
+        "commands": 31,
+        "inputs": 85,
+        "events": 75,
+        "measurementFrames": 63,
+        "measurementStreamSHA256": "165814bb3f15543be090a8f7a9b24489bb51f88f1a791f57df5d04b34cab75e3"
+      },
+      {
+        "slot": 2,
+        "sha256": "3a959f368cc46dfb1cd312821008aa0fc73ef74b3c84ca8a4ef65c19a9b79b1e",
+        "commands": 29,
+        "inputs": 85,
+        "events": 59,
+        "measurementFrames": 52,
+        "measurementStreamSHA256": "f3d074a0255a32781b323f6625cb4ca7efda5716251678f15d2738e9565b860b"
+      }
+    ]
+  },
+  {
+    "mode": "conquest",
+    "level": "normal",
+    "seed": 2,
+    "file": "/tmp/human-ai-final-v15/raw-matches/conquest/conquest-normal-2.json",
+    "gzipFile": "/tmp/human-ai-final-v15/raw-matches/conquest/conquest-normal-2.json.gz",
+    "raw": {
+      "sha256": "c03b9ceb5265002215258a7b72993a595536a3fa006b38a0ae948d1b75b7def7",
+      "bytes": 6154771
+    },
+    "gzip": {
+      "sha256": "16ebff3d63a77e4e65cc8002605dff6e262251869ded2fa1237ce1b5e73f05f1",
+      "bytes": 228289
+    },
+    "timelineDigests": [
+      {
+        "slot": 0,
+        "sha256": "7deb68df50dfbc7064daa43a725abc6921b915512e892847c8fff862ffc8a41d",
+        "commands": 34,
+        "inputs": 121,
+        "events": 81,
+        "measurementFrames": 65,
+        "measurementStreamSHA256": "f52b77a0399a59d5496cbaa226656a351757c1327968c8cca2c11f63cc09de4c"
+      },
+      {
+        "slot": 1,
+        "sha256": "b9c89ea97ce4dfb356e72f49e3913930f73070e3542613e76cb17f163ca24741",
+        "commands": 31,
+        "inputs": 114,
+        "events": 90,
+        "measurementFrames": 75,
+        "measurementStreamSHA256": "4575f448bcaead98032fd0ce972b994388846d585e3b6ee7331beefc2b2f355a"
+      },
+      {
+        "slot": 2,
+        "sha256": "82966fee01c092b656a1fd3d7ef2c9e8041e5d80275af7581759c8c94b95e91e",
+        "commands": 34,
+        "inputs": 114,
+        "events": 93,
+        "measurementFrames": 78,
+        "measurementStreamSHA256": "8896e132dadc6d918e16b44fc21eb3ccef04093609dc125c5a0c3af7b8f97ab6"
+      }
+    ]
+  },
+  {
+    "mode": "conquest",
+    "level": "normal",
+    "seed": 1,
+    "file": "/tmp/human-ai-final-v15/raw-matches/conquest/conquest-normal-1.json",
+    "gzipFile": "/tmp/human-ai-final-v15/raw-matches/conquest/conquest-normal-1.json.gz",
+    "raw": {
+      "sha256": "1c8803e94b227fd6a48b79fe06f711d1a8c80b9925a8ae682ffd4b0bc3d4c915",
+      "bytes": 7013468
+    },
+    "gzip": {
+      "sha256": "1edd2413c2095485a55a57092f46da48d3d0131c8e917fcc68cb0e52083ce144",
+      "bytes": 236889
+    },
+    "timelineDigests": [
+      {
+        "slot": 0,
+        "sha256": "88f8c19c83e739870c0b66d3572b6d296c580885b5b512f55a03fc4fe999ab0c",
+        "commands": 31,
+        "inputs": 124,
+        "events": 96,
+        "measurementFrames": 79,
+        "measurementStreamSHA256": "ba4155c1142da83d6db62d939be2cfbd74e6237550685dac356d582fac0ed273"
+      },
+      {
+        "slot": 1,
+        "sha256": "deabeea245340e974e98102cab4597f1901f420ae447bf37f35cd179029aaff1",
+        "commands": 31,
+        "inputs": 107,
+        "events": 97,
+        "measurementFrames": 77,
+        "measurementStreamSHA256": "045d033e678fc27c017b55a167c813150adfdc3954de04cba2c619ecedce37f9"
+      },
+      {
+        "slot": 2,
+        "sha256": "30ae2884ddf4f1f48610ca640b6f1511c4439b8bb98a94ee662d3b899728bce9",
+        "commands": 38,
+        "inputs": 118,
+        "events": 87,
+        "measurementFrames": 74,
+        "measurementStreamSHA256": "02ddd799e81598d6b528291b49e38d7b83c46b652d020e6b44f4898652e36b5a"
+      }
+    ]
+  },
+  {
+    "mode": "conquest",
+    "level": "normal",
+    "seed": 4,
+    "file": "/tmp/human-ai-final-v15/raw-matches/conquest/conquest-normal-4.json",
+    "gzipFile": "/tmp/human-ai-final-v15/raw-matches/conquest/conquest-normal-4.json.gz",
+    "raw": {
+      "sha256": "b57192c356e56e671f4f394b9147bdc2b67c45502eae98efc21bb2df32680338",
+      "bytes": 6648029
+    },
+    "gzip": {
+      "sha256": "7f161f17ab96fcc182afaa5f74096501f574a0b5da8601055c538e4a9354cb67",
+      "bytes": 240137
+    },
+    "timelineDigests": [
+      {
+        "slot": 0,
+        "sha256": "8771c330e6e1b958feab531553c1d20ac5c6c02b8e56ad07d26a011723faed44",
+        "commands": 35,
+        "inputs": 110,
+        "events": 83,
+        "measurementFrames": 76,
+        "measurementStreamSHA256": "23c4604270813ce062d5607ac1af98a017f96fa60d53941f5505431d0e2f289c"
+      },
+      {
+        "slot": 1,
+        "sha256": "1885daa588e28085e9bb5ff3076fa1e598bee9396bfd487a9e885cc9adc60eca",
+        "commands": 30,
+        "inputs": 116,
+        "events": 89,
+        "measurementFrames": 76,
+        "measurementStreamSHA256": "9c2d1d06d4d4d9750ecc983fb31ad6547090ccf4e0f059b8e5e4e5a5fc4b5a21"
+      },
+      {
+        "slot": 2,
+        "sha256": "91c22d7cc37f3ea506e37b7e1a775acb41b09d67863aaab37f4a89d21b36ff57",
+        "commands": 37,
+        "inputs": 123,
+        "events": 87,
+        "measurementFrames": 71,
+        "measurementStreamSHA256": "91c050d6c2b732ef901a5c35a39a41f9f30560301735592b98a2984426344f76"
+      }
+    ]
+  },
+  {
+    "mode": "conquest",
+    "level": "normal",
+    "seed": 3,
+    "file": "/tmp/human-ai-final-v15/raw-matches/conquest/conquest-normal-3.json",
+    "gzipFile": "/tmp/human-ai-final-v15/raw-matches/conquest/conquest-normal-3.json.gz",
+    "raw": {
+      "sha256": "0d0d64a0ac1e2ab36fb172ec35e0ef5b61603c1be6654af9b5222190430491c5",
+      "bytes": 4332252
+    },
+    "gzip": {
+      "sha256": "e18e98d694baed45b3ff44eaab2829518aac59e28f2ed578450033703f6e4864",
+      "bytes": 149408
+    },
+    "timelineDigests": [
+      {
+        "slot": 0,
+        "sha256": "3c87d3d7722dc6cd1e9562eaccfa9d044cb538a53337a02d69053798d6de01f9",
+        "commands": 30,
+        "inputs": 114,
+        "events": 65,
+        "measurementFrames": 54,
+        "measurementStreamSHA256": "0717ea799a5b427c942d72406312ec06a563029843736b548825dd507d48a7c0"
+      },
+      {
+        "slot": 1,
+        "sha256": "e82e052c8968f4357e78568c07977057073423787bf2e1507d81a46063f5fc1e",
+        "commands": 25,
+        "inputs": 89,
+        "events": 63,
+        "measurementFrames": 52,
+        "measurementStreamSHA256": "4d98cc4c65e29166594e49e1f9b3ef4d86cd28c86cfa68ff720cf7c4f042c320"
+      },
+      {
+        "slot": 2,
+        "sha256": "66d1d93ba87b35815b0b5e017ea73d9d6793d43d89dd3d03198bc45c56f58c33",
+        "commands": 41,
+        "inputs": 131,
+        "events": 81,
+        "measurementFrames": 67,
+        "measurementStreamSHA256": "caf12a1a754fbf755a13ac39a9e2121f215e86c5924e3b513cf2defaeb605e9d"
+      }
+    ]
+  },
+  {
+    "mode": "conquest",
+    "level": "normal",
+    "seed": 6,
+    "file": "/tmp/human-ai-final-v15/raw-matches/conquest/conquest-normal-6.json",
+    "gzipFile": "/tmp/human-ai-final-v15/raw-matches/conquest/conquest-normal-6.json.gz",
+    "raw": {
+      "sha256": "d34cbd3c2d0b90c6a3dec8c951b1cea8abcd0d673bf40f5864cf652ce43f38fb",
+      "bytes": 7698841
+    },
+    "gzip": {
+      "sha256": "692a3e2544deaa895a2372004a61ccfe47c6fd4ea22616873db880b666ab00ab",
+      "bytes": 292025
+    },
+    "timelineDigests": [
+      {
+        "slot": 0,
+        "sha256": "f8ab4f86fcbb38be6b0f253cf0c81d690638ae45c75dfb6f2f92c4f0abca9953",
+        "commands": 47,
+        "inputs": 134,
+        "events": 81,
+        "measurementFrames": 76,
+        "measurementStreamSHA256": "6d4140a6622b6c928384b9685ddee2f8ef03d2afcc5c823548855890f97760e6"
+      },
+      {
+        "slot": 1,
+        "sha256": "2782e06b436bcb8bf631843c28eca098ad4c3b7ffe36c2577f308f30a6f0a7ed",
+        "commands": 39,
+        "inputs": 145,
+        "events": 108,
+        "measurementFrames": 89,
+        "measurementStreamSHA256": "89996310bb495e542fe2a7564385fc562b19fff3ba8c4855b43accec2c98cfc6"
+      },
+      {
+        "slot": 2,
+        "sha256": "f1bc61cf9a0af0ebf91ca1b8c029365c9243b1d61a84974cfe4674d9cbf43969",
+        "commands": 41,
+        "inputs": 150,
+        "events": 92,
+        "measurementFrames": 76,
+        "measurementStreamSHA256": "00806453a1c1041e539d5e4880f16ee53c13b3f1026915d0c2a2983d75a2a0dc"
+      }
+    ]
+  },
+  {
+    "mode": "conquest",
+    "level": "normal",
+    "seed": 5,
+    "file": "/tmp/human-ai-final-v15/raw-matches/conquest/conquest-normal-5.json",
+    "gzipFile": "/tmp/human-ai-final-v15/raw-matches/conquest/conquest-normal-5.json.gz",
+    "raw": {
+      "sha256": "ac2cf4a09ecb726f1b66abf8fb9cc2401d269d762ee89a072ce0bded17febd5a",
+      "bytes": 7337415
+    },
+    "gzip": {
+      "sha256": "49d0301c9698125bfacc12889b10ab222876c274417d34027c28862c18417e0b",
+      "bytes": 260884
+    },
+    "timelineDigests": [
+      {
+        "slot": 0,
+        "sha256": "e120a0a7b585c1608e0b40361174e323479238a9b73e3389996a43efd977451e",
+        "commands": 40,
+        "inputs": 124,
+        "events": 82,
+        "measurementFrames": 68,
+        "measurementStreamSHA256": "c0a724458c1748201fbc13cc36433b4c56569720ea5863c56e78b52aa93eabaf"
+      },
+      {
+        "slot": 1,
+        "sha256": "ed6726e5a6091ef299e2f240888d2d61515a202665197504409a096182cebc06",
+        "commands": 42,
+        "inputs": 140,
+        "events": 91,
+        "measurementFrames": 83,
+        "measurementStreamSHA256": "743edcddbe0cb104229e974ad27fba8511d56a34d3a53a73976809465ac1f7c9"
+      },
+      {
+        "slot": 2,
+        "sha256": "f606cc4bf178f3e6c1ce0c30b60eb6e50ea84bceb2671a1cd729dd9dab4a9b43",
+        "commands": 33,
+        "inputs": 112,
+        "events": 91,
+        "measurementFrames": 83,
+        "measurementStreamSHA256": "506a9d87b9d86b694610341a90ca0f1e85c3ef8f2cc9ed68b0e46d4f1c28e8c6"
+      }
+    ]
+  },
+  {
+    "mode": "conquest",
+    "level": "normal",
+    "seed": 8,
+    "file": "/tmp/human-ai-final-v15/raw-matches/conquest/conquest-normal-8.json",
+    "gzipFile": "/tmp/human-ai-final-v15/raw-matches/conquest/conquest-normal-8.json.gz",
+    "raw": {
+      "sha256": "a34cb5a65822452bddb03ca41172f021e497de9f31f9fb6ae2f8261c2da8f663",
+      "bytes": 7388986
+    },
+    "gzip": {
+      "sha256": "5261375b8511dfddae473bf75215c6629aa137f771f90a10f8c6d6568c2948be",
+      "bytes": 276941
+    },
+    "timelineDigests": [
+      {
+        "slot": 0,
+        "sha256": "50a58682a35c800cb091c7e2d1ed73e04a27a166e065a5c72869b397a274cce5",
+        "commands": 40,
+        "inputs": 141,
+        "events": 97,
+        "measurementFrames": 82,
+        "measurementStreamSHA256": "34ed2124ef8531e07dc6f7a6bb3a0370fc08a972832c95ead2cb39155c00971e"
+      },
+      {
+        "slot": 1,
+        "sha256": "a72589c53e7ab5c8b3b6cd5390541bed16a6ad71a5045817bfd2189c2c7e7a42",
+        "commands": 40,
+        "inputs": 130,
+        "events": 100,
+        "measurementFrames": 79,
+        "measurementStreamSHA256": "4c5f1a559710568c28205703b6b09ee7c5030cfdfe283a45eac6e1c25b403485"
+      },
+      {
+        "slot": 2,
+        "sha256": "a365cb067924bc9741bdffd128aefb77cc47d23d6a79feb11aaf693e3c51a5cc",
+        "commands": 44,
+        "inputs": 140,
+        "events": 86,
+        "measurementFrames": 71,
+        "measurementStreamSHA256": "d527c6f5cfda84018a3666cd20281ff85a2ed85bc7987dc36a0ba1bad21a51fd"
+      }
+    ]
+  },
+  {
+    "mode": "conquest",
+    "level": "normal",
+    "seed": 7,
+    "file": "/tmp/human-ai-final-v15/raw-matches/conquest/conquest-normal-7.json",
+    "gzipFile": "/tmp/human-ai-final-v15/raw-matches/conquest/conquest-normal-7.json.gz",
+    "raw": {
+      "sha256": "df1800b3b16cadbf1be155ae3c27109e18201a47a8b1ab63f9c51f457b279f90",
+      "bytes": 4839766
+    },
+    "gzip": {
+      "sha256": "536c5ccc00a389cbaf84da3053dfbdcae92a6ef3af6fc8c5388223b4b89ca19a",
+      "bytes": 184246
+    },
+    "timelineDigests": [
+      {
+        "slot": 0,
+        "sha256": "180d2e80eaa6ab62e6a8f8e0fd8d9bd3677ab92393047ce3fea6e3f8b328e90b",
+        "commands": 37,
+        "inputs": 122,
+        "events": 66,
+        "measurementFrames": 48,
+        "measurementStreamSHA256": "b64f69e6ec596c00d63c57edc96b516ab84195a7aa9c6bbebc53c83d0840440b"
+      },
+      {
+        "slot": 1,
+        "sha256": "d60142dcef8469540a777ceb427fa7af8e37f9ec494aaa2bb3b77e05ee933689",
+        "commands": 34,
+        "inputs": 110,
+        "events": 76,
+        "measurementFrames": 63,
+        "measurementStreamSHA256": "751027469bb8fc248c01e582901eba15c9d358cfc12d4398ba36ba8833fdc01b"
+      },
+      {
+        "slot": 2,
+        "sha256": "e91884dd1b22064857626943bc8f2d2fcbb41c6348caf1cb10ca0b973d06783f",
+        "commands": 42,
+        "inputs": 122,
+        "events": 75,
+        "measurementFrames": 69,
+        "measurementStreamSHA256": "69feb4eee0defbc37f9151d6d035bbc5e9bf2a1da545f2cbceef0e284e83fb98"
+      }
+    ]
+  },
+  {
+    "mode": "conquest",
+    "level": "normal",
+    "seed": 9,
+    "file": "/tmp/human-ai-final-v15/raw-matches/conquest/conquest-normal-9.json",
+    "gzipFile": "/tmp/human-ai-final-v15/raw-matches/conquest/conquest-normal-9.json.gz",
+    "raw": {
+      "sha256": "e077b068ded05657ab5015fab1c38851655f80afae490532b591e32f7523be82",
+      "bytes": 5202376
+    },
+    "gzip": {
+      "sha256": "ad85fd2ca0ddd0899ccccfe470a3672044cba7f6a5607cebc838f1b2e983357a",
+      "bytes": 183939
+    },
+    "timelineDigests": [
+      {
+        "slot": 0,
+        "sha256": "2831ad891f969798ef4246318d6b791a486d530fdcecb6e5781a1fbc54656e9e",
+        "commands": 33,
+        "inputs": 113,
+        "events": 70,
+        "measurementFrames": 66,
+        "measurementStreamSHA256": "f2bb3ed9f8b20070dbbfb8c5bccc78a782e26a3609ce552af594e3b40770e04c"
+      },
+      {
+        "slot": 1,
+        "sha256": "3989a7bd39f4b87817c0ce7bcf484649daa0a63aad7885fca4b661b7eca07e47",
+        "commands": 26,
+        "inputs": 100,
+        "events": 76,
+        "measurementFrames": 62,
+        "measurementStreamSHA256": "73b6335e91a8e4b6764452af087c55e8398c498f280364aea555cb858efcd1de"
+      },
+      {
+        "slot": 2,
+        "sha256": "aff3d29a4f1ec3896beec92e4639118a7a4266a741f3a7c4f330c108bbd9d949",
+        "commands": 42,
+        "inputs": 129,
+        "events": 73,
+        "measurementFrames": 62,
+        "measurementStreamSHA256": "114c1d4bb14867228a18dc3f16b5de263931daaf934f6fc4e801cbe91c9900a2"
+      }
+    ]
+  },
+  {
+    "mode": "conquest",
+    "level": "normal",
+    "seed": 10,
+    "file": "/tmp/human-ai-final-v15/raw-matches/conquest/conquest-normal-10.json",
+    "gzipFile": "/tmp/human-ai-final-v15/raw-matches/conquest/conquest-normal-10.json.gz",
+    "raw": {
+      "sha256": "bf93fb252ed52f07518529a65d3a6060403693b915112437fc99c1e7787d8418",
+      "bytes": 6386363
+    },
+    "gzip": {
+      "sha256": "41ab106944e53e1c2861182159214b9fba8119b0947615a257221cd080e42dc0",
+      "bytes": 222612
+    },
+    "timelineDigests": [
+      {
+        "slot": 0,
+        "sha256": "977125072ffd9d53206e118cde8018856480a72acbf951c1de229c238814bfe1",
+        "commands": 32,
+        "inputs": 118,
+        "events": 92,
+        "measurementFrames": 77,
+        "measurementStreamSHA256": "2adbfd1b4a032a974c6a16f12ee289c657fcdf8d2664392bc5ce4b674890b2d5"
+      },
+      {
+        "slot": 1,
+        "sha256": "e93b8e6e841a35f91e94208f12531745d40c78042e84cb8ad0bcd7f9419e1b6e",
+        "commands": 32,
+        "inputs": 104,
+        "events": 87,
+        "measurementFrames": 72,
+        "measurementStreamSHA256": "a2c87aabadb8ed3a814fb1ca6f32427800d62261d2c833f56cbf7dfd4555798d"
+      },
+      {
+        "slot": 2,
+        "sha256": "b5d55eb3ddb21bcc36fa1e835bc9cefdf2cff50685f8b9ead1f75848556f0865",
+        "commands": 28,
+        "inputs": 96,
+        "events": 97,
+        "measurementFrames": 76,
+        "measurementStreamSHA256": "c036677d1ba5d2cefaec1b0d097435270bdeac9c65b4a4e9660d57cf30ddf172"
+      }
+    ]
+  },
+  {
+    "mode": "conquest",
+    "level": "normal",
+    "seed": 11,
+    "file": "/tmp/human-ai-final-v15/raw-matches/conquest/conquest-normal-11.json",
+    "gzipFile": "/tmp/human-ai-final-v15/raw-matches/conquest/conquest-normal-11.json.gz",
+    "raw": {
+      "sha256": "2164224d57fc8424a4b2f6768ec9d241642deed99388f3912fbfacf1fd9cf929",
+      "bytes": 4195288
+    },
+    "gzip": {
+      "sha256": "07355a26157bd281006feec869d4d305a2f0bfe587326f0d628f2f1075eea16f",
+      "bytes": 137655
+    },
+    "timelineDigests": [
+      {
+        "slot": 0,
+        "sha256": "3d36b097fbed4fccf1b6beba77b9914bce9d33c9a93aa2c4ce518e5d68938707",
+        "commands": 30,
+        "inputs": 106,
+        "events": 66,
+        "measurementFrames": 55,
+        "measurementStreamSHA256": "8fda39bd35923c54a7a47e8949a74c82a3e7931b5891d4e9817c97f484885b81"
+      },
+      {
+        "slot": 1,
+        "sha256": "ffe6ae5ce9a17e5b613eabb9328930e5527194320cf58dc153f6e3159d33fe26",
+        "commands": 29,
+        "inputs": 100,
+        "events": 77,
+        "measurementFrames": 64,
+        "measurementStreamSHA256": "ef543874d8707d2121acd07e828cad58d25acc6779add43db47074e22379bfe4"
+      },
+      {
+        "slot": 2,
+        "sha256": "33f7874cc9941951c031914b0c7a9c6373e8413df67f7424497175c39695cdf1",
+        "commands": 33,
+        "inputs": 114,
+        "events": 68,
+        "measurementFrames": 58,
+        "measurementStreamSHA256": "2accbba154c9dba6c10ca87523ffe8ae3d4805693d2a147877ded601e64b72f5"
+      }
+    ]
+  },
+  {
+    "mode": "conquest",
+    "level": "normal",
+    "seed": 12,
+    "file": "/tmp/human-ai-final-v15/raw-matches/conquest/conquest-normal-12.json",
+    "gzipFile": "/tmp/human-ai-final-v15/raw-matches/conquest/conquest-normal-12.json.gz",
+    "raw": {
+      "sha256": "6726e1fca74594994b4ed9d9199e4f2002adb46d68396dfa745b5ec20f52b162",
+      "bytes": 5687350
+    },
+    "gzip": {
+      "sha256": "87955ef0bea95cec686ce58837b6960258c26d3abb113b4fe721ab2f769cbd2d",
+      "bytes": 207558
+    },
+    "timelineDigests": [
+      {
+        "slot": 0,
+        "sha256": "60a1ef8af8a9702a786ccc47b854acd1f0b005a8690196ba8ca58786cd3fafc4",
+        "commands": 36,
+        "inputs": 128,
+        "events": 89,
+        "measurementFrames": 80,
+        "measurementStreamSHA256": "b79ca7650350e65a623fe27a346eb1a2d8fa02c7271fa8b90914b4022f0517c4"
+      },
+      {
+        "slot": 1,
+        "sha256": "f34a95e0ccc0457fe69fcc4099cc909a4ab122d4e520c778f7800cadc86c34a8",
+        "commands": 29,
+        "inputs": 107,
+        "events": 68,
+        "measurementFrames": 60,
+        "measurementStreamSHA256": "459f386966013eb9ca2a2e9f15c80c87d006e2b1bd2a8fd4801b01758e5b3af2"
+      },
+      {
+        "slot": 2,
+        "sha256": "3adba0c03fc45b81c5a11e9b6c82727dcfc4d30a0dd7305333a6e9f3bd918162",
+        "commands": 42,
+        "inputs": 135,
+        "events": 77,
+        "measurementFrames": 74,
+        "measurementStreamSHA256": "db8c71f27f8de1099a714625455d8e7ce3fcf37089369f915531672d37df388e"
+      }
+    ]
+  },
+  {
+    "mode": "conquest",
+    "level": "normal",
+    "seed": 13,
+    "file": "/tmp/human-ai-final-v15/raw-matches/conquest/conquest-normal-13.json",
+    "gzipFile": "/tmp/human-ai-final-v15/raw-matches/conquest/conquest-normal-13.json.gz",
+    "raw": {
+      "sha256": "0f8cde6742e826d275bf03d28f983e0e6e68d9421cf613b94a6dc61c7e738622",
+      "bytes": 6737627
+    },
+    "gzip": {
+      "sha256": "f126839cfef426a0a9e7efa660c9d0e05be32c632c8cf91560547f688bfb0fbb",
+      "bytes": 239287
+    },
+    "timelineDigests": [
+      {
+        "slot": 0,
+        "sha256": "85fbad6f779b1453096846bd47069be9c1c6101ccaa289e5970b117e0f9667f0",
+        "commands": 34,
+        "inputs": 124,
+        "events": 75,
+        "measurementFrames": 65,
+        "measurementStreamSHA256": "a462cd756a52932180a8714b0f6f2d5b5caaac1de7973167661cdd5f59afa95e"
+      },
+      {
+        "slot": 1,
+        "sha256": "0361e32ef9d2d2c97f179ba540272949fb868002af29bf0efaab94a245eb8a9e",
+        "commands": 36,
+        "inputs": 126,
+        "events": 91,
+        "measurementFrames": 77,
+        "measurementStreamSHA256": "a2464042b214cd3084621668977db15c4ba7a9496fa47da6005857a187535b8d"
+      },
+      {
+        "slot": 2,
+        "sha256": "40044f6ddd965a09c7513bad1ec991fc7b27b2b8e6d964fadf3deda71f48db1f",
+        "commands": 41,
+        "inputs": 137,
+        "events": 98,
+        "measurementFrames": 83,
+        "measurementStreamSHA256": "14f0576ea77308dad3c95d0dc41bbb5ba6fbae80a780773c87091a22713e1393"
+      }
+    ]
+  },
+  {
+    "mode": "conquest",
+    "level": "normal",
+    "seed": 14,
+    "file": "/tmp/human-ai-final-v15/raw-matches/conquest/conquest-normal-14.json",
+    "gzipFile": "/tmp/human-ai-final-v15/raw-matches/conquest/conquest-normal-14.json.gz",
+    "raw": {
+      "sha256": "e0226d4a02c0d47dfb441e2632f64abd0870838ddf76e8f17553eae6c8eb87f3",
+      "bytes": 6325304
+    },
+    "gzip": {
+      "sha256": "e0eba7dc85b71f754aafd1e6eea0e54c11c1166353b999557741186349a4494e",
+      "bytes": 222235
+    },
+    "timelineDigests": [
+      {
+        "slot": 0,
+        "sha256": "31227f2793f59ea6c6c73a08b408f6ff785c313378825ab4ae18df894078d100",
+        "commands": 36,
+        "inputs": 120,
+        "events": 91,
+        "measurementFrames": 78,
+        "measurementStreamSHA256": "e1e2c86fb5b13fd4b942cbb17f36fcc04886a05d95d36a0e311e8677c2e77d80"
+      },
+      {
+        "slot": 1,
+        "sha256": "79f50ba8afc776f6c310dfa22dced2d689e7684d849fa3972b505e9c04853921",
+        "commands": 45,
+        "inputs": 126,
+        "events": 65,
+        "measurementFrames": 54,
+        "measurementStreamSHA256": "2c034857c37974cef287ccdde734e9c613361397b28077606b6c7e9a66b94074"
+      },
+      {
+        "slot": 2,
+        "sha256": "1a2c4f82115a975e52ab4e42cd7940f58b38ccf2124f549eb4bdd3ba86caae93",
+        "commands": 34,
+        "inputs": 112,
+        "events": 101,
+        "measurementFrames": 79,
+        "measurementStreamSHA256": "39abb424c5e8b3471e3637b21389221fc167c999e8f7cce6324d00e259a8f53b"
+      }
+    ]
+  },
+  {
+    "mode": "conquest",
+    "level": "normal",
+    "seed": 15,
+    "file": "/tmp/human-ai-final-v15/raw-matches/conquest/conquest-normal-15.json",
+    "gzipFile": "/tmp/human-ai-final-v15/raw-matches/conquest/conquest-normal-15.json.gz",
+    "raw": {
+      "sha256": "78bb708436fa770d9eddabd7c4ac70bb58262817d1d966b3baa91fe978c341ce",
+      "bytes": 6239262
+    },
+    "gzip": {
+      "sha256": "0959960cb6335ecd1b5f8129bedbf0cc80527d6153627574ef2e40f44f74810c",
+      "bytes": 216350
+    },
+    "timelineDigests": [
+      {
+        "slot": 0,
+        "sha256": "0e4bebc90c4dd0234836c5d61e0a8bd810fd8b4c29e8921bbe6029ac716d38d5",
+        "commands": 38,
+        "inputs": 132,
+        "events": 83,
+        "measurementFrames": 70,
+        "measurementStreamSHA256": "b96c280fc14384ed1ca4163291429101aba9052c0826ea06cc96b9b2319a9ded"
+      },
+      {
+        "slot": 1,
+        "sha256": "5d73ef1bf5865a9e77d6064674d24fb4f9c6d1fc286abcd203df86ed793465d8",
+        "commands": 38,
+        "inputs": 128,
+        "events": 94,
+        "measurementFrames": 80,
+        "measurementStreamSHA256": "00526ad78d58b09218f13cdbe9c41c71bc564f4770665528827d2692ae7974ed"
+      },
+      {
+        "slot": 2,
+        "sha256": "d2ddb1d6fb1742c29df55300578f00e6f00ad71b82f0e99bca9223dc68d1ebda",
+        "commands": 31,
+        "inputs": 108,
+        "events": 91,
+        "measurementFrames": 72,
+        "measurementStreamSHA256": "20f1787279bfe48ebb068bad92798fae6587934ab7d4691f0ed6f524c99b0bd3"
+      }
+    ]
+  },
+  {
+    "mode": "conquest",
+    "level": "normal",
+    "seed": 16,
+    "file": "/tmp/human-ai-final-v15/raw-matches/conquest/conquest-normal-16.json",
+    "gzipFile": "/tmp/human-ai-final-v15/raw-matches/conquest/conquest-normal-16.json.gz",
+    "raw": {
+      "sha256": "6e8100edf8621497b08ecdc76425086538aeed6047d3ab750be7c7a4f3a11f27",
+      "bytes": 6546807
+    },
+    "gzip": {
+      "sha256": "c6d667ff910badc12362343e32039e43b68365c064ca1ec49972c9660b47b281",
+      "bytes": 245927
+    },
+    "timelineDigests": [
+      {
+        "slot": 0,
+        "sha256": "f7cfff82cbec44a76b4c03e1c41ca61b52316034b63ed2019afd306b40d50c6e",
+        "commands": 33,
+        "inputs": 113,
+        "events": 88,
+        "measurementFrames": 76,
+        "measurementStreamSHA256": "119f269862b8ed8eaecb225cb9d7848573ccd6dbbc1716bf8153f95f68bc74eb"
+      },
+      {
+        "slot": 1,
+        "sha256": "6495e6b21b57655ca36636bd53e4e990ed7591157158c4c30b27afc715a85cf0",
+        "commands": 48,
+        "inputs": 149,
+        "events": 84,
+        "measurementFrames": 68,
+        "measurementStreamSHA256": "639ad880af1574a022c7dda56aaed4600c50565242d3a4c9d795fbfeac515f84"
+      },
+      {
+        "slot": 2,
+        "sha256": "734ea28793d0f322e18f52f33f7f73456ea0c6273419ffbf861dd13831ac8ad8",
+        "commands": 38,
+        "inputs": 130,
+        "events": 84,
+        "measurementFrames": 67,
+        "measurementStreamSHA256": "ee36321bdadeed0db520db1caf9971aefa73024d80646c0ac15b79f846331a38"
+      }
+    ]
+  },
+  {
+    "mode": "conquest",
+    "level": "normal",
+    "seed": 17,
+    "file": "/tmp/human-ai-final-v15/raw-matches/conquest/conquest-normal-17.json",
+    "gzipFile": "/tmp/human-ai-final-v15/raw-matches/conquest/conquest-normal-17.json.gz",
+    "raw": {
+      "sha256": "5082fad38374b05d09162de0f9490526000a95827bacd6b9919d7ff183487b81",
+      "bytes": 5397068
+    },
+    "gzip": {
+      "sha256": "6b5c588518de4f242dc13aaf435493bd39a38f4b503f6268f5b6ce8e1d7ac6dd",
+      "bytes": 197094
+    },
+    "timelineDigests": [
+      {
+        "slot": 0,
+        "sha256": "7d74ce2d399baec8923f6a2b1f7bcde3880a2277d627ab2438f275bbba87ba89",
+        "commands": 32,
+        "inputs": 108,
+        "events": 82,
+        "measurementFrames": 70,
+        "measurementStreamSHA256": "c01660411d8bb7096411e77085193384853eebb1c4ab4fc4f11dc5594e85a1a7"
+      },
+      {
+        "slot": 1,
+        "sha256": "37b0c9af26c2efcbce95e38a7c116176383ad1a0c5b588f96a10d0778150dcf1",
+        "commands": 40,
+        "inputs": 122,
+        "events": 75,
+        "measurementFrames": 64,
+        "measurementStreamSHA256": "7b721148912a2455f22847c5e0c63670a3e6b70dd7534da6b4939c4186e209ff"
+      },
+      {
+        "slot": 2,
+        "sha256": "0077bb917611c764c2b7a1fabe4549eccdea5b3771734b5c0075059486653010",
+        "commands": 43,
+        "inputs": 135,
+        "events": 86,
+        "measurementFrames": 69,
+        "measurementStreamSHA256": "b4c3a414696a353028153f7d990f34064402b104f5a75e0e190d73bd3ea0e17c"
+      }
+    ]
+  },
+  {
+    "mode": "conquest",
+    "level": "normal",
+    "seed": 18,
+    "file": "/tmp/human-ai-final-v15/raw-matches/conquest/conquest-normal-18.json",
+    "gzipFile": "/tmp/human-ai-final-v15/raw-matches/conquest/conquest-normal-18.json.gz",
+    "raw": {
+      "sha256": "16c4a796def774b35f9fd28429c16a1e46f3dded22fa589e6b578e1df44be509",
+      "bytes": 5860474
+    },
+    "gzip": {
+      "sha256": "38aae993ba83feb25ffd2c54c28adf154ba5b679801be46b5be04a0cb96b34db",
+      "bytes": 207921
+    },
+    "timelineDigests": [
+      {
+        "slot": 0,
+        "sha256": "24629cc2b76b7606e33062c96ec8a65ccfffb312c1f177a17217d3c9686e11a7",
+        "commands": 37,
+        "inputs": 126,
+        "events": 90,
+        "measurementFrames": 78,
+        "measurementStreamSHA256": "1cf7a07a7ec466692888cb3dec74e0f54042701c2c506c22749b18a73846760c"
+      },
+      {
+        "slot": 1,
+        "sha256": "ba3939f6cf0de8922ab94e906e5c6ca74c2e15a13041d04d38315a00367be9ef",
+        "commands": 33,
+        "inputs": 111,
+        "events": 78,
+        "measurementFrames": 70,
+        "measurementStreamSHA256": "179261d4963cd62540581ae47135cddf8312b8e30325fc9fc4a500a5deb39568"
+      },
+      {
+        "slot": 2,
+        "sha256": "26d546a546cab6359be7b1dfd79fdc7a88ce607d4eb33759916c7b3d6f145d82",
+        "commands": 37,
+        "inputs": 121,
+        "events": 77,
+        "measurementFrames": 67,
+        "measurementStreamSHA256": "16f8d3988c78348a52c1acf8cfb2cb999e746d94e95e8403f25539f38eb1880d"
+      }
+    ]
+  },
+  {
+    "mode": "conquest",
+    "level": "normal",
+    "seed": 19,
+    "file": "/tmp/human-ai-final-v15/raw-matches/conquest/conquest-normal-19.json",
+    "gzipFile": "/tmp/human-ai-final-v15/raw-matches/conquest/conquest-normal-19.json.gz",
+    "raw": {
+      "sha256": "3322f45ff8519fbbbde5451155f2ab38a38e84ba934a13b63dc16c7607af1b60",
+      "bytes": 7508148
+    },
+    "gzip": {
+      "sha256": "8002b03baeff4815bf581ceaed79799424ad2aa20fe3893e61133c84c19a3a72",
+      "bytes": 278897
+    },
+    "timelineDigests": [
+      {
+        "slot": 0,
+        "sha256": "2ba9608d6649a2b03bed7c68413cc0fba0b10cd33b076b358422e3c8361b5869",
+        "commands": 44,
+        "inputs": 148,
+        "events": 89,
+        "measurementFrames": 81,
+        "measurementStreamSHA256": "b381efac0d918efcd73d842e157bfcd17ec6fa3c2643be0de6861ede71d1e47a"
+      },
+      {
+        "slot": 1,
+        "sha256": "58294b20ece1278138213c86719f64975e0f7129b89be8b430d2d50d14368f53",
+        "commands": 36,
+        "inputs": 126,
+        "events": 90,
+        "measurementFrames": 73,
+        "measurementStreamSHA256": "afe8ea6d54b27806431d66cce3919218d020a524d7944312eab633bd832e6c92"
+      },
+      {
+        "slot": 2,
+        "sha256": "208fb8a48a15aa469c32236383fed0a3f72f012978bc2712a06a633c26e74da3",
+        "commands": 40,
+        "inputs": 130,
+        "events": 102,
+        "measurementFrames": 89,
+        "measurementStreamSHA256": "9e9248bbacaf80f62fe65596fe207dfc7aa05b2c6b6ee08e7f0aca5fd6cc113a"
+      }
+    ]
+  },
+  {
+    "mode": "conquest",
+    "level": "normal",
+    "seed": 20,
+    "file": "/tmp/human-ai-final-v15/raw-matches/conquest/conquest-normal-20.json",
+    "gzipFile": "/tmp/human-ai-final-v15/raw-matches/conquest/conquest-normal-20.json.gz",
+    "raw": {
+      "sha256": "dc63e5130fa548ebc181efbaada52fb02df63e2260faaf1dc6a2087338e412ec",
+      "bytes": 5622600
+    },
+    "gzip": {
+      "sha256": "08406c5a93edbd1a7313d5f8cca2d0c54f5ce4dee0f86173cccb7d6d9f94e68a",
+      "bytes": 191852
+    },
+    "timelineDigests": [
+      {
+        "slot": 0,
+        "sha256": "478280eadc8cef09414de31cf9eeb791281b4536c0bf2a62d17bd84defdad15e",
+        "commands": 38,
+        "inputs": 119,
+        "events": 94,
+        "measurementFrames": 74,
+        "measurementStreamSHA256": "b523af1c338c624c2cfdfc3ada43bd96ffa3a30cfc19d3d5eaa4a05cb51424bf"
+      },
+      {
+        "slot": 1,
+        "sha256": "d8426a36c3d7d462ff31754c6e61f7515f19e6a4cafcb09879a735d35261a865",
+        "commands": 31,
+        "inputs": 108,
+        "events": 67,
+        "measurementFrames": 57,
+        "measurementStreamSHA256": "ae03e9cc8fcbb4fbea12728789f1b36ae892d4f31743c4e78af1918d3bc9dd2d"
+      },
+      {
+        "slot": 2,
+        "sha256": "4de23822dda09ea877a963a0f0d89b2c0e8007c69f8a915a537886bd81ea81d5",
+        "commands": 33,
+        "inputs": 107,
+        "events": 78,
+        "measurementFrames": 71,
+        "measurementStreamSHA256": "0b3f7a29f5cf3754b8709588364a30dddb10a36cd0a579c651f4b2fbe66f55ea"
+      }
+    ]
+  },
+  {
+    "mode": "conquest",
+    "level": "hard",
+    "seed": 1,
+    "file": "/tmp/human-ai-final-v15/raw-matches/conquest/conquest-hard-1.json",
+    "gzipFile": "/tmp/human-ai-final-v15/raw-matches/conquest/conquest-hard-1.json.gz",
+    "raw": {
+      "sha256": "3b4f54ed9dd1b8df6bd8d19fa614a1f81b770d0e1b1111ab7af1f600516f840a",
+      "bytes": 9271857
+    },
+    "gzip": {
+      "sha256": "c82033fe7129d23122bfbe492e2b10a4585f8adc3fea1ad50cc19cdb13380213",
+      "bytes": 397572
+    },
+    "timelineDigests": [
+      {
+        "slot": 0,
+        "sha256": "9ea8f34d4c0be9d58a0589b676f07837e67643a203e4d6e4a5ce629f6926e857",
+        "commands": 55,
+        "inputs": 183,
+        "events": 106,
+        "measurementFrames": 94,
+        "measurementStreamSHA256": "72a43c029885e965a1bebea0a40af5a658b90220a243823aaf9d89bd42ac0487"
+      },
+      {
+        "slot": 1,
+        "sha256": "ee3202b4c51d17a2dcb99b04aa13410de7ca8675653fbe12c49f9fdabbc74f52",
+        "commands": 51,
+        "inputs": 177,
+        "events": 84,
+        "measurementFrames": 70,
+        "measurementStreamSHA256": "142cc2c6fc381e593fc897369bb412bf541793e634d85f590c9e2126993fbd66"
+      },
+      {
+        "slot": 2,
+        "sha256": "63ea44c52a57caff12fcafa22368bfdc2cc04aea64e1f2b3b49d8715145d5a1d",
+        "commands": 68,
+        "inputs": 210,
+        "events": 108,
+        "measurementFrames": 98,
+        "measurementStreamSHA256": "57f0ea75dfcec14ab35bcf4fe004d5e713efd8505518aa4ccac7bdeddf6969a6"
+      }
+    ]
+  },
+  {
+    "mode": "conquest",
+    "level": "hard",
+    "seed": 2,
+    "file": "/tmp/human-ai-final-v15/raw-matches/conquest/conquest-hard-2.json",
+    "gzipFile": "/tmp/human-ai-final-v15/raw-matches/conquest/conquest-hard-2.json.gz",
+    "raw": {
+      "sha256": "e5d8586c9b60d28301f311354a8dd8bb40bf7a193217817ddf0d32eba14a4d4d",
+      "bytes": 8052758
+    },
+    "gzip": {
+      "sha256": "91bf496e3d744e16073134c3ddbe3c89d587f222e3594cb71a9065ba0e6432d2",
+      "bytes": 313212
+    },
+    "timelineDigests": [
+      {
+        "slot": 0,
+        "sha256": "34ce7a506cf03d3cb3258adac26f8eed86d6903293292ba990cad6152cf8522b",
+        "commands": 46,
+        "inputs": 164,
+        "events": 87,
+        "measurementFrames": 79,
+        "measurementStreamSHA256": "a3ee7c55a1cfea5770a35b81a38b6429b73e3ded8cc2550533b99b9dea1cbb33"
+      },
+      {
+        "slot": 1,
+        "sha256": "810477a283047875662a0f4372ba0bb07f9df2cec164cfe20d965d35e03d99eb",
+        "commands": 50,
+        "inputs": 179,
+        "events": 100,
+        "measurementFrames": 90,
+        "measurementStreamSHA256": "84b0fbdb817751b6098246959812a4490dee46bd5fc726ab323ab840b7b596f5"
+      },
+      {
+        "slot": 2,
+        "sha256": "89c09f5642b9bf9925606d4957ce0ab104d895cb67157b9608ef0aedc10089a5",
+        "commands": 44,
+        "inputs": 147,
+        "events": 94,
+        "measurementFrames": 84,
+        "measurementStreamSHA256": "6299ebcd066925ca404f68b8d6e0a11cb06e1e719f985f5b740b717abce6d2a8"
+      }
+    ]
+  },
+  {
+    "mode": "conquest",
+    "level": "hard",
+    "seed": 3,
+    "file": "/tmp/human-ai-final-v15/raw-matches/conquest/conquest-hard-3.json",
+    "gzipFile": "/tmp/human-ai-final-v15/raw-matches/conquest/conquest-hard-3.json.gz",
+    "raw": {
+      "sha256": "b94df77782fa806ec5dea32ebdf332057a085e53e8a5e1c5ca42fb4667a5d826",
+      "bytes": 7111816
+    },
+    "gzip": {
+      "sha256": "b9b2391289800e351812859f96d7815509a75a8202d824014dbd60804eda6097",
+      "bytes": 268924
+    },
+    "timelineDigests": [
+      {
+        "slot": 0,
+        "sha256": "aa40f34a898a487dad2bd1af77265d4a8f74561cbc9f253b0aa078fd13d13100",
+        "commands": 49,
+        "inputs": 161,
+        "events": 83,
+        "measurementFrames": 74,
+        "measurementStreamSHA256": "568377e10dee7201181aade0a28bbeccf3677bcee1d0862dee4cd7f0fd4c791c"
+      },
+      {
+        "slot": 1,
+        "sha256": "ffc414cad061545859021c1ed60911f76e70dd5ab694dab0fbcc6edc88c3cbb7",
+        "commands": 45,
+        "inputs": 160,
+        "events": 90,
+        "measurementFrames": 84,
+        "measurementStreamSHA256": "31eea883122145ae6a0d5011ea7bf1bbac5249f88c414c48f06ff7f888b8707e"
+      },
+      {
+        "slot": 2,
+        "sha256": "164a6d9ff3d94a54a96c8585f4eefb43cc1601a5f5f516a90f1ef4ec3f9c5e12",
+        "commands": 49,
+        "inputs": 171,
+        "events": 92,
+        "measurementFrames": 78,
+        "measurementStreamSHA256": "21eccc32c3eaf5127bb0d6da8d027f0f966df4d6f136a779cd5d2cad8c08c5f5"
+      }
+    ]
+  },
+  {
+    "mode": "conquest",
+    "level": "hard",
+    "seed": 4,
+    "file": "/tmp/human-ai-final-v15/raw-matches/conquest/conquest-hard-4.json",
+    "gzipFile": "/tmp/human-ai-final-v15/raw-matches/conquest/conquest-hard-4.json.gz",
+    "raw": {
+      "sha256": "dd0527549c852de217cfaf03faf8093c949112a238fade8316b216fdda5111b3",
+      "bytes": 9307660
+    },
+    "gzip": {
+      "sha256": "792f32b8d4410dedb85c657176754c6ed437fd527c912b85b2b780aeaf6dc0f1",
+      "bytes": 375588
+    },
+    "timelineDigests": [
+      {
+        "slot": 0,
+        "sha256": "a571eb0b402c246c4938ea2656f507ecccee1f0eb5c9ea879f2b8a75946c6ed5",
+        "commands": 49,
+        "inputs": 161,
+        "events": 104,
+        "measurementFrames": 91,
+        "measurementStreamSHA256": "4fde3635d1e53c61fe712a4e35725e67b7bd72504bdee39c2a49e4840fe6397d"
+      },
+      {
+        "slot": 1,
+        "sha256": "2484966cda5f4047bc87818f5cec6f3e8fd82a92b40bade10dd07c513d2e3825",
+        "commands": 49,
+        "inputs": 174,
+        "events": 106,
+        "measurementFrames": 98,
+        "measurementStreamSHA256": "c056b42e647405ab93e921fec026f60cc7314398cff8d1a3d9e9976a4d9bbf8e"
+      },
+      {
+        "slot": 2,
+        "sha256": "7aa97f38235b74cb8e4eeb77acc51f1031d86a096e96ca413608494f4220fe8a",
+        "commands": 59,
+        "inputs": 178,
+        "events": 101,
+        "measurementFrames": 84,
+        "measurementStreamSHA256": "66e3dbfea76e33461be2e44cdc5bf3642a1bdeade5e374006cafd467544285de"
+      }
+    ]
+  },
+  {
+    "mode": "conquest",
+    "level": "hard",
+    "seed": 5,
+    "file": "/tmp/human-ai-final-v15/raw-matches/conquest/conquest-hard-5.json",
+    "gzipFile": "/tmp/human-ai-final-v15/raw-matches/conquest/conquest-hard-5.json.gz",
+    "raw": {
+      "sha256": "bc8718684a09b4cfac5798f24d8f66f44d60a7b5fc90487c13946e91cd0340c4",
+      "bytes": 8607753
+    },
+    "gzip": {
+      "sha256": "57688e9367d2db17f84bc75e094364cec3749080ca2f9955571ee9774598fa0c",
+      "bytes": 354977
+    },
+    "timelineDigests": [
+      {
+        "slot": 0,
+        "sha256": "c99ef87ee94a3f4893ab5650e72024b4a48696613b30145cd092be5d6af08b18",
+        "commands": 48,
+        "inputs": 176,
+        "events": 85,
+        "measurementFrames": 72,
+        "measurementStreamSHA256": "8ba4fc8d3d23dcde9589f366985b25c82e01d9bfc4df27cfe3d1199804a7fc80"
+      },
+      {
+        "slot": 1,
+        "sha256": "ea7b9044f9c8b538e5fbc1d576a510ea1937717da9b9aa388d0a0fe71f9de6f5",
+        "commands": 57,
+        "inputs": 185,
+        "events": 105,
+        "measurementFrames": 88,
+        "measurementStreamSHA256": "7cbdb1812744bec78a8a0033dc3b74f964038f1aba9f7758276932a785ddc3ec"
+      },
+      {
+        "slot": 2,
+        "sha256": "090480eaa7ab95326b06e6cf7a711211a193e84d274b77e302e697928cd3c805",
+        "commands": 53,
+        "inputs": 183,
+        "events": 103,
+        "measurementFrames": 94,
+        "measurementStreamSHA256": "5df3f92cec1c6e1e99500216680f5bbc9ee174a2d849cdd56133781d7b4a1ad7"
+      }
+    ]
+  },
+  {
+    "mode": "conquest",
+    "level": "hard",
+    "seed": 6,
+    "file": "/tmp/human-ai-final-v15/raw-matches/conquest/conquest-hard-6.json",
+    "gzipFile": "/tmp/human-ai-final-v15/raw-matches/conquest/conquest-hard-6.json.gz",
+    "raw": {
+      "sha256": "38e7dc5be7905f350cf649a8ededd0f5f07587d78281a26d86e360a3b36abe20",
+      "bytes": 7617354
+    },
+    "gzip": {
+      "sha256": "225d1dd1ddec914c75e9cd4a75c565a1c3bad987bf48adb976112ed57e77404f",
+      "bytes": 281103
+    },
+    "timelineDigests": [
+      {
+        "slot": 0,
+        "sha256": "b115161afcf18d5ec05778b2f5498ae8a21764f668bc13d97577ce2b480d1960",
+        "commands": 51,
+        "inputs": 173,
+        "events": 100,
+        "measurementFrames": 85,
+        "measurementStreamSHA256": "2eacbb194060c87ed6dd9954404d6a0252439ee35128b642cc6b9c307913e02f"
+      },
+      {
+        "slot": 1,
+        "sha256": "4b57683b89a10a296a48a6989a203de54a60d20a222f53e37fbec390a4873e1a",
+        "commands": 59,
+        "inputs": 194,
+        "events": 78,
+        "measurementFrames": 71,
+        "measurementStreamSHA256": "0f5c6d82d03ccdf84f4362718aa988fbc9fe0210cbabc989b8dd28e88e88d8c7"
+      },
+      {
+        "slot": 2,
+        "sha256": "0006955c8ab8ccc9ad79f01e9e5a6eec7668dbf34fde6a26084ce804b895148e",
+        "commands": 54,
+        "inputs": 170,
+        "events": 91,
+        "measurementFrames": 80,
+        "measurementStreamSHA256": "8902515e1d33d042abee3f46370a72609a5fc29fad45187b7d51f53b87bbde33"
+      }
+    ]
+  },
+  {
+    "mode": "conquest",
+    "level": "hard",
+    "seed": 7,
+    "file": "/tmp/human-ai-final-v15/raw-matches/conquest/conquest-hard-7.json",
+    "gzipFile": "/tmp/human-ai-final-v15/raw-matches/conquest/conquest-hard-7.json.gz",
+    "raw": {
+      "sha256": "8139aa1f59ed3859f968ad0ed6eec2c7550d5855c940cef05216405d6e9e71ef",
+      "bytes": 5337722
+    },
+    "gzip": {
+      "sha256": "1c2eee5971451ead4b322edcf8cd090f4a28e27b36d993d1f6fd6d6487565fe2",
+      "bytes": 202991
+    },
+    "timelineDigests": [
+      {
+        "slot": 0,
+        "sha256": "647884ce0e064ed6e239f0ed564af9271b9d694b1d31c42c17cf895cd0626877",
+        "commands": 51,
+        "inputs": 175,
+        "events": 78,
+        "measurementFrames": 69,
+        "measurementStreamSHA256": "5b4ddc6214d053d958a1cbc7e6c9c20a48ce07f4308299cd76459ce065fa6900"
+      },
+      {
+        "slot": 1,
+        "sha256": "b209980403b1ec310bc1af4d5771d5d7a6ab8e54a26245a67a3c1fe788829be2",
+        "commands": 51,
+        "inputs": 168,
+        "events": 75,
+        "measurementFrames": 63,
+        "measurementStreamSHA256": "d52167f067ee76fea2f750f319153c9922607ad19bbeb21565cb1ead639ca0db"
+      },
+      {
+        "slot": 2,
+        "sha256": "f9165e9571d36c28d8a44de2f8a16da6558c3caf5529ed4d89f9c44bb425134c",
+        "commands": 42,
+        "inputs": 148,
+        "events": 71,
+        "measurementFrames": 65,
+        "measurementStreamSHA256": "3f336ea91d7e1ecc21ba42a5a7d5cce78653e1ba960f1c212d2128df0d217812"
+      }
+    ]
+  },
+  {
+    "mode": "conquest",
+    "level": "hard",
+    "seed": 8,
+    "file": "/tmp/human-ai-final-v15/raw-matches/conquest/conquest-hard-8.json",
+    "gzipFile": "/tmp/human-ai-final-v15/raw-matches/conquest/conquest-hard-8.json.gz",
+    "raw": {
+      "sha256": "5cdf9f24e635109414fbcdc4b186187bb580a5a62ec69fb393c7823f57d4ff8f",
+      "bytes": 7740496
+    },
+    "gzip": {
+      "sha256": "306732fd90e5a46a24764c9e3abac25f93b8af14df1b6d0a4d5342cebb7a9233",
+      "bytes": 305852
+    },
+    "timelineDigests": [
+      {
+        "slot": 0,
+        "sha256": "db81ecd0d6e1cc24271e94fbcceb14c9d6f447891930e5ae4568040344d6df8e",
+        "commands": 47,
+        "inputs": 166,
+        "events": 86,
+        "measurementFrames": 74,
+        "measurementStreamSHA256": "cbe8d60126155472d62b0a6d89188e4a551d5bfdac882986a06a386012958ee8"
+      },
+      {
+        "slot": 1,
+        "sha256": "c9db7b55501476b0ffe4d782d238e5f57810a01ae2043a86677ff65294dbd1d1",
+        "commands": 47,
+        "inputs": 165,
+        "events": 103,
+        "measurementFrames": 91,
+        "measurementStreamSHA256": "348a678f824f3ea9343c792bad1da7dfb48440802ec6fb1a4b138c9515a99e12"
+      },
+      {
+        "slot": 2,
+        "sha256": "b4387a533890398c1913110396d63199e03c2fbde8d73f4d1d68e79af2f69b1f",
+        "commands": 49,
+        "inputs": 164,
+        "events": 89,
+        "measurementFrames": 77,
+        "measurementStreamSHA256": "0377a9d93d1abc36533e890e9fe87d4a0805bb11583804a66d5bf7d09738f1c7"
+      }
+    ]
+  },
+  {
+    "mode": "conquest",
+    "level": "hard",
+    "seed": 9,
+    "file": "/tmp/human-ai-final-v15/raw-matches/conquest/conquest-hard-9.json",
+    "gzipFile": "/tmp/human-ai-final-v15/raw-matches/conquest/conquest-hard-9.json.gz",
+    "raw": {
+      "sha256": "58232716a11a12447812ece9b320665c10839a1cf63766d6367594fd7179998f",
+      "bytes": 6616977
+    },
+    "gzip": {
+      "sha256": "2a5625aea31cb3ca80d5391dae19f3a01b47b05f8f8e2f4eab0e92669ec1cdba",
+      "bytes": 240011
+    },
+    "timelineDigests": [
+      {
+        "slot": 0,
+        "sha256": "265c55041c6da27878f02d786938d6839f8481231db30d41d7c515354627a0b2",
+        "commands": 56,
+        "inputs": 171,
+        "events": 75,
+        "measurementFrames": 63,
+        "measurementStreamSHA256": "8a1f1bada2d0b33894f1133ca955561cd7bf2689be8e74aea6e586642440c43e"
+      },
+      {
+        "slot": 1,
+        "sha256": "2311b2045d98261e508a37249fbe5e00188519d0468249d7565049c96d496aa4",
+        "commands": 51,
+        "inputs": 199,
+        "events": 97,
+        "measurementFrames": 82,
+        "measurementStreamSHA256": "ede8c9409314876fd791548af31eb7481ff9df7915b90ac7c53eb100cfdc9dc1"
+      },
+      {
+        "slot": 2,
+        "sha256": "1e9b43a714aa9b11a0168a823eb5386bc863fe9b0b3e79acf691b77fbc438fee",
+        "commands": 45,
+        "inputs": 161,
+        "events": 90,
+        "measurementFrames": 74,
+        "measurementStreamSHA256": "b6ea401e2feb38830224f426d94f64ae85f311be115f8bd5d9a24d5ef18cd083"
+      }
+    ]
+  },
+  {
+    "mode": "conquest",
+    "level": "hard",
+    "seed": 10,
+    "file": "/tmp/human-ai-final-v15/raw-matches/conquest/conquest-hard-10.json",
+    "gzipFile": "/tmp/human-ai-final-v15/raw-matches/conquest/conquest-hard-10.json.gz",
+    "raw": {
+      "sha256": "88d33855e5e9a79617467062acf7e368cbd7f46f598d472c5829ab0e6cad4064",
+      "bytes": 8810069
+    },
+    "gzip": {
+      "sha256": "d51496aa2f167430a72a85ad7866f23392b9c2826efb2e218663a5077959071c",
+      "bytes": 350318
+    },
+    "timelineDigests": [
+      {
+        "slot": 0,
+        "sha256": "92228e613ca44410c683e89b7f42aefc3e764d500cce1cf37506e258c134734e",
+        "commands": 36,
+        "inputs": 132,
+        "events": 110,
+        "measurementFrames": 96,
+        "measurementStreamSHA256": "0508dab2d1c1667a6bd2f2b5afc79270d31f74425315b84b395d4863c05a7d57"
+      },
+      {
+        "slot": 1,
+        "sha256": "020b4031892cea20742afa14529c42f40e856d1d3e340a53efb22c43ac7e3378",
+        "commands": 44,
+        "inputs": 148,
+        "events": 88,
+        "measurementFrames": 80,
+        "measurementStreamSHA256": "93706c2c71813df5cc34ce22055bfb2e34e5ebdd5ebcde924a4cca152e006e07"
+      },
+      {
+        "slot": 2,
+        "sha256": "d3d8f58e697e46e2577e8eee97323de4c8036bf5e569bafb158d717a3aece2b5",
+        "commands": 40,
+        "inputs": 147,
+        "events": 97,
+        "measurementFrames": 84,
+        "measurementStreamSHA256": "217e1a568e2987279957d4cd1461a91240120a36d6d4422621ee3586dad3f396"
+      }
+    ]
+  },
+  {
+    "mode": "conquest",
+    "level": "hard",
+    "seed": 11,
+    "file": "/tmp/human-ai-final-v15/raw-matches/conquest/conquest-hard-11.json",
+    "gzipFile": "/tmp/human-ai-final-v15/raw-matches/conquest/conquest-hard-11.json.gz",
+    "raw": {
+      "sha256": "500b2579a7299091ddfb04553518a566bba7877aefefc8e5ca8e52ce3822e84f",
+      "bytes": 9125088
+    },
+    "gzip": {
+      "sha256": "f8a0f772e6c3b4af3736c1f0424d079326f2104cba7fdd33a928656e0b128040",
+      "bytes": 353625
+    },
+    "timelineDigests": [
+      {
+        "slot": 0,
+        "sha256": "a312a976aa53beb91a93430638729255dcb9e930ee1d07f429e67c71076ec358",
+        "commands": 34,
+        "inputs": 136,
+        "events": 118,
+        "measurementFrames": 95,
+        "measurementStreamSHA256": "ed21df225723d24767fa3c49c1a08f18358aa648f78b9e46707be25ec82de1aa"
+      },
+      {
+        "slot": 1,
+        "sha256": "a3794122a5c1458c099bd4fcf2d64353eeeffbfc28137db005085d0db79399ae",
+        "commands": 55,
+        "inputs": 185,
+        "events": 97,
+        "measurementFrames": 91,
+        "measurementStreamSHA256": "90213ff64bfd8c8095da40dd91f816e856e95704c27fb0ba3e13fdd5d7eeca35"
+      },
+      {
+        "slot": 2,
+        "sha256": "d296200c6341176afec43bbe05f27b2f3ff84d3af4ab2612f2192926fa305fdc",
+        "commands": 50,
+        "inputs": 176,
+        "events": 100,
+        "measurementFrames": 88,
+        "measurementStreamSHA256": "16ee57d686f82724ede575813c360499dda6f8bb761628e1c17001650f0e01f2"
+      }
+    ]
+  },
+  {
+    "mode": "conquest",
+    "level": "hard",
+    "seed": 12,
+    "file": "/tmp/human-ai-final-v15/raw-matches/conquest/conquest-hard-12.json",
+    "gzipFile": "/tmp/human-ai-final-v15/raw-matches/conquest/conquest-hard-12.json.gz",
+    "raw": {
+      "sha256": "9c0de43a5b7cd26a69f6e69bb71bdd433a03b92a0d6c683a17d4beca2abafca7",
+      "bytes": 5762681
+    },
+    "gzip": {
+      "sha256": "19bd1270317553f5d47db12a130c2fcdcda832effe0c40be8452b83bf24f75d7",
+      "bytes": 203091
+    },
+    "timelineDigests": [
+      {
+        "slot": 0,
+        "sha256": "287fb874b80ea93b7fa61f92fc58b2aefc93fde83efd892717ec13b797cb1f87",
+        "commands": 34,
+        "inputs": 134,
+        "events": 95,
+        "measurementFrames": 83,
+        "measurementStreamSHA256": "bbefd450ee2b41ea3d38097fbd2cb551730453f438b087065098acb5d197a3b5"
+      },
+      {
+        "slot": 1,
+        "sha256": "2f5a98fe54f78c66f40ac8e130efc02118e92e831be558d39d51a0f55470bb16",
+        "commands": 44,
+        "inputs": 164,
+        "events": 79,
+        "measurementFrames": 70,
+        "measurementStreamSHA256": "753e57c75f8f15a0e113cd8bc16be5c6e4318487487abfda75850764eb299f56"
+      },
+      {
+        "slot": 2,
+        "sha256": "81d1c4af5ed158e886328e7d40dff5760386dff7ac87b122cbf2beba1d022cd4",
+        "commands": 39,
+        "inputs": 143,
+        "events": 64,
+        "measurementFrames": 49,
+        "measurementStreamSHA256": "95fa55a9280a84c3adf4189f190d085d816dba14993cad90d5de67460c248e6e"
+      }
+    ]
+  },
+  {
+    "mode": "conquest",
+    "level": "hard",
+    "seed": 13,
+    "file": "/tmp/human-ai-final-v15/raw-matches/conquest/conquest-hard-13.json",
+    "gzipFile": "/tmp/human-ai-final-v15/raw-matches/conquest/conquest-hard-13.json.gz",
+    "raw": {
+      "sha256": "0b86893fbe55efb615382bed5d4952a0ece2add603fe6a759211ffa68e3a74d8",
+      "bytes": 6563110
+    },
+    "gzip": {
+      "sha256": "1fa62ff7116361371140227dbd72b66294c3432f3607ffa59f823269ee055d49",
+      "bytes": 249537
+    },
+    "timelineDigests": [
+      {
+        "slot": 0,
+        "sha256": "9b48238572d22ace2cef7a65a4b7e3548c166e1c3038ad4a53fa2179d97d611c",
+        "commands": 43,
+        "inputs": 139,
+        "events": 80,
+        "measurementFrames": 65,
+        "measurementStreamSHA256": "990f49347f8a9986fa9be93658bb9e9d2d2c0a8fec9c9f06cb7d33aeb5e7513e"
+      },
+      {
+        "slot": 1,
+        "sha256": "5aeef0875644e7f8f14c6c71ba8cdefad6dbbd1d770fd2840ff854fe8bf09124",
+        "commands": 54,
+        "inputs": 187,
+        "events": 82,
+        "measurementFrames": 74,
+        "measurementStreamSHA256": "16226e3852d884250c32682beac579dd654abb4d2e20c9511ba794f57640dcd2"
+      },
+      {
+        "slot": 2,
+        "sha256": "7507a4d9ae0c97e0993e568bd8881901eb273f23e19041fac0753e6043299739",
+        "commands": 44,
+        "inputs": 162,
+        "events": 94,
+        "measurementFrames": 81,
+        "measurementStreamSHA256": "334da3f5b1e4e543e595ca1362e1941c0b5f8fe69ab874761d7aa5d13f4dabb0"
+      }
+    ]
+  },
+  {
+    "mode": "conquest",
+    "level": "hard",
+    "seed": 14,
+    "file": "/tmp/human-ai-final-v15/raw-matches/conquest/conquest-hard-14.json",
+    "gzipFile": "/tmp/human-ai-final-v15/raw-matches/conquest/conquest-hard-14.json.gz",
+    "raw": {
+      "sha256": "b7b64757e2e8269009fd8ea9f6a1d3829aa44809f16f3a658e54799d2890a213",
+      "bytes": 8086517
+    },
+    "gzip": {
+      "sha256": "e2c4a087a64bd138fe77595e8b61ebcadaedcb443ec04bd087173eafd4f3b011",
+      "bytes": 321286
+    },
+    "timelineDigests": [
+      {
+        "slot": 0,
+        "sha256": "495cc1e951375af43d763c0cfb6061a17cb5320eaaeafcad675ef43b1e66d68b",
+        "commands": 44,
+        "inputs": 158,
+        "events": 103,
+        "measurementFrames": 80,
+        "measurementStreamSHA256": "dfa74b1a7cb4000ee7c014d82a757994f4531ff818132b0cc5006d8b2b5f2188"
+      },
+      {
+        "slot": 1,
+        "sha256": "ef57764732a1034725f1155bf8821087a1141d340de83fadd42ff80e3cc7d35d",
+        "commands": 52,
+        "inputs": 177,
+        "events": 84,
+        "measurementFrames": 71,
+        "measurementStreamSHA256": "b08f4c3c9e69e55f9ef96fedb3922a7b57f3023dbfe8a215e1220c0df0fe0504"
+      },
+      {
+        "slot": 2,
+        "sha256": "28400d984812adc33ca7802586b36fb7bcc55604379bbe2aaa909f8ca5a00e20",
+        "commands": 53,
+        "inputs": 182,
+        "events": 109,
+        "measurementFrames": 90,
+        "measurementStreamSHA256": "cd2683a031929ee4b32bfdc63902e66bb07076cb9d790984bcc92af504690e3e"
+      }
+    ]
+  },
+  {
+    "mode": "conquest",
+    "level": "hard",
+    "seed": 15,
+    "file": "/tmp/human-ai-final-v15/raw-matches/conquest/conquest-hard-15.json",
+    "gzipFile": "/tmp/human-ai-final-v15/raw-matches/conquest/conquest-hard-15.json.gz",
+    "raw": {
+      "sha256": "170447a41714c926dd91d36e1c1f7c0a1788f527a73dfc1657d5e7e875eed02d",
+      "bytes": 7218695
+    },
+    "gzip": {
+      "sha256": "96db678d01c4890b771126725255abf4482a4d3ab261e43f090ca108b721aab0",
+      "bytes": 277161
+    },
+    "timelineDigests": [
+      {
+        "slot": 0,
+        "sha256": "86198ec19e878e6cb162a1781fe6c2963469e006cc08c497ed973cc8fd6750d8",
+        "commands": 43,
+        "inputs": 161,
+        "events": 81,
+        "measurementFrames": 76,
+        "measurementStreamSHA256": "9171ac883d8349ecb1631e0353ba3149afb3fcf1ef8ee07bfd25ca26981c7938"
+      },
+      {
+        "slot": 1,
+        "sha256": "40a5b101d704c5f1de3d7fae1e97cc919f493de4c58fd43e0aeec2e6b621911e",
+        "commands": 44,
+        "inputs": 162,
+        "events": 88,
+        "measurementFrames": 80,
+        "measurementStreamSHA256": "4eab69a29da4d0bf6291f502c4886e74f2fcb4ec5b01a539f10a939ea7961efd"
+      },
+      {
+        "slot": 2,
+        "sha256": "e4ab79b9c4a402f255f0124bb8b035d3b9fcc9b2e15abb6b0767b73008fce5b5",
+        "commands": 46,
+        "inputs": 175,
+        "events": 92,
+        "measurementFrames": 80,
+        "measurementStreamSHA256": "88a50e35a208c20f4a4e9124130f69f48bbee81e96d81494c36e05beed77cbf8"
+      }
+    ]
+  },
+  {
+    "mode": "conquest",
+    "level": "hard",
+    "seed": 16,
+    "file": "/tmp/human-ai-final-v15/raw-matches/conquest/conquest-hard-16.json",
+    "gzipFile": "/tmp/human-ai-final-v15/raw-matches/conquest/conquest-hard-16.json.gz",
+    "raw": {
+      "sha256": "6967518b95dc99412bb7ffaf5474d73a369261621c287ff33c50b461f2645656",
+      "bytes": 6548572
+    },
+    "gzip": {
+      "sha256": "d03271a0ffba05f8ba021bc0bfa0d5635316297153efe863f3894fb06f049015",
+      "bytes": 240062
+    },
+    "timelineDigests": [
+      {
+        "slot": 0,
+        "sha256": "a2f7caf5d9acb9ac8517fc75e7c28eb5af8e169f8df694aa9cbe428625e53913",
+        "commands": 53,
+        "inputs": 174,
+        "events": 90,
+        "measurementFrames": 69,
+        "measurementStreamSHA256": "65eadfd6807238ff6e176c999f1bf7fcfd60f910b0f16d570ec73343e006a620"
+      },
+      {
+        "slot": 1,
+        "sha256": "909eba5377a1f7bdabd84168d59efd000d019ed920b6e466660be13176c92309",
+        "commands": 41,
+        "inputs": 156,
+        "events": 87,
+        "measurementFrames": 79,
+        "measurementStreamSHA256": "f8f1001b5ff4b17bf6cec19800de0d229a0c80f445c9e0a12f2dd8bc57623262"
+      },
+      {
+        "slot": 2,
+        "sha256": "f925d907d716be438b5fc14f00de7ec0514f9845b1ca4fe6e3e1ae797bee682f",
+        "commands": 40,
+        "inputs": 154,
+        "events": 89,
+        "measurementFrames": 70,
+        "measurementStreamSHA256": "69e72b63a997142bbdd7cb7f6ba4b782ca6a7985032566a4b3c9131caade7d26"
+      }
+    ]
+  },
+  {
+    "mode": "conquest",
+    "level": "hard",
+    "seed": 17,
+    "file": "/tmp/human-ai-final-v15/raw-matches/conquest/conquest-hard-17.json",
+    "gzipFile": "/tmp/human-ai-final-v15/raw-matches/conquest/conquest-hard-17.json.gz",
+    "raw": {
+      "sha256": "2f5323c0df369a0579770bfdeaa631a62847dcc72a5df70861514afa60382d42",
+      "bytes": 8608873
+    },
+    "gzip": {
+      "sha256": "4eb29802f1ae6fba5710275398f500483a8df3669145d3db3eea32f5a3f9f62d",
+      "bytes": 340466
+    },
+    "timelineDigests": [
+      {
+        "slot": 0,
+        "sha256": "274b4f9c814b86641d285f4ccb76a40bbc2c5f23782f3ce64e9f7e5ec204dffa",
+        "commands": 46,
+        "inputs": 157,
+        "events": 102,
+        "measurementFrames": 85,
+        "measurementStreamSHA256": "c489d1fe530b4281517f2f71da5323c071bf3e9cc7b5b36d26f391527d58b58d"
+      },
+      {
+        "slot": 1,
+        "sha256": "f77eaa291b65b90413a2cb08cc6a9437223309701bd65d7708fa5fcb28211e06",
+        "commands": 44,
+        "inputs": 153,
+        "events": 103,
+        "measurementFrames": 88,
+        "measurementStreamSHA256": "4a253c7f9607861addc02ef1384b4fe2e148c807873edb507667904c5a476362"
+      },
+      {
+        "slot": 2,
+        "sha256": "55998a456e65c8117f9ae1f9a672843022295be13cb0d95efef3f3a1b7132a2f",
+        "commands": 59,
+        "inputs": 188,
+        "events": 91,
+        "measurementFrames": 79,
+        "measurementStreamSHA256": "f38ab92b89f2bb4cc27ae2f4d586b2f1987959b83fbedbcde0a69d936dc75f13"
+      }
+    ]
+  },
+  {
+    "mode": "conquest",
+    "level": "hard",
+    "seed": 18,
+    "file": "/tmp/human-ai-final-v15/raw-matches/conquest/conquest-hard-18.json",
+    "gzipFile": "/tmp/human-ai-final-v15/raw-matches/conquest/conquest-hard-18.json.gz",
+    "raw": {
+      "sha256": "5bb3652d826d0d41cdd7002be217297f7613cc072fa0ab4c3b2a1c85a72019be",
+      "bytes": 9739437
+    },
+    "gzip": {
+      "sha256": "8fe79128aeef19549e54de2f183ba9fa8a8a2f02599e0712951f0086aaf480da",
+      "bytes": 401015
+    },
+    "timelineDigests": [
+      {
+        "slot": 0,
+        "sha256": "5d0667bcd2513dd8738404643a4842760d89a8ccb714317800504144e5a2170f",
+        "commands": 48,
+        "inputs": 173,
+        "events": 113,
+        "measurementFrames": 93,
+        "measurementStreamSHA256": "d6ac441e456a68dbbc2b58b08b981e4e973f335a765b7195d55d414ca22c796d"
+      },
+      {
+        "slot": 1,
+        "sha256": "5d282390377cedb7d61a4bcd4b49968fb2bf4f7fc0df13a363f7501030168254",
+        "commands": 50,
+        "inputs": 189,
+        "events": 125,
+        "measurementFrames": 101,
+        "measurementStreamSHA256": "c072880f2ef794731cdf746cb51b15eb5f80badb18ffe2854a7089faf1cc8b8e"
+      },
+      {
+        "slot": 2,
+        "sha256": "2ec503c13adccaccca95eb1568c6a88c1482ff620debb5be5c8afff6232a39fe",
+        "commands": 46,
+        "inputs": 155,
+        "events": 93,
+        "measurementFrames": 79,
+        "measurementStreamSHA256": "eec5a05196cac202dba72b3d7d55d15d82749dc51c537a49d23dc981841c0905"
+      }
+    ]
+  },
+  {
+    "mode": "conquest",
+    "level": "hard",
+    "seed": 19,
+    "file": "/tmp/human-ai-final-v15/raw-matches/conquest/conquest-hard-19.json",
+    "gzipFile": "/tmp/human-ai-final-v15/raw-matches/conquest/conquest-hard-19.json.gz",
+    "raw": {
+      "sha256": "3046c5fe379da1c9d64f61b54ce536f4dd81e223e432c89014a58d9b162dea4e",
+      "bytes": 9224066
+    },
+    "gzip": {
+      "sha256": "40092f4181e03548a61dc48d0f3159045ec0d839e1ddb5c17c77938b5e03eccf",
+      "bytes": 396498
+    },
+    "timelineDigests": [
+      {
+        "slot": 0,
+        "sha256": "26b50e5ecbbb4a38f7621ba03ce97274a417e0d4dbb6ad1dcbb37d67c74c06c2",
+        "commands": 65,
+        "inputs": 213,
+        "events": 95,
+        "measurementFrames": 83,
+        "measurementStreamSHA256": "1ccfed7915c8d7a588255bb8e7259f7bd467ce111b3bac736d4806c5bdeadc6c"
+      },
+      {
+        "slot": 1,
+        "sha256": "c99803a1afa556c64bbc8fa479e52172653e168541f87e5e0e25e4d0b0af4b7f",
+        "commands": 48,
+        "inputs": 157,
+        "events": 94,
+        "measurementFrames": 82,
+        "measurementStreamSHA256": "bd47563f3f47c59b074727b1377cd9ff2080a037bf48b2bd227d52e6f792ca6f"
+      },
+      {
+        "slot": 2,
+        "sha256": "ad3d0974f2b160a0d0bcbd1a00782436d11294f2a1d9cc4d860df693197385b6",
+        "commands": 60,
+        "inputs": 199,
+        "events": 116,
+        "measurementFrames": 101,
+        "measurementStreamSHA256": "12949e8d81d421d4a2baa6614fdfb2d36d994e21fd251f1ff28fd72b6461047b"
+      }
+    ]
+  },
+  {
+    "mode": "conquest",
+    "level": "hard",
+    "seed": 20,
+    "file": "/tmp/human-ai-final-v15/raw-matches/conquest/conquest-hard-20.json",
+    "gzipFile": "/tmp/human-ai-final-v15/raw-matches/conquest/conquest-hard-20.json.gz",
+    "raw": {
+      "sha256": "5e9c79aa19cd4d1180849ca415c7614be58cf0224751e0ad8a4493cc1f6758bf",
+      "bytes": 7916374
+    },
+    "gzip": {
+      "sha256": "b1b08a1d594a83a332247aaa103ea0495f4a00097eedb071d8ad74017dcbc904",
+      "bytes": 312075
+    },
+    "timelineDigests": [
+      {
+        "slot": 0,
+        "sha256": "c6ebf9ac107920742b737d72a0bf09743288de8ad6566f82c318a8b60ac68ea4",
+        "commands": 37,
+        "inputs": 149,
+        "events": 109,
+        "measurementFrames": 91,
+        "measurementStreamSHA256": "500299126313787b7ca8679b1b8c95ac6d86cc69df9954af5cf756be78f7bd9f"
+      },
+      {
+        "slot": 1,
+        "sha256": "b5460ffa3943b9dcc738dae22846547da01f253940ac7c8335f99c873371d54e",
+        "commands": 40,
+        "inputs": 155,
+        "events": 87,
+        "measurementFrames": 74,
+        "measurementStreamSHA256": "c8bc655b629aa3724844cfc467c12062605aba8036d12bc43090c6536cdc3b13"
+      },
+      {
+        "slot": 2,
+        "sha256": "b26be2be5e6b753ddbd38b1cd4d011a858bf069e2d3ccfd8ae25bfe01914e389",
+        "commands": 47,
+        "inputs": 161,
+        "events": 93,
+        "measurementFrames": 75,
+        "measurementStreamSHA256": "1b403ef154b3beb78c14df5b19e66f9078d056019b0ebbb060492892f075c83a"
+      }
+    ]
+  },
+  {
+    "mode": "classic",
+    "level": "easy",
+    "seed": 2,
+    "file": "/tmp/human-ai-final-v15/raw-matches/classic/classic-easy-2.json",
+    "gzipFile": "/tmp/human-ai-final-v15/raw-matches/classic/classic-easy-2.json.gz",
+    "raw": {
+      "sha256": "27d25a9c73f908bb69794e15b55428e5465e8f681637067ca90c28c170650d53",
+      "bytes": 2450070
+    },
+    "gzip": {
+      "sha256": "bbfed999f35c5a718e0f6a3e084af91f07e0f60c5700953a36c0bb5ebcc8726a",
+      "bytes": 80709
+    },
+    "timelineDigests": [
+      {
+        "slot": 0,
+        "sha256": "9bce3344fe46f212aee6b1a8adb7fa4941d60504490e68bb7eb7929b445db2e8",
+        "commands": 29,
+        "inputs": 91,
+        "events": 61,
+        "measurementFrames": 47,
+        "measurementStreamSHA256": "74f02122c81a6e7c871981bd7b338b997fb39fec398739fecb48fa6830f17f04"
+      },
+      {
+        "slot": 1,
+        "sha256": "24f6d53883b805d7421679c38db66f19f28ce1ff656ab412d4767f4691cee2b5",
+        "commands": 23,
+        "inputs": 81,
+        "events": 49,
+        "measurementFrames": 34,
+        "measurementStreamSHA256": "6f366e240bee4415a529c925dd58521ae8efbb9338cf85081a65a6279b79004e"
+      },
+      {
+        "slot": 2,
+        "sha256": "169aca375b49be611f35f430a7873a9c2720ff966cf425c702747520f40a3561",
+        "commands": 22,
+        "inputs": 76,
+        "events": 66,
+        "measurementFrames": 51,
+        "measurementStreamSHA256": "88aa6a16e22efab745d704345963740a1fbc5431ca504b5e3cf0165e0edebfcd"
+      }
+    ]
+  },
+  {
+    "mode": "classic",
+    "level": "easy",
+    "seed": 1,
+    "file": "/tmp/human-ai-final-v15/raw-matches/classic/classic-easy-1.json",
+    "gzipFile": "/tmp/human-ai-final-v15/raw-matches/classic/classic-easy-1.json.gz",
+    "raw": {
+      "sha256": "0789e06663ae7aac03c4a2ebe4de1a2a49a035366353ecfc95c21290356f11ab",
+      "bytes": 3431182
+    },
+    "gzip": {
+      "sha256": "4454f0338fde94943bd3def4dbf39848d2e36cc5484e027e53c1c2bd906f4acd",
+      "bytes": 110839
+    },
+    "timelineDigests": [
+      {
+        "slot": 0,
+        "sha256": "00d546dd9e4c9fdd5b75644cb30c06e2b2f79cf318a1ad174597233add27ccef",
+        "commands": 19,
+        "inputs": 72,
+        "events": 55,
+        "measurementFrames": 41,
+        "measurementStreamSHA256": "12bf5b6966ce437bee9b7d7a494d597b865375fa7287539666a4799c6f886b07"
+      },
+      {
+        "slot": 1,
+        "sha256": "6f1252997e8b55ef768fc320587c90f3bf9880c9296ad68dc8bcdeb756245539",
+        "commands": 26,
+        "inputs": 91,
+        "events": 83,
+        "measurementFrames": 72,
+        "measurementStreamSHA256": "5e067bd8864b08bcdaafe02d1fab12844cd458120fa9cf5d5997caa8e713136b"
+      },
+      {
+        "slot": 2,
+        "sha256": "d8794edac814ef1b8db70b2e0873c5b27a8768cdf24f63b1cc0b9ef05de1627d",
+        "commands": 21,
+        "inputs": 68,
+        "events": 53,
+        "measurementFrames": 45,
+        "measurementStreamSHA256": "130af833038b879ecad6f07fc75f07028593404dbb09c13517c3b96942da1500"
+      }
+    ]
+  },
+  {
+    "mode": "classic",
+    "level": "easy",
+    "seed": 4,
+    "file": "/tmp/human-ai-final-v15/raw-matches/classic/classic-easy-4.json",
+    "gzipFile": "/tmp/human-ai-final-v15/raw-matches/classic/classic-easy-4.json.gz",
+    "raw": {
+      "sha256": "3d04af142babf7aaab538a362c3b9d6b3ecc0202ea12f339af8c2ede451da0f2",
+      "bytes": 1612121
+    },
+    "gzip": {
+      "sha256": "1f4108d3e22c7f7c96fa09015f412f8cb96d009848afecde202d9ddb7ebe8f1e",
+      "bytes": 66025
+    },
+    "timelineDigests": [
+      {
+        "slot": 0,
+        "sha256": "b4df7ace52aa5e394b5c163c2c8bf80a025a468cc3e670acd20cbf3b21501845",
+        "commands": 20,
+        "inputs": 69,
+        "events": 37,
+        "measurementFrames": 27,
+        "measurementStreamSHA256": "e26de25fccfbc83825449e1b3be92d535cc16d4097cfca416433527d7abe889f"
+      },
+      {
+        "slot": 1,
+        "sha256": "4b22c4836ad285d8950a64c31b575a4236f4664342be328a7113b342b9c2df3f",
+        "commands": 25,
+        "inputs": 84,
+        "events": 53,
+        "measurementFrames": 39,
+        "measurementStreamSHA256": "b1b2e53c2b9ca5c8b5b0afbeb81b6967f41e147eaf5e3c1280e0fc15911b3764"
+      },
+      {
+        "slot": 2,
+        "sha256": "1e6d12d8543b45ffebf650213eaeb7b5752c85f47cb54500fe17b848680c2fa4",
+        "commands": 21,
+        "inputs": 73,
+        "events": 43,
+        "measurementFrames": 35,
+        "measurementStreamSHA256": "eb5a8f36cc221a1abffb55036e355275cf9bdcd88ea3541139519601fd971dcb"
+      }
+    ]
+  },
+  {
+    "mode": "classic",
+    "level": "easy",
+    "seed": 3,
+    "file": "/tmp/human-ai-final-v15/raw-matches/classic/classic-easy-3.json",
+    "gzipFile": "/tmp/human-ai-final-v15/raw-matches/classic/classic-easy-3.json.gz",
+    "raw": {
+      "sha256": "2d34408f7c9fa2c4f97fd4262a049f94de92ee11e34831d1d5ba9dc85eb905f9",
+      "bytes": 2576356
+    },
+    "gzip": {
+      "sha256": "1533c2fbf6af2c070f800163c6254693484e5610027997765539bdf93f35484f",
+      "bytes": 83075
+    },
+    "timelineDigests": [
+      {
+        "slot": 0,
+        "sha256": "e67ecfcebe303a7488ca0248cce09ac71f7ceaf1a9efdecfda99db3b1d373b6a",
+        "commands": 29,
+        "inputs": 93,
+        "events": 65,
+        "measurementFrames": 54,
+        "measurementStreamSHA256": "d736909b3bd49fdcf8d0cbc9b23ffb354b85a123fa9290da1cb24cbc7a0a860d"
+      },
+      {
+        "slot": 1,
+        "sha256": "19c2db74134ee5174f23353bbca917e664b0612297bed43aed4c52be01f7d841",
+        "commands": 20,
+        "inputs": 80,
+        "events": 55,
+        "measurementFrames": 46,
+        "measurementStreamSHA256": "6459735dbbde0e8a1f8ea722de07cfc394c7640b269c71bb63e3a77c088be0de"
+      },
+      {
+        "slot": 2,
+        "sha256": "8ed979d1acc1a27b2229757361ef4a0b488be3eec3e64c724326a0f8df359279",
+        "commands": 22,
+        "inputs": 73,
+        "events": 47,
+        "measurementFrames": 38,
+        "measurementStreamSHA256": "c5f8a0e52472bfcee89f7a38598f2a69647a0d4c79245ea7c969ccf1d89a8064"
+      }
+    ]
+  },
+  {
+    "mode": "classic",
+    "level": "easy",
+    "seed": 6,
+    "file": "/tmp/human-ai-final-v15/raw-matches/classic/classic-easy-6.json",
+    "gzipFile": "/tmp/human-ai-final-v15/raw-matches/classic/classic-easy-6.json.gz",
+    "raw": {
+      "sha256": "a6abd75a60f98bf8421a5c6c4f47686a974dc3a658e518d660f0f12caaf55fc8",
+      "bytes": 1870447
+    },
+    "gzip": {
+      "sha256": "9f19910ff1f230003e2087a6e47e8b62656fc86862fbd51a33026e8d49f0a44f",
+      "bytes": 71881
+    },
+    "timelineDigests": [
+      {
+        "slot": 0,
+        "sha256": "e212632256d87de8c5c51d6f029f2ccaa69c62ca401649ae914e8cd63d105c05",
+        "commands": 21,
+        "inputs": 84,
+        "events": 36,
+        "measurementFrames": 33,
+        "measurementStreamSHA256": "d2e5df276abb4d615ccd117792c72d47d9b3906bfa5db5af726063a7083200a0"
+      },
+      {
+        "slot": 1,
+        "sha256": "372f1ca1bd7c3f9b738188895c20201296558514785e6afc7706f40d281d03f6",
+        "commands": 25,
+        "inputs": 82,
+        "events": 35,
+        "measurementFrames": 31,
+        "measurementStreamSHA256": "dc1bca2525cf74130a34af2bece820e06ac1b6c810e019caf4430e4fc1e61767"
+      },
+      {
+        "slot": 2,
+        "sha256": "161d34c6ec892be96090045b016eec328c2cc74dadc4d35b7c8bfcdd16306d39",
+        "commands": 26,
+        "inputs": 82,
+        "events": 62,
+        "measurementFrames": 52,
+        "measurementStreamSHA256": "77d73071cd70ab0ae1a80b0f33c5ebec9e2190e14ebfd3b527a363db77047f97"
+      }
+    ]
+  },
+  {
+    "mode": "classic",
+    "level": "easy",
+    "seed": 5,
+    "file": "/tmp/human-ai-final-v15/raw-matches/classic/classic-easy-5.json",
+    "gzipFile": "/tmp/human-ai-final-v15/raw-matches/classic/classic-easy-5.json.gz",
+    "raw": {
+      "sha256": "f4c07d08d11f8a243af24370cf233d33f3fdff5c74a951cd057e76174de59067",
+      "bytes": 3539571
+    },
+    "gzip": {
+      "sha256": "157b9c45391454771ca09a652e105a6f6994b9e9dcab633071b6b577d8063b6e",
+      "bytes": 110970
+    },
+    "timelineDigests": [
+      {
+        "slot": 0,
+        "sha256": "fab6793fdb5115df8482800b72d5489bf07bcda7053c5620cadfa8aa6572d97c",
+        "commands": 26,
+        "inputs": 86,
+        "events": 54,
+        "measurementFrames": 50,
+        "measurementStreamSHA256": "48d1c1c7154693e1c5be1a7a67022fd04ac5a9c5aa5412225a01becfcfadd2e3"
+      },
+      {
+        "slot": 1,
+        "sha256": "5b8695d269200b23984c0e26ab0725d0f9a1d4fdee2f7b46ec85789448593cb3",
+        "commands": 25,
+        "inputs": 76,
+        "events": 80,
+        "measurementFrames": 63,
+        "measurementStreamSHA256": "b054adadf13940dde97a98bde4a0dc81ef496a2ad7061348090454fcce018b94"
+      },
+      {
+        "slot": 2,
+        "sha256": "f06bd41f7a7a022d040ec0421b3693e88448a1f4aeae7bc9966d1013454addc9",
+        "commands": 27,
+        "inputs": 87,
+        "events": 63,
+        "measurementFrames": 54,
+        "measurementStreamSHA256": "194941786ff799b07a698036682921674da1964b05bb7d0492211d33a01291cd"
+      }
+    ]
+  },
+  {
+    "mode": "classic",
+    "level": "easy",
+    "seed": 8,
+    "file": "/tmp/human-ai-final-v15/raw-matches/classic/classic-easy-8.json",
+    "gzipFile": "/tmp/human-ai-final-v15/raw-matches/classic/classic-easy-8.json.gz",
+    "raw": {
+      "sha256": "b8bd06bb1d11fed8e26abbc9ad8263bf03c7b7ae4e2bd151241f7987cb65fda6",
+      "bytes": 2379137
+    },
+    "gzip": {
+      "sha256": "7883e4c1280226962ad2243191b2196656707a0e90a4b50a89837266a38f2c86",
+      "bytes": 84900
+    },
+    "timelineDigests": [
+      {
+        "slot": 0,
+        "sha256": "08cfc1fb070958864b2feef10349fc0c10bed885b56405b44b648ffefa1216b9",
+        "commands": 23,
+        "inputs": 78,
+        "events": 60,
+        "measurementFrames": 52,
+        "measurementStreamSHA256": "fbf5ec98c94e2da94bb964f3c313e90fc43113195dccfd0b37ee9bf87246f725"
+      },
+      {
+        "slot": 1,
+        "sha256": "44191bb2f89e0451572acb64fa33c155ea1fd19e06737fabac2f2af85a03e43f",
+        "commands": 24,
+        "inputs": 85,
+        "events": 53,
+        "measurementFrames": 41,
+        "measurementStreamSHA256": "ab72727130b277b10932b8fbd08f153f3ea32f490a7b402c4a6224f4c2b021a7"
+      },
+      {
+        "slot": 2,
+        "sha256": "76848ef0e2d1df2649331dedf09e544bdab7e7a2187c3ebec9782a8d563c5190",
+        "commands": 28,
+        "inputs": 87,
+        "events": 38,
+        "measurementFrames": 30,
+        "measurementStreamSHA256": "44f06bd53e20742cfe644f46c235ff78e65212c74ef5ca3cecf340dd10683bae"
+      }
+    ]
+  },
+  {
+    "mode": "classic",
+    "level": "easy",
+    "seed": 7,
+    "file": "/tmp/human-ai-final-v15/raw-matches/classic/classic-easy-7.json",
+    "gzipFile": "/tmp/human-ai-final-v15/raw-matches/classic/classic-easy-7.json.gz",
+    "raw": {
+      "sha256": "858479aa628600628bb92bae7d6d4fe91eb3030632f9b3aaff07639b778a8abe",
+      "bytes": 2186775
+    },
+    "gzip": {
+      "sha256": "1bb6a151f87447001dd736bcec8a2a5b13819b28f05977d699867d71c9d447d6",
+      "bytes": 73879
+    },
+    "timelineDigests": [
+      {
+        "slot": 0,
+        "sha256": "127b1f6f4c494e48ba9fbba7bf77e40d58470a5668252e5126d57286edba2cba",
+        "commands": 17,
+        "inputs": 60,
+        "events": 42,
+        "measurementFrames": 36,
+        "measurementStreamSHA256": "3cde52f72ed180080cfb8dca15f131f9bbb60af42d94f62ef9ff3f8cc773526a"
+      },
+      {
+        "slot": 1,
+        "sha256": "046fc5eb3d69b451a7c995feaa935a8cff8ed4163d052f9b6378b8404c41a531",
+        "commands": 22,
+        "inputs": 79,
+        "events": 62,
+        "measurementFrames": 55,
+        "measurementStreamSHA256": "8c3361b57a278e784c47582e6bb94141ebe01b40039c3b8bd597f73f8452b61d"
+      },
+      {
+        "slot": 2,
+        "sha256": "343d79cec2da2b3befbeaad56f7b8140b50ee626c0686c7c6af05a6bee943e94",
+        "commands": 27,
+        "inputs": 81,
+        "events": 49,
+        "measurementFrames": 38,
+        "measurementStreamSHA256": "b912fb311b76a244cc42f8f9fefcfe10438a3c8323735847254beca0ee0c709a"
+      }
+    ]
+  },
+  {
+    "mode": "classic",
+    "level": "easy",
+    "seed": 10,
+    "file": "/tmp/human-ai-final-v15/raw-matches/classic/classic-easy-10.json",
+    "gzipFile": "/tmp/human-ai-final-v15/raw-matches/classic/classic-easy-10.json.gz",
+    "raw": {
+      "sha256": "7ce8846ab0af189df1ce545e623ff0d148b55c8c8018f28f821eaeb13d6e5e8a",
+      "bytes": 2100277
+    },
+    "gzip": {
+      "sha256": "94fb26f06789719ab4ad4266491c6c5ad8568b6e391fa44a224a1e55a55c520d",
+      "bytes": 78152
+    },
+    "timelineDigests": [
+      {
+        "slot": 0,
+        "sha256": "09e5f594d4255c812b7564a516f830390acd83bd8231f14c3806226708356cc7",
+        "commands": 30,
+        "inputs": 92,
+        "events": 49,
+        "measurementFrames": 40,
+        "measurementStreamSHA256": "793b8d24ba835067bd0cf233b9b0da406bb85205f6f0e3c05123be75518460bf"
+      },
+      {
+        "slot": 1,
+        "sha256": "6969ae22248cf8c68d229d217ed7a6a56d61af0ac055300aca1279368e2a9889",
+        "commands": 22,
+        "inputs": 78,
+        "events": 57,
+        "measurementFrames": 45,
+        "measurementStreamSHA256": "e7096ecd94a972b5be405c9ca208b42545d94eaaddde9174af12839908305044"
+      },
+      {
+        "slot": 2,
+        "sha256": "afe2113ec942d3b831093e1cff460fde8b94cb55d2118a921c1ebe47d89904cb",
+        "commands": 26,
+        "inputs": 76,
+        "events": 52,
+        "measurementFrames": 40,
+        "measurementStreamSHA256": "8e9e506a81a3710fbd6fd6b8b214404c16c1444a9fb0e172792d0eaca5e2595e"
+      }
+    ]
+  },
+  {
+    "mode": "classic",
+    "level": "easy",
+    "seed": 9,
+    "file": "/tmp/human-ai-final-v15/raw-matches/classic/classic-easy-9.json",
+    "gzipFile": "/tmp/human-ai-final-v15/raw-matches/classic/classic-easy-9.json.gz",
+    "raw": {
+      "sha256": "449f01ff2a8d38ab1708dc7d4a6e415b4898a00c4ced7b9126c87615bd845436",
+      "bytes": 2246514
+    },
+    "gzip": {
+      "sha256": "dc9749bc3d3715f56d7092ff1b3c67fb545a86ac24ea2a0b7902a69e3a9092a8",
+      "bytes": 77649
+    },
+    "timelineDigests": [
+      {
+        "slot": 0,
+        "sha256": "e953a82e3e9f8cdee728311888c10112912f54b405c52780ac59f2e110c311c1",
+        "commands": 17,
+        "inputs": 68,
+        "events": 44,
+        "measurementFrames": 37,
+        "measurementStreamSHA256": "de0d2c09fac26e2a4d78fd9fb19a911cc25c9f286f970c3ff531ad421a682771"
+      },
+      {
+        "slot": 1,
+        "sha256": "4fc7940d914f67f44511cff6c93cb4df53be6410bfbb4232543bd1eae8afdb57",
+        "commands": 27,
+        "inputs": 92,
+        "events": 54,
+        "measurementFrames": 40,
+        "measurementStreamSHA256": "389035b5b8c6f7653f45ecc17be447c41046aac21739f6d7d13c32dacef8dab3"
+      },
+      {
+        "slot": 2,
+        "sha256": "5bbb67b7242ee7a6ad94d7a1cd4b3b806f1e4c2b24c423068b8788ec47348752",
+        "commands": 27,
+        "inputs": 83,
+        "events": 62,
+        "measurementFrames": 47,
+        "measurementStreamSHA256": "dc4fb68e65a65d75ee1fa55012c103abbc5f371c3175468a46665e918e75bafa"
+      }
+    ]
+  },
+  {
+    "mode": "classic",
+    "level": "normal",
+    "seed": 2,
+    "file": "/tmp/human-ai-final-v15/raw-matches/classic/classic-normal-2.json",
+    "gzipFile": "/tmp/human-ai-final-v15/raw-matches/classic/classic-normal-2.json.gz",
+    "raw": {
+      "sha256": "a151a5b8b78d9f1fd6220e2c5888436d183c7ce183dadfc25f5a087648b379e0",
+      "bytes": 2670519
+    },
+    "gzip": {
+      "sha256": "a40600b41355466476558541f50e5388500f3cd91b806548a83e51fb8906c71f",
+      "bytes": 98413
+    },
+    "timelineDigests": [
+      {
+        "slot": 0,
+        "sha256": "a11aa7c9ae98c4b3c928b81acc0fb39a968ddd6fe5fe071f233afbf120d64683",
+        "commands": 31,
+        "inputs": 102,
+        "events": 49,
+        "measurementFrames": 37,
+        "measurementStreamSHA256": "18275602dd1d32433f0956e8140ac71c8c927e065fef5128875daf0598b14134"
+      },
+      {
+        "slot": 1,
+        "sha256": "19d3af0bdc5cd9454bca2a2fa1fd3e965cf55d21c19ab3b09c96b19bbdebde58",
+        "commands": 34,
+        "inputs": 125,
+        "events": 63,
+        "measurementFrames": 58,
+        "measurementStreamSHA256": "a283969dd0553a6418af88430af507ba11b27079918ccc975fc2db67a3ba706d"
+      },
+      {
+        "slot": 2,
+        "sha256": "203ac2b3e03aac76da771c0f222854e2b56ad926935a2988070ced6c387cd7e5",
+        "commands": 29,
+        "inputs": 96,
+        "events": 57,
+        "measurementFrames": 46,
+        "measurementStreamSHA256": "89a8f3ed5a093086c4190576be0154cf32fe3dc7c448272bd01ca9236d4a1509"
+      }
+    ]
+  },
+  {
+    "mode": "classic",
+    "level": "normal",
+    "seed": 1,
+    "file": "/tmp/human-ai-final-v15/raw-matches/classic/classic-normal-1.json",
+    "gzipFile": "/tmp/human-ai-final-v15/raw-matches/classic/classic-normal-1.json.gz",
+    "raw": {
+      "sha256": "4de6a3429fbc0c4da71ea618c258c7803e99544e32d15520ceee5f96c2e4601a",
+      "bytes": 2958266
+    },
+    "gzip": {
+      "sha256": "30b883ec7c8b9a5ceebc04609179c7d2d71e536b7ed2c4b81b2249d33c7e3413",
+      "bytes": 99501
+    },
+    "timelineDigests": [
+      {
+        "slot": 0,
+        "sha256": "e7e90ef383bae3280c3caff77e048a1af9c5e9e290e476074d8d1f83f95a3a9e",
+        "commands": 27,
+        "inputs": 118,
+        "events": 47,
+        "measurementFrames": 40,
+        "measurementStreamSHA256": "7fab90167c9f0692032d3e7fd387c6df2758cf87bdca7bc8f93edc461f696c85"
+      },
+      {
+        "slot": 1,
+        "sha256": "1ba017765ae5afabd34281c0adfd1b5d66ef7997f536bd9a0c5830c252ea961c",
+        "commands": 34,
+        "inputs": 114,
+        "events": 64,
+        "measurementFrames": 59,
+        "measurementStreamSHA256": "8cd6a28a0a35557fcf7f29d6dfebf3c4ac0e4076829d0b4fc6ec1208c1849c21"
+      },
+      {
+        "slot": 2,
+        "sha256": "ebbeb5dcda9f293859bef4762d6f91b68b2fc8b80e3d25ee7396e4e9387d6d52",
+        "commands": 35,
+        "inputs": 127,
+        "events": 65,
+        "measurementFrames": 57,
+        "measurementStreamSHA256": "9a994944ce8cc29409de3c9e96d783e9ff29f6ad84fe73d266e0f945b59a0a75"
+      }
+    ]
+  },
+  {
+    "mode": "classic",
+    "level": "normal",
+    "seed": 3,
+    "file": "/tmp/human-ai-final-v15/raw-matches/classic/classic-normal-3.json",
+    "gzipFile": "/tmp/human-ai-final-v15/raw-matches/classic/classic-normal-3.json.gz",
+    "raw": {
+      "sha256": "5dfacd2ab3f11d439076308781a433388e66f5056bd5d7f7d746958948bdf595",
+      "bytes": 4304775
+    },
+    "gzip": {
+      "sha256": "f2d7de3e986753f6db9a58448e11d074b5867e02164e4e604086529b1bb166d5",
+      "bytes": 145995
+    },
+    "timelineDigests": [
+      {
+        "slot": 0,
+        "sha256": "94cc692c84f1c8c9627cac4a6dae255a44aeaae2ead0f0d5a69f5880b31e0a57",
+        "commands": 37,
+        "inputs": 127,
+        "events": 83,
+        "measurementFrames": 77,
+        "measurementStreamSHA256": "4c67d23bf1ddd108c520a9e00971af4f902dcefdee4d94f8cc41a1c5c403bc75"
+      },
+      {
+        "slot": 1,
+        "sha256": "54c01b4cd9156a19da33cd0b7d830bea58e6a5c3692e716a579524b830c20181",
+        "commands": 27,
+        "inputs": 103,
+        "events": 57,
+        "measurementFrames": 48,
+        "measurementStreamSHA256": "01aa6b15c905eb206a7da801556af2ddff25292a395fecc5c993428ad4bfa4e0"
+      },
+      {
+        "slot": 2,
+        "sha256": "2489c4bc5f0a3d314fdbfa731805db0c16790a5d7e029170b8d0fd256bfeb1f7",
+        "commands": 28,
+        "inputs": 104,
+        "events": 71,
+        "measurementFrames": 64,
+        "measurementStreamSHA256": "329ee66cc8387be0b2a833e9098423b277cf88f370624c935f59dd9e890f9e88"
+      }
+    ]
+  },
+  {
+    "mode": "classic",
+    "level": "normal",
+    "seed": 4,
+    "file": "/tmp/human-ai-final-v15/raw-matches/classic/classic-normal-4.json",
+    "gzipFile": "/tmp/human-ai-final-v15/raw-matches/classic/classic-normal-4.json.gz",
+    "raw": {
+      "sha256": "83b640540add08663e31180978cb8160289490fd2a1c589941d10efffdacd383",
+      "bytes": 5111058
+    },
+    "gzip": {
+      "sha256": "9a433b85857bfb9953861392e8f1b682c21b4b4803db58eb99ebb222d2cb2018",
+      "bytes": 177874
+    },
+    "timelineDigests": [
+      {
+        "slot": 0,
+        "sha256": "e8e645f3a59913d11fd777872e86dc8692f24ab053c3a0a0700235b5a2cdb4a7",
+        "commands": 30,
+        "inputs": 106,
+        "events": 72,
+        "measurementFrames": 59,
+        "measurementStreamSHA256": "ab35f30037da195843a89f09c909cb56b04bf4ec40225ab026c829bab4e77629"
+      },
+      {
+        "slot": 1,
+        "sha256": "4d6fb7686db818f0870a2eaa22760d7710ee2858d82aa749e661d21eabcfa8bb",
+        "commands": 32,
+        "inputs": 124,
+        "events": 90,
+        "measurementFrames": 77,
+        "measurementStreamSHA256": "e87700bcd82a89348723cdb68a9189d9dd9fe4e3f8b2b5e92e168f849e99d52f"
+      },
+      {
+        "slot": 2,
+        "sha256": "f0e91a126edfc1c3b62c4c82034c818870e57bbdc904a69045ca9cb410e2f0ba",
+        "commands": 39,
+        "inputs": 143,
+        "events": 70,
+        "measurementFrames": 64,
+        "measurementStreamSHA256": "ea7720a2d41085cb4daa946af1ef67358cb292aefce3e531be08ef9fb890587e"
+      }
+    ]
+  },
+  {
+    "mode": "classic",
+    "level": "normal",
+    "seed": 5,
+    "file": "/tmp/human-ai-final-v15/raw-matches/classic/classic-normal-5.json",
+    "gzipFile": "/tmp/human-ai-final-v15/raw-matches/classic/classic-normal-5.json.gz",
+    "raw": {
+      "sha256": "63f7c92680e04d1f0c9db4a858be51a3cffa229bd5f6167277c0f097bdf52e10",
+      "bytes": 2276774
+    },
+    "gzip": {
+      "sha256": "0232835b4ba8d972162323d80758633855b1fc179df23005b0e153e05158fe60",
+      "bytes": 87320
+    },
+    "timelineDigests": [
+      {
+        "slot": 0,
+        "sha256": "971d8c6fdf63c5e4bc1ddf47d17c13fe2f0264dbcd9424462f1a6037609a0857",
+        "commands": 30,
+        "inputs": 108,
+        "events": 46,
+        "measurementFrames": 40,
+        "measurementStreamSHA256": "6a0e20fdb36db44500151c3f84db4be071c88021c276cf4f3c16a2972492e73f"
+      },
+      {
+        "slot": 1,
+        "sha256": "4db6573098b54f8bbbb433642ffbb4842830f024383fa6a2f2edaeb108aedde3",
+        "commands": 29,
+        "inputs": 117,
+        "events": 43,
+        "measurementFrames": 40,
+        "measurementStreamSHA256": "cf35c95f55870a3319f752c92a45e8cbd4aeebdd30656bd219455b7de4092df0"
+      },
+      {
+        "slot": 2,
+        "sha256": "9ab64e37cffa7bf157eb7481ede3022824004b68afe96300b5efb516b4f19d33",
+        "commands": 30,
+        "inputs": 117,
+        "events": 63,
+        "measurementFrames": 52,
+        "measurementStreamSHA256": "7f4aacc609d36aec3518773009c4f642bc662f4b0037379ac727e8891c6baf87"
+      }
+    ]
+  },
+  {
+    "mode": "classic",
+    "level": "normal",
+    "seed": 6,
+    "file": "/tmp/human-ai-final-v15/raw-matches/classic/classic-normal-6.json",
+    "gzipFile": "/tmp/human-ai-final-v15/raw-matches/classic/classic-normal-6.json.gz",
+    "raw": {
+      "sha256": "3731ae1a3a0a8510cb3723153249f396329737e8d24a25a63d10f5ab0171ceda",
+      "bytes": 3001020
+    },
+    "gzip": {
+      "sha256": "ac8c30989432ae3d623decf2ee23c1709a30ce1792ec3feeb8a93c8afe1eb62a",
+      "bytes": 106938
+    },
+    "timelineDigests": [
+      {
+        "slot": 0,
+        "sha256": "3005ba5d5856cb3b69c83dfecd69883e92894b5310248c1e289a6e3201ff81d0",
+        "commands": 28,
+        "inputs": 110,
+        "events": 71,
+        "measurementFrames": 56,
+        "measurementStreamSHA256": "b1c94d9d4a13ec5542bef4a970d57ddec2030ffb39749ed9703b7b7feacc11d2"
+      },
+      {
+        "slot": 1,
+        "sha256": "9aabd468db6ef09599f71f1cfbc33a784f80cfef4ccdc82812398db1e93b5fee",
+        "commands": 32,
+        "inputs": 117,
+        "events": 48,
+        "measurementFrames": 43,
+        "measurementStreamSHA256": "265609d82e454413d7c73f8b84a92421c25da0dd4408aae71ab5ef63a3bb1926"
+      },
+      {
+        "slot": 2,
+        "sha256": "da6742b6cc4d86d84735e5c162a6896d06890c7b2e5c9ae7b359acb34924be9f",
+        "commands": 42,
+        "inputs": 137,
+        "events": 62,
+        "measurementFrames": 53,
+        "measurementStreamSHA256": "3cba81504a381f7ec35e2cb9312fcedda1fb607dbdf58f5368190b49e4a983b8"
+      }
+    ]
+  },
+  {
+    "mode": "classic",
+    "level": "normal",
+    "seed": 7,
+    "file": "/tmp/human-ai-final-v15/raw-matches/classic/classic-normal-7.json",
+    "gzipFile": "/tmp/human-ai-final-v15/raw-matches/classic/classic-normal-7.json.gz",
+    "raw": {
+      "sha256": "4afb8c60331dd671be9b72a05de3b6f875e903a67e830dd27b42b19400e84b43",
+      "bytes": 2646843
+    },
+    "gzip": {
+      "sha256": "37f363f2cdf3b64bd53819f3d92d54e2c5b13687a088124c10f329a9653d99ba",
+      "bytes": 97590
+    },
+    "timelineDigests": [
+      {
+        "slot": 0,
+        "sha256": "b48acb366bcad72f56811950ea6bb3da3640f637b59c68dc058bcbeaa64ccb4a",
+        "commands": 29,
+        "inputs": 105,
+        "events": 47,
+        "measurementFrames": 47,
+        "measurementStreamSHA256": "14b193146eb34a46c748db366aa7848d545f005cfb49b8e221121b835fadcd9b"
+      },
+      {
+        "slot": 1,
+        "sha256": "e3cd5f5494ff3c190893e333c73f618592a97dc8c5dfba45eee1163424c03372",
+        "commands": 29,
+        "inputs": 114,
+        "events": 67,
+        "measurementFrames": 59,
+        "measurementStreamSHA256": "65dfa1afaa869ca6e2b52bbe9c7999bba5b776a8db5785f16cf87e0a4f026335"
+      },
+      {
+        "slot": 2,
+        "sha256": "c8c10481fdfdd1ce2701f4818db86ada3635104efa7b3cbaa457a1836d215f56",
+        "commands": 26,
+        "inputs": 94,
+        "events": 50,
+        "measurementFrames": 40,
+        "measurementStreamSHA256": "b730a47fe11459085be21cc9a97834dd56ca450deacc2115ca660babdfacc318"
+      }
+    ]
+  },
+  {
+    "mode": "classic",
+    "level": "normal",
+    "seed": 8,
+    "file": "/tmp/human-ai-final-v15/raw-matches/classic/classic-normal-8.json",
+    "gzipFile": "/tmp/human-ai-final-v15/raw-matches/classic/classic-normal-8.json.gz",
+    "raw": {
+      "sha256": "2d4c7f0f41f622a0776d803dcb7938bc163824d1478d71868a668a8ed7b85acc",
+      "bytes": 3915823
+    },
+    "gzip": {
+      "sha256": "d8873f7485b445c1095cf787dfeb3d69e7cf1dcf0275c6f8b288c479d8343a53",
+      "bytes": 121634
+    },
+    "timelineDigests": [
+      {
+        "slot": 0,
+        "sha256": "5c5394cec8019c0312c72b271c9667104e78a79f2a34c884c1630f32597a0e91",
+        "commands": 23,
+        "inputs": 96,
+        "events": 83,
+        "measurementFrames": 62,
+        "measurementStreamSHA256": "16d59527df960e1e81971a8994c46bccf0c0bd5b16ce05961d648b38aa955d4a"
+      },
+      {
+        "slot": 1,
+        "sha256": "471c5fd080931610eb995daa986b791a3b7bf5b07f6397ba009b1b100bd20573",
+        "commands": 36,
+        "inputs": 136,
+        "events": 66,
+        "measurementFrames": 56,
+        "measurementStreamSHA256": "f7151eaddb2a14609734e5d1513b318c9630e6fc08da1932bd62193b342c8ad1"
+      },
+      {
+        "slot": 2,
+        "sha256": "bd9c167b1e4d7f9a175a3e35b74b7c451e1c7cb19ee693497020a5e2809c6fca",
+        "commands": 31,
+        "inputs": 116,
+        "events": 63,
+        "measurementFrames": 60,
+        "measurementStreamSHA256": "1c7f8cd393ad3bd0ccd87591d495ba288ee56298107e945e6b107341d4051f93"
+      }
+    ]
+  },
+  {
+    "mode": "classic",
+    "level": "normal",
+    "seed": 9,
+    "file": "/tmp/human-ai-final-v15/raw-matches/classic/classic-normal-9.json",
+    "gzipFile": "/tmp/human-ai-final-v15/raw-matches/classic/classic-normal-9.json.gz",
+    "raw": {
+      "sha256": "61a9634c417b7d03c575233f172f856a3ac0ca021a5c9cd81d66051654cdb8f4",
+      "bytes": 3837340
+    },
+    "gzip": {
+      "sha256": "5a9a78bb3cc30dbe3d866b9dcecea9d47fa689a73d7c293b151b6f55a6fd123b",
+      "bytes": 142413
+    },
+    "timelineDigests": [
+      {
+        "slot": 0,
+        "sha256": "dc5ccb61ae946864681bf0c8f22aeee5f23ef073d470395a90601a00f28142a1",
+        "commands": 24,
+        "inputs": 88,
+        "events": 35,
+        "measurementFrames": 34,
+        "measurementStreamSHA256": "08f3c69c6d504a6421b367055dfbaf2c38d8692b94ed6803fd28b39161985e7e"
+      },
+      {
+        "slot": 1,
+        "sha256": "c339d4637448e036a46428cb435934ae92b8bade13d72d107413e8cd46109605",
+        "commands": 45,
+        "inputs": 152,
+        "events": 69,
+        "measurementFrames": 64,
+        "measurementStreamSHA256": "fc047829e4b86be70d778f06b82d2278d556cd4e07c293a637266a6277bd1575"
+      },
+      {
+        "slot": 2,
+        "sha256": "483eb7ce9ef66a8bf00f1aa6eec838f0e8fdc4868cecfefe6cc9f9fef091d056",
+        "commands": 41,
+        "inputs": 143,
+        "events": 85,
+        "measurementFrames": 71,
+        "measurementStreamSHA256": "2a56ea812e7ba483c02522fa4697e32b732c004b0ede58f98f460c291e751b85"
+      }
+    ]
+  },
+  {
+    "mode": "classic",
+    "level": "normal",
+    "seed": 10,
+    "file": "/tmp/human-ai-final-v15/raw-matches/classic/classic-normal-10.json",
+    "gzipFile": "/tmp/human-ai-final-v15/raw-matches/classic/classic-normal-10.json.gz",
+    "raw": {
+      "sha256": "ab9930e043fb0fe59bc7fd4f8ce2da42aa78cbaeb8ff870d4d63361a01e3743b",
+      "bytes": 2777863
+    },
+    "gzip": {
+      "sha256": "4107181e8fcfa9ec3a9ed51a387849d5485316183773246f33f8d6692b3f4f4c",
+      "bytes": 94801
+    },
+    "timelineDigests": [
+      {
+        "slot": 0,
+        "sha256": "3502c87fbd904d08b8f109a099e54fbe1729ccc6393563c1ff76aaa7a0a942f5",
+        "commands": 34,
+        "inputs": 130,
+        "events": 65,
+        "measurementFrames": 56,
+        "measurementStreamSHA256": "7dba662744a2424cb9de91e619150828e4de4133c2eebe0af3746d42b8be4ec7"
+      },
+      {
+        "slot": 1,
+        "sha256": "520f0f359b1d49ba6946a196f9493d6981b9957684db608f8dab79a7902ec2f0",
+        "commands": 26,
+        "inputs": 109,
+        "events": 54,
+        "measurementFrames": 45,
+        "measurementStreamSHA256": "e5a0707e4912fec010ef1aacb9c720c4721ed7dde79912cc5a020c78ef8da40a"
+      },
+      {
+        "slot": 2,
+        "sha256": "5a3c95e7dd535c4a39d50f411401c1fbac9f88daea30308a3e72061754741307",
+        "commands": 20,
+        "inputs": 86,
+        "events": 56,
+        "measurementFrames": 43,
+        "measurementStreamSHA256": "22b79f273f54a30733a0fc354d0b0fe33cd677c33d34f1e9112588c4c70a6492"
+      }
+    ]
+  },
+  {
+    "mode": "classic",
+    "level": "hard",
+    "seed": 1,
+    "file": "/tmp/human-ai-final-v15/raw-matches/classic/classic-hard-1.json",
+    "gzipFile": "/tmp/human-ai-final-v15/raw-matches/classic/classic-hard-1.json.gz",
+    "raw": {
+      "sha256": "5e439eaa008fec2eeca1e1fa134e3a13d0843a1ba36231fa2704dc3530b2c246",
+      "bytes": 3703472
+    },
+    "gzip": {
+      "sha256": "b95325c9f192466401f38291f50b101a25ad72fc0083bb9c1204b63dd7bd8998",
+      "bytes": 124941
+    },
+    "timelineDigests": [
+      {
+        "slot": 0,
+        "sha256": "9aadee81f9c3564579b8d17fadcd6b116924f820690586dc82bd9c38b3fa3192",
+        "commands": 37,
+        "inputs": 155,
+        "events": 67,
+        "measurementFrames": 61,
+        "measurementStreamSHA256": "e10ecd62f4d2fc060736b6d272da340a1d2860246c8cedd600e8c0cd99f91351"
+      },
+      {
+        "slot": 1,
+        "sha256": "4a4902193ae6d8bd7bdf105862e68f672545c8be8d33cf259911887610a5669a",
+        "commands": 35,
+        "inputs": 141,
+        "events": 66,
+        "measurementFrames": 61,
+        "measurementStreamSHA256": "d556262ad351b28c5090c0c2baab47ba3084bf7d80d4a66da96892950e73d49e"
+      },
+      {
+        "slot": 2,
+        "sha256": "99dae3bb5a7647875b123532f47fb756dc750a253e47795469577c90472f3b2e",
+        "commands": 32,
+        "inputs": 133,
+        "events": 61,
+        "measurementFrames": 53,
+        "measurementStreamSHA256": "8e5fff72749088e107a803af11ea8bd714734aa90a4d64414e3164c95882ecae"
+      }
+    ]
+  },
+  {
+    "mode": "classic",
+    "level": "hard",
+    "seed": 2,
+    "file": "/tmp/human-ai-final-v15/raw-matches/classic/classic-hard-2.json",
+    "gzipFile": "/tmp/human-ai-final-v15/raw-matches/classic/classic-hard-2.json.gz",
+    "raw": {
+      "sha256": "c48dd345b4943c73113dd6c4d0e66cc30e9d6753e2681dae7f0fb64a65c12b8a",
+      "bytes": 4283369
+    },
+    "gzip": {
+      "sha256": "1d910acca63ba66099de4207e2411d3475217611873b3619940438f3987b1bd2",
+      "bytes": 154470
+    },
+    "timelineDigests": [
+      {
+        "slot": 0,
+        "sha256": "33a34fee7459214c6e34a02b2ce30b61e2ea459adcc8b001644855f858bb7df6",
+        "commands": 46,
+        "inputs": 158,
+        "events": 78,
+        "measurementFrames": 70,
+        "measurementStreamSHA256": "0647892e6efe8626a38507705b3930b8f1e4e9d7a2c059639c91ecd90d4aa32f"
+      },
+      {
+        "slot": 1,
+        "sha256": "6012e61a16408db20e6d49971da61d59ee7ad4e2a80186dfad84007bbce0c1e1",
+        "commands": 26,
+        "inputs": 126,
+        "events": 67,
+        "measurementFrames": 60,
+        "measurementStreamSHA256": "e604ee2edf924c07dee63aec96c651d73ac4b481e9d70534c4152ab77c742254"
+      },
+      {
+        "slot": 2,
+        "sha256": "739a4d1e06c07eac172b3bf88b719a2718b36e8c678d93fa794336e56fb75982",
+        "commands": 52,
+        "inputs": 192,
+        "events": 65,
+        "measurementFrames": 54,
+        "measurementStreamSHA256": "f4ebb0929a1d5a6a1e12c86fbb5111a6142e79a26b5b1c728c01b5999dcfd521"
+      }
+    ]
+  },
+  {
+    "mode": "classic",
+    "level": "hard",
+    "seed": 3,
+    "file": "/tmp/human-ai-final-v15/raw-matches/classic/classic-hard-3.json",
+    "gzipFile": "/tmp/human-ai-final-v15/raw-matches/classic/classic-hard-3.json.gz",
+    "raw": {
+      "sha256": "c97003fdd1bbd4ae2862972f4ab1021d51bedc5a5bf223e4aac3edb50d9607aa",
+      "bytes": 3638681
+    },
+    "gzip": {
+      "sha256": "3ad1b74ffa8c3f31a23bf4b4391b1f355f366d65820ef7be17c5d28979e63e0b",
+      "bytes": 131825
+    },
+    "timelineDigests": [
+      {
+        "slot": 0,
+        "sha256": "62001acf4afe53352d5d8be64edb4cfdd4607d46b6ac402421096ac0cfe76349",
+        "commands": 37,
+        "inputs": 142,
+        "events": 79,
+        "measurementFrames": 68,
+        "measurementStreamSHA256": "581242f1d26c361aadc5f6e6a38dd3c3df4495b48478ba9b313c44fa797fc8e1"
+      },
+      {
+        "slot": 1,
+        "sha256": "07bab29112de6301299a1d67616cce2e9d93376ccd91efd87fe073e2dade9026",
+        "commands": 28,
+        "inputs": 135,
+        "events": 58,
+        "measurementFrames": 50,
+        "measurementStreamSHA256": "1d62327ad9bfa61298826773a9365cce83b9975c9a1f09c6511fe611569fa61c"
+      },
+      {
+        "slot": 2,
+        "sha256": "c30b9dd29df9f62c156f1599550039a163f5c485343663a7bfc38574a695211e",
+        "commands": 41,
+        "inputs": 159,
+        "events": 58,
+        "measurementFrames": 52,
+        "measurementStreamSHA256": "7412ce346d34657d185e55b450afec5036a35bd2b7f3f3b5ac26969b5f0a645d"
+      }
+    ]
+  },
+  {
+    "mode": "classic",
+    "level": "hard",
+    "seed": 4,
+    "file": "/tmp/human-ai-final-v15/raw-matches/classic/classic-hard-4.json",
+    "gzipFile": "/tmp/human-ai-final-v15/raw-matches/classic/classic-hard-4.json.gz",
+    "raw": {
+      "sha256": "f1dbdebad001802ace77c35f6bbec2b27b9e54f885c3f4accd65979d92d1cd1a",
+      "bytes": 4654730
+    },
+    "gzip": {
+      "sha256": "7b40be0ddfeaadb8fa59756fb757021308fd14c758872b2ba4e78fcb7d21f957",
+      "bytes": 166541
+    },
+    "timelineDigests": [
+      {
+        "slot": 0,
+        "sha256": "415070bf211770b177cf89b208e3e3aea4c5e8faa9637cf21300c3f7a538c012",
+        "commands": 45,
+        "inputs": 176,
+        "events": 72,
+        "measurementFrames": 66,
+        "measurementStreamSHA256": "94ca21573cab366d15578117cbaffaefb5612f19185dbb6b632e4c455530e176"
+      },
+      {
+        "slot": 1,
+        "sha256": "d16e6723915bba5f46c70183429dd758b7cdfc90be68edd1c703dd2d57d56384",
+        "commands": 37,
+        "inputs": 161,
+        "events": 81,
+        "measurementFrames": 69,
+        "measurementStreamSHA256": "7bbdb714baec36c587e2e031add491fc921e96beaed93d4c2e70997f3575b977"
+      },
+      {
+        "slot": 2,
+        "sha256": "9f0c2f9598d47ca0d92c52a3c340d1ea6e9d63435a0d4136af336e1d2abe7848",
+        "commands": 36,
+        "inputs": 192,
+        "events": 69,
+        "measurementFrames": 57,
+        "measurementStreamSHA256": "3a716cc5163d93811f564d77fba930b68df53ed3e95fea693e2e54b035cc1e42"
+      }
+    ]
+  },
+  {
+    "mode": "classic",
+    "level": "hard",
+    "seed": 5,
+    "file": "/tmp/human-ai-final-v15/raw-matches/classic/classic-hard-5.json",
+    "gzipFile": "/tmp/human-ai-final-v15/raw-matches/classic/classic-hard-5.json.gz",
+    "raw": {
+      "sha256": "8f8f005d2782a566962f2a1da7e09f9dc89f83c0f3f459120de5b7b22b340bb2",
+      "bytes": 5000963
+    },
+    "gzip": {
+      "sha256": "aa677222e8936be557cc5f4b0d87dbba46807455143ea94f702d84ffb0c607ed",
+      "bytes": 192933
+    },
+    "timelineDigests": [
+      {
+        "slot": 0,
+        "sha256": "05e4e8047f99572de3fd16d36791d15895f374a01e26397f063a6783be0a0d16",
+        "commands": 46,
+        "inputs": 176,
+        "events": 76,
+        "measurementFrames": 76,
+        "measurementStreamSHA256": "b1706e74843317aa9dd9e77a1507fef8bedf6a46156de9e84dab27d7b5a046e7"
+      },
+      {
+        "slot": 1,
+        "sha256": "36385d8e852684fdc331304e0cb0289245f3273b40f17c8618eedb05ec34dcf6",
+        "commands": 37,
+        "inputs": 160,
+        "events": 52,
+        "measurementFrames": 48,
+        "measurementStreamSHA256": "7b7e5c343a32f13c3a4feb07facf3d2e95729b34129f396eb2be58619118487d"
+      },
+      {
+        "slot": 2,
+        "sha256": "aafac3d2d8a69cf07c70f8811c69698378243c32aaf42d6979972979b116e870",
+        "commands": 65,
+        "inputs": 219,
+        "events": 80,
+        "measurementFrames": 78,
+        "measurementStreamSHA256": "40dc8681a990337db23a3e122c9b4ef2e1f39aca81d2d8dfcff3e509f3e33ddf"
+      }
+    ]
+  },
+  {
+    "mode": "classic",
+    "level": "hard",
+    "seed": 6,
+    "file": "/tmp/human-ai-final-v15/raw-matches/classic/classic-hard-6.json",
+    "gzipFile": "/tmp/human-ai-final-v15/raw-matches/classic/classic-hard-6.json.gz",
+    "raw": {
+      "sha256": "5cca82e38cfdc26cf89b62ce663238998c9a2121af6d13167fae20a27704e61e",
+      "bytes": 5117646
+    },
+    "gzip": {
+      "sha256": "5298dfe5e6ef1c8e59a3b3e4b0e6e4afb8dab34f4a7c1bc4caffefb67a372e59",
+      "bytes": 173773
+    },
+    "timelineDigests": [
+      {
+        "slot": 0,
+        "sha256": "38c3d2d45b2e44b911446c47990f134cb2b0a2cd7ebd7ca83cdf9ece5f510005",
+        "commands": 34,
+        "inputs": 146,
+        "events": 79,
+        "measurementFrames": 68,
+        "measurementStreamSHA256": "2673f91eb990f4578079c0dde219f6e15e30ea13b465268d853494c9e34e0feb"
+      },
+      {
+        "slot": 1,
+        "sha256": "bf3af89cde88e513ac4955f8a9bdcd9a8c567a6361333a53fd34a752f2d3f6ea",
+        "commands": 36,
+        "inputs": 142,
+        "events": 80,
+        "measurementFrames": 70,
+        "measurementStreamSHA256": "b2bf622e18ab2fa7305a2af6255a746722dd19b787f69f8221881e61a49933d7"
+      },
+      {
+        "slot": 2,
+        "sha256": "842fee82c443f4896b968e869ff26fd9cdd7f82b0862dd6060870777baa01d2e",
+        "commands": 28,
+        "inputs": 133,
+        "events": 79,
+        "measurementFrames": 69,
+        "measurementStreamSHA256": "2f32708fa6d8456f24ee0541feb317b1b0ab8ea9e10ec56b54e10fe90918adff"
+      }
+    ]
+  },
+  {
+    "mode": "classic",
+    "level": "hard",
+    "seed": 7,
+    "file": "/tmp/human-ai-final-v15/raw-matches/classic/classic-hard-7.json",
+    "gzipFile": "/tmp/human-ai-final-v15/raw-matches/classic/classic-hard-7.json.gz",
+    "raw": {
+      "sha256": "749ce0175b3eaf2a6207911c8ac00c72dff7079d87d2b7d01222e1164e8d174e",
+      "bytes": 3273463
+    },
+    "gzip": {
+      "sha256": "f5cb0ec5a76312d5cb2ea6eaedaa2b919aab112042838597f8d7a9156da72fcb",
+      "bytes": 110699
+    },
+    "timelineDigests": [
+      {
+        "slot": 0,
+        "sha256": "99a5e2b26a3ccf4123c07dfc13d3e30338e7980bb6624c2698e72bf2b3cf3795",
+        "commands": 34,
+        "inputs": 143,
+        "events": 58,
+        "measurementFrames": 50,
+        "measurementStreamSHA256": "659ca7bea6ed9dae4d5d27ad3c73586f84cc1ed8601b6c24b11ad56c7a62c4fb"
+      },
+      {
+        "slot": 1,
+        "sha256": "1fe5c5c89e98d8469fbdef90596cb7c426b5ba0b672e3af120e82d3f13983709",
+        "commands": 35,
+        "inputs": 147,
+        "events": 69,
+        "measurementFrames": 57,
+        "measurementStreamSHA256": "9569a933368e9827a337d7718398c3f1453aab675a24992ade70f1c0073445cc"
+      },
+      {
+        "slot": 2,
+        "sha256": "7c5182c60fde7c6c3ebd6886127b4e86ef9ed778eb547c7b3dba94c75483d42a",
+        "commands": 28,
+        "inputs": 123,
+        "events": 63,
+        "measurementFrames": 54,
+        "measurementStreamSHA256": "404217004455c3d68a98b261b47ab8a98fca01152f18e045793dcb32aac62ca5"
+      }
+    ]
+  },
+  {
+    "mode": "classic",
+    "level": "hard",
+    "seed": 8,
+    "file": "/tmp/human-ai-final-v15/raw-matches/classic/classic-hard-8.json",
+    "gzipFile": "/tmp/human-ai-final-v15/raw-matches/classic/classic-hard-8.json.gz",
+    "raw": {
+      "sha256": "833db9bb3f518990963db66cb1b5e3ae9cf14f9bb9b3e461e0faaeceb1797ef5",
+      "bytes": 6826649
+    },
+    "gzip": {
+      "sha256": "4599e89094cd6c4058752b723c80ccd67bdba7b69a3f09a916742060e9ba2da7",
+      "bytes": 250596
+    },
+    "timelineDigests": [
+      {
+        "slot": 0,
+        "sha256": "d87304a5184d85f804e943e2ba3dab707fc63ec68e06e5897fd4c409ff53f65a",
+        "commands": 45,
+        "inputs": 171,
+        "events": 105,
+        "measurementFrames": 101,
+        "measurementStreamSHA256": "2878f4d6202774d14f3ac6c7c5814306187de0add1fa9fe4369c4d00fd96b0c7"
+      },
+      {
+        "slot": 1,
+        "sha256": "8c0cfd493c57f8f72a5da81f82f927df3e74839034b43476bf408630aba841a3",
+        "commands": 44,
+        "inputs": 171,
+        "events": 75,
+        "measurementFrames": 56,
+        "measurementStreamSHA256": "31e293291a0e46e98e4ec5d73bc68ca3942f28b635205fdbe33e123600d92564"
+      },
+      {
+        "slot": 2,
+        "sha256": "ba788d5ccbb6d0b804037e0ff485549bd9840f8cfbe64d5bc2443436c5a5485f",
+        "commands": 31,
+        "inputs": 135,
+        "events": 81,
+        "measurementFrames": 77,
+        "measurementStreamSHA256": "44f52d8ce7a2ceaa73d7515bc552dc48e0216bc2990e8da1702b62ddd3010565"
+      }
+    ]
+  },
+  {
+    "mode": "classic",
+    "level": "hard",
+    "seed": 9,
+    "file": "/tmp/human-ai-final-v15/raw-matches/classic/classic-hard-9.json",
+    "gzipFile": "/tmp/human-ai-final-v15/raw-matches/classic/classic-hard-9.json.gz",
+    "raw": {
+      "sha256": "0a2499d7e733ab8932a33d845196f0ffe6393e4e3ffa27ad5f95a937f1ef3966",
+      "bytes": 6295103
+    },
+    "gzip": {
+      "sha256": "c0a28da0f4815f1482520fa0edfb5c0293b2f86a569331b29423d51bd7ddae89",
+      "bytes": 246628
+    },
+    "timelineDigests": [
+      {
+        "slot": 0,
+        "sha256": "bb5fd47f7beafa3e376391c8c043c5b157561ce319823335a5149101936073a3",
+        "commands": 26,
+        "inputs": 113,
+        "events": 53,
+        "measurementFrames": 43,
+        "measurementStreamSHA256": "ac7f797c8da95c277d91b97986276a5030ab4535f97ce55c791addd21c066c28"
+      },
+      {
+        "slot": 1,
+        "sha256": "5f9fa84fadd4e9f87a7c1e068de99d521127a31f5218a8a87cd161c657f2ba05",
+        "commands": 51,
+        "inputs": 175,
+        "events": 87,
+        "measurementFrames": 77,
+        "measurementStreamSHA256": "29c66622d386943281cd6fa0940e6cbc508681b8bd9b465e9d5374df78f490e3"
+      },
+      {
+        "slot": 2,
+        "sha256": "cf5861869b2cafe8dd309eda1319de055c43e7f4d028786f25591f5b739cf2eb",
+        "commands": 41,
+        "inputs": 158,
+        "events": 115,
+        "measurementFrames": 88,
+        "measurementStreamSHA256": "3f94413255b13760ae4c81931a524c50e5856286f78ba9a3853e6a4e206fd760"
+      }
+    ]
+  },
+  {
+    "mode": "classic",
+    "level": "hard",
+    "seed": 10,
+    "file": "/tmp/human-ai-final-v15/raw-matches/classic/classic-hard-10.json",
+    "gzipFile": "/tmp/human-ai-final-v15/raw-matches/classic/classic-hard-10.json.gz",
+    "raw": {
+      "sha256": "191b6edf86c6bc0dfeefc27d67ce5eaabbdf9814f1fbf9d139a3aa480da22bcf",
+      "bytes": 3737120
+    },
+    "gzip": {
+      "sha256": "5bb481210ab25854f5559d06e87c102b0f721076943f1ea22704dfe17bc221b0",
+      "bytes": 137071
+    },
+    "timelineDigests": [
+      {
+        "slot": 0,
+        "sha256": "044e655cbfe756bab573feb668b55e39f2f98208ecfe37979875291ec9a23fa2",
+        "commands": 44,
+        "inputs": 161,
+        "events": 78,
+        "measurementFrames": 57,
+        "measurementStreamSHA256": "cd7a35750da56f1450ef0977ba0486360e2fa87780a049b792ddd7f80b19a6f1"
+      },
+      {
+        "slot": 1,
+        "sha256": "e83c07c29367852dbafdcf7fefe295b8606c200a59aa210ce64650556816644d",
+        "commands": 32,
+        "inputs": 130,
+        "events": 59,
+        "measurementFrames": 48,
+        "measurementStreamSHA256": "a10b986f39501cbd54f392ee2cfa3ac89ce8fbd0dc3fe4d3434b0a3adf92ee8d"
+      },
+      {
+        "slot": 2,
+        "sha256": "7f22c7ece8d2d6089ff74a4ea9c4e2938d7a572470efea647564b569efd67ff4",
+        "commands": 51,
+        "inputs": 181,
+        "events": 69,
+        "measurementFrames": 60,
+        "measurementStreamSHA256": "8c21bdd504c8bd5b3abecae9bfabe14d1a43f8701dd6cbdf686b6428bbc84fe7"
+      }
+    ]
+  },
+  {
+    "mode": "world",
+    "level": "easy",
+    "seed": 2,
+    "file": "/tmp/human-ai-final-v15/raw-matches/world/world-easy-2.json",
+    "gzipFile": "/tmp/human-ai-final-v15/raw-matches/world/world-easy-2.json.gz",
+    "raw": {
+      "sha256": "72aed2fd7c779268e3e3662a59371072e09663020bcdb7d0fee57443af7af246",
+      "bytes": 588871
+    },
+    "gzip": {
+      "sha256": "6fa97d4b51266a0040bce35bafdcf814bcf0903796e5fc1996532ba859693899",
+      "bytes": 51564
+    },
+    "timelineDigests": [
+      {
+        "slot": 0,
+        "sha256": "4747b1071c1914f5251b14bad6a9d1d8563424df65f28eca550d86eabbd6aed6",
+        "commands": 31,
+        "inputs": 101,
+        "events": 6,
+        "measurementFrames": 7,
+        "measurementStreamSHA256": "dd4026d0a8c521e9309c7200c170ecf97f263860a83b4d0cce6473920b13c7d0"
+      },
+      {
+        "slot": 1,
+        "sha256": "f39a69fd17bbb9c2cca024de26b309207f541898430c3c0de499a5cb856e50d0",
+        "commands": 28,
+        "inputs": 95,
+        "events": 16,
+        "measurementFrames": 15,
+        "measurementStreamSHA256": "74bb4ae7b295840d600ef25133526d46c4766436694e944539b7f5d3c9170882"
+      },
+      {
+        "slot": 2,
+        "sha256": "0b1885267636af9654d3b4d4f42d1be7a815b6e3c011c0fe0f159859f3fc8427",
+        "commands": 28,
+        "inputs": 101,
+        "events": 7,
+        "measurementFrames": 8,
+        "measurementStreamSHA256": "203de24872e74561b954008c4ff8b7e32181f603a63dd80a958a87c00d445abe"
+      }
+    ]
+  },
+  {
+    "mode": "world",
+    "level": "easy",
+    "seed": 1,
+    "file": "/tmp/human-ai-final-v15/raw-matches/world/world-easy-1.json",
+    "gzipFile": "/tmp/human-ai-final-v15/raw-matches/world/world-easy-1.json.gz",
+    "raw": {
+      "sha256": "0d75a803387286332afd6530f29a43c6f538893a178ddbffc4ff1cdb44d550c0",
+      "bytes": 673841
+    },
+    "gzip": {
+      "sha256": "0a18df51ceb827b3b9a34a59d06926311ebb45e7cc69fe8500723939fd4d4291",
+      "bytes": 50045
+    },
+    "timelineDigests": [
+      {
+        "slot": 0,
+        "sha256": "e51b1a87303552b613f2c238dcddfb7fee7e66e73faccef6cb3f402f9aa63715",
+        "commands": 21,
+        "inputs": 91,
+        "events": 17,
+        "measurementFrames": 13,
+        "measurementStreamSHA256": "2bbec62267ad4adc3b22acc1c28627fef2cc68302b7f60ec8d89836c3f22fd75"
+      },
+      {
+        "slot": 1,
+        "sha256": "eeaece8e209a0d3e0fc8222e4acfa7ad934988eceeb5dc5a2fd8a722583c39c8",
+        "commands": 28,
+        "inputs": 97,
+        "events": 19,
+        "measurementFrames": 15,
+        "measurementStreamSHA256": "c64fb366242c38d1a3af80ef464a90e8412e74b4ca60be398021f1b6497f5f26"
+      },
+      {
+        "slot": 2,
+        "sha256": "89e740904bd6bde8896125615e19bcc76522ff0d70534fa36dc0c3fe9c0ddd28",
+        "commands": 17,
+        "inputs": 72,
+        "events": 19,
+        "measurementFrames": 15,
+        "measurementStreamSHA256": "b61572c268ec0c364030e640643446b8c1bdaa5218417cb80a18795e07bb585e"
+      }
+    ]
+  },
+  {
+    "mode": "world",
+    "level": "easy",
+    "seed": 3,
+    "file": "/tmp/human-ai-final-v15/raw-matches/world/world-easy-3.json",
+    "gzipFile": "/tmp/human-ai-final-v15/raw-matches/world/world-easy-3.json.gz",
+    "raw": {
+      "sha256": "4abaa396674630209d43946ef13b8352d91929c343c4130c021a0ef500e4a5d3",
+      "bytes": 652067
+    },
+    "gzip": {
+      "sha256": "ebd592835060aeed80e77ec0b4df33d1d345233af202cd6827f42b0b475cf98e",
+      "bytes": 49140
+    },
+    "timelineDigests": [
+      {
+        "slot": 0,
+        "sha256": "267f98da296f4d6c5dbfe0436d9e7de891a7e00a32bdba6b6a50d1d18dab0953",
+        "commands": 21,
+        "inputs": 92,
+        "events": 9,
+        "measurementFrames": 9,
+        "measurementStreamSHA256": "597dbd1031edf0f52fcce3cc69e762142554ac8cbe31a68b31ea7eead1410b98"
+      },
+      {
+        "slot": 1,
+        "sha256": "a0291205f2b1f4c7fd228b399aa3777b16d3e8f458c67a3acba570dde31afb1f",
+        "commands": 22,
+        "inputs": 76,
+        "events": 13,
+        "measurementFrames": 11,
+        "measurementStreamSHA256": "4d36e2cb5026e05936a0d75978289e46707c30f4376e0afc13b2475265623ca6"
+      },
+      {
+        "slot": 2,
+        "sha256": "f10d3cd0139cdc62ee005640f76b4c9ad6d4b99c9bc61f7e2aa54efe0ecc2bdc",
+        "commands": 20,
+        "inputs": 88,
+        "events": 22,
+        "measurementFrames": 18,
+        "measurementStreamSHA256": "d1b320420ab9a63bf3c5df4b4026e87af54db9ee0e85e44464a73fb2b27bf02e"
+      }
+    ]
+  },
+  {
+    "mode": "world",
+    "level": "easy",
+    "seed": 4,
+    "file": "/tmp/human-ai-final-v15/raw-matches/world/world-easy-4.json",
+    "gzipFile": "/tmp/human-ai-final-v15/raw-matches/world/world-easy-4.json.gz",
+    "raw": {
+      "sha256": "9507e8ae0e8a86f9e0954ebe9939c025704a6735ae756661919b24a3a078206d",
+      "bytes": 785608
+    },
+    "gzip": {
+      "sha256": "c088247a64845e6919c1a4ef52927de5abe0d2bb5fe36e9678f1b28325702aa9",
+      "bytes": 55026
+    },
+    "timelineDigests": [
+      {
+        "slot": 0,
+        "sha256": "ce65067e90af353fdd286bc81f749a3fb8066589b84fb930c43c712e5af5b30e",
+        "commands": 19,
+        "inputs": 81,
+        "events": 27,
+        "measurementFrames": 22,
+        "measurementStreamSHA256": "18d2fe5d65fc1a4df52074c02424285a2a8007dea0fa031a74f8873b5ae97176"
+      },
+      {
+        "slot": 1,
+        "sha256": "db8ef5f9ee1c7b0a79002dd36444e15540b3d41f88cc9fa8ff6a9e0660648557",
+        "commands": 29,
+        "inputs": 94,
+        "events": 13,
+        "measurementFrames": 12,
+        "measurementStreamSHA256": "a0c2d017ae783a60a4dc7258c0ae1b3b80ff882a84d11be901e058457d84af15"
+      },
+      {
+        "slot": 2,
+        "sha256": "a133546c91b377f9718e1235a7d1183c732dd3221c2367d3a49db70d35df71b4",
+        "commands": 24,
+        "inputs": 90,
+        "events": 19,
+        "measurementFrames": 13,
+        "measurementStreamSHA256": "8eae69b401b1e36eecbd9e81c96957a4a7d05001d18726d1040b488bf3ae9710"
+      }
+    ]
+  },
+  {
+    "mode": "world",
+    "level": "easy",
+    "seed": 5,
+    "file": "/tmp/human-ai-final-v15/raw-matches/world/world-easy-5.json",
+    "gzipFile": "/tmp/human-ai-final-v15/raw-matches/world/world-easy-5.json.gz",
+    "raw": {
+      "sha256": "3d15aaa536a203c98f5151db2d2e9c43766634242c58d32bdebeaef708065e1d",
+      "bytes": 611906
+    },
+    "gzip": {
+      "sha256": "40215b892f2fa397684c97b56720084865f6261a1666075407981e13cac977c4",
+      "bytes": 51401
+    },
+    "timelineDigests": [
+      {
+        "slot": 0,
+        "sha256": "801afafa37d426c9cafdb40d7f0433e627df6bf8d9a65731c79aa5c66b488cf4",
+        "commands": 23,
+        "inputs": 95,
+        "events": 14,
+        "measurementFrames": 13,
+        "measurementStreamSHA256": "82fab694748420d9331ed8b1ae92a0e9fce9dbbeb1ad3e4eca91adfd841eac0e"
+      },
+      {
+        "slot": 1,
+        "sha256": "6f929e66b77df625d15cba5b4d6bd14f0aed76308d2fb954d810dcffed27657e",
+        "commands": 27,
+        "inputs": 98,
+        "events": 6,
+        "measurementFrames": 7,
+        "measurementStreamSHA256": "a9d315ac00bf082eb1cf5ff00392d75eec782bcd3d1bafaeb52a60d1b67c3b85"
+      },
+      {
+        "slot": 2,
+        "sha256": "443c9de76130ba5ffbf687ca4fb8a5d642d3adc69a5f21d2b8be8f68ec4f44dc",
+        "commands": 25,
+        "inputs": 98,
+        "events": 18,
+        "measurementFrames": 14,
+        "measurementStreamSHA256": "2d45cd908a23fa58d3d639671fd0c2299b18dab51b93ff0e4451728a1e77f241"
+      }
+    ]
+  },
+  {
+    "mode": "world",
+    "level": "easy",
+    "seed": 6,
+    "file": "/tmp/human-ai-final-v15/raw-matches/world/world-easy-6.json",
+    "gzipFile": "/tmp/human-ai-final-v15/raw-matches/world/world-easy-6.json.gz",
+    "raw": {
+      "sha256": "966fe35b76668a98b6efd4840f79d507e6c55c093ad9f71a3a5eb2084ab9b641",
+      "bytes": 745551
+    },
+    "gzip": {
+      "sha256": "ffe3cb331bac524801ac5cc4f01563768d40acbebbc92c24ddf50fd95b4a34e8",
+      "bytes": 51314
+    },
+    "timelineDigests": [
+      {
+        "slot": 0,
+        "sha256": "5f30bd6e51173963e50a9ff606502df2ef8d1ef2860ec0bc461ced08ad0119d3",
+        "commands": 26,
+        "inputs": 101,
+        "events": 6,
+        "measurementFrames": 7,
+        "measurementStreamSHA256": "d3851cc5c845b044f49b78c740371d0545a156c239eab84e4b9e864cee05282b"
+      },
+      {
+        "slot": 1,
+        "sha256": "7d8823d25f584ee06af10e48e257ea326e6a8a247d001708decf2e89184f6f14",
+        "commands": 17,
+        "inputs": 70,
+        "events": 22,
+        "measurementFrames": 20,
+        "measurementStreamSHA256": "33e64c2d0a40f25521b528ac8d4081b81e39c7172d0d82dfb3e91970bf60db58"
+      },
+      {
+        "slot": 2,
+        "sha256": "2250e4f79877c64fed82e2083fcf529bc82264d1724b6745f6e507be97698e4a",
+        "commands": 22,
+        "inputs": 81,
+        "events": 25,
+        "measurementFrames": 20,
+        "measurementStreamSHA256": "2299ad2612a4b334b47971adaba6918cb16d4d8831bee2a674c09eff81d27986"
+      }
+    ]
+  },
+  {
+    "mode": "world",
+    "level": "easy",
+    "seed": 7,
+    "file": "/tmp/human-ai-final-v15/raw-matches/world/world-easy-7.json",
+    "gzipFile": "/tmp/human-ai-final-v15/raw-matches/world/world-easy-7.json.gz",
+    "raw": {
+      "sha256": "598c11f04281e1969e07567906b8a3ca3fc476010ec92aa4f850f26418e51ae6",
+      "bytes": 697129
+    },
+    "gzip": {
+      "sha256": "61dd95b1058a69fd315c6a291acd5a60310e7ee3eb4449b31bc4e256052b2fb0",
+      "bytes": 49760
+    },
+    "timelineDigests": [
+      {
+        "slot": 0,
+        "sha256": "cf243977bd3e6044e0e72cbd821b945e33239769fa2a8a7ffcd9e7bac1b2eed7",
+        "commands": 26,
+        "inputs": 99,
+        "events": 14,
+        "measurementFrames": 13,
+        "measurementStreamSHA256": "ef4e54b2630f9daeb8ab026b7da2fbc6f474a33c3a637478b1e607642fe5fa1b"
+      },
+      {
+        "slot": 1,
+        "sha256": "10c29c1914198b2fd93a8c6c7ba73c5f541ca4b3501668d920f0933e9b53fd86",
+        "commands": 14,
+        "inputs": 64,
+        "events": 25,
+        "measurementFrames": 20,
+        "measurementStreamSHA256": "be8e28fe98279cd2519a8a02b6b33dbdf8985b27f0818864282d8ef3954fb603"
+      },
+      {
+        "slot": 2,
+        "sha256": "620c5c38c26e608e90dd37854f9fc72bb868942d58e36dd6b00f81914d9f35da",
+        "commands": 23,
+        "inputs": 90,
+        "events": 15,
+        "measurementFrames": 11,
+        "measurementStreamSHA256": "42b6cb71b3a30c4f4067f62ef6b8ef4c7f5b9a2eec9c8ac47de0716c71242858"
+      }
+    ]
+  },
+  {
+    "mode": "world",
+    "level": "easy",
+    "seed": 8,
+    "file": "/tmp/human-ai-final-v15/raw-matches/world/world-easy-8.json",
+    "gzipFile": "/tmp/human-ai-final-v15/raw-matches/world/world-easy-8.json.gz",
+    "raw": {
+      "sha256": "4f973474484d81e3e0e7872ad8e2fd5e1a8b860706b769b467f0ad35231dbb50",
+      "bytes": 569277
+    },
+    "gzip": {
+      "sha256": "f668c4ef52bc527180409090c45fd9e26334803aabb149a01afb8afa0f4c780c",
+      "bytes": 50692
+    },
+    "timelineDigests": [
+      {
+        "slot": 0,
+        "sha256": "8d94827dd478388c1d3b9d30015bcde88498602544cd45aeaa66aa5c4d0b80e5",
+        "commands": 30,
+        "inputs": 100,
+        "events": 7,
+        "measurementFrames": 8,
+        "measurementStreamSHA256": "217659abccd113684e9f85a193930eeb949f7127d014d75de135c4bdd9d6338b"
+      },
+      {
+        "slot": 1,
+        "sha256": "2463a95802618d01c5f1d0d6ebba233abbef2f91ed361c5c717ec6b122a176de",
+        "commands": 28,
+        "inputs": 96,
+        "events": 13,
+        "measurementFrames": 11,
+        "measurementStreamSHA256": "b219512fb3875355df579aea57e48b0325c9fe2ec12abd81dd535d922328ca65"
+      },
+      {
+        "slot": 2,
+        "sha256": "f6719d2e0e61de5e7082e4bb50799a93b38da5e3f56773c7b1a9e95c36ea4e13",
+        "commands": 27,
+        "inputs": 98,
+        "events": 9,
+        "measurementFrames": 8,
+        "measurementStreamSHA256": "9778c4f6dfd54878e9bec7c460ef1f462466a90e70e10aa1e04703392bcd23ac"
+      }
+    ]
+  },
+  {
+    "mode": "world",
+    "level": "easy",
+    "seed": 9,
+    "file": "/tmp/human-ai-final-v15/raw-matches/world/world-easy-9.json",
+    "gzipFile": "/tmp/human-ai-final-v15/raw-matches/world/world-easy-9.json.gz",
+    "raw": {
+      "sha256": "8964eba1840c7cfa292401fce8b7319ed2ffa49ec91721d74cf465b359189a3e",
+      "bytes": 652504
+    },
+    "gzip": {
+      "sha256": "eafcd9fbdb0f17788553ccccc3c6de898ea1d19148f40e3bf64c63d3493a6865",
+      "bytes": 48688
+    },
+    "timelineDigests": [
+      {
+        "slot": 0,
+        "sha256": "bfa2fa1b913e460f231364671e76aca10fe96d79f9d409aa65a6d6354ce84c94",
+        "commands": 16,
+        "inputs": 70,
+        "events": 24,
+        "measurementFrames": 18,
+        "measurementStreamSHA256": "c086fac8a81f1b7f016a44b7fb0374344bd8dd650fbed90b7c2d6c1f4e700c4b"
+      },
+      {
+        "slot": 1,
+        "sha256": "53826ab89ba486bdf235b4050ab8c4abf41d616b382d5e342f5fa1be2645a8de",
+        "commands": 29,
+        "inputs": 93,
+        "events": 10,
+        "measurementFrames": 10,
+        "measurementStreamSHA256": "733618940785c258f7f934c278d2031c9685aebcd20d06ff01a8928f635f09e7"
+      },
+      {
+        "slot": 2,
+        "sha256": "5324bef743c683d50623bbc50c948fffd530055ffceb66a4bfdb4233798d65d7",
+        "commands": 24,
+        "inputs": 97,
+        "events": 6,
+        "measurementFrames": 7,
+        "measurementStreamSHA256": "60304c8c2b5f7339fbb61d04603a11658c6b88f9c3359c7f72bbd77bbd7ad423"
+      }
+    ]
+  },
+  {
+    "mode": "world",
+    "level": "easy",
+    "seed": 10,
+    "file": "/tmp/human-ai-final-v15/raw-matches/world/world-easy-10.json",
+    "gzipFile": "/tmp/human-ai-final-v15/raw-matches/world/world-easy-10.json.gz",
+    "raw": {
+      "sha256": "13da3d510b1df5fe4cc8cd1beec0b87ade9753ee6d799d07a5b3011d1c68662d",
+      "bytes": 566984
+    },
+    "gzip": {
+      "sha256": "589812900e0102cef9d0e3dde85b7669ff289e40d5421dd3eeaa69bcb9695e5e",
+      "bytes": 48842
+    },
+    "timelineDigests": [
+      {
+        "slot": 0,
+        "sha256": "77807c2e36717861e301f7770cdfcb07e84731088efc1543cb089a8ea1970b9e",
+        "commands": 25,
+        "inputs": 97,
+        "events": 5,
+        "measurementFrames": 6,
+        "measurementStreamSHA256": "757567938365af361b4cc194816e2d765c2ad812daed384c8ed27c109df0bf25"
+      },
+      {
+        "slot": 1,
+        "sha256": "9985022f18003b2ee4707284a24ea020d6aa55286b370e7852ffa75b2ec0d015",
+        "commands": 24,
+        "inputs": 94,
+        "events": 11,
+        "measurementFrames": 10,
+        "measurementStreamSHA256": "14d2a6ea5b47576622456f1dce844e47378a55be082f56775a26d9eeeff1fc7c"
+      },
+      {
+        "slot": 2,
+        "sha256": "c3ebb1c5072fbbf0c9378345b490f79d9bbe69a342d7a5fa03dc8241a6578366",
+        "commands": 23,
+        "inputs": 92,
+        "events": 16,
+        "measurementFrames": 12,
+        "measurementStreamSHA256": "0a043fb5119cebb5387cb8a47122c606124ccc0b5d9e3397d4b1da18aa3168a3"
+      }
+    ]
+  },
+  {
+    "mode": "world",
+    "level": "normal",
+    "seed": 1,
+    "file": "/tmp/human-ai-final-v15/raw-matches/world/world-normal-1.json",
+    "gzipFile": "/tmp/human-ai-final-v15/raw-matches/world/world-normal-1.json.gz",
+    "raw": {
+      "sha256": "8df31c5d6fe4313db98a670b9dc6009413ac97012c1385ef4970ba7dd9c4c60e",
+      "bytes": 737840
+    },
+    "gzip": {
+      "sha256": "5bb507adb37e24d1f2be5fb3cbf7cfb383aeb31d81c2446c140bd00f0374ad62",
+      "bytes": 61999
+    },
+    "timelineDigests": [
+      {
+        "slot": 0,
+        "sha256": "23361fa2ec02dd76167b37cdbf7d977d68344cb3488b3ace45c4c4618bec73b4",
+        "commands": 42,
+        "inputs": 145,
+        "events": 8,
+        "measurementFrames": 9,
+        "measurementStreamSHA256": "e5cfcf88af8a3f0b32b6ad8f9bb105d6c8414eb00b64fba7d58a4b6a55b870a5"
+      },
+      {
+        "slot": 1,
+        "sha256": "d126baa3a2ea1f896035bd3d86c69b076d89acfc7d3e14469a8212180274ad67",
+        "commands": 41,
+        "inputs": 142,
+        "events": 8,
+        "measurementFrames": 9,
+        "measurementStreamSHA256": "f06a6cdeaca821a5105f534a1cd20586ebf87f9bee0bae05c06f630d4b47f911"
+      },
+      {
+        "slot": 2,
+        "sha256": "3339701e093a5666ccd6c236bfd0e0f00126887cde6447eecc5aa7ed70869cb2",
+        "commands": 26,
+        "inputs": 106,
+        "events": 22,
+        "measurementFrames": 21,
+        "measurementStreamSHA256": "fcdd709d60f2642e8b3ecde313d73c61eba08813798303c3775cb385a81c8436"
+      }
+    ]
+  },
+  {
+    "mode": "world",
+    "level": "normal",
+    "seed": 2,
+    "file": "/tmp/human-ai-final-v15/raw-matches/world/world-normal-2.json",
+    "gzipFile": "/tmp/human-ai-final-v15/raw-matches/world/world-normal-2.json.gz",
+    "raw": {
+      "sha256": "08ca617badceee806e9535baf98ba1f298c9939b96afb70dde3b2322ca2fc14a",
+      "bytes": 790147
+    },
+    "gzip": {
+      "sha256": "52b2218929be110010769372e183fbcbbbd1f34ab3e9368ddb3eaa67d20c692c",
+      "bytes": 66558
+    },
+    "timelineDigests": [
+      {
+        "slot": 0,
+        "sha256": "18e6c4c6d61e0d5e830f644a6396f365295bb8fafed64d82dec29efe6854d41c",
+        "commands": 39,
+        "inputs": 140,
+        "events": 17,
+        "measurementFrames": 14,
+        "measurementStreamSHA256": "8068b01699eb9161da6579c4f8f2843cf4ffa078983033c15cb6b174df8cad53"
+      },
+      {
+        "slot": 1,
+        "sha256": "12a46c7c12967e27fddf380f8f599c80b3ccaa5c82a60e7f0679ca085c62bee2",
+        "commands": 37,
+        "inputs": 124,
+        "events": 18,
+        "measurementFrames": 19,
+        "measurementStreamSHA256": "e8735c371b47941c552af1a136cb6c85f54db879fe3edb34c45937a79167f8fc"
+      },
+      {
+        "slot": 2,
+        "sha256": "d5f897735d80f11d984cd51323367cc9034d4fb3c6a1fca0be9f2a3a2ba2b2dd",
+        "commands": 44,
+        "inputs": 148,
+        "events": 13,
+        "measurementFrames": 13,
+        "measurementStreamSHA256": "9f453ea20749ce82eca67e656bf3faa1fdcb53b1121dd1afb89e1b0a729914bc"
+      }
+    ]
+  },
+  {
+    "mode": "world",
+    "level": "normal",
+    "seed": 3,
+    "file": "/tmp/human-ai-final-v15/raw-matches/world/world-normal-3.json",
+    "gzipFile": "/tmp/human-ai-final-v15/raw-matches/world/world-normal-3.json.gz",
+    "raw": {
+      "sha256": "119e0f9a9375d5a190453c9033b298daf30cdee26bf78781bb37c338f8b54426",
+      "bytes": 752712
+    },
+    "gzip": {
+      "sha256": "1446362d3646bba126cd61e64c4dcdf834b101e04b05728b3594dfb8e5a67147",
+      "bytes": 59641
+    },
+    "timelineDigests": [
+      {
+        "slot": 0,
+        "sha256": "0b36cde1b126b61e9f945e7668603e89d9efd9fdd359922340a745eb8e94634b",
+        "commands": 22,
+        "inputs": 99,
+        "events": 12,
+        "measurementFrames": 11,
+        "measurementStreamSHA256": "7eb5634d55fd1948bd84a47bfa839f8fdf243fe9e28b758337192be52f53a265"
+      },
+      {
+        "slot": 1,
+        "sha256": "560e5d5f927e535d67b6a9503711735a97bbbb502e1f64bfa0deb8532e77cacd",
+        "commands": 29,
+        "inputs": 114,
+        "events": 20,
+        "measurementFrames": 19,
+        "measurementStreamSHA256": "330be8a237e0c21b6a689402f84cc0efa9c10efdd88fe6c2f6ba017481fc7f4d"
+      },
+      {
+        "slot": 2,
+        "sha256": "7fe0af216e8ece3db6b899a19298621bdbb71379bcaa19b0a6620663d903df06",
+        "commands": 33,
+        "inputs": 142,
+        "events": 12,
+        "measurementFrames": 11,
+        "measurementStreamSHA256": "e0b885ce31ccdceffce2e6a1623c157e84571277623efe26245c4bbac3b51b93"
+      }
+    ]
+  },
+  {
+    "mode": "world",
+    "level": "normal",
+    "seed": 4,
+    "file": "/tmp/human-ai-final-v15/raw-matches/world/world-normal-4.json",
+    "gzipFile": "/tmp/human-ai-final-v15/raw-matches/world/world-normal-4.json.gz",
+    "raw": {
+      "sha256": "7bc8fc306b69d6d0add0cbeb9594d539a43b38b32eb90b409e77f52102628322",
+      "bytes": 852759
+    },
+    "gzip": {
+      "sha256": "6fbe031081d7e243e5a2ab3ec50e2fbad345fd9e01a3eebb4538e7344c9899e4",
+      "bytes": 66993
+    },
+    "timelineDigests": [
+      {
+        "slot": 0,
+        "sha256": "4f0344b61bf98ea9a86cdc988801b89aa0c12f1bd075f2c5f71955e39f9b6338",
+        "commands": 26,
+        "inputs": 110,
+        "events": 17,
+        "measurementFrames": 16,
+        "measurementStreamSHA256": "508897e348218908a621b17388ac886653f7543005ec8978fa71289203e178ec"
+      },
+      {
+        "slot": 1,
+        "sha256": "0c2e270f4fccc7069f9ed75046177689d00182ee0d2e66ffb85e40802a0a3434",
+        "commands": 37,
+        "inputs": 133,
+        "events": 21,
+        "measurementFrames": 18,
+        "measurementStreamSHA256": "527e67647d5cea18eb4916f446eed5443313ba7bc7f25cda9cd9c443e2a3172b"
+      },
+      {
+        "slot": 2,
+        "sha256": "f9ac1fd370f00f205eaafea33ebb7ccbea8807e385d049d522439633e6efb2e1",
+        "commands": 39,
+        "inputs": 134,
+        "events": 19,
+        "measurementFrames": 17,
+        "measurementStreamSHA256": "c2911d37a25efe39debf58734b9ebc485123c38e42a8142bd636f2d0bad9ed47"
+      }
+    ]
+  },
+  {
+    "mode": "world",
+    "level": "normal",
+    "seed": 5,
+    "file": "/tmp/human-ai-final-v15/raw-matches/world/world-normal-5.json",
+    "gzipFile": "/tmp/human-ai-final-v15/raw-matches/world/world-normal-5.json.gz",
+    "raw": {
+      "sha256": "28a7dcb16ddd94dceece282bf971b5a26316c0d2b62e809a52a5ea7d7ea203c4",
+      "bytes": 1029859
+    },
+    "gzip": {
+      "sha256": "85eecc35617a7213e3ee4f6c2dc722681be5c91795a4826ec6c0f84eca674ab4",
+      "bytes": 67682
+    },
+    "timelineDigests": [
+      {
+        "slot": 0,
+        "sha256": "2a4f1b6a6ae3e6c0570372ca0ce928009b57db6061cec195ad3494391b3d420a",
+        "commands": 30,
+        "inputs": 125,
+        "events": 13,
+        "measurementFrames": 13,
+        "measurementStreamSHA256": "4056c68e44b586cd6cd292b16cd81e174f907276dbcf9fb63f306715bd605a15"
+      },
+      {
+        "slot": 1,
+        "sha256": "fac45f632cc5abd2ec5d0921ef8f8471a4e6dbde7813a3bb47d22b5ae29b70e3",
+        "commands": 34,
+        "inputs": 121,
+        "events": 28,
+        "measurementFrames": 26,
+        "measurementStreamSHA256": "c502e85e8df853822cebf2a4c80460959932414c5dc664b2215fba26dce2c92e"
+      },
+      {
+        "slot": 2,
+        "sha256": "54447a2fcabc8476f7b427e2306ba183d1954f650fb610e382c7ec15c4fcb1c5",
+        "commands": 36,
+        "inputs": 126,
+        "events": 31,
+        "measurementFrames": 28,
+        "measurementStreamSHA256": "61b33c597c57288b101a629d2d0cee1e1f711bfe0a9f0e53cdeed5d49c8fdf18"
+      }
+    ]
+  },
+  {
+    "mode": "world",
+    "level": "normal",
+    "seed": 6,
+    "file": "/tmp/human-ai-final-v15/raw-matches/world/world-normal-6.json",
+    "gzipFile": "/tmp/human-ai-final-v15/raw-matches/world/world-normal-6.json.gz",
+    "raw": {
+      "sha256": "357110eeb1d3e2841bda3a5eaffc46891c30037c50528371d8e6d7150a50519a",
+      "bytes": 797027
+    },
+    "gzip": {
+      "sha256": "575c7055174f5b6b817e553c906c3635ff99989602a87c1c9474840099bf64fa",
+      "bytes": 64561
+    },
+    "timelineDigests": [
+      {
+        "slot": 0,
+        "sha256": "ca386c29caa3bb5a3e671e919da3707e9ba6eea06ab88f0f7a5c1b011f31fd5b",
+        "commands": 35,
+        "inputs": 132,
+        "events": 17,
+        "measurementFrames": 14,
+        "measurementStreamSHA256": "eb7c3471393f1e680461cf5eabc278e156f557d3ae667cb59eba11f36de2d874"
+      },
+      {
+        "slot": 1,
+        "sha256": "81e4a61ffcaf9a57e0b3ba04d633f9358b1ecbe9d9d1da0d68db10ad913e39bb",
+        "commands": 41,
+        "inputs": 145,
+        "events": 11,
+        "measurementFrames": 11,
+        "measurementStreamSHA256": "3a3206414798ecedfced3ad6908eb0464e5150842075ac42aa126209fe5e7722"
+      },
+      {
+        "slot": 2,
+        "sha256": "d7325795efc36561a4c27620bc4183ba5fa9e0cf1c92840ce50a6549844a4b68",
+        "commands": 31,
+        "inputs": 118,
+        "events": 22,
+        "measurementFrames": 19,
+        "measurementStreamSHA256": "188b18dc108ec61dbdd183d46b90508eb7d71a39a5917c5db44317be6d97cc30"
+      }
+    ]
+  },
+  {
+    "mode": "world",
+    "level": "normal",
+    "seed": 7,
+    "file": "/tmp/human-ai-final-v15/raw-matches/world/world-normal-7.json",
+    "gzipFile": "/tmp/human-ai-final-v15/raw-matches/world/world-normal-7.json.gz",
+    "raw": {
+      "sha256": "5e600252ba53d2624dbf45d236ce34a31be405661771d03e803674ffe2cd0008",
+      "bytes": 824048
+    },
+    "gzip": {
+      "sha256": "bb50c3465be25c803a7a428bd04778278de9e2fa7880ad194391bdb4f08bf031",
+      "bytes": 60030
+    },
+    "timelineDigests": [
+      {
+        "slot": 0,
+        "sha256": "d9ed18e90f01fd6f2db7318fce35f8d6ce04cf218745ecef4f8a8d868c68f7d4",
+        "commands": 23,
+        "inputs": 105,
+        "events": 14,
+        "measurementFrames": 13,
+        "measurementStreamSHA256": "77ea55daaed77afde70cd958c3a1bd40c06b6abe654dc6cc88b622106bbee9bb"
+      },
+      {
+        "slot": 1,
+        "sha256": "afa329c6391a40044be1404264c4f1a997fccc32b451293d162b0a5d4c2089b2",
+        "commands": 28,
+        "inputs": 102,
+        "events": 26,
+        "measurementFrames": 25,
+        "measurementStreamSHA256": "5312054a4f0705ca053ff6b207dcfbc1aefcaf1d4fdfd3737ba0d16d4385331a"
+      },
+      {
+        "slot": 2,
+        "sha256": "3d810b853215cb0dd495b97cb204455934495e53b72aee61cd57100beef41f3b",
+        "commands": 28,
+        "inputs": 114,
+        "events": 10,
+        "measurementFrames": 10,
+        "measurementStreamSHA256": "236f54662d965bebc5ceb0572a9a56fe2a30d3f0927f54598c753140043ef318"
+      }
+    ]
+  },
+  {
+    "mode": "world",
+    "level": "normal",
+    "seed": 8,
+    "file": "/tmp/human-ai-final-v15/raw-matches/world/world-normal-8.json",
+    "gzipFile": "/tmp/human-ai-final-v15/raw-matches/world/world-normal-8.json.gz",
+    "raw": {
+      "sha256": "731328cc2e73fb318607c50e3dfe75c8ed3d09723c18ae8603e68a2cdff3f030",
+      "bytes": 874175
+    },
+    "gzip": {
+      "sha256": "ef465b8b20c23f573cd089beecb23cd92b0abddd26db02c978bec30efe990a48",
+      "bytes": 63231
+    },
+    "timelineDigests": [
+      {
+        "slot": 0,
+        "sha256": "d891ecc2b9cb6f90f5f6b881d212a1d3bb9cf02ba06e8a032fc283dabbe4d815",
+        "commands": 40,
+        "inputs": 138,
+        "events": 13,
+        "measurementFrames": 12,
+        "measurementStreamSHA256": "6d6dd992eef1ce3308974b377f90d0b165c1ad0f8d0eb9d886b1578856369f58"
+      },
+      {
+        "slot": 1,
+        "sha256": "466adbb2868a71e16da10ae17a3b579597e384c0d126a46336e4880c60263bce",
+        "commands": 31,
+        "inputs": 113,
+        "events": 21,
+        "measurementFrames": 19,
+        "measurementStreamSHA256": "802510599b9f303b6c84e5e91dbcc2fc273b39f47b90ba8b60e0f579e712d985"
+      },
+      {
+        "slot": 2,
+        "sha256": "847379330652a67cb8fc1019d98d67a4113acbfe190dbdc040a11ab48dcd2e4e",
+        "commands": 31,
+        "inputs": 115,
+        "events": 24,
+        "measurementFrames": 23,
+        "measurementStreamSHA256": "7f8bbfd5c159d2e5a0c1646314640b3b42c282b02b2cd1368b473822825e70a4"
+      }
+    ]
+  },
+  {
+    "mode": "world",
+    "level": "normal",
+    "seed": 9,
+    "file": "/tmp/human-ai-final-v15/raw-matches/world/world-normal-9.json",
+    "gzipFile": "/tmp/human-ai-final-v15/raw-matches/world/world-normal-9.json.gz",
+    "raw": {
+      "sha256": "d1461d171c79aefa7a60d57c6076215bfda943e40b5fc26595be28a194ffdf9f",
+      "bytes": 739836
+    },
+    "gzip": {
+      "sha256": "0bc3f178cf23303fbf2e47efdf2fce7a5fa2a83cc5a5a5f2aab27bc1e6c416aa",
+      "bytes": 60001
+    },
+    "timelineDigests": [
+      {
+        "slot": 0,
+        "sha256": "4e07060d75de75549ce1adbf08a00741d3f0347c95aa3f0ce5412eb5d34f9fa4",
+        "commands": 26,
+        "inputs": 104,
+        "events": 9,
+        "measurementFrames": 9,
+        "measurementStreamSHA256": "3adfb4285dd5dee6201d44b69574e75094363d7b5d4f067cbe7f077cd737cb51"
+      },
+      {
+        "slot": 1,
+        "sha256": "eb96890f22396d8d164214502ac16a7fa737415fbcfadd43d92a1d3b34c9765f",
+        "commands": 35,
+        "inputs": 123,
+        "events": 14,
+        "measurementFrames": 14,
+        "measurementStreamSHA256": "356828721892b21f3e07df7783791131256720266afb985085a4a63c55e5433d"
+      },
+      {
+        "slot": 2,
+        "sha256": "a0a6a14cc7da99100b97d3f6e7bff7d4ecebd2a290b86f36af74c7da1039bf6f",
+        "commands": 32,
+        "inputs": 118,
+        "events": 24,
+        "measurementFrames": 17,
+        "measurementStreamSHA256": "bb51aadd85de43a4d072a8286de321bddb07fc069fd9e01aa94da39bf42dd245"
+      }
+    ]
+  },
+  {
+    "mode": "world",
+    "level": "normal",
+    "seed": 10,
+    "file": "/tmp/human-ai-final-v15/raw-matches/world/world-normal-10.json",
+    "gzipFile": "/tmp/human-ai-final-v15/raw-matches/world/world-normal-10.json.gz",
+    "raw": {
+      "sha256": "aecf29cb9c57adf8c0fcf2d2117b90aac85ba11ddc7f0efa2b4ba00ab63aee85",
+      "bytes": 910191
+    },
+    "gzip": {
+      "sha256": "c2de03563b477f230ac6af629e669a213e12a0b55c71339dc3b1452b055fe713",
+      "bytes": 59860
+    },
+    "timelineDigests": [
+      {
+        "slot": 0,
+        "sha256": "d18ecdb0ff70f142c9c91fca8162d86b53a8034cc5d9fba37b9915b8080005ec",
+        "commands": 26,
+        "inputs": 108,
+        "events": 21,
+        "measurementFrames": 17,
+        "measurementStreamSHA256": "f8f1614b542693bef82447ab97e1052278b91789f70c33b4e08b65b002f7c73c"
+      },
+      {
+        "slot": 1,
+        "sha256": "a962e6deea14a87feb98f6e3b4d6544e62bef7d0ef0798f1e1bc0bcf4839db53",
+        "commands": 22,
+        "inputs": 90,
+        "events": 26,
+        "measurementFrames": 25,
+        "measurementStreamSHA256": "56ac5dbb8c14bc379c400aa3df78fcb5ed5d5ade96eb63e13f03a9d13c08ff13"
+      },
+      {
+        "slot": 2,
+        "sha256": "9dab464e13c066b3d7651a6c9fefb76391c915b0d6c0f3930101d263a257756c",
+        "commands": 26,
+        "inputs": 108,
+        "events": 21,
+        "measurementFrames": 18,
+        "measurementStreamSHA256": "6ff1d7f03838f1f6afa4fd9e940a45127e2aade1d97d33f2db020fbebe27977c"
+      }
+    ]
+  },
+  {
+    "mode": "world",
+    "level": "hard",
+    "seed": 1,
+    "file": "/tmp/human-ai-final-v15/raw-matches/world/world-hard-1.json",
+    "gzipFile": "/tmp/human-ai-final-v15/raw-matches/world/world-hard-1.json.gz",
+    "raw": {
+      "sha256": "b935dbd8664d4ac1d1dd7ac44b860538ba8db4a78c3cf9bbb8afc79295e13f26",
+      "bytes": 1021952
+    },
+    "gzip": {
+      "sha256": "90e3d407f4306c1988000c9dff84b030068bf6f86656ae71ffe726de119461f8",
+      "bytes": 79721
+    },
+    "timelineDigests": [
+      {
+        "slot": 0,
+        "sha256": "795439f5efb745bfae957ecfc4fb8a5ee2a71b5c369091b4e9e866fa86f53906",
+        "commands": 50,
+        "inputs": 193,
+        "events": 28,
+        "measurementFrames": 23,
+        "measurementStreamSHA256": "0698dcf782400ef30cecacc4dd9270a186b44814a51c858b20a3af1920389c92"
+      },
+      {
+        "slot": 1,
+        "sha256": "e934a9af07505369f72d4fba4e1782fed68cd944a25f0325cb8e556d02be0bdc",
+        "commands": 37,
+        "inputs": 145,
+        "events": 19,
+        "measurementFrames": 17,
+        "measurementStreamSHA256": "50d75751efa50beb19d336864350c5560d82825134ae52290226ec131c78640d"
+      },
+      {
+        "slot": 2,
+        "sha256": "c09f1e5cf0bc0c4fb3cc9f2067259f20868caadf48b541dfcef9d8824b3c2f1a",
+        "commands": 33,
+        "inputs": 146,
+        "events": 19,
+        "measurementFrames": 19,
+        "measurementStreamSHA256": "3a30cc38b22dcb51140fb7723d10d3787fbe22174cc5cbc5c88b867e3e7a0e56"
+      }
+    ]
+  },
+  {
+    "mode": "world",
+    "level": "hard",
+    "seed": 2,
+    "file": "/tmp/human-ai-final-v15/raw-matches/world/world-hard-2.json",
+    "gzipFile": "/tmp/human-ai-final-v15/raw-matches/world/world-hard-2.json.gz",
+    "raw": {
+      "sha256": "72c434c074deb18e668d8f42ac5f8ebb438220b7e833871aec553d90726ba66a",
+      "bytes": 1016256
+    },
+    "gzip": {
+      "sha256": "4a082d5c561b0cc0a578d8dd5ffece5c38b9da8523cda83aa1612146f81a1104",
+      "bytes": 78908
+    },
+    "timelineDigests": [
+      {
+        "slot": 0,
+        "sha256": "7012eec59b996717564a07b0414d8b6c8dca00b4a62d6b387c98632a3b38a4eb",
+        "commands": 40,
+        "inputs": 161,
+        "events": 16,
+        "measurementFrames": 16,
+        "measurementStreamSHA256": "925dd60e7f4f13f26cdcc69f86341c7fcbe3eb4ada454511a6d56e7de3ed9548"
+      },
+      {
+        "slot": 1,
+        "sha256": "cfd75c2437205e408699fbcb9710be61cf97b22be18bbaca07597fe018c6a682",
+        "commands": 56,
+        "inputs": 201,
+        "events": 19,
+        "measurementFrames": 17,
+        "measurementStreamSHA256": "e685fbcba916f32ab94656c4c24de3b87faa5fb6dc7ce25eb547bbc0a5e16a30"
+      },
+      {
+        "slot": 2,
+        "sha256": "0b875c4955d2ac67348403ea2280bef4e4a266742019546ff1433242fc60e8d6",
+        "commands": 39,
+        "inputs": 150,
+        "events": 26,
+        "measurementFrames": 24,
+        "measurementStreamSHA256": "997c708be445a902c0ad7cc5a5640b63da86871649776b302f9f15c03d924ebf"
+      }
+    ]
+  },
+  {
+    "mode": "world",
+    "level": "hard",
+    "seed": 3,
+    "file": "/tmp/human-ai-final-v15/raw-matches/world/world-hard-3.json",
+    "gzipFile": "/tmp/human-ai-final-v15/raw-matches/world/world-hard-3.json.gz",
+    "raw": {
+      "sha256": "5b6c61521e9bb5fdb34eb6ca5e66896f2413798bbc9859c04c015dd2bbe64c47",
+      "bytes": 925525
+    },
+    "gzip": {
+      "sha256": "8f5220e70a527b79bf3a908d601cf9d3298b72ac8c6788399f222734c213706b",
+      "bytes": 74583
+    },
+    "timelineDigests": [
+      {
+        "slot": 0,
+        "sha256": "1bc1693a99bc999a4603405d0c804d487f448d4aaf2c87afccde5209c4a7b1b2",
+        "commands": 38,
+        "inputs": 157,
+        "events": 11,
+        "measurementFrames": 7,
+        "measurementStreamSHA256": "d7dd436f335503b8a5050044270f21ff305ea179f0c40557f8d263a487015451"
+      },
+      {
+        "slot": 1,
+        "sha256": "5d30a90bf90393a87034ccd8ef62d1b5cf79f22575d1786882c57f822559efe0",
+        "commands": 32,
+        "inputs": 142,
+        "events": 21,
+        "measurementFrames": 20,
+        "measurementStreamSHA256": "1a4a9ab44b328ced4beb6b0439fa874eef0472b89f5735bafbe2507f89668a0e"
+      },
+      {
+        "slot": 2,
+        "sha256": "b8c5389c84bd76665b573b93bb73a055a699a0490461b6197656e35ac027298b",
+        "commands": 36,
+        "inputs": 158,
+        "events": 21,
+        "measurementFrames": 20,
+        "measurementStreamSHA256": "49e2192410cb06adffaccaade791e1782c0edaa5cd9f3e0b9fd8e7e3a985d921"
+      }
+    ]
+  },
+  {
+    "mode": "world",
+    "level": "hard",
+    "seed": 4,
+    "file": "/tmp/human-ai-final-v15/raw-matches/world/world-hard-4.json",
+    "gzipFile": "/tmp/human-ai-final-v15/raw-matches/world/world-hard-4.json.gz",
+    "raw": {
+      "sha256": "489b3c8690fb810b356364ce4b281081af947c3ae7de060289691b5dba274d30",
+      "bytes": 1263871
+    },
+    "gzip": {
+      "sha256": "c1f3d6cc012a91bc960b9631b5f321689efe208245a9a191f25dc0fd3107878b",
+      "bytes": 83128
+    },
+    "timelineDigests": [
+      {
+        "slot": 0,
+        "sha256": "69fa9d4eca9f51b0852f9953402847c3a33696420169f33569600e10db9665f8",
+        "commands": 38,
+        "inputs": 165,
+        "events": 18,
+        "measurementFrames": 16,
+        "measurementStreamSHA256": "44099dca30ca850bbf12f59e30e097e2a251f23c5fa122e9173903c64ffe6c96"
+      },
+      {
+        "slot": 1,
+        "sha256": "55a0a3ae003b75975fe53d125042df27b96b134508f6cd4df790964e479e160d",
+        "commands": 43,
+        "inputs": 175,
+        "events": 27,
+        "measurementFrames": 24,
+        "measurementStreamSHA256": "193f052840d1b94f42604cf197cc70170d058ae9b636b7d9691c1249d1ddb906"
+      },
+      {
+        "slot": 2,
+        "sha256": "7003517e90c8b291951ddb53cf8ecc3edb86472fdb9f30b0a35f83826a5908f0",
+        "commands": 35,
+        "inputs": 155,
+        "events": 38,
+        "measurementFrames": 32,
+        "measurementStreamSHA256": "8e7f6e6c5ffa1398cdb7c3990376bc3eea4d064784778b4d30a8a3ea5652e88d"
+      }
+    ]
+  },
+  {
+    "mode": "world",
+    "level": "hard",
+    "seed": 5,
+    "file": "/tmp/human-ai-final-v15/raw-matches/world/world-hard-5.json",
+    "gzipFile": "/tmp/human-ai-final-v15/raw-matches/world/world-hard-5.json.gz",
+    "raw": {
+      "sha256": "42ab0c2eeeed97fb38ab97aa53d47e0d60b3570d07e73a4bc1dd77c7e67378f9",
+      "bytes": 1061343
+    },
+    "gzip": {
+      "sha256": "6475a0607493829b19d84553207762044965d9b91159ca61344dcd35cd24c70a",
+      "bytes": 77227
+    },
+    "timelineDigests": [
+      {
+        "slot": 0,
+        "sha256": "cb0d64a672dd1083ae9b9d7b3e43918db6d41f46745be4b67bd4b09acf9ca066",
+        "commands": 31,
+        "inputs": 151,
+        "events": 22,
+        "measurementFrames": 17,
+        "measurementStreamSHA256": "9f61292ab3475d24e35046c81ac18406e85c972ae4013f545da7f29f752ca1c2"
+      },
+      {
+        "slot": 1,
+        "sha256": "686ff006e2b1175d6f245388c0ab8181fbaff839e6009785321ed40d166f72ae",
+        "commands": 41,
+        "inputs": 166,
+        "events": 27,
+        "measurementFrames": 24,
+        "measurementStreamSHA256": "5b3af59317d8fb10c625f7bac2f93a2850ada8c3454e243cf6c1ff438af769e2"
+      },
+      {
+        "slot": 2,
+        "sha256": "ce7e4d20a3c9b99662028aafbea1582b9c788eb4abd933eafe15419c324e970a",
+        "commands": 38,
+        "inputs": 147,
+        "events": 22,
+        "measurementFrames": 20,
+        "measurementStreamSHA256": "97fe69a0c0fa0bddcdef63c3613402de2c9d97c572986a647e075076f3e904dd"
+      }
+    ]
+  },
+  {
+    "mode": "world",
+    "level": "hard",
+    "seed": 6,
+    "file": "/tmp/human-ai-final-v15/raw-matches/world/world-hard-6.json",
+    "gzipFile": "/tmp/human-ai-final-v15/raw-matches/world/world-hard-6.json.gz",
+    "raw": {
+      "sha256": "ebe16d19b9bb037864f837d94b76ba5b64f0ae64bb70ca1a0f8859d3041531d9",
+      "bytes": 958860
+    },
+    "gzip": {
+      "sha256": "8606e03da3f4185d8649f1f28eafdd981dec58e9347e4e58f351b79a9aaf6e35",
+      "bytes": 79305
+    },
+    "timelineDigests": [
+      {
+        "slot": 0,
+        "sha256": "f2aa89af4a2f7b4efe0bb4620df2724a0328b1c5af22a9023b7b8a0224d377ca",
+        "commands": 46,
+        "inputs": 188,
+        "events": 16,
+        "measurementFrames": 16,
+        "measurementStreamSHA256": "689194f9b1db00eee8dddd0350c9e27427d1c33564d09dd6e3c7be98e738802f"
+      },
+      {
+        "slot": 1,
+        "sha256": "0ce82ef70225d5b030ba7f5869454501fb6da43a99ee586abb6148efb6a7da67",
+        "commands": 45,
+        "inputs": 173,
+        "events": 28,
+        "measurementFrames": 21,
+        "measurementStreamSHA256": "66409eeeb93f7ebafc8b41d981d3c6e4ce1be0be2180fe844dae6303aec7479c"
+      },
+      {
+        "slot": 2,
+        "sha256": "aabb030916dac6a19b85193548c65c05f87dfc898505aced8d0bc8b751534dc6",
+        "commands": 32,
+        "inputs": 150,
+        "events": 15,
+        "measurementFrames": 14,
+        "measurementStreamSHA256": "47f8d641dc06da384a5ad738c70780e8607eae862ff70d4bcb061bfcca42c399"
+      }
+    ]
+  },
+  {
+    "mode": "world",
+    "level": "hard",
+    "seed": 7,
+    "file": "/tmp/human-ai-final-v15/raw-matches/world/world-hard-7.json",
+    "gzipFile": "/tmp/human-ai-final-v15/raw-matches/world/world-hard-7.json.gz",
+    "raw": {
+      "sha256": "cb67f74103269cb5281e6693a9e1ad4ab1086818c9252c4e2d094c503f6a4601",
+      "bytes": 892128
+    },
+    "gzip": {
+      "sha256": "44694badf13a37c6a520a9122d0b72fd4889a5f4797c9f0ad578378cbedca72a",
+      "bytes": 74021
+    },
+    "timelineDigests": [
+      {
+        "slot": 0,
+        "sha256": "b977dc767f3b15f321b08fe98d0ebbbc9ed6aeb7dc68363f435b6e1e08c949fd",
+        "commands": 42,
+        "inputs": 173,
+        "events": 19,
+        "measurementFrames": 17,
+        "measurementStreamSHA256": "11a076a6a295bb3db57d0422fbe69bf9570e5e3bbc92299f2be6d325f516637d"
+      },
+      {
+        "slot": 1,
+        "sha256": "9011e390618fa2d3afa7bd406f26df2162301776eae312fc628c19caf47bc6c5",
+        "commands": 33,
+        "inputs": 130,
+        "events": 18,
+        "measurementFrames": 17,
+        "measurementStreamSHA256": "fd064efd75b767191e2a811646a0d596e2d93edd4436061ab3cf0f04d42629e5"
+      },
+      {
+        "slot": 2,
+        "sha256": "0d39fcc1eba91d23b9716946a4d41ee12b96520e1efac23c4fc94212c3988fc2",
+        "commands": 37,
+        "inputs": 153,
+        "events": 15,
+        "measurementFrames": 13,
+        "measurementStreamSHA256": "70e2b598784df8ebdd4b320ae7e491cc7c5f0f3558f781daa53c24258855b7fe"
+      }
+    ]
+  },
+  {
+    "mode": "world",
+    "level": "hard",
+    "seed": 8,
+    "file": "/tmp/human-ai-final-v15/raw-matches/world/world-hard-8.json",
+    "gzipFile": "/tmp/human-ai-final-v15/raw-matches/world/world-hard-8.json.gz",
+    "raw": {
+      "sha256": "669caf57017452714eac7ac71e0804610cc4d10d9e7d438009c595eec5666585",
+      "bytes": 1126993
+    },
+    "gzip": {
+      "sha256": "e0507c1c32442ffe0c91dbae7ccd504ebce483e4e9e97fb5391dd4417bae7846",
+      "bytes": 83113
+    },
+    "timelineDigests": [
+      {
+        "slot": 0,
+        "sha256": "ba5f84a3d2af91a935e84b8b6c0315243d36a3afe149e6ebf8b9f411bc8dfc9e",
+        "commands": 45,
+        "inputs": 191,
+        "events": 15,
+        "measurementFrames": 13,
+        "measurementStreamSHA256": "e678f67d9a24b2f0a5f898191597a880091ead7ebf99fbf854d35871a71b5691"
+      },
+      {
+        "slot": 1,
+        "sha256": "9b26a40c819945fc24fb5314ba0a86b04e6b28d7a89770fd9310c8c2253c30b1",
+        "commands": 39,
+        "inputs": 158,
+        "events": 29,
+        "measurementFrames": 25,
+        "measurementStreamSHA256": "50a3a26d765b9c4523089f2cf230a0e93f97123a97b801a968609ca5c3013bcc"
+      },
+      {
+        "slot": 2,
+        "sha256": "68ffd8296a4a5191467a3f904e3f5943f1be1f59a51b77eb39631180d043541c",
+        "commands": 46,
+        "inputs": 174,
+        "events": 25,
+        "measurementFrames": 25,
+        "measurementStreamSHA256": "945d84dc56facf77426a6ccc7604ac4fb34b944b3d688c843d8b4e412d370585"
+      }
+    ]
+  },
+  {
+    "mode": "world",
+    "level": "hard",
+    "seed": 9,
+    "file": "/tmp/human-ai-final-v15/raw-matches/world/world-hard-9.json",
+    "gzipFile": "/tmp/human-ai-final-v15/raw-matches/world/world-hard-9.json.gz",
+    "raw": {
+      "sha256": "58b0ddcea5308f5102bb608a92d0516e1817f4ea31aa4ec83a06cf3d07003c55",
+      "bytes": 1166900
+    },
+    "gzip": {
+      "sha256": "2674081471228a21fcdfb7b6a3ec2195b931ccc5c920e72bc6a07e829e0e0ebe",
+      "bytes": 79524
+    },
+    "timelineDigests": [
+      {
+        "slot": 0,
+        "sha256": "1ee9d796c3f58ad756abff4ba830e021c08447b6418eca4c378ff472bc6d391e",
+        "commands": 28,
+        "inputs": 131,
+        "events": 17,
+        "measurementFrames": 14,
+        "measurementStreamSHA256": "3a5a2beca4782de573872da11cf223f6709df67c853fde58c3b91e52df1fc760"
+      },
+      {
+        "slot": 1,
+        "sha256": "baa54a87ef26ddf2bad24136357f451d3eb0096a758955c5aa4b306be93dd3d8",
+        "commands": 42,
+        "inputs": 164,
+        "events": 22,
+        "measurementFrames": 23,
+        "measurementStreamSHA256": "02ccf0ae3a6e454d8d89b910b50527f347dcb987e2fdacfb4971e2ba86246690"
+      },
+      {
+        "slot": 2,
+        "sha256": "436b7b3c86a8cb1cc20b8dd62f1a934a972686acd2933bf8a6381a570f747a6c",
+        "commands": 42,
+        "inputs": 165,
+        "events": 37,
+        "measurementFrames": 32,
+        "measurementStreamSHA256": "ba96fafac0eb68ae69f30e07c4814d76d3164533db6f3548f9540429d3efac91"
+      }
+    ]
+  },
+  {
+    "mode": "world",
+    "level": "hard",
+    "seed": 10,
+    "file": "/tmp/human-ai-final-v15/raw-matches/world/world-hard-10.json",
+    "gzipFile": "/tmp/human-ai-final-v15/raw-matches/world/world-hard-10.json.gz",
+    "raw": {
+      "sha256": "4e0cda4c47417edceb9c56913c146d4e6a5c1648ad0e0b40c6ff5e0d61ec9a98",
+      "bytes": 904827
+    },
+    "gzip": {
+      "sha256": "fc5a6528519e46a6d84b2f1d817ad1d82b2f0d852368cad1afc3d107317c96d3",
+      "bytes": 71060
+    },
+    "timelineDigests": [
+      {
+        "slot": 0,
+        "sha256": "4ecf6933a9f70f092727887492eb1181c8dd0b4d13936cb9abae700830cee7ce",
+        "commands": 33,
+        "inputs": 147,
+        "events": 16,
+        "measurementFrames": 17,
+        "measurementStreamSHA256": "a6be848cc5b3728b1d621552c2e82bf2824a9ed348f4ead97dfcc5533debbb02"
+      },
+      {
+        "slot": 1,
+        "sha256": "ec660c928c59de6d0885d7261cf6827ce2caa432ae9620fe59dc4421a622bf1d",
+        "commands": 30,
+        "inputs": 130,
+        "events": 19,
+        "measurementFrames": 18,
+        "measurementStreamSHA256": "7f904cf6fac7f62dfe0aa6ef7f711f23cd07f3f8c3fbdaa2255f8c9a6c0c8f65"
+      },
+      {
+        "slot": 2,
+        "sha256": "d12b890e6d9d1270e73d2ce9107ceb98b9e2a553aa9f426dff179510176739dd",
+        "commands": 28,
+        "inputs": 133,
+        "events": 16,
+        "measurementFrames": 16,
+        "measurementStreamSHA256": "34523aabdd591f4f9fe9326b5554f277603013e693518745c23a874b62451936"
+      }
+    ]
+  }
+]

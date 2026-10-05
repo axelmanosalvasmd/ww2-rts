@@ -1,0 +1,68 @@
+--- a/shared/ai-commander.js
++++ b/shared/ai-commander.js
+@@ -123,6 +123,17 @@
+   else if(cmd.ids)copy.ids=[...cmd.ids];
+   return JSON.stringify(canonical(copy));
+ }
++// Pair accepted actor destinations with the complete planned operation, including formation membership and order.
++function movementIntentKey(cmd, id) {
++  if (!movement(cmd)) return null;
++  const row = cmd.orders.find(row => row[0] === id);
++  return row ? exactCommandKey(cmd) : null;
++}
++function acceptedMovementIntent(cmd, planned, id) {
++  if (!planned || cmd.t !== planned.t || !!cmd.queue !== !!planned.queue
++    || !acceptedIntent(cmd, planned)) return null;
++  return movementIntentKey(planned, id);
++}
+ function acceptedIntent(cmd, planned) {
+   if(!planned || cmd.t!==planned.t || cmd.target!==planned.target || cmd.kind!==planned.kind)return null;
+   const actual=[...idsOf(cmd)].sort((a,b)=>a-b), intended=[...idsOf(planned)].sort((a,b)=>a-b);
+@@ -150,6 +161,26 @@
+     return true;
+   });
+   return rows.length ? {...cmd,orders:rows.map(row=>[...row])} : null;
++}
++
++// Match the complete merged operation before pruning arrived actors. A different group can form different destinations.
++function arrivedMovement(cmd, view, state, concern, dangerMoves) {
++  if (!movement(cmd)) return cmd;
++  let current = cmd;
++  while (current.orders.length) {
++    const intent = exactCommandKey(current);
++    const rows = current.orders.filter(row => {
++      const id = row[0], unit = view.units.get(id), old = state.orderHistory?.get(id);
++      if (!old?.intent || old.intent !== intent || !unit || distance(unit, old) >= 2) return true;
++      const at = { x: row[1], z: row[2] }, local = dangerMoves.get(id);
++      return cmd.t === 'move' && local && row[1] === local.x && row[2] === local.z
++        || concern.event === 'base' && distance(unit, concern) <= 48 && distance(at, concern) <= 24;
++    });
++    if (rows.length === current.orders.length) return current;
++    // Removing arrived members can restore a smaller operation already accepted for its remaining actors.
++    current = { ...current, orders: rows.map(row => [...row]) };
++  }
++  return null;
+ }
+ 
+ function responseContext(cmd, context, view, state, slot, tick) {
+@@ -249,7 +280,8 @@
+       const old = state.orderHistory?.get(row[0]);
+       const previous = [...(old?.previous ?? []), ...(old ? [{ tick: old.tick, x: old.x, z: old.z }] : [])]
+         .filter(target => tick - target.tick < 600).slice(-8);
+-      (state.orderHistory ??= new Map()).set(row[0], { tick, x: row[1], z: row[2], t: cmd.t, previous });
++      (state.orderHistory ??= new Map()).set(row[0], { tick, x: row[1], z: row[2], t: cmd.t,
++        intent: acceptedMovementIntent(cmd, hands.active?.job.command, row[0]), previous });
+     }
+     if (result === undefined && cmd.t === 'ability' && Number.isFinite(cmd.x)) for (const id of cmd.ids ?? []) {
+       const unit = view.units.get(id);
+@@ -424,7 +456,9 @@
+     return;
+   }
+   let queued = 0;
+-  for (const cmd of mergeMovements(intents, view, dangerMoves)) {
++  for (const merged of mergeMovements(intents, view, dangerMoves)) {
++    const cmd = arrivedMovement(merged, view, state, concern, dangerMoves);
++    if (!cmd) continue;
+     if (queued >= ({ easy: 2, normal: 4, hard: 6 }[level] ?? 4)) break;
+     // Hesitation belongs to risky advances, rather than cancelling an order already issued.
+     if (cmd.t === 'amove' && concern.kind === 'combat' && random(hands.rng) < ({ easy: 0.25, normal: 0.12, hard: 0.04 }[level] ?? 0.12)) continue;

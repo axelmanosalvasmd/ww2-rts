@@ -1,0 +1,72 @@
+{
+  "at": "2026-10-04T21:07:14.074103+00:00",
+  "adopted": true,
+  "populationAcceptance": false,
+  "recordedTimingsSource": "Original proposals retain their own earlier source hashes. Root focused fixture results are separate.",
+  "currentSources": {
+    "shared/ai.js": "2e01129543e4095b95bdbb693f89ce278a810796528718fac192436ac7bf9f21",
+    "shared/ai-hands.js": "8bd373c3afb8261bf8ca2a53f24512522b91f0ddc6568eaa61dbf7039684b9a3",
+    "shared/ai-attention.js": "2b1f22635d43a11c40715c7859520a5eb4fc862d557ee7efb09ceb89425d92b5",
+    "shared/ai-commander.js": "19112a1e4c94da72d62564d940497d38cf7e93e3086c9bde3db9c29d088703df",
+    "tools/ai-humanity.mjs": "fac34526a548c8fec5b11e8bd10f07e28b84f6aa09b13206296c4d40a589af4c",
+    "test-engine-ai-ap-vehicles.js": "33c6174f07be1a80a9e5c53fcbf3d522ed7d6bb3a9ffc095f378d0b63dfdcd30",
+    "test-engine-ai-stale-stance.js": "e1af9650db8ac60587d13409a36987a00cbe28860e34324cae289c01e32e9aa1",
+    "test-engine-ai-public-alert.js": "0cbc147c68cc51e14db3c85a9e764deecc8ba6a0997d84a8019455eb8c47a2b5"
+  },
+  "members": [
+    {
+      "source": "/tmp/ai-alert-policy-proposal/PROPOSAL.md",
+      "path": "docs/evidence/human-like-ai-public-alert/PROPOSAL.md",
+      "sourceBytes": 5849,
+      "sourceSHA256": "1863b470a9979afb878111fb0d5aee7b1cf61a5100f4c83fba2a13ea13831195",
+      "storedBytes": 5849,
+      "storedSHA256": "1863b470a9979afb878111fb0d5aee7b1cf61a5100f4c83fba2a13ea13831195",
+      "gzip": false
+    },
+    {
+      "source": "/tmp/ai-alert-policy-proposal/native-module-fixture.patch",
+      "path": "docs/evidence/human-like-ai-public-alert/native-module-fixture.patch",
+      "sourceBytes": 34034,
+      "sourceSHA256": "988b3040224633be26ebf099efa24567ebef90ea53a9aaba8ce20ee39b10271d",
+      "storedBytes": 34034,
+      "storedSHA256": "988b3040224633be26ebf099efa24567ebef90ea53a9aaba8ce20ee39b10271d",
+      "gzip": false
+    },
+    {
+      "source": "/tmp/ai-alert-policy-proposal/collector-integration.patch",
+      "path": "docs/evidence/human-like-ai-public-alert/collector-integration.patch",
+      "sourceBytes": 14906,
+      "sourceSHA256": "4603f4519660ba6ac41f111de246abc68d4e7a205911ec6090aa298ec0a64e25",
+      "storedBytes": 14906,
+      "storedSHA256": "4603f4519660ba6ac41f111de246abc68d4e7a205911ec6090aa298ec0a64e25",
+      "gzip": false
+    },
+    {
+      "source": "/tmp/ai-alert-policy-proposal/test-registration.patch",
+      "path": "docs/evidence/human-like-ai-public-alert/test-registration.patch",
+      "sourceBytes": 3192,
+      "sourceSHA256": "c3a73bb88af84d39f6c2fb13459bd460fd6ecb97b1efabb30f9525c881b6db18",
+      "storedBytes": 3192,
+      "storedSHA256": "c3a73bb88af84d39f6c2fb13459bd460fd6ecb97b1efabb30f9525c881b6db18",
+      "gzip": false
+    },
+    {
+      "source": "/tmp/ai-alert-policy-proposal/native-focused-result.json",
+      "path": "docs/evidence/human-like-ai-public-alert/native-focused-result.json",
+      "sourceBytes": 3433,
+      "sourceSHA256": "6ee6055c0fe14573fd2f6aff53ec6ca236c8f578de7665242120dc6a360c7b77",
+      "storedBytes": 3433,
+      "storedSHA256": "6ee6055c0fe14573fd2f6aff53ec6ca236c8f578de7665242120dc6a360c7b77",
+      "gzip": false
+    },
+    {
+      "source": "/tmp/ai-alert-policy-proposal/native-source-manifest.json",
+      "path": "docs/evidence/human-like-ai-public-alert/native-source-manifest.json",
+      "sourceBytes": 6741,
+      "sourceSHA256": "06d767340eefdb3f751077d28b32b5364117a7f402c5ac62623c1feb93fed08d",
+      "storedBytes": 6741,
+      "storedSHA256": "06d767340eefdb3f751077d28b32b5364117a7f402c5ac62623c1feb93fed08d",
+      "gzip": false
+    }
+  ]
+}

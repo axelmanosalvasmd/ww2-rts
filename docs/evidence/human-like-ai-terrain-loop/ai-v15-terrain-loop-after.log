@@ -1,0 +1,2 @@
+ai: 1000 ticks, p50/p95/p99 8.706/42.437/63.86 ms
+REPORT /tmp/ai-v15-terrain-loop-after.json

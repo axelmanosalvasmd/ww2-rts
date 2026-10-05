@@ -1,0 +1,360 @@
+{
+  "verifiedAtUnix": 1791164786.9889927,
+  "archive": "/home/judiazm/.t3/worktrees/ww2-rts/ai-human-commander/docs/evidence/human-like-ai-r8-fixes/fixture-migrations/cover-opportunity-migration.tar.gz",
+  "archiveSHA256": "ecb7146579dd85b7d6bf764f40bda800e7e98133b4f5f40d997a39a911329ed8",
+  "originalPayloadCount": 50,
+  "verifiedMembers": [
+    {
+      "member": "REVIEW.md",
+      "originalPath": "/tmp/ai-cover-opportunity-r8-migration/REVIEW.md",
+      "sha256": "6052c80c4fb5f898d2cca22ef4ff59fd73cfcb75b2aee2d939d7bb015ec231ed",
+      "bytes": 2859,
+      "originalBytesCurrentlyEqual": true
+    },
+    {
+      "member": "all-inspection.json",
+      "originalPath": "/tmp/ai-cover-opportunity-r8-migration/all-inspection.json",
+      "sha256": "d4b005f2d7c9677bcc8e792f5d045903a9c46a52077d83114cb9f86ea4b6c2d2",
+      "bytes": 4060329,
+      "originalBytesCurrentlyEqual": true
+    },
+    {
+      "member": "bare-inspection.json",
+      "originalPath": "/tmp/ai-cover-opportunity-r8-migration/bare-inspection.json",
+      "sha256": "78247f0a3f3a199360da358c5b3a8a98b36887e57181c3423e74bd14476b4c38",
+      "bytes": 1032847,
+      "originalBytesCurrentlyEqual": true
+    },
+    {
+      "member": "declaration.json",
+      "originalPath": "/tmp/ai-cover-opportunity-r8-migration/declaration.json",
+      "sha256": "cb5cb9c2139b700afe502a805e30fda5d4c00ce0e715634d1fbc19cc93863dfb",
+      "bytes": 656,
+      "originalBytesCurrentlyEqual": true
+    },
+    {
+      "member": "final-proof.json",
+      "originalPath": "/tmp/ai-cover-opportunity-r8-migration/final-proof.json",
+      "sha256": "d4b005f2d7c9677bcc8e792f5d045903a9c46a52077d83114cb9f86ea4b6c2d2",
+      "bytes": 4060329,
+      "originalBytesCurrentlyEqual": true
+    },
+    {
+      "member": "final.log",
+      "originalPath": "/tmp/ai-cover-opportunity-r8-migration/final.log",
+      "sha256": "f9a4df1abe636a77292dcefc9184c5251dc42528c35f318bc4f600241d87d307",
+      "bytes": 136,
+      "originalBytesCurrentlyEqual": true
+    },
+    {
+      "member": "fixture.patch",
+      "originalPath": "/tmp/ai-cover-opportunity-r8-migration/fixture.patch",
+      "sha256": "5b94ff84ce3b7a65aedb6113b0251bd5b296f6f2182573d1ca4bbcbe39e2a485",
+      "bytes": 2253,
+      "originalBytesCurrentlyEqual": true
+    },
+    {
+      "member": "inspection.log",
+      "originalPath": "/tmp/ai-cover-opportunity-r8-migration/inspection.log",
+      "sha256": "a321df1507c6966271b84ff08b96b2a65fc6a01597cab89934eff5457ada0b12",
+      "bytes": 4744,
+      "originalBytesCurrentlyEqual": true
+    },
+    {
+      "member": "original-failure.log",
+      "originalPath": "/tmp/ai-cover-opportunity-r8-migration/original-failure.log",
+      "sha256": "f030edf777391455d3e70aa635536323ba9e9bfdf0f540e2e458dcbc9a65d743",
+      "bytes": 455,
+      "originalBytesCurrentlyEqual": true
+    },
+    {
+      "member": "original-fixture.js",
+      "originalPath": "/tmp/ai-cover-opportunity-r8-migration/original-fixture.js",
+      "sha256": "89abf4965254ce6e830102105e43b7cf3596f9c06828974a4b8c79f4ed754373",
+      "bytes": 5999,
+      "originalBytesCurrentlyEqual": true
+    },
+    {
+      "member": "prose-lint.log",
+      "originalPath": "/tmp/ai-cover-opportunity-r8-migration/prose-lint.log",
+      "sha256": "216dafc792b6b18ba921f803c9d1a093b4a6a5b0498dfe317d91e67288da1ba5",
+      "bytes": 89,
+      "originalBytesCurrentlyEqual": true
+    },
+    {
+      "member": "source/client/keys.js",
+      "originalPath": "/tmp/ai-cover-opportunity-r8-migration/source/client/keys.js",
+      "sha256": "867e3105b7e4665f8a313c2ab46e23fc3df9407f2163fd6862bb537a01ecd276",
+      "bytes": 7361,
+      "originalBytesCurrentlyEqual": true
+    },
+    {
+      "member": "source/inspect.js",
+      "originalPath": "/tmp/ai-cover-opportunity-r8-migration/source/inspect.js",
+      "sha256": "d6110e2d414eb10dab646134af010257ec2aae8e48c48d388bf6615b5585b1da",
+      "bytes": 6375,
+      "originalBytesCurrentlyEqual": true
+    },
+    {
+      "member": "source/package.json",
+      "originalPath": "/tmp/ai-cover-opportunity-r8-migration/source/package.json",
+      "sha256": "6dc1b06d6b093e9cccb20bee06a93836eee0420ae26803ca2ce4065d82f070d1",
+      "bytes": 17,
+      "originalBytesCurrentlyEqual": true
+    },
+    {
+      "member": "source/shared/ai-attention.js",
+      "originalPath": "/tmp/ai-cover-opportunity-r8-migration/source/shared/ai-attention.js",
+      "sha256": "a55272249248bf1a7166da3038fa44794d7db3a163089010f6f3b905ccc3405a",
+      "bytes": 31888,
+      "originalBytesCurrentlyEqual": true
+    },
+    {
+      "member": "source/shared/ai-commander.js",
+      "originalPath": "/tmp/ai-cover-opportunity-r8-migration/source/shared/ai-commander.js",
+      "sha256": "bef812412db48a0df84d398fb31eef885ce8c9fa9fa3c557dc9e9f874fd1ab34",
+      "bytes": 30976,
+      "originalBytesCurrentlyEqual": true
+    },
+    {
+      "member": "source/shared/ai-hands.js",
+      "originalPath": "/tmp/ai-cover-opportunity-r8-migration/source/shared/ai-hands.js",
+      "sha256": "277cf75623b9432612db94e0356cfe098695214625605ac130e6984789211c4b",
+      "bytes": 67889,
+      "originalBytesCurrentlyEqual": true
+    },
+    {
+      "member": "source/shared/ai-mind.js",
+      "originalPath": "/tmp/ai-cover-opportunity-r8-migration/source/shared/ai-mind.js",
+      "sha256": "18bb411cb1d057ce8cffe0b042c21f64b71238ae157b584242df206d708e6b92",
+      "bytes": 19553,
+      "originalBytesCurrentlyEqual": true
+    },
+    {
+      "member": "source/shared/ai-perception.js",
+      "originalPath": "/tmp/ai-cover-opportunity-r8-migration/source/shared/ai-perception.js",
+      "sha256": "50e611a932728940c5047a61bf4fd7554c696f93880d7907a952d8b39fdcf3fd",
+      "bytes": 34765,
+      "originalBytesCurrentlyEqual": true
+    },
+    {
+      "member": "source/shared/ai-persona.js",
+      "originalPath": "/tmp/ai-cover-opportunity-r8-migration/source/shared/ai-persona.js",
+      "sha256": "34de5882046129d2000e5502e354123786f3ad7b7133f31e93863dcc36ba66cf",
+      "bytes": 3586,
+      "originalBytesCurrentlyEqual": true
+    },
+    {
+      "member": "source/shared/ai-priority.js",
+      "originalPath": "/tmp/ai-cover-opportunity-r8-migration/source/shared/ai-priority.js",
+      "sha256": "597c6ae80d69bbe9bb77a794096be4dd98c5f0791cd7da0f7a11359536850ab9",
+      "bytes": 8934,
+      "originalBytesCurrentlyEqual": true
+    },
+    {
+      "member": "source/shared/ai-rng.js",
+      "originalPath": "/tmp/ai-cover-opportunity-r8-migration/source/shared/ai-rng.js",
+      "sha256": "2d2f95266eda45ec4fa4862cb01079fc8464a98d8c88fa97ca89b54a5d6f8b90",
+      "bytes": 641,
+      "originalBytesCurrentlyEqual": true
+    },
+    {
+      "member": "source/shared/ai-view.js",
+      "originalPath": "/tmp/ai-cover-opportunity-r8-migration/source/shared/ai-view.js",
+      "sha256": "4466958fc4b8e7a5d2f2bcb8dc3814e27c817a7480b0c765aa6ee2a98cbc87f7",
+      "bytes": 13935,
+      "originalBytesCurrentlyEqual": true
+    },
+    {
+      "member": "source/shared/ai.js",
+      "originalPath": "/tmp/ai-cover-opportunity-r8-migration/source/shared/ai.js",
+      "sha256": "685c178754646223ba57cbf6b0d795b0676b0a5cba84f51bfdfcae0cd71bc005",
+      "bytes": 91945,
+      "originalBytesCurrentlyEqual": true
+    },
+    {
+      "member": "source/shared/alert-events.js",
+      "originalPath": "/tmp/ai-cover-opportunity-r8-migration/source/shared/alert-events.js",
+      "sha256": "df5f0ae98145034e6893ce0b70c2df8938a2d786cc8de37a1fbbc1a9c8b634b0",
+      "bytes": 8219,
+      "originalBytesCurrentlyEqual": true
+    },
+    {
+      "member": "source/shared/command-feedback.js",
+      "originalPath": "/tmp/ai-cover-opportunity-r8-migration/source/shared/command-feedback.js",
+      "sha256": "e851bb8f7e48291bd75f09be66fdeecbe7dca68dcc82c839c5c033083ce77a07",
+      "bytes": 303,
+      "originalBytesCurrentlyEqual": true
+    },
+    {
+      "member": "source/shared/debris-motion.js",
+      "originalPath": "/tmp/ai-cover-opportunity-r8-migration/source/shared/debris-motion.js",
+      "sha256": "d6a0f330f958ec6d78cfcc7f95b209aa5c099369576bf15dfd1c84770287b3b4",
+      "bytes": 4384,
+      "originalBytesCurrentlyEqual": true
+    },
+    {
+      "member": "source/shared/formation.js",
+      "originalPath": "/tmp/ai-cover-opportunity-r8-migration/source/shared/formation.js",
+      "sha256": "265fa63c8c72588f6c8f67057921fd4daa88f96e9d823faa2e41ba10a7dba005",
+      "bytes": 4865,
+      "originalBytesCurrentlyEqual": true
+    },
+    {
+      "member": "source/shared/grid.js",
+      "originalPath": "/tmp/ai-cover-opportunity-r8-migration/source/shared/grid.js",
+      "sha256": "30b0a5d67d99e54548d189374684e6b28863ecb7bf92de5221359e5c24fc5afc",
+      "bytes": 2873,
+      "originalBytesCurrentlyEqual": true
+    },
+    {
+      "member": "source/shared/human-input.js",
+      "originalPath": "/tmp/ai-cover-opportunity-r8-migration/source/shared/human-input.js",
+      "sha256": "dec728db485690620e527f912fa2a0b491f545c5bbdaafc4dc25fd1e425763ff",
+      "bytes": 7966,
+      "originalBytesCurrentlyEqual": true
+    },
+    {
+      "member": "source/shared/local-traffic.js",
+      "originalPath": "/tmp/ai-cover-opportunity-r8-migration/source/shared/local-traffic.js",
+      "sha256": "abad3f6ba310783c3620cec8d599df90dac38bb74eed6509be7d19a8af1490f6",
+      "bytes": 7408,
+      "originalBytesCurrentlyEqual": true
+    },
+    {
+      "member": "source/shared/navigation.js",
+      "originalPath": "/tmp/ai-cover-opportunity-r8-migration/source/shared/navigation.js",
+      "sha256": "c277c12f86c9990e281ae28a703dc374126aa1c737d9dc94a300f8d99c898472",
+      "bytes": 19838,
+      "originalBytesCurrentlyEqual": true
+    },
+    {
+      "member": "source/shared/projectiles.js",
+      "originalPath": "/tmp/ai-cover-opportunity-r8-migration/source/shared/projectiles.js",
+      "sha256": "ded50f3bcd60cf79238d5dba48236d54e33b2b8032f704813118d1419708ccd7",
+      "bytes": 7769,
+      "originalBytesCurrentlyEqual": true
+    },
+    {
+      "member": "source/shared/scenarios.js",
+      "originalPath": "/tmp/ai-cover-opportunity-r8-migration/source/shared/scenarios.js",
+      "sha256": "93f6cda90224a805cc97f42418b2dc11c49e3ea80654b66e0036de55f9b9ba97",
+      "bytes": 16044,
+      "originalBytesCurrentlyEqual": true
+    },
+    {
+      "member": "source/shared/sim.js",
+      "originalPath": "/tmp/ai-cover-opportunity-r8-migration/source/shared/sim.js",
+      "sha256": "5e5f4c2d43d048be36d94f0cbcc68fb974c812fc8ab7e071cddb0a59079d89fa",
+      "bytes": 355291,
+      "originalBytesCurrentlyEqual": true
+    },
+    {
+      "member": "source/shared/story.js",
+      "originalPath": "/tmp/ai-cover-opportunity-r8-migration/source/shared/story.js",
+      "sha256": "fa33e53e61a7d636959dd1d1916d7b5c3359db72b523dc730b16ceab525d170f",
+      "bytes": 3738,
+      "originalBytesCurrentlyEqual": true
+    },
+    {
+      "member": "source/shared/structures.js",
+      "originalPath": "/tmp/ai-cover-opportunity-r8-migration/source/shared/structures.js",
+      "sha256": "933b100a9a4c19a0285f5b137cd29b46e44271776f031045a537009e0176e5a2",
+      "bytes": 4029,
+      "originalBytesCurrentlyEqual": true
+    },
+    {
+      "member": "source/shared/tutorial.js",
+      "originalPath": "/tmp/ai-cover-opportunity-r8-migration/source/shared/tutorial.js",
+      "sha256": "3aaa5e6affd936dae0ae4741d5173eee5d006132a1705d4b553097d3d8fabf42",
+      "bytes": 6342,
+      "originalBytesCurrentlyEqual": true
+    },
+    {
+      "member": "source/shared/vehicle-motion.js",
+      "originalPath": "/tmp/ai-cover-opportunity-r8-migration/source/shared/vehicle-motion.js",
+      "sha256": "05bd1e985a91b3268065a0a84ec4b9aee2c1079aafc4054c38a70677dfb1493b",
+      "bytes": 12185,
+      "originalBytesCurrentlyEqual": true
+    },
+    {
+      "member": "source/shared/weather.js",
+      "originalPath": "/tmp/ai-cover-opportunity-r8-migration/source/shared/weather.js",
+      "sha256": "faad682d6e40fdc6629533f684e1caeec5c9ae49e26e9922651773727c0bc1e5",
+      "bytes": 7228,
+      "originalBytesCurrentlyEqual": true
+    },
+    {
+      "member": "source/shared/world-conquest.js",
+      "originalPath": "/tmp/ai-cover-opportunity-r8-migration/source/shared/world-conquest.js",
+      "sha256": "1c251e6d340586d7fb367d4f47938d5898f5239824dac46f054880a3d897aeef",
+      "bytes": 7203,
+      "originalBytesCurrentlyEqual": true
+    },
+    {
+      "member": "source/shared/world-landforms.js",
+      "originalPath": "/tmp/ai-cover-opportunity-r8-migration/source/shared/world-landforms.js",
+      "sha256": "ecb6916db6785484f8bb813f7745c8c48ccea370f084fea290ff736edc968e34",
+      "bytes": 6645,
+      "originalBytesCurrentlyEqual": true
+    },
+    {
+      "member": "source/shared/world-layers.js",
+      "originalPath": "/tmp/ai-cover-opportunity-r8-migration/source/shared/world-layers.js",
+      "sha256": "f51f34b99946192107ada9a7077d787761c1a9cb6b1e316d7b7e243dd273bb22",
+      "bytes": 6770,
+      "originalBytesCurrentlyEqual": true
+    },
+    {
+      "member": "source/shared/world-roads.js",
+      "originalPath": "/tmp/ai-cover-opportunity-r8-migration/source/shared/world-roads.js",
+      "sha256": "5fb243b63fa9e2c082135b5b093ee753e8a92c197a076d78067e53f08f1885db",
+      "bytes": 6491,
+      "originalBytesCurrentlyEqual": true
+    },
+    {
+      "member": "source/shared/world-territories.js",
+      "originalPath": "/tmp/ai-cover-opportunity-r8-migration/source/shared/world-territories.js",
+      "sha256": "bb33a449d7f2c4d657dbceab8dbd0171eb8ccaa7494cedf9e18707822d8f717f",
+      "bytes": 4110,
+      "originalBytesCurrentlyEqual": true
+    },
+    {
+      "member": "source/test-engine-ai-cover-opportunity.js",
+      "originalPath": "/tmp/ai-cover-opportunity-r8-migration/source/test-engine-ai-cover-opportunity.js",
+      "sha256": "6c73673c99e5c7d07f3fb9908bb2ef2b0f2c26440d99c3c0d40186556567cb9c",
+      "bytes": 7476,
+      "originalBytesCurrentlyEqual": true
+    },
+    {
+      "member": "source/tools/ai-lab-runner.mjs",
+      "originalPath": "/tmp/ai-cover-opportunity-r8-migration/source/tools/ai-lab-runner.mjs",
+      "sha256": "d5f2e87078e6f1ea35300a653d86e0200aea554681ec60c4bd83eacabe17fb25",
+      "bytes": 13565,
+      "originalBytesCurrentlyEqual": true
+    },
+    {
+      "member": "source-bindings.json",
+      "originalPath": "/tmp/ai-cover-opportunity-r8-migration/source-bindings.json",
+      "sha256": "1c2838370772513895f1d240e1a2f4110218b34843f45188b9a0eae3a1154f02",
+      "bytes": 4549,
+      "originalBytesCurrentlyEqual": true
+    },
+    {
+      "member": "test-engine-ai-cover-opportunity.js",
+      "originalPath": "/tmp/ai-cover-opportunity-r8-migration/test-engine-ai-cover-opportunity.js",
+      "sha256": "6c73673c99e5c7d07f3fb9908bb2ef2b0f2c26440d99c3c0d40186556567cb9c",
+      "bytes": 7476,
+      "originalBytesCurrentlyEqual": true
+    },
+    {
+      "member": "verification.json",
+      "originalPath": "/tmp/ai-cover-opportunity-r8-migration/verification.json",
+      "sha256": "2f80c83e36eea13838abb52b41681204d89640b559dbc60defb22f28254d6165",
+      "bytes": 527,
+      "originalBytesCurrentlyEqual": true
+    }
+  ],
+  "unresolved": [],
+  "allPayloadsVerified": true
+}

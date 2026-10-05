@@ -1,0 +1,12 @@
+{
+  "pid": 1305938,
+  "launchedAt": "2026-10-04T13:21:40.592576+00:00",
+  "command": [
+    "taskset",
+    "-c",
+    "6",
+    "node",
+    "/tmp/run-human-ai-opening-paired.mjs",
+    "--launch-authorized"
+  ]
+}

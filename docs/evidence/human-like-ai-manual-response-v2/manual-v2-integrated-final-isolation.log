@@ -1,0 +1,33 @@
+{"mode":"conquest","level":"easy","status":"PASS","commands":16,"inputs":30}
+{"mode":"conquest","level":"normal","status":"PASS","commands":19,"inputs":35}
+{"mode":"conquest","level":"hard","status":"PASS","commands":19,"inputs":38}
+{"mode":"classic","level":"easy","status":"PASS","commands":9,"inputs":22}
+{"mode":"classic","level":"normal","status":"PASS","commands":11,"inputs":28}
+{"mode":"classic","level":"hard","status":"PASS","commands":12,"inputs":33}
+{"mode":"world","level":"easy","status":"PASS","commands":9,"inputs":27}
+{"mode":"world","level":"normal","status":"PASS","commands":15,"inputs":36}
+{"mode":"world","level":"hard","status":"PASS","commands":16,"inputs":38}
+{"status":"PASS","policy":"screen-manual-v2","modeLevels":9,"treatments":27,"seconds":15}
+	Command being timed: "node test-engine-ai-manual-response-isolation.js"
+	User time (seconds): 89.48
+	System time (seconds): 3.68
+	Percent of CPU this job got: 99%
+	Elapsed (wall clock) time (h:mm:ss or m:ss): 1:33.18
+	Average shared text size (kbytes): 0
+	Average unshared data size (kbytes): 0
+	Average stack size (kbytes): 0
+	Average total size (kbytes): 0
+	Maximum resident set size (kbytes): 1167516
+	Average resident set size (kbytes): 0
+	Major (requiring I/O) page faults: 0
+	Minor (reclaiming a frame) page faults: 3053337
+	Voluntary context switches: 33584
+	Involuntary context switches: 32860
+	Swaps: 0
+	File system inputs: 0
+	File system outputs: 80
+	Socket messages sent: 0
+	Socket messages received: 0
+	Signals delivered: 0
+	Page size (bytes): 4096
+	Exit status: 0

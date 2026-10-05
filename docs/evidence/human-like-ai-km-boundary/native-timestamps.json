@@ -1,0 +1,2141 @@
+{
+  "schema": "native-km-boundary-timestamps-v1",
+  "diagnosticOnly": true,
+  "historicalScoresUnchanged": true,
+  "originalDiagnosticSHA256": "bbf6a4cdb5daa07451cf831cd3f62fdba3650abd8a252edfc09db16f467828bb",
+  "nativeGameplaySourceHashes": {
+    "shared/ai.js": "bc677b3d7b2771941e6242f9c598084f04710dad944bdc54db24ef93ac354457",
+    "shared/ai-commander.js": "19112a1e4c94da72d62564d940497d38cf7e93e3086c9bde3db9c29d088703df",
+    "shared/ai-attention.js": "07c48dbdcc92f326eeb52222518f274dcf05a4d746dfd474126d932ed05ca7ba",
+    "shared/ai-hands.js": "8bd373c3afb8261bf8ca2a53f24512522b91f0ddc6568eaa61dbf7039684b9a3",
+    "shared/ai-perception.js": "50e611a932728940c5047a61bf4fd7554c696f93880d7907a952d8b39fdcf3fd",
+    "shared/sim.js": "7bc57ac179b4982bdb94b469ce029e2e2178567fcb23fa1756476a17f791f018",
+    "tools/ai-manual-response-policy-v3.mjs": "c45e589d661b4980a79181ca987b503054ebb3e7e554f1bc272dd3eab50a6928",
+    "tools/ai-manual-response-capture-v3.mjs": "19e1a93ae79b04f3eb768263052d48b344b086831b261ae40e7da0b004ea8775",
+    "tools/ai-public-alert-response.mjs": "f548de11aef467e7655c0beaa66d22ad1de1c9d1f252f1048ca81e06b3a87c4a",
+    "tools/ai-lab-runner.mjs": "01020a610e714ca538ca12b81c03652d77bba31d7a99ea696aec786b97c34ea2"
+  },
+  "originalEpisodeSHA256": {
+    "assault-easy-1.json": "85e630ec1af8d28535f79e166c258fc16634d68dc3193ece9b7f704221312a1c",
+    "assault-easy-2.json": "8181eb3914b3d535c4c51d78bdba0283c80a3a46358d04f8e70ade87dbdf2753",
+    "assault-easy-3.json": "b0b3d709c6eabae0039c45ce5b76af212f8d2a3eca6d2a05c2b6f8e01709baa8",
+    "assault-hard-1.json": "c9615c5f291c3be8a4e7ff7b06f82d95d618dfab52b0c1d68ef9d43c0886a671",
+    "assault-hard-2.json": "97796867c8b15458d010cb41b803bf5cae2dc9618ca13c18d109e36d7654b033",
+    "assault-hard-3.json": "92b6101760efeee1e97fd82371d7b51e9018fd19f37b9232966475dcfd6e8a05",
+    "assault-normal-1.json": "bea0cababcd7be15566a1ffd707af6109c574fe821488ab83d79c033e578314b",
+    "assault-normal-2.json": "88adbad23b0da5888d7bce4bfdb2e0dd57f9449b11a54585ab3c212d54923a98",
+    "assault-normal-3.json": "5cb7ccb8cf9212b18b16e3a72283e7399e5acad8c8e87d076a17e52acad3f780",
+    "safehold-easy-1.json": "f83a4fb417536d12c54da7906078c08089d55423578b91b1bc160fb85cd10500",
+    "safehold-easy-2.json": "fe45e67e2e6ef23ab9078e6025daee26cf4952fc3d3a87107bac0ffc6ef14488",
+    "safehold-easy-3.json": "7c76c5c33b3e72117e97a08525afac7a302deb507085dac468fb8624d139683a",
+    "safehold-hard-1.json": "a7e7dec7eb1d371bb337744722921a3310caf1c64db71b4315e7c932fd03cb9e",
+    "safehold-hard-2.json": "bb646aa5d8be2513045c6dd724e930310caab22e4d654ee4b356ceb01380d07b",
+    "safehold-hard-3.json": "f1335adc51d3d77ed02b9596edd789c4167340b6658345b49cd1f53afdf2179c",
+    "safehold-normal-1.json": "c948cedb6257b0177a57812e3c8810c0101196cca4b5fadcb89a4703943e61b8",
+    "safehold-normal-2.json": "e6a114a49c5de47d6069c0e0bd08be503687fc06ac08b0ae5a2d139d3ee880f3",
+    "safehold-normal-3.json": "9039da42f07fa8f2dd971397e63e79e8082e95d6c8eb0f34d14f9a54a2adce52",
+    "support-easy-1.json": "e880d844a181a3fc5de5b4b55b6946c381b14b03fd928b072b2a336bc5be13fa",
+    "support-easy-2.json": "d0ab8c81215add3172cdab1578a5b3e62d9d40112020e1c4f49551cf7ca01448",
+    "support-easy-3.json": "29ff07051b44ad8baef33726266d0ea56dd88f88a4be120698d1e15db4b7d937",
+    "support-hard-1.json": "f5f6eead6cb78e9053d4f69da980955c4c07d036519499d440bb78f66ebccb0c",
+    "support-hard-2.json": "17d1f3b9c7eeea9b36b56eb5f2991c103865ab10c23326c968e187d8fa108daf",
+    "support-hard-3.json": "8f0f97ba61fa241d1edb970cebcfb6c62c29ee22922cf43a76ba931d1e8b2690",
+    "support-normal-1.json": "ae4a843160505661d0883a22f4ed664247555696c293ba474155b631a681aa00",
+    "support-normal-2.json": "a9e6d1d79760fa82d091bb6ca84702ba8f61da07a4535d6863867e52529eec25",
+    "support-normal-3.json": "726e21bb7ee97553697bb8e516b5394d3926414afc82527571da5b383552e0da",
+    "twofront-easy-1.json": "66fba181396ac66ba5c62b3c92df8c749b6c3f268e168dd5460e1abf758f717e",
+    "twofront-easy-2.json": "061d54d76fd0eceed1dc452a985f48889454fb3f6b3a9c8b7227d1d194700e25",
+    "twofront-easy-3.json": "8067d7d0be695573d44475dca31aeb6b421e41b22b9abb579084137045d9cb62",
+    "twofront-hard-1.json": "5517a2e7e9873d0c51913a0206b1365d67caecc2ca19b180a0450daa2a0f2fd3",
+    "twofront-hard-2.json": "67cb131196bb4281e3d67344c489ceb89ee1ef27a86bbc13900095c391b263b9",
+    "twofront-hard-3.json": "409f0906bee7d295cbc3393ffc70f92be317cf4204c801370ae06b16f703d47c",
+    "twofront-normal-1.json": "af60dde8940e1817b92abf35ca22371759494a2cfc25a40962b4ecad72549d0c",
+    "twofront-normal-2.json": "3efbffdec67c0eb5ef59a93f93a356acd531f0bafee4eec08ed8ab42c48a166d",
+    "twofront-normal-3.json": "19818aecc3274593392feff65417b74ed6f229e30dc485b4a80dd93930799cb6"
+  },
+  "rows": [
+    {
+      "episode": "assault-easy-1.json",
+      "level": "easy",
+      "scene": "assault",
+      "seed": 1,
+      "seconds": 30,
+      "creation": {
+        "id": "observed-screen:1:1",
+        "kind": "screen-contact",
+        "tick": 1,
+        "observationTick": 1,
+        "source": "screen",
+        "onScreen": true,
+        "x": 107,
+        "z": 80,
+        "targetId": 11,
+        "provenance": "entered-screen",
+        "observedDanger": {
+          "nearbyOwnUnits": [
+            7,
+            8,
+            9,
+            10
+          ],
+          "idleOwnUnits": [
+            7,
+            8,
+            9,
+            10
+          ]
+        }
+      },
+      "answer": {
+        "firstActionTick": 110,
+        "acceptedCommandTick": 127
+      }
+    },
+    {
+      "episode": "assault-easy-1.json",
+      "level": "easy",
+      "scene": "assault",
+      "seed": 1,
+      "seconds": 30,
+      "creation": {
+        "id": "observed-screen:1:2",
+        "kind": "screen-contact",
+        "tick": 1,
+        "observationTick": 1,
+        "source": "screen",
+        "onScreen": true,
+        "x": 109,
+        "z": 84,
+        "targetId": 12,
+        "provenance": "entered-screen",
+        "observedDanger": {
+          "nearbyOwnUnits": [
+            7,
+            8,
+            9,
+            10
+          ],
+          "idleOwnUnits": [
+            7,
+            8,
+            9,
+            10
+          ]
+        }
+      },
+      "answer": {
+        "firstActionTick": 110,
+        "acceptedCommandTick": 127
+      }
+    },
+    {
+      "episode": "assault-easy-1.json",
+      "level": "easy",
+      "scene": "assault",
+      "seed": 1,
+      "seconds": 30,
+      "creation": {
+        "id": "observed-screen:156:5",
+        "kind": "screen-damage",
+        "tick": 156,
+        "observationTick": 156,
+        "source": "screen",
+        "onScreen": true,
+        "x": 79.8,
+        "z": 81.1,
+        "unitId": 8,
+        "amount": 5,
+        "episode": "8:1",
+        "episodeTick": 44,
+        "provenance": "retreat-risk-crossing",
+        "observedDanger": {
+          "healthShare": 0.5,
+          "lossShare": 0.05,
+          "healthBand": "healthy",
+          "suppressionBand": "pinned",
+          "retreatRisk": true,
+          "alreadyRetreating": false,
+          "alreadyEngaged": false,
+          "autoRetreatCovered": false
+        }
+      },
+      "answer": {
+        "firstActionTick": 182,
+        "acceptedCommandTick": 186
+      }
+    },
+    {
+      "episode": "assault-easy-2.json",
+      "level": "easy",
+      "scene": "assault",
+      "seed": 2,
+      "seconds": 30,
+      "creation": {
+        "id": "observed-screen:1:1",
+        "kind": "screen-contact",
+        "tick": 1,
+        "observationTick": 1,
+        "source": "screen",
+        "onScreen": true,
+        "x": 107,
+        "z": 80,
+        "targetId": 11,
+        "provenance": "entered-screen",
+        "observedDanger": {
+          "nearbyOwnUnits": [
+            7,
+            8,
+            9,
+            10
+          ],
+          "idleOwnUnits": [
+            7,
+            8,
+            9,
+            10
+          ]
+        }
+      },
+      "answer": {
+        "firstActionTick": 84,
+        "acceptedCommandTick": 101
+      }
+    },
+    {
+      "episode": "assault-easy-2.json",
+      "level": "easy",
+      "scene": "assault",
+      "seed": 2,
+      "seconds": 30,
+      "creation": {
+        "id": "observed-screen:1:2",
+        "kind": "screen-contact",
+        "tick": 1,
+        "observationTick": 1,
+        "source": "screen",
+        "onScreen": true,
+        "x": 109,
+        "z": 84,
+        "targetId": 12,
+        "provenance": "entered-screen",
+        "observedDanger": {
+          "nearbyOwnUnits": [
+            7,
+            8,
+            9,
+            10
+          ],
+          "idleOwnUnits": [
+            7,
+            8,
+            9,
+            10
+          ]
+        }
+      },
+      "answer": {
+        "firstActionTick": 84,
+        "acceptedCommandTick": 101
+      }
+    },
+    {
+      "episode": "assault-easy-2.json",
+      "level": "easy",
+      "scene": "assault",
+      "seed": 2,
+      "seconds": 30,
+      "creation": {
+        "id": "observed-screen:158:6",
+        "kind": "screen-damage",
+        "tick": 158,
+        "observationTick": 158,
+        "source": "screen",
+        "onScreen": true,
+        "x": 79.4,
+        "z": 81.1,
+        "unitId": 8,
+        "amount": 10,
+        "episode": "8:1",
+        "episodeTick": 44,
+        "provenance": "retreat-risk-crossing",
+        "observedDanger": {
+          "healthShare": 0.45,
+          "lossShare": 0.1,
+          "healthBand": "hurt",
+          "suppressionBand": "pinned",
+          "retreatRisk": true,
+          "alreadyRetreating": false,
+          "alreadyEngaged": false,
+          "autoRetreatCovered": false
+        }
+      },
+      "answer": {
+        "firstActionTick": 179,
+        "acceptedCommandTick": 184
+      }
+    },
+    {
+      "episode": "assault-easy-3.json",
+      "level": "easy",
+      "scene": "assault",
+      "seed": 3,
+      "seconds": 30,
+      "creation": {
+        "id": "observed-screen:1:1",
+        "kind": "screen-contact",
+        "tick": 1,
+        "observationTick": 1,
+        "source": "screen",
+        "onScreen": true,
+        "x": 107,
+        "z": 80,
+        "targetId": 11,
+        "provenance": "entered-screen",
+        "observedDanger": {
+          "nearbyOwnUnits": [
+            7,
+            8,
+            9,
+            10
+          ],
+          "idleOwnUnits": [
+            7,
+            8,
+            9,
+            10
+          ]
+        }
+      },
+      "answer": {
+        "firstActionTick": 107,
+        "acceptedCommandTick": 125
+      }
+    },
+    {
+      "episode": "assault-easy-3.json",
+      "level": "easy",
+      "scene": "assault",
+      "seed": 3,
+      "seconds": 30,
+      "creation": {
+        "id": "observed-screen:1:2",
+        "kind": "screen-contact",
+        "tick": 1,
+        "observationTick": 1,
+        "source": "screen",
+        "onScreen": true,
+        "x": 109,
+        "z": 84,
+        "targetId": 12,
+        "provenance": "entered-screen",
+        "observedDanger": {
+          "nearbyOwnUnits": [
+            7,
+            8,
+            9,
+            10
+          ],
+          "idleOwnUnits": [
+            7,
+            8,
+            9,
+            10
+          ]
+        }
+      },
+      "answer": {
+        "firstActionTick": 107,
+        "acceptedCommandTick": 125
+      }
+    },
+    {
+      "episode": "assault-easy-3.json",
+      "level": "easy",
+      "scene": "assault",
+      "seed": 3,
+      "seconds": 30,
+      "creation": {
+        "id": "observed-screen:158:6",
+        "kind": "screen-damage",
+        "tick": 158,
+        "observationTick": 158,
+        "source": "screen",
+        "onScreen": true,
+        "x": 80,
+        "z": 81.1,
+        "unitId": 8,
+        "amount": 15,
+        "episode": "8:1",
+        "episodeTick": 44,
+        "provenance": "retreat-risk-crossing",
+        "observedDanger": {
+          "healthShare": 0.55,
+          "lossShare": 0.15,
+          "healthBand": "healthy",
+          "suppressionBand": "pinned",
+          "retreatRisk": true,
+          "alreadyRetreating": false,
+          "alreadyEngaged": false,
+          "autoRetreatCovered": false
+        }
+      },
+      "answer": {
+        "firstActionTick": 178,
+        "acceptedCommandTick": 183
+      }
+    },
+    {
+      "episode": "assault-hard-1.json",
+      "level": "hard",
+      "scene": "assault",
+      "seed": 1,
+      "seconds": 30,
+      "creation": {
+        "id": "observed-screen:1:1",
+        "kind": "screen-contact",
+        "tick": 1,
+        "observationTick": 1,
+        "source": "screen",
+        "onScreen": true,
+        "x": 107,
+        "z": 80,
+        "targetId": 11,
+        "provenance": "entered-screen",
+        "observedDanger": {
+          "nearbyOwnUnits": [
+            7,
+            8,
+            9,
+            10
+          ],
+          "idleOwnUnits": [
+            7,
+            8,
+            9,
+            10
+          ]
+        }
+      },
+      "answer": {
+        "firstActionTick": 54,
+        "acceptedCommandTick": 64
+      }
+    },
+    {
+      "episode": "assault-hard-1.json",
+      "level": "hard",
+      "scene": "assault",
+      "seed": 1,
+      "seconds": 30,
+      "creation": {
+        "id": "observed-screen:1:2",
+        "kind": "screen-contact",
+        "tick": 1,
+        "observationTick": 1,
+        "source": "screen",
+        "onScreen": true,
+        "x": 109,
+        "z": 84,
+        "targetId": 12,
+        "provenance": "entered-screen",
+        "observedDanger": {
+          "nearbyOwnUnits": [
+            7,
+            8,
+            9,
+            10
+          ],
+          "idleOwnUnits": [
+            7,
+            8,
+            9,
+            10
+          ]
+        }
+      },
+      "answer": {
+        "firstActionTick": 54,
+        "acceptedCommandTick": 64
+      }
+    },
+    {
+      "episode": "assault-hard-2.json",
+      "level": "hard",
+      "scene": "assault",
+      "seed": 2,
+      "seconds": 30,
+      "creation": {
+        "id": "observed-screen:1:1",
+        "kind": "screen-contact",
+        "tick": 1,
+        "observationTick": 1,
+        "source": "screen",
+        "onScreen": true,
+        "x": 107,
+        "z": 80,
+        "targetId": 11,
+        "provenance": "entered-screen",
+        "observedDanger": {
+          "nearbyOwnUnits": [
+            7,
+            8,
+            9,
+            10
+          ],
+          "idleOwnUnits": [
+            7,
+            8,
+            9,
+            10
+          ]
+        }
+      },
+      "answer": {
+        "firstActionTick": 47,
+        "acceptedCommandTick": 57
+      }
+    },
+    {
+      "episode": "assault-hard-2.json",
+      "level": "hard",
+      "scene": "assault",
+      "seed": 2,
+      "seconds": 30,
+      "creation": {
+        "id": "observed-screen:1:2",
+        "kind": "screen-contact",
+        "tick": 1,
+        "observationTick": 1,
+        "source": "screen",
+        "onScreen": true,
+        "x": 109,
+        "z": 84,
+        "targetId": 12,
+        "provenance": "entered-screen",
+        "observedDanger": {
+          "nearbyOwnUnits": [
+            7,
+            8,
+            9,
+            10
+          ],
+          "idleOwnUnits": [
+            7,
+            8,
+            9,
+            10
+          ]
+        }
+      },
+      "answer": {
+        "firstActionTick": 47,
+        "acceptedCommandTick": 57
+      }
+    },
+    {
+      "episode": "assault-hard-3.json",
+      "level": "hard",
+      "scene": "assault",
+      "seed": 3,
+      "seconds": 30,
+      "creation": {
+        "id": "observed-screen:1:1",
+        "kind": "screen-contact",
+        "tick": 1,
+        "observationTick": 1,
+        "source": "screen",
+        "onScreen": true,
+        "x": 107,
+        "z": 80,
+        "targetId": 11,
+        "provenance": "entered-screen",
+        "observedDanger": {
+          "nearbyOwnUnits": [
+            7,
+            8,
+            9,
+            10
+          ],
+          "idleOwnUnits": [
+            7,
+            8,
+            9,
+            10
+          ]
+        }
+      },
+      "answer": {
+        "firstActionTick": 52,
+        "acceptedCommandTick": 63
+      }
+    },
+    {
+      "episode": "assault-hard-3.json",
+      "level": "hard",
+      "scene": "assault",
+      "seed": 3,
+      "seconds": 30,
+      "creation": {
+        "id": "observed-screen:1:2",
+        "kind": "screen-contact",
+        "tick": 1,
+        "observationTick": 1,
+        "source": "screen",
+        "onScreen": true,
+        "x": 109,
+        "z": 84,
+        "targetId": 12,
+        "provenance": "entered-screen",
+        "observedDanger": {
+          "nearbyOwnUnits": [
+            7,
+            8,
+            9,
+            10
+          ],
+          "idleOwnUnits": [
+            7,
+            8,
+            9,
+            10
+          ]
+        }
+      },
+      "answer": {
+        "firstActionTick": 52,
+        "acceptedCommandTick": 63
+      }
+    },
+    {
+      "episode": "assault-normal-1.json",
+      "level": "normal",
+      "scene": "assault",
+      "seed": 1,
+      "seconds": 30,
+      "creation": {
+        "id": "observed-screen:1:1",
+        "kind": "screen-contact",
+        "tick": 1,
+        "observationTick": 1,
+        "source": "screen",
+        "onScreen": true,
+        "x": 107,
+        "z": 80,
+        "targetId": 11,
+        "provenance": "entered-screen",
+        "observedDanger": {
+          "nearbyOwnUnits": [
+            7,
+            8,
+            9,
+            10
+          ],
+          "idleOwnUnits": [
+            7,
+            8,
+            9,
+            10
+          ]
+        }
+      },
+      "answer": {
+        "firstActionTick": 82,
+        "acceptedCommandTick": 95
+      }
+    },
+    {
+      "episode": "assault-normal-1.json",
+      "level": "normal",
+      "scene": "assault",
+      "seed": 1,
+      "seconds": 30,
+      "creation": {
+        "id": "observed-screen:1:2",
+        "kind": "screen-contact",
+        "tick": 1,
+        "observationTick": 1,
+        "source": "screen",
+        "onScreen": true,
+        "x": 109,
+        "z": 84,
+        "targetId": 12,
+        "provenance": "entered-screen",
+        "observedDanger": {
+          "nearbyOwnUnits": [
+            7,
+            8,
+            9,
+            10
+          ],
+          "idleOwnUnits": [
+            7,
+            8,
+            9,
+            10
+          ]
+        }
+      },
+      "answer": {
+        "firstActionTick": 82,
+        "acceptedCommandTick": 95
+      }
+    },
+    {
+      "episode": "assault-normal-2.json",
+      "level": "normal",
+      "scene": "assault",
+      "seed": 2,
+      "seconds": 30,
+      "creation": {
+        "id": "observed-screen:1:1",
+        "kind": "screen-contact",
+        "tick": 1,
+        "observationTick": 1,
+        "source": "screen",
+        "onScreen": true,
+        "x": 107,
+        "z": 80,
+        "targetId": 11,
+        "provenance": "entered-screen",
+        "observedDanger": {
+          "nearbyOwnUnits": [
+            7,
+            8,
+            9,
+            10
+          ],
+          "idleOwnUnits": [
+            7,
+            8,
+            9,
+            10
+          ]
+        }
+      },
+      "answer": {
+        "firstActionTick": 63,
+        "acceptedCommandTick": 76
+      }
+    },
+    {
+      "episode": "assault-normal-2.json",
+      "level": "normal",
+      "scene": "assault",
+      "seed": 2,
+      "seconds": 30,
+      "creation": {
+        "id": "observed-screen:1:2",
+        "kind": "screen-contact",
+        "tick": 1,
+        "observationTick": 1,
+        "source": "screen",
+        "onScreen": true,
+        "x": 109,
+        "z": 84,
+        "targetId": 12,
+        "provenance": "entered-screen",
+        "observedDanger": {
+          "nearbyOwnUnits": [
+            7,
+            8,
+            9,
+            10
+          ],
+          "idleOwnUnits": [
+            7,
+            8,
+            9,
+            10
+          ]
+        }
+      },
+      "answer": {
+        "firstActionTick": 63,
+        "acceptedCommandTick": 76
+      }
+    },
+    {
+      "episode": "assault-normal-3.json",
+      "level": "normal",
+      "scene": "assault",
+      "seed": 3,
+      "seconds": 30,
+      "creation": {
+        "id": "observed-screen:1:1",
+        "kind": "screen-contact",
+        "tick": 1,
+        "observationTick": 1,
+        "source": "screen",
+        "onScreen": true,
+        "x": 107,
+        "z": 80,
+        "targetId": 11,
+        "provenance": "entered-screen",
+        "observedDanger": {
+          "nearbyOwnUnits": [
+            7,
+            8,
+            9,
+            10
+          ],
+          "idleOwnUnits": [
+            7,
+            8,
+            9,
+            10
+          ]
+        }
+      },
+      "answer": {
+        "firstActionTick": 81,
+        "acceptedCommandTick": 94
+      }
+    },
+    {
+      "episode": "assault-normal-3.json",
+      "level": "normal",
+      "scene": "assault",
+      "seed": 3,
+      "seconds": 30,
+      "creation": {
+        "id": "observed-screen:1:2",
+        "kind": "screen-contact",
+        "tick": 1,
+        "observationTick": 1,
+        "source": "screen",
+        "onScreen": true,
+        "x": 109,
+        "z": 84,
+        "targetId": 12,
+        "provenance": "entered-screen",
+        "observedDanger": {
+          "nearbyOwnUnits": [
+            7,
+            8,
+            9,
+            10
+          ],
+          "idleOwnUnits": [
+            7,
+            8,
+            9,
+            10
+          ]
+        }
+      },
+      "answer": {
+        "firstActionTick": 81,
+        "acceptedCommandTick": 94
+      }
+    },
+    {
+      "episode": "support-easy-1.json",
+      "level": "easy",
+      "scene": "support",
+      "seed": 1,
+      "seconds": 30,
+      "creation": {
+        "id": "observed-screen:352:9",
+        "kind": "screen-damage",
+        "tick": 352,
+        "observationTick": 352,
+        "source": "screen",
+        "onScreen": true,
+        "x": 95.9,
+        "z": 86.5,
+        "unitId": 9,
+        "amount": 25,
+        "episode": "9:5",
+        "episodeTick": 352,
+        "provenance": "heavy-damage",
+        "observedDanger": {
+          "healthShare": 0.6133333333333333,
+          "lossShare": 0.3333333333333333,
+          "healthBand": "healthy",
+          "suppressionBand": "suppressed",
+          "retreatRisk": false,
+          "alreadyRetreating": false,
+          "alreadyEngaged": false,
+          "autoRetreatCovered": false
+        }
+      },
+      "answer": {
+        "firstActionTick": 372,
+        "acceptedCommandTick": 372
+      }
+    },
+    {
+      "episode": "support-easy-2.json",
+      "level": "easy",
+      "scene": "support",
+      "seed": 2,
+      "seconds": 30,
+      "creation": {
+        "id": "observed-screen:148:7",
+        "kind": "screen-damage",
+        "tick": 148,
+        "observationTick": 148,
+        "source": "screen",
+        "onScreen": true,
+        "x": 79.2,
+        "z": 77.8,
+        "unitId": 7,
+        "amount": 5,
+        "episode": "7:2",
+        "episodeTick": 58,
+        "provenance": "retreat-risk-crossing",
+        "observedDanger": {
+          "healthShare": 0.55,
+          "lossShare": 0.05,
+          "healthBand": "healthy",
+          "suppressionBand": "pinned",
+          "retreatRisk": true,
+          "alreadyRetreating": false,
+          "alreadyEngaged": false,
+          "autoRetreatCovered": false
+        }
+      },
+      "answer": {
+        "firstActionTick": 169,
+        "acceptedCommandTick": 174
+      }
+    },
+    {
+      "episode": "support-easy-3.json",
+      "level": "easy",
+      "scene": "support",
+      "seed": 3,
+      "seconds": 30,
+      "creation": {
+        "id": "observed-screen:148:7",
+        "kind": "screen-damage",
+        "tick": 148,
+        "observationTick": 148,
+        "source": "screen",
+        "onScreen": true,
+        "x": 79,
+        "z": 78,
+        "unitId": 7,
+        "amount": 5,
+        "episode": "7:2",
+        "episodeTick": 50,
+        "provenance": "retreat-risk-crossing",
+        "observedDanger": {
+          "healthShare": 0.55,
+          "lossShare": 0.05,
+          "healthBand": "healthy",
+          "suppressionBand": "pinned",
+          "retreatRisk": true,
+          "alreadyRetreating": false,
+          "alreadyEngaged": false,
+          "autoRetreatCovered": false
+        }
+      },
+      "answer": {
+        "firstActionTick": 181,
+        "acceptedCommandTick": 185
+      }
+    },
+    {
+      "episode": "support-normal-2.json",
+      "level": "normal",
+      "scene": "support",
+      "seed": 2,
+      "seconds": 30,
+      "creation": {
+        "id": "observed-screen:148:7",
+        "kind": "screen-damage",
+        "tick": 148,
+        "observationTick": 148,
+        "source": "screen",
+        "onScreen": true,
+        "x": 79.2,
+        "z": 77.8,
+        "unitId": 7,
+        "amount": 5,
+        "episode": "7:2",
+        "episodeTick": 58,
+        "provenance": "retreat-risk-crossing",
+        "observedDanger": {
+          "healthShare": 0.55,
+          "lossShare": 0.05,
+          "healthBand": "healthy",
+          "suppressionBand": "pinned",
+          "retreatRisk": true,
+          "alreadyRetreating": false,
+          "alreadyEngaged": false,
+          "autoRetreatCovered": false
+        }
+      },
+      "answer": {
+        "firstActionTick": 161,
+        "acceptedCommandTick": 164
+      }
+    },
+    {
+      "episode": "support-normal-3.json",
+      "level": "normal",
+      "scene": "support",
+      "seed": 3,
+      "seconds": 30,
+      "creation": {
+        "id": "observed-screen:148:7",
+        "kind": "screen-damage",
+        "tick": 148,
+        "observationTick": 148,
+        "source": "screen",
+        "onScreen": true,
+        "x": 79,
+        "z": 78,
+        "unitId": 7,
+        "amount": 5,
+        "episode": "7:2",
+        "episodeTick": 50,
+        "provenance": "retreat-risk-crossing",
+        "observedDanger": {
+          "healthShare": 0.55,
+          "lossShare": 0.05,
+          "healthBand": "healthy",
+          "suppressionBand": "pinned",
+          "retreatRisk": true,
+          "alreadyRetreating": false,
+          "alreadyEngaged": false,
+          "autoRetreatCovered": false
+        }
+      },
+      "answer": {
+        "firstActionTick": 167,
+        "acceptedCommandTick": 170
+      }
+    },
+    {
+      "episode": "support-normal-3.json",
+      "level": "normal",
+      "scene": "support",
+      "seed": 3,
+      "seconds": 30,
+      "creation": {
+        "id": "observed-screen:198:8",
+        "kind": "screen-damage",
+        "tick": 198,
+        "observationTick": 198,
+        "source": "screen",
+        "onScreen": true,
+        "x": 75.7,
+        "z": 80.1,
+        "unitId": 9,
+        "amount": 4,
+        "episode": "9:3",
+        "episodeTick": 50,
+        "provenance": "retreat-risk-crossing",
+        "observedDanger": {
+          "healthShare": 0.41333333333333333,
+          "lossShare": 0.05333333333333334,
+          "healthBand": "hurt",
+          "suppressionBand": "pinned",
+          "retreatRisk": true,
+          "alreadyRetreating": false,
+          "alreadyEngaged": false,
+          "autoRetreatCovered": false
+        }
+      },
+      "answer": {
+        "firstActionTick": 213,
+        "acceptedCommandTick": 213
+      }
+    }
+  ],
+  "diagnosticCurves": [
+    {
+      "level": "easy",
+      "manual": {
+        "samples": [
+          {
+            "seconds": 1,
+            "observed": true
+          },
+          {
+            "seconds": 1,
+            "observed": true
+          },
+          {
+            "seconds": 1.05,
+            "observed": true
+          },
+          {
+            "seconds": 1.05,
+            "observed": true
+          },
+          {
+            "seconds": 1.3,
+            "observed": true
+          },
+          {
+            "seconds": 1.65,
+            "observed": true
+          },
+          {
+            "seconds": 4.15,
+            "observed": true
+          },
+          {
+            "seconds": 4.15,
+            "observed": true
+          },
+          {
+            "seconds": 5.3,
+            "observed": true
+          },
+          {
+            "seconds": 5.3,
+            "observed": true
+          },
+          {
+            "seconds": 5.45,
+            "observed": true
+          },
+          {
+            "seconds": 5.45,
+            "observed": true
+          }
+        ],
+        "beforeMedian": 4.15,
+        "afterMedian": 1.65,
+        "beforePublicMedian": 4.15,
+        "afterPublicMedian": 1.65,
+        "curve": [
+          {
+            "seconds": 1,
+            "atRisk": 12,
+            "observed": 2,
+            "censored": 0,
+            "survival": 0.833
+          },
+          {
+            "seconds": 1.05,
+            "atRisk": 10,
+            "observed": 2,
+            "censored": 0,
+            "survival": 0.667
+          },
+          {
+            "seconds": 1.3,
+            "atRisk": 8,
+            "observed": 1,
+            "censored": 0,
+            "survival": 0.583
+          },
+          {
+            "seconds": 1.65,
+            "atRisk": 7,
+            "observed": 1,
+            "censored": 0,
+            "survival": 0.5
+          },
+          {
+            "seconds": 4.15,
+            "atRisk": 6,
+            "observed": 2,
+            "censored": 0,
+            "survival": 0.333
+          },
+          {
+            "seconds": 5.3,
+            "atRisk": 4,
+            "observed": 2,
+            "censored": 0,
+            "survival": 0.167
+          },
+          {
+            "seconds": 5.45,
+            "atRisk": 2,
+            "observed": 2,
+            "censored": 0,
+            "survival": 0
+          }
+        ],
+        "publicCurve": [
+          {
+            "seconds": 1,
+            "atRisk": 12,
+            "observed": 2,
+            "censored": 0,
+            "survival": 0.8333333333333334
+          },
+          {
+            "seconds": 1.05,
+            "atRisk": 10,
+            "observed": 2,
+            "censored": 0,
+            "survival": 0.6666666666666667
+          },
+          {
+            "seconds": 1.3,
+            "atRisk": 8,
+            "observed": 1,
+            "censored": 0,
+            "survival": 0.5833333333333334
+          },
+          {
+            "seconds": 1.65,
+            "atRisk": 7,
+            "observed": 1,
+            "censored": 0,
+            "survival": 0.5000000000000001
+          },
+          {
+            "seconds": 4.15,
+            "atRisk": 6,
+            "observed": 2,
+            "censored": 0,
+            "survival": 0.3333333333333334
+          },
+          {
+            "seconds": 5.3,
+            "atRisk": 4,
+            "observed": 2,
+            "censored": 0,
+            "survival": 0.1666666666666667
+          },
+          {
+            "seconds": 5.45,
+            "atRisk": 2,
+            "observed": 2,
+            "censored": 0,
+            "survival": 0
+          }
+        ]
+      },
+      "acceptedCommand": {
+        "samples": [
+          {
+            "seconds": 1,
+            "observed": true
+          },
+          {
+            "seconds": 1.25,
+            "observed": true
+          },
+          {
+            "seconds": 1.3,
+            "observed": true
+          },
+          {
+            "seconds": 1.3,
+            "observed": true
+          },
+          {
+            "seconds": 1.5,
+            "observed": true
+          },
+          {
+            "seconds": 1.85,
+            "observed": true
+          },
+          {
+            "seconds": 5,
+            "observed": true
+          },
+          {
+            "seconds": 5,
+            "observed": true
+          },
+          {
+            "seconds": 6.2,
+            "observed": true
+          },
+          {
+            "seconds": 6.2,
+            "observed": true
+          },
+          {
+            "seconds": 6.3,
+            "observed": true
+          },
+          {
+            "seconds": 6.3,
+            "observed": true
+          }
+        ],
+        "beforeMedian": 1.85,
+        "afterMedian": 1.85,
+        "beforePublicMedian": 1.85,
+        "afterPublicMedian": 1.85,
+        "curve": [
+          {
+            "seconds": 1,
+            "atRisk": 12,
+            "observed": 1,
+            "censored": 0,
+            "survival": 0.917
+          },
+          {
+            "seconds": 1.25,
+            "atRisk": 11,
+            "observed": 1,
+            "censored": 0,
+            "survival": 0.833
+          },
+          {
+            "seconds": 1.3,
+            "atRisk": 10,
+            "observed": 2,
+            "censored": 0,
+            "survival": 0.667
+          },
+          {
+            "seconds": 1.5,
+            "atRisk": 8,
+            "observed": 1,
+            "censored": 0,
+            "survival": 0.583
+          },
+          {
+            "seconds": 1.85,
+            "atRisk": 7,
+            "observed": 1,
+            "censored": 0,
+            "survival": 0.5
+          },
+          {
+            "seconds": 5,
+            "atRisk": 6,
+            "observed": 2,
+            "censored": 0,
+            "survival": 0.333
+          },
+          {
+            "seconds": 6.2,
+            "atRisk": 4,
+            "observed": 2,
+            "censored": 0,
+            "survival": 0.167
+          },
+          {
+            "seconds": 6.3,
+            "atRisk": 2,
+            "observed": 2,
+            "censored": 0,
+            "survival": 0
+          }
+        ],
+        "publicCurve": [
+          {
+            "seconds": 1,
+            "atRisk": 12,
+            "observed": 1,
+            "censored": 0,
+            "survival": 0.9166666666666666
+          },
+          {
+            "seconds": 1.25,
+            "atRisk": 11,
+            "observed": 1,
+            "censored": 0,
+            "survival": 0.8333333333333333
+          },
+          {
+            "seconds": 1.3,
+            "atRisk": 10,
+            "observed": 2,
+            "censored": 0,
+            "survival": 0.6666666666666666
+          },
+          {
+            "seconds": 1.5,
+            "atRisk": 8,
+            "observed": 1,
+            "censored": 0,
+            "survival": 0.5833333333333333
+          },
+          {
+            "seconds": 1.85,
+            "atRisk": 7,
+            "observed": 1,
+            "censored": 0,
+            "survival": 0.5
+          },
+          {
+            "seconds": 5,
+            "atRisk": 6,
+            "observed": 2,
+            "censored": 0,
+            "survival": 0.33333333333333337
+          },
+          {
+            "seconds": 6.2,
+            "atRisk": 4,
+            "observed": 2,
+            "censored": 0,
+            "survival": 0.16666666666666669
+          },
+          {
+            "seconds": 6.3,
+            "atRisk": 2,
+            "observed": 2,
+            "censored": 0,
+            "survival": 0
+          }
+        ]
+      },
+      "alert": {
+        "samples": [
+          {
+            "seconds": 3.85,
+            "observed": true
+          },
+          {
+            "seconds": 4.2,
+            "observed": true
+          },
+          {
+            "seconds": 4.65,
+            "observed": true
+          },
+          {
+            "seconds": 5.7,
+            "observed": true
+          }
+        ],
+        "beforeMedian": 4.2,
+        "afterMedian": 4.2,
+        "beforePublicMedian": 4.2,
+        "afterPublicMedian": 4.2,
+        "curve": [
+          {
+            "seconds": 3.85,
+            "atRisk": 4,
+            "observed": 1,
+            "censored": 0,
+            "survival": 0.75
+          },
+          {
+            "seconds": 4.2,
+            "atRisk": 3,
+            "observed": 1,
+            "censored": 0,
+            "survival": 0.5
+          },
+          {
+            "seconds": 4.65,
+            "atRisk": 2,
+            "observed": 1,
+            "censored": 0,
+            "survival": 0.25
+          },
+          {
+            "seconds": 5.7,
+            "atRisk": 1,
+            "observed": 1,
+            "censored": 0,
+            "survival": 0
+          }
+        ],
+        "publicCurve": [
+          {
+            "seconds": 3.85,
+            "atRisk": 4,
+            "observed": 1,
+            "censored": 0,
+            "survival": 0.75
+          },
+          {
+            "seconds": 4.2,
+            "atRisk": 3,
+            "observed": 1,
+            "censored": 0,
+            "survival": 0.5
+          },
+          {
+            "seconds": 4.65,
+            "atRisk": 2,
+            "observed": 1,
+            "censored": 0,
+            "survival": 0.25
+          },
+          {
+            "seconds": 5.7,
+            "atRisk": 1,
+            "observed": 1,
+            "censored": 0,
+            "survival": 0
+          }
+        ]
+      }
+    },
+    {
+      "level": "normal",
+      "manual": {
+        "samples": [
+          {
+            "seconds": 0.65,
+            "observed": true
+          },
+          {
+            "seconds": 0.75,
+            "observed": true
+          },
+          {
+            "seconds": 0.95,
+            "observed": true
+          },
+          {
+            "seconds": 3.1,
+            "observed": true
+          },
+          {
+            "seconds": 3.1,
+            "observed": true
+          },
+          {
+            "seconds": 4,
+            "observed": true
+          },
+          {
+            "seconds": 4,
+            "observed": true
+          },
+          {
+            "seconds": 4.05,
+            "observed": true
+          },
+          {
+            "seconds": 4.05,
+            "observed": true
+          }
+        ],
+        "beforeMedian": 3.1,
+        "afterMedian": 3.1,
+        "beforePublicMedian": 3.1,
+        "afterPublicMedian": 3.1,
+        "curve": [
+          {
+            "seconds": 0.65,
+            "atRisk": 9,
+            "observed": 1,
+            "censored": 0,
+            "survival": 0.889
+          },
+          {
+            "seconds": 0.75,
+            "atRisk": 8,
+            "observed": 1,
+            "censored": 0,
+            "survival": 0.778
+          },
+          {
+            "seconds": 0.95,
+            "atRisk": 7,
+            "observed": 1,
+            "censored": 0,
+            "survival": 0.667
+          },
+          {
+            "seconds": 3.1,
+            "atRisk": 6,
+            "observed": 2,
+            "censored": 0,
+            "survival": 0.444
+          },
+          {
+            "seconds": 4,
+            "atRisk": 4,
+            "observed": 2,
+            "censored": 0,
+            "survival": 0.222
+          },
+          {
+            "seconds": 4.05,
+            "atRisk": 2,
+            "observed": 2,
+            "censored": 0,
+            "survival": 0
+          }
+        ],
+        "publicCurve": [
+          {
+            "seconds": 0.65,
+            "atRisk": 9,
+            "observed": 1,
+            "censored": 0,
+            "survival": 0.8888888888888888
+          },
+          {
+            "seconds": 0.75,
+            "atRisk": 8,
+            "observed": 1,
+            "censored": 0,
+            "survival": 0.7777777777777777
+          },
+          {
+            "seconds": 0.95,
+            "atRisk": 7,
+            "observed": 1,
+            "censored": 0,
+            "survival": 0.6666666666666666
+          },
+          {
+            "seconds": 3.1,
+            "atRisk": 6,
+            "observed": 2,
+            "censored": 0,
+            "survival": 0.4444444444444445
+          },
+          {
+            "seconds": 4,
+            "atRisk": 4,
+            "observed": 2,
+            "censored": 0,
+            "survival": 0.22222222222222224
+          },
+          {
+            "seconds": 4.05,
+            "atRisk": 2,
+            "observed": 2,
+            "censored": 0,
+            "survival": 0
+          }
+        ]
+      },
+      "acceptedCommand": {
+        "samples": [
+          {
+            "seconds": 0.75,
+            "observed": true
+          },
+          {
+            "seconds": 0.8,
+            "observed": true
+          },
+          {
+            "seconds": 1.1,
+            "observed": true
+          },
+          {
+            "seconds": 3.75,
+            "observed": true
+          },
+          {
+            "seconds": 3.75,
+            "observed": true
+          },
+          {
+            "seconds": 4.65,
+            "observed": true
+          },
+          {
+            "seconds": 4.65,
+            "observed": true
+          },
+          {
+            "seconds": 4.7,
+            "observed": true
+          },
+          {
+            "seconds": 4.7,
+            "observed": true
+          }
+        ],
+        "beforeMedian": 3.75,
+        "afterMedian": 3.75,
+        "beforePublicMedian": 3.75,
+        "afterPublicMedian": 3.75,
+        "curve": [
+          {
+            "seconds": 0.75,
+            "atRisk": 9,
+            "observed": 1,
+            "censored": 0,
+            "survival": 0.889
+          },
+          {
+            "seconds": 0.8,
+            "atRisk": 8,
+            "observed": 1,
+            "censored": 0,
+            "survival": 0.778
+          },
+          {
+            "seconds": 1.1,
+            "atRisk": 7,
+            "observed": 1,
+            "censored": 0,
+            "survival": 0.667
+          },
+          {
+            "seconds": 3.75,
+            "atRisk": 6,
+            "observed": 2,
+            "censored": 0,
+            "survival": 0.444
+          },
+          {
+            "seconds": 4.65,
+            "atRisk": 4,
+            "observed": 2,
+            "censored": 0,
+            "survival": 0.222
+          },
+          {
+            "seconds": 4.7,
+            "atRisk": 2,
+            "observed": 2,
+            "censored": 0,
+            "survival": 0
+          }
+        ],
+        "publicCurve": [
+          {
+            "seconds": 0.75,
+            "atRisk": 9,
+            "observed": 1,
+            "censored": 0,
+            "survival": 0.8888888888888888
+          },
+          {
+            "seconds": 0.8,
+            "atRisk": 8,
+            "observed": 1,
+            "censored": 0,
+            "survival": 0.7777777777777777
+          },
+          {
+            "seconds": 1.1,
+            "atRisk": 7,
+            "observed": 1,
+            "censored": 0,
+            "survival": 0.6666666666666666
+          },
+          {
+            "seconds": 3.75,
+            "atRisk": 6,
+            "observed": 2,
+            "censored": 0,
+            "survival": 0.4444444444444445
+          },
+          {
+            "seconds": 4.65,
+            "atRisk": 4,
+            "observed": 2,
+            "censored": 0,
+            "survival": 0.22222222222222224
+          },
+          {
+            "seconds": 4.7,
+            "atRisk": 2,
+            "observed": 2,
+            "censored": 0,
+            "survival": 0
+          }
+        ]
+      },
+      "alert": {
+        "samples": [
+          {
+            "seconds": 1.95,
+            "observed": true
+          },
+          {
+            "seconds": 2,
+            "observed": true
+          },
+          {
+            "seconds": 2.1,
+            "observed": true
+          },
+          {
+            "seconds": 2.1,
+            "observed": true
+          },
+          {
+            "seconds": 2.35,
+            "observed": true
+          }
+        ],
+        "beforeMedian": 2.1,
+        "afterMedian": 2.1,
+        "beforePublicMedian": 2.1,
+        "afterPublicMedian": 2.1,
+        "curve": [
+          {
+            "seconds": 1.95,
+            "atRisk": 5,
+            "observed": 1,
+            "censored": 0,
+            "survival": 0.8
+          },
+          {
+            "seconds": 2,
+            "atRisk": 4,
+            "observed": 1,
+            "censored": 0,
+            "survival": 0.6
+          },
+          {
+            "seconds": 2.1,
+            "atRisk": 3,
+            "observed": 2,
+            "censored": 0,
+            "survival": 0.2
+          },
+          {
+            "seconds": 2.35,
+            "atRisk": 1,
+            "observed": 1,
+            "censored": 0,
+            "survival": 0
+          }
+        ],
+        "publicCurve": [
+          {
+            "seconds": 1.95,
+            "atRisk": 5,
+            "observed": 1,
+            "censored": 0,
+            "survival": 0.8
+          },
+          {
+            "seconds": 2,
+            "atRisk": 4,
+            "observed": 1,
+            "censored": 0,
+            "survival": 0.6000000000000001
+          },
+          {
+            "seconds": 2.1,
+            "atRisk": 3,
+            "observed": 2,
+            "censored": 0,
+            "survival": 0.20000000000000004
+          },
+          {
+            "seconds": 2.35,
+            "atRisk": 1,
+            "observed": 1,
+            "censored": 0,
+            "survival": 0
+          }
+        ]
+      }
+    },
+    {
+      "level": "hard",
+      "manual": {
+        "samples": [
+          {
+            "seconds": 2.3,
+            "observed": true
+          },
+          {
+            "seconds": 2.3,
+            "observed": true
+          },
+          {
+            "seconds": 2.55,
+            "observed": true
+          },
+          {
+            "seconds": 2.55,
+            "observed": true
+          },
+          {
+            "seconds": 2.65,
+            "observed": true
+          },
+          {
+            "seconds": 2.65,
+            "observed": true
+          }
+        ],
+        "beforeMedian": 2.55,
+        "afterMedian": 2.55,
+        "beforePublicMedian": 2.55,
+        "afterPublicMedian": 2.55,
+        "curve": [
+          {
+            "seconds": 2.3,
+            "atRisk": 6,
+            "observed": 2,
+            "censored": 0,
+            "survival": 0.667
+          },
+          {
+            "seconds": 2.55,
+            "atRisk": 4,
+            "observed": 2,
+            "censored": 0,
+            "survival": 0.333
+          },
+          {
+            "seconds": 2.65,
+            "atRisk": 2,
+            "observed": 2,
+            "censored": 0,
+            "survival": 0
+          }
+        ],
+        "publicCurve": [
+          {
+            "seconds": 2.3,
+            "atRisk": 6,
+            "observed": 2,
+            "censored": 0,
+            "survival": 0.6666666666666667
+          },
+          {
+            "seconds": 2.55,
+            "atRisk": 4,
+            "observed": 2,
+            "censored": 0,
+            "survival": 0.33333333333333337
+          },
+          {
+            "seconds": 2.65,
+            "atRisk": 2,
+            "observed": 2,
+            "censored": 0,
+            "survival": 0
+          }
+        ]
+      },
+      "acceptedCommand": {
+        "samples": [
+          {
+            "seconds": 2.8,
+            "observed": true
+          },
+          {
+            "seconds": 2.8,
+            "observed": true
+          },
+          {
+            "seconds": 3.1,
+            "observed": true
+          },
+          {
+            "seconds": 3.1,
+            "observed": true
+          },
+          {
+            "seconds": 3.15,
+            "observed": true
+          },
+          {
+            "seconds": 3.15,
+            "observed": true
+          }
+        ],
+        "beforeMedian": 3.1,
+        "afterMedian": 3.1,
+        "beforePublicMedian": 3.1,
+        "afterPublicMedian": 3.1,
+        "curve": [
+          {
+            "seconds": 2.8,
+            "atRisk": 6,
+            "observed": 2,
+            "censored": 0,
+            "survival": 0.667
+          },
+          {
+            "seconds": 3.1,
+            "atRisk": 4,
+            "observed": 2,
+            "censored": 0,
+            "survival": 0.333
+          },
+          {
+            "seconds": 3.15,
+            "atRisk": 2,
+            "observed": 2,
+            "censored": 0,
+            "survival": 0
+          }
+        ],
+        "publicCurve": [
+          {
+            "seconds": 2.8,
+            "atRisk": 6,
+            "observed": 2,
+            "censored": 0,
+            "survival": 0.6666666666666667
+          },
+          {
+            "seconds": 3.1,
+            "atRisk": 4,
+            "observed": 2,
+            "censored": 0,
+            "survival": 0.33333333333333337
+          },
+          {
+            "seconds": 3.15,
+            "atRisk": 2,
+            "observed": 2,
+            "censored": 0,
+            "survival": 0
+          }
+        ]
+      },
+      "alert": {
+        "samples": [
+          {
+            "seconds": 0.85,
+            "observed": true
+          },
+          {
+            "seconds": 0.9,
+            "observed": true
+          },
+          {
+            "seconds": 1.1,
+            "observed": true
+          },
+          {
+            "seconds": 1.2,
+            "observed": true
+          },
+          {
+            "seconds": 1.2,
+            "observed": true
+          },
+          {
+            "seconds": 1.5,
+            "observed": true
+          },
+          {
+            "seconds": 1.55,
+            "observed": true
+          },
+          {
+            "seconds": 1.65,
+            "observed": true
+          },
+          {
+            "seconds": 1.75,
+            "observed": true
+          }
+        ],
+        "beforeMedian": 1.2,
+        "afterMedian": 1.2,
+        "beforePublicMedian": 1.2,
+        "afterPublicMedian": 1.2,
+        "curve": [
+          {
+            "seconds": 0.85,
+            "atRisk": 9,
+            "observed": 1,
+            "censored": 0,
+            "survival": 0.889
+          },
+          {
+            "seconds": 0.9,
+            "atRisk": 8,
+            "observed": 1,
+            "censored": 0,
+            "survival": 0.778
+          },
+          {
+            "seconds": 1.1,
+            "atRisk": 7,
+            "observed": 1,
+            "censored": 0,
+            "survival": 0.667
+          },
+          {
+            "seconds": 1.2,
+            "atRisk": 6,
+            "observed": 2,
+            "censored": 0,
+            "survival": 0.444
+          },
+          {
+            "seconds": 1.5,
+            "atRisk": 4,
+            "observed": 1,
+            "censored": 0,
+            "survival": 0.333
+          },
+          {
+            "seconds": 1.55,
+            "atRisk": 3,
+            "observed": 1,
+            "censored": 0,
+            "survival": 0.222
+          },
+          {
+            "seconds": 1.65,
+            "atRisk": 2,
+            "observed": 1,
+            "censored": 0,
+            "survival": 0.111
+          },
+          {
+            "seconds": 1.75,
+            "atRisk": 1,
+            "observed": 1,
+            "censored": 0,
+            "survival": 0
+          }
+        ],
+        "publicCurve": [
+          {
+            "seconds": 0.85,
+            "atRisk": 9,
+            "observed": 1,
+            "censored": 0,
+            "survival": 0.8888888888888888
+          },
+          {
+            "seconds": 0.9,
+            "atRisk": 8,
+            "observed": 1,
+            "censored": 0,
+            "survival": 0.7777777777777777
+          },
+          {
+            "seconds": 1.1,
+            "atRisk": 7,
+            "observed": 1,
+            "censored": 0,
+            "survival": 0.6666666666666666
+          },
+          {
+            "seconds": 1.2,
+            "atRisk": 6,
+            "observed": 2,
+            "censored": 0,
+            "survival": 0.4444444444444445
+          },
+          {
+            "seconds": 1.5,
+            "atRisk": 4,
+            "observed": 1,
+            "censored": 0,
+            "survival": 0.33333333333333337
+          },
+          {
+            "seconds": 1.55,
+            "atRisk": 3,
+            "observed": 1,
+            "censored": 0,
+            "survival": 0.22222222222222227
+          },
+          {
+            "seconds": 1.65,
+            "atRisk": 2,
+            "observed": 1,
+            "censored": 0,
+            "survival": 0.11111111111111113
+          },
+          {
+            "seconds": 1.75,
+            "atRisk": 1,
+            "observed": 1,
+            "censored": 0,
+            "survival": 0
+          }
+        ]
+      }
+    }
+  ]
+}

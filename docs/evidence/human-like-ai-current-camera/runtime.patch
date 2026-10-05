@@ -1,0 +1,20 @@
+--- a/shared/ai-commander.js
++++ b/shared/ai-commander.js
+@@ -333,7 +333,7 @@
+     state.deliberateUntil = continuing ? tick : tick + Math.max(2, Math.round(between(hands.rng,
+       ...({ easy: [8, 18], normal: [5, 10], hard: [2, 5] }[level] ?? [5, 10])) * complexity));
+     const target = cameraTarget(view, candidate, slot), context = contextFor(view, candidate, state);
+-    if (!continuing && !candidate.eventOnScreen && !onScreen(target, state.camera, view)) {
++    if (!continuing && !onScreen(target, state.camera, view)) {
+       moveConcernCamera(state, hands, target, context, cameraTravelMode(state.camera, target, candidate.id.startsWith('alert:')));
+       return;
+     }
+@@ -343,7 +343,7 @@
+     const target = cameraTarget(view, state.concern, slot);
+     const context = contextFor(view, state.concern, state);
+     state.pendingEmergency = null;
+-    if (!state.concern.eventOnScreen && !onScreen(target, state.camera, view)) {
++    if (!onScreen(target, state.camera, view)) {
+       moveConcernCamera(state, hands, target, context, cameraTravelMode(state.camera, target, state.concern.id.startsWith('alert:')));
+       return;
+     }

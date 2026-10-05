@@ -1,0 +1,742 @@
+{
+  "status": "CONQUEST_RECEIVER_VERIFIED_PACKAGING_PENDING_RETAINING_ALL_FAILURES",
+  "sourceCheckpointSHA256": "3bac0c0923bcfe622dac10a8b76783d090eaf249a4c54e3e9a89a305c9e51ae9",
+  "matches": 60,
+  "seats": 180,
+  "bounds": {
+    "easy": {
+      "screen": [
+        0.9,
+        1.4
+      ],
+      "offscreen": [
+        3,
+        6
+      ],
+      "physicalAPM60": [
+        20,
+        35
+      ],
+      "peakAPM10": 60,
+      "opening": [
+        4,
+        8
+      ]
+    },
+    "normal": {
+      "screen": [
+        0.5,
+        0.8
+      ],
+      "offscreen": [
+        1.5,
+        3
+      ],
+      "physicalAPM60": [
+        40,
+        70
+      ],
+      "peakAPM10": 120,
+      "opening": [
+        3,
+        6
+      ]
+    },
+    "hard": {
+      "screen": [
+        0.3,
+        0.45
+      ],
+      "offscreen": [
+        0.8,
+        1.6
+      ],
+      "physicalAPM60": [
+        80,
+        120
+      ],
+      "peakAPM10": 200,
+      "opening": [
+        2,
+        4
+      ]
+    }
+  },
+  "campaignVerification": "All Conquest per-match raw receiver checks passed. Mode packaging, Classic/World and final merged verification remain pending.",
+  "groups": {
+    "conquest/easy": {
+      "matches": 20,
+      "seats": 60,
+      "manual": {
+        "creationEvents": 2261,
+        "requiredEvents": 248,
+        "unknownEvents": 0,
+        "answered": 121,
+        "censored": 127,
+        "pooledKMSeconds": null,
+        "status": "not-evaluable",
+        "captureIssues": [],
+        "policyIssues": [
+          "unidentified-firstCompletedAction-KM"
+        ],
+        "zeroExposureSeats": 1
+      },
+      "originalOracle": {
+        "requiredEvents": 0,
+        "answered": 0,
+        "censored": 0,
+        "pooledKMSeconds": null,
+        "rawNewCreationEvents": 3072,
+        "capturedHistoryCreationEvents": 0,
+        "missingStartCoverageSeats": 0,
+        "status": "frozen-scorer-instrumentation-gap"
+      },
+      "physicalAPM60SeatMeanMedian": 27.333,
+      "physicalAPMStatus": "pass",
+      "peakAPM10": 60,
+      "peakStatus": "pass",
+      "firstOrderMinimum": 4.05,
+      "firstOrderMaximum": 7.95,
+      "firstOrderStatus": "pass",
+      "maxCommandsPerTick": 1,
+      "quarterSecondCrossScreenPairs": 0,
+      "offScreenStatus": "not-evaluable-no-required-alert-population",
+      "opening": {
+        "USA": {
+          "seats": 20,
+          "distinct": 7,
+          "largestShare": 0.3,
+          "gate": "pass",
+          "counts": {
+            "[\"infantry\",\"infantry\"]": 6,
+            "[\"antiTank\"]": 4,
+            "[\"mortar\"]": 4,
+            "[\"machineGun\"]": 3,
+            "[\"mortar\",\"infantry\"]": 1,
+            "[\"machineGun\",\"infantry\"]": 1,
+            "[\"infantry\",\"infantry\",\"machineGun\"]": 1
+          }
+        },
+        "Germany": {
+          "seats": 20,
+          "distinct": 5,
+          "largestShare": 0.45,
+          "gate": "pass",
+          "counts": {
+            "[\"infantry\",\"infantry\"]": 9,
+            "[\"mortar\"]": 5,
+            "[\"machineGun\"]": 2,
+            "[\"antiTank\"]": 3,
+            "[\"machineGun\",\"infantry\"]": 1
+          }
+        },
+        "USSR": {
+          "seats": 20,
+          "distinct": 6,
+          "largestShare": 0.35,
+          "gate": "pass",
+          "counts": {
+            "[\"infantry\",\"infantry\"]": 7,
+            "[\"machineGun\"]": 5,
+            "[\"mortar\"]": 3,
+            "[\"antiTank\",\"infantry\"]": 1,
+            "[\"antiTank\"]": 2,
+            "[\"infantry\",\"infantry\",\"infantry\"]": 2
+          }
+        }
+      }
+    },
+    "conquest/normal": {
+      "matches": 20,
+      "seats": 60,
+      "manual": {
+        "creationEvents": 3233,
+        "requiredEvents": 339,
+        "unknownEvents": 0,
+        "answered": 202,
+        "censored": 137,
+        "pooledKMSeconds": 2.7,
+        "status": "fail",
+        "captureIssues": [],
+        "policyIssues": [],
+        "zeroExposureSeats": 2
+      },
+      "originalOracle": {
+        "requiredEvents": 0,
+        "answered": 0,
+        "censored": 0,
+        "pooledKMSeconds": null,
+        "rawNewCreationEvents": 4290,
+        "capturedHistoryCreationEvents": 0,
+        "missingStartCoverageSeats": 0,
+        "status": "frozen-scorer-instrumentation-gap"
+      },
+      "physicalAPM60SeatMeanMedian": 42.167,
+      "physicalAPMStatus": "pass",
+      "peakAPM10": 120,
+      "peakStatus": "pass",
+      "firstOrderMinimum": 3.05,
+      "firstOrderMaximum": 5.95,
+      "firstOrderStatus": "pass",
+      "maxCommandsPerTick": 1,
+      "quarterSecondCrossScreenPairs": 0,
+      "offScreenStatus": "not-evaluable-no-required-alert-population",
+      "opening": {
+        "USA": {
+          "seats": 20,
+          "distinct": 8,
+          "largestShare": 0.3,
+          "gate": "pass",
+          "counts": {
+            "[\"infantry\",\"infantry\"]": 6,
+            "[\"antiTank\"]": 3,
+            "[\"antiTank\",\"infantry\"]": 1,
+            "[\"mortar\",\"infantry\"]": 2,
+            "[\"machineGun\"]": 1,
+            "[\"machineGun\",\"infantry\"]": 3,
+            "[\"infantry\",\"infantry\",\"infantry\"]": 1,
+            "[\"mortar\"]": 3
+          }
+        },
+        "Germany": {
+          "seats": 20,
+          "distinct": 8,
+          "largestShare": 0.35,
+          "gate": "pass",
+          "counts": {
+            "[\"infantry\",\"infantry\"]": 7,
+            "[\"machineGun\"]": 1,
+            "[\"mortar\",\"infantry\"]": 3,
+            "[\"infantry\",\"infantry\",\"infantry\"]": 2,
+            "[\"machineGun\",\"infantry\"]": 2,
+            "[\"antiTank\"]": 2,
+            "[\"mortar\"]": 2,
+            "[\"antiTank\",\"infantry\"]": 1
+          }
+        },
+        "USSR": {
+          "seats": 20,
+          "distinct": 7,
+          "largestShare": 0.3,
+          "gate": "pass",
+          "counts": {
+            "[\"infantry\",\"infantry\",\"infantry\"]": 6,
+            "[\"machineGun\",\"infantry\",\"infantry\"]": 1,
+            "[\"infantry\",\"infantry\"]": 2,
+            "[\"machineGun\",\"infantry\"]": 4,
+            "[\"mortar\",\"infantry\"]": 3,
+            "[\"antiTank\"]": 3,
+            "[\"infantry\",\"infantry\",\"infantry\",\"infantry\"]": 1
+          }
+        }
+      }
+    },
+    "conquest/hard": {
+      "matches": 20,
+      "seats": 60,
+      "manual": {
+        "creationEvents": 3718,
+        "requiredEvents": 305,
+        "unknownEvents": 0,
+        "answered": 188,
+        "censored": 117,
+        "pooledKMSeconds": 2.4,
+        "status": "fail",
+        "captureIssues": [],
+        "policyIssues": [],
+        "zeroExposureSeats": 2
+      },
+      "originalOracle": {
+        "requiredEvents": 0,
+        "answered": 0,
+        "censored": 0,
+        "pooledKMSeconds": null,
+        "rawNewCreationEvents": 4955,
+        "capturedHistoryCreationEvents": 0,
+        "missingStartCoverageSeats": 0,
+        "status": "frozen-scorer-instrumentation-gap"
+      },
+      "physicalAPM60SeatMeanMedian": 57.834,
+      "physicalAPMStatus": "fail",
+      "peakAPM10": 168,
+      "peakStatus": "pass",
+      "firstOrderMinimum": 2.2,
+      "firstOrderMaximum": 4,
+      "firstOrderStatus": "pass",
+      "maxCommandsPerTick": 1,
+      "quarterSecondCrossScreenPairs": 0,
+      "offScreenStatus": "not-evaluable-no-required-alert-population",
+      "opening": {
+        "USA": {
+          "seats": 20,
+          "distinct": 9,
+          "largestShare": 0.2,
+          "gate": "pass",
+          "counts": {
+            "[\"infantry\",\"infantry\"]": 3,
+            "[\"antiTank\",\"infantry\"]": 3,
+            "[\"antiTank\"]": 1,
+            "[\"mortar\",\"infantry\"]": 4,
+            "[\"machineGun\",\"infantry\"]": 4,
+            "[\"mortar\"]": 1,
+            "[\"infantry\",\"machineGun\"]": 1,
+            "[\"infantry\",\"infantry\",\"infantry\"]": 2,
+            "[\"infantry\",\"infantry\",\"machineGun\"]": 1
+          }
+        },
+        "Germany": {
+          "seats": 20,
+          "distinct": 8,
+          "largestShare": 0.3,
+          "gate": "pass",
+          "counts": {
+            "[\"infantry\",\"infantry\"]": 6,
+            "[\"machineGun\",\"infantry\"]": 3,
+            "[\"mortar\",\"infantry\"]": 3,
+            "[\"infantry\",\"infantry\",\"infantry\"]": 2,
+            "[\"infantry\",\"machineGun\"]": 1,
+            "[\"mortar\"]": 2,
+            "[\"antiTank\",\"infantry\"]": 1,
+            "[\"antiTank\"]": 2
+          }
+        },
+        "USSR": {
+          "seats": 20,
+          "distinct": 6,
+          "largestShare": 0.4,
+          "gate": "pass",
+          "counts": {
+            "[\"infantry\",\"infantry\",\"infantry\"]": 8,
+            "[\"machineGun\",\"infantry\"]": 5,
+            "[\"infantry\",\"infantry\",\"machineGun\"]": 1,
+            "[\"mortar\",\"infantry\"]": 3,
+            "[\"antiTank\",\"infantry\"]": 2,
+            "[\"antiTank\"]": 1
+          }
+        }
+      }
+    }
+  },
+  "retained": [
+    {
+      "mode": "conquest",
+      "level": "easy",
+      "seed": 1,
+      "seconds": 180,
+      "rawBytes": 110796568
+    },
+    {
+      "mode": "conquest",
+      "level": "easy",
+      "seed": 3,
+      "seconds": 180,
+      "rawBytes": 106276265
+    },
+    {
+      "mode": "conquest",
+      "level": "easy",
+      "seed": 2,
+      "seconds": 180,
+      "rawBytes": 113107746
+    },
+    {
+      "mode": "conquest",
+      "level": "easy",
+      "seed": 4,
+      "seconds": 180,
+      "rawBytes": 114750648
+    },
+    {
+      "mode": "conquest",
+      "level": "easy",
+      "seed": 5,
+      "seconds": 180,
+      "rawBytes": 116562431
+    },
+    {
+      "mode": "conquest",
+      "level": "easy",
+      "seed": 6,
+      "seconds": 180,
+      "rawBytes": 106626774
+    },
+    {
+      "mode": "conquest",
+      "level": "easy",
+      "seed": 7,
+      "seconds": 180,
+      "rawBytes": 106251073
+    },
+    {
+      "mode": "conquest",
+      "level": "easy",
+      "seed": 8,
+      "seconds": 180,
+      "rawBytes": 113943075
+    },
+    {
+      "mode": "conquest",
+      "level": "easy",
+      "seed": 9,
+      "seconds": 180,
+      "rawBytes": 107939776
+    },
+    {
+      "mode": "conquest",
+      "level": "easy",
+      "seed": 10,
+      "seconds": 180,
+      "rawBytes": 110986500
+    },
+    {
+      "mode": "conquest",
+      "level": "easy",
+      "seed": 11,
+      "seconds": 180,
+      "rawBytes": 108526890
+    },
+    {
+      "mode": "conquest",
+      "level": "easy",
+      "seed": 12,
+      "seconds": 180,
+      "rawBytes": 108432982
+    },
+    {
+      "mode": "conquest",
+      "level": "easy",
+      "seed": 13,
+      "seconds": 180,
+      "rawBytes": 109592894
+    },
+    {
+      "mode": "conquest",
+      "level": "easy",
+      "seed": 14,
+      "seconds": 180,
+      "rawBytes": 106103396
+    },
+    {
+      "mode": "conquest",
+      "level": "easy",
+      "seed": 15,
+      "seconds": 180,
+      "rawBytes": 112711301
+    },
+    {
+      "mode": "conquest",
+      "level": "easy",
+      "seed": 16,
+      "seconds": 180,
+      "rawBytes": 111656097
+    },
+    {
+      "mode": "conquest",
+      "level": "easy",
+      "seed": 17,
+      "seconds": 180,
+      "rawBytes": 108808508
+    },
+    {
+      "mode": "conquest",
+      "level": "easy",
+      "seed": 18,
+      "seconds": 180,
+      "rawBytes": 110953757
+    },
+    {
+      "mode": "conquest",
+      "level": "easy",
+      "seed": 19,
+      "seconds": 180,
+      "rawBytes": 111861746
+    },
+    {
+      "mode": "conquest",
+      "level": "easy",
+      "seed": 20,
+      "seconds": 180,
+      "rawBytes": 103218330
+    },
+    {
+      "mode": "conquest",
+      "level": "normal",
+      "seed": 1,
+      "seconds": 180,
+      "rawBytes": 129831337
+    },
+    {
+      "mode": "conquest",
+      "level": "normal",
+      "seed": 2,
+      "seconds": 180,
+      "rawBytes": 124922383
+    },
+    {
+      "mode": "conquest",
+      "level": "normal",
+      "seed": 3,
+      "seconds": 180,
+      "rawBytes": 120752088
+    },
+    {
+      "mode": "conquest",
+      "level": "normal",
+      "seed": 4,
+      "seconds": 180,
+      "rawBytes": 126085016
+    },
+    {
+      "mode": "conquest",
+      "level": "normal",
+      "seed": 5,
+      "seconds": 180,
+      "rawBytes": 124735933
+    },
+    {
+      "mode": "conquest",
+      "level": "normal",
+      "seed": 6,
+      "seconds": 180,
+      "rawBytes": 122080864
+    },
+    {
+      "mode": "conquest",
+      "level": "normal",
+      "seed": 7,
+      "seconds": 180,
+      "rawBytes": 121125151
+    },
+    {
+      "mode": "conquest",
+      "level": "normal",
+      "seed": 8,
+      "seconds": 180,
+      "rawBytes": 127132912
+    },
+    {
+      "mode": "conquest",
+      "level": "normal",
+      "seed": 9,
+      "seconds": 180,
+      "rawBytes": 119221182
+    },
+    {
+      "mode": "conquest",
+      "level": "normal",
+      "seed": 10,
+      "seconds": 180,
+      "rawBytes": 119839293
+    },
+    {
+      "mode": "conquest",
+      "level": "normal",
+      "seed": 11,
+      "seconds": 180,
+      "rawBytes": 124265424
+    },
+    {
+      "mode": "conquest",
+      "level": "normal",
+      "seed": 12,
+      "seconds": 180,
+      "rawBytes": 120375386
+    },
+    {
+      "mode": "conquest",
+      "level": "normal",
+      "seed": 13,
+      "seconds": 180,
+      "rawBytes": 126861108
+    },
+    {
+      "mode": "conquest",
+      "level": "normal",
+      "seed": 14,
+      "seconds": 180,
+      "rawBytes": 119078804
+    },
+    {
+      "mode": "conquest",
+      "level": "normal",
+      "seed": 15,
+      "seconds": 180,
+      "rawBytes": 126179181
+    },
+    {
+      "mode": "conquest",
+      "level": "normal",
+      "seed": 16,
+      "seconds": 180,
+      "rawBytes": 123107933
+    },
+    {
+      "mode": "conquest",
+      "level": "normal",
+      "seed": 17,
+      "seconds": 180,
+      "rawBytes": 120293874
+    },
+    {
+      "mode": "conquest",
+      "level": "normal",
+      "seed": 18,
+      "seconds": 180,
+      "rawBytes": 121327123
+    },
+    {
+      "mode": "conquest",
+      "level": "normal",
+      "seed": 19,
+      "seconds": 180,
+      "rawBytes": 124553506
+    },
+    {
+      "mode": "conquest",
+      "level": "normal",
+      "seed": 20,
+      "seconds": 180,
+      "rawBytes": 119486288
+    },
+    {
+      "mode": "conquest",
+      "level": "hard",
+      "seed": 1,
+      "seconds": 180,
+      "rawBytes": 141399002
+    },
+    {
+      "mode": "conquest",
+      "level": "hard",
+      "seed": 2,
+      "seconds": 180,
+      "rawBytes": 134926431
+    },
+    {
+      "mode": "conquest",
+      "level": "hard",
+      "seed": 3,
+      "seconds": 180,
+      "rawBytes": 137731718
+    },
+    {
+      "mode": "conquest",
+      "level": "hard",
+      "seed": 4,
+      "seconds": 180,
+      "rawBytes": 139595776
+    },
+    {
+      "mode": "conquest",
+      "level": "hard",
+      "seed": 5,
+      "seconds": 180,
+      "rawBytes": 146268724
+    },
+    {
+      "mode": "conquest",
+      "level": "hard",
+      "seed": 6,
+      "seconds": 180,
+      "rawBytes": 136935910
+    },
+    {
+      "mode": "conquest",
+      "level": "hard",
+      "seed": 7,
+      "seconds": 180,
+      "rawBytes": 133813870
+    },
+    {
+      "mode": "conquest",
+      "level": "hard",
+      "seed": 8,
+      "seconds": 180,
+      "rawBytes": 140985840
+    },
+    {
+      "mode": "conquest",
+      "level": "hard",
+      "seed": 9,
+      "seconds": 180,
+      "rawBytes": 133804807
+    },
+    {
+      "mode": "conquest",
+      "level": "hard",
+      "seed": 10,
+      "seconds": 180,
+      "rawBytes": 134401010
+    },
+    {
+      "mode": "conquest",
+      "level": "hard",
+      "seed": 11,
+      "seconds": 180,
+      "rawBytes": 134302905
+    },
+    {
+      "mode": "conquest",
+      "level": "hard",
+      "seed": 12,
+      "seconds": 180,
+      "rawBytes": 135464779
+    },
+    {
+      "mode": "conquest",
+      "level": "hard",
+      "seed": 13,
+      "seconds": 180,
+      "rawBytes": 139680131
+    },
+    {
+      "mode": "conquest",
+      "level": "hard",
+      "seed": 14,
+      "seconds": 180,
+      "rawBytes": 132402443
+    },
+    {
+      "mode": "conquest",
+      "level": "hard",
+      "seed": 15,
+      "seconds": 180,
+      "rawBytes": 138127100
+    },
+    {
+      "mode": "conquest",
+      "level": "hard",
+      "seed": 16,
+      "seconds": 180,
+      "rawBytes": 133220613
+    },
+    {
+      "mode": "conquest",
+      "level": "hard",
+      "seed": 17,
+      "seconds": 180,
+      "rawBytes": 137327552
+    },
+    {
+      "mode": "conquest",
+      "level": "hard",
+      "seed": 18,
+      "seconds": 180,
+      "rawBytes": 144067034
+    },
+    {
+      "mode": "conquest",
+      "level": "hard",
+      "seed": 19,
+      "seconds": 180,
+      "rawBytes": 140461888
+    },
+    {
+      "mode": "conquest",
+      "level": "hard",
+      "seed": 20,
+      "seconds": 180,
+      "rawBytes": 140939597
+    }
+  ]
+}

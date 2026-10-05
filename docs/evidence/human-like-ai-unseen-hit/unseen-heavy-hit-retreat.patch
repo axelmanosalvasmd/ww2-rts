@@ -1,0 +1,43 @@
+--- a/shared/ai.js
++++ b/shared/ai.js
+@@ -847,6 +847,32 @@
+       }
+     return best;
+   };
++  // A suppressed heavy hit can justify going home without guessing an unseen shooter's position.
++  const attendedUnseenHitRetreat = u => {
++    const def = UNITS[u.type], fraction = u.hp / (def.models * def.hpPer);
++    if (!opts.human || classic || atBase(u) || opts.concern?.kind !== 'combat' || opts.concern.event !== 'screen-damage'
++      || opts.concern.unitId !== u.id || !view.screenIds.has(u.id) || !def.infantry || !armedContactActor(u)
++      || ANTI_ARMOR.has(u.type) || u.retreating || u.garrison >= 0 || u.cover === 2 || u.holdPos || u.targetId || u.attackId
++      || !u.amove && !u.path.length || u.orders.length || u.nade || u.dig || u.build || u.entrench
++      || u.enter >= 0 || u.fireAt >= 0) return false;
++    const damage = view.events?.find(event => event.kind === 'screen-damage' && event.onScreen
++      && event.unitId === u.id && event.id === opts.concern.eventId && event.tick <= view.tick
++      && view.tick - event.tick <= 80);
++    const cue = damage?.observedDanger;
++    if (!cue || !(cue.lossShare >= .25) || !(cue.healthShare >= fraction) || !['suppressed', 'pinned'].includes(cue.suppressionBand)
++      || !(u.supp > 0) || cue.autoRetreatCovered || cue.alreadyRetreating
++      || u.autoRetreat && fraction < CFG.autoRetreat || screenThreats.length) return false;
++    const goal = u.amove ?? u.path.at(-1);
++    if (goal && d(goal, me.spawn) <= CFG.reinforceRadius) return false;
++    if ((view.sightings ?? []).some(sighting => {
++      const weapon = UNITS[sighting.type]?.w;
++      return weapon?.range > 0 && d(sighting, me.spawn) <= weapon.range;
++    })) return false;
++    return ![...view.screenIds].some(id => {
++      const enemy = view.units.get(id), weapon = enemy && UNITS[enemy.type].w;
++      return enemy && !allied(view, enemy.owner, slot) && weapon?.range > 0 && d(enemy, me.spawn) <= weapon.range;
++    });
++  };
+   for (const u of mine) {
+     if (u.air) continue; // planes are flown above
+     if (busy.has(u.id)) continue;
+@@ -873,6 +899,7 @@
+     // save hurt units instead of letting them die: retreat, get reinforced, come back
+     if (!horde && !home && hurt(u)) { retreat.push(u.id); continue; }
+     if (!horde && home && frac < 1 && (me.mp >= 20 || hurt(u))) continue; // wait for reinforcements
++    if (attendedUnseenHitRetreat(u)) { retreat.push(u.id); busy.add(u.id); continue; }
+     const safer = dangerDestination(u) ?? attendedDangerDestination(u);
+     if (safer) {
+       dangerMoves.add(u.id); busy.add(u.id);

@@ -1,0 +1,161 @@
+{
+  "at": "2026-10-04T20:13:11.598118+00:00",
+  "qualification": "Controlled real delayed delivery exactly reproduces original failure on bothsimversions. Full V18 original lacked receipts, so late receipt there is not directly proven. Five-line app-protocol receipt barrier preserves800ticks,2m tolerance,survival/unreachablechecks and10s receive timeout; rootfullacceptancemodulePASS.",
+  "archive": {
+    "file": "crossing-native-evidence.tar.gz",
+    "bytes": 307871,
+    "sha256": "969e0a6c4c123b05b9f20147bb6cf57a7ff9ef78ef127476179009632f04050b",
+    "members": [
+      {
+        "source": "/tmp/v18-crossing-command-barrier.patch",
+        "file": "v18-crossing-command-barrier.patch",
+        "bytes": 672,
+        "sha256": "753c87e9bd6d9013bf2fcfc1791ee0fe9a198779918ef782a96919e59e2cbe8a"
+      },
+      {
+        "source": "/tmp/v18-crossing-controlled-equivalence.json",
+        "file": "v18-crossing-controlled-equivalence.json",
+        "bytes": 345,
+        "sha256": "9d5115c11f0f9d2ec00767df430256866e3d1f7e2be67ab3edf941944d2dc335"
+      },
+      {
+        "source": "/tmp/v18-crossing-original-controlled-trace.json",
+        "file": "v18-crossing-original-controlled-trace.json",
+        "bytes": 2634791,
+        "sha256": "f02f24a5c2d7d8987bc6ec2171cdb91546165ab996ef0f6ed9c8a11a3d18c5c0"
+      },
+      {
+        "source": "/tmp/v18-crossing-candidate-controlled-trace.json",
+        "file": "v18-crossing-candidate-controlled-trace.json",
+        "bytes": 2634791,
+        "sha256": "f02f24a5c2d7d8987bc6ec2171cdb91546165ab996ef0f6ed9c8a11a3d18c5c0"
+      },
+      {
+        "source": "/tmp/v18-crossing-original-delayed-no-barrier-proof.json",
+        "file": "v18-crossing-original-delayed-no-barrier-proof.json",
+        "bytes": 25167,
+        "sha256": "c4e32d0f5349b5972992cfdcb2944135270faeb4aa814d4a156af5d8949e9b86"
+      },
+      {
+        "source": "/tmp/v18-crossing-candidate-delayed-no-barrier-proof.json",
+        "file": "v18-crossing-candidate-delayed-no-barrier-proof.json",
+        "bytes": 25167,
+        "sha256": "c4e32d0f5349b5972992cfdcb2944135270faeb4aa814d4a156af5d8949e9b86"
+      },
+      {
+        "source": "/tmp/v18-crossing-candidate-delayed-with-barrier-proof.json",
+        "file": "v18-crossing-candidate-delayed-with-barrier-proof.json",
+        "bytes": 18500,
+        "sha256": "c9b766f887299ff63ae12d4acb1a2155bb83f844e6febeba9e8b7337d4faa8cf"
+      },
+      {
+        "source": "/tmp/v18-crossing-independent-shadow-counts.json",
+        "file": "v18-crossing-independent-shadow-counts.json",
+        "bytes": 43,
+        "sha256": "ea784c1335497d5a6a4210b7b5738c7a63dccda75aa7732a078c43a0383c36f5"
+      },
+      {
+        "source": "/tmp/v18-crossing-original-natural.log",
+        "file": "v18-crossing-original-natural.log",
+        "bytes": 166,
+        "sha256": "02b829fa00bf5de55764fa38e18da2e7332a61e2e487c1d37c15aae0ff8d0a81"
+      },
+      {
+        "source": "/tmp/v18-crossing-candidate-natural.log",
+        "file": "v18-crossing-candidate-natural.log",
+        "bytes": 166,
+        "sha256": "02b829fa00bf5de55764fa38e18da2e7332a61e2e487c1d37c15aae0ff8d0a81"
+      },
+      {
+        "source": "/tmp/v18-crossing-original-controlled.log",
+        "file": "v18-crossing-original-controlled.log",
+        "bytes": 166,
+        "sha256": "02b829fa00bf5de55764fa38e18da2e7332a61e2e487c1d37c15aae0ff8d0a81"
+      },
+      {
+        "source": "/tmp/v18-crossing-candidate-controlled.log",
+        "file": "v18-crossing-candidate-controlled.log",
+        "bytes": 166,
+        "sha256": "02b829fa00bf5de55764fa38e18da2e7332a61e2e487c1d37c15aae0ff8d0a81"
+      },
+      {
+        "source": "/tmp/v18-crossing-original-delayed-no-barrier.log",
+        "file": "v18-crossing-original-delayed-no-barrier.log",
+        "bytes": 866,
+        "sha256": "76c80042cc256a9fd7ebc78afd8d4b787c51fc1d0057f1069ab0c64824e7b6d4"
+      },
+      {
+        "source": "/tmp/v18-crossing-candidate-delayed-no-barrier.log",
+        "file": "v18-crossing-candidate-delayed-no-barrier.log",
+        "bytes": 869,
+        "sha256": "4bab1e4113e5af855e1610364e6213e8c2f4eb607e3da4a0054485af25931555"
+      },
+      {
+        "source": "/tmp/v18-crossing-candidate-delayed-with-barrier.log",
+        "file": "v18-crossing-candidate-delayed-with-barrier.log",
+        "bytes": 166,
+        "sha256": "02b829fa00bf5de55764fa38e18da2e7332a61e2e487c1d37c15aae0ff8d0a81"
+      },
+      {
+        "source": "/tmp/v18-crossing-independent-shadow.log",
+        "file": "v18-crossing-independent-shadow.log",
+        "bytes": 868,
+        "sha256": "0499a462d51f5fe0cd987c178ba3bd997e531918a900f70ae90546f7b101e4e4"
+      },
+      {
+        "source": "/tmp/v18-crossing-command-barrier-natural.log",
+        "file": "v18-crossing-command-barrier-natural.log",
+        "bytes": 166,
+        "sha256": "02b829fa00bf5de55764fa38e18da2e7332a61e2e487c1d37c15aae0ff8d0a81"
+      },
+      {
+        "source": "/tmp/prepare-v18-crossing-isolation.py",
+        "file": "prepare-v18-crossing-isolation.py",
+        "bytes": 1592,
+        "sha256": "c860accc1c7be7eb638e8a96af17db338f6f3b91cf5da50009ff344e592c5885"
+      },
+      {
+        "source": "/tmp/prepare-v18-crossing-traces.py",
+        "file": "prepare-v18-crossing-traces.py",
+        "bytes": 3179,
+        "sha256": "14efae92b73e3b52f02f890f526284611481815f1897bd1cd590f7cc17e1f2e5"
+      },
+      {
+        "source": "/tmp/prepare-v18-crossing-network.py",
+        "file": "prepare-v18-crossing-network.py",
+        "bytes": 2885,
+        "sha256": "7cff5962edb3b65b47e0d5ea911359722b8e5905b22f40999e58fa28c9b8f405"
+      },
+      {
+        "source": "/tmp/prepare-v18-crossing-independent-shadow.py",
+        "file": "prepare-v18-crossing-independent-shadow.py",
+        "bytes": 2117,
+        "sha256": "278dae6aa29eccecc8aba125d33d531474fb64b5f940b0970f7cd7ff73337312"
+      },
+      {
+        "source": "/tmp/v18-crossing-fixed-input.mjs",
+        "file": "v18-crossing-fixed-input.mjs",
+        "bytes": 21,
+        "sha256": "b1c4d349cf1606f61c15102bad370e6c05e060234032432655791d3ca6302a05"
+      },
+      {
+        "source": "/tmp/v18-crossing-diagnosis-review.md",
+        "file": "v18-crossing-diagnosis-review.md",
+        "bytes": 4730,
+        "sha256": "e44ddf087d7740f5aa8770ec6476e8ba2f978a7ebef7c7878240c95bfd0f3cc1"
+      },
+      {
+        "source": "/tmp/v18-crossing-diagnosis-provenance.json",
+        "file": "v18-crossing-diagnosis-provenance.json",
+        "bytes": 4069,
+        "sha256": "40dbf07c6098b09bc8aba298e0a0e0f50074cb3f0323e362f6a5c8627b6abc0f"
+      },
+      {
+        "source": "/tmp/v18-crossing-isolation-manifest.json",
+        "file": "v18-crossing-isolation-manifest.json",
+        "bytes": 82330,
+        "sha256": "e6e02023c65690dafb1e160b1688b805cb0592d82ae1969e08bc76df621bda6c"
+      }
+    ]
+  }
+}

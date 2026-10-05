@@ -1,0 +1,113 @@
+{
+  "files": [
+    {
+      "original": "/tmp/ai-lab-armor-preset/candidate/tools/ai-lab-runner.mjs",
+      "payload": "source-adopted/tools/ai-lab-runner.mjs",
+      "bytes": 13565,
+      "sha256": "d5f2e87078e6f1ea35300a653d86e0200aea554681ec60c4bd83eacabe17fb25"
+    },
+    {
+      "original": "/tmp/ai-lab-armor-preset/candidate/tools/ai-lab.mjs",
+      "payload": "source-adopted/tools/ai-lab.mjs",
+      "bytes": 2832,
+      "sha256": "4aabd289dd136b04febfe0b6829628e542d7adb2492a774800a8f147a824100b"
+    },
+    {
+      "original": "/tmp/ai-lab-armor-preset/candidate/docs/ai-lab.md",
+      "payload": "source-adopted/docs/ai-lab.md",
+      "bytes": 4218,
+      "sha256": "15e41dfa802b0aa52ecfd1c8e8ae78301ded3c563a92f95eb9dbe8d58136d51a"
+    },
+    {
+      "original": "/tmp/ai-lab-armor-preset/candidate/test-ai-lab.js",
+      "payload": "source-adopted/test-ai-lab.js",
+      "bytes": 12491,
+      "sha256": "e6677a2b4d12c6c89af06b8392052dee02cd8214ed8736c98381f117b69b1288"
+    },
+    {
+      "original": "/tmp/ai-lab-armor-preset/integration.patch",
+      "payload": "reviewed/integration.patch",
+      "bytes": 11576,
+      "sha256": "6db8b6d6ec7255cb6c1cf927f75c849e650af824aca1decd8c3b176d5547fa4e"
+    },
+    {
+      "original": "/tmp/ai-lab-armor-preset/source-manifest.json",
+      "payload": "reviewed/source-manifest.json",
+      "bytes": 1016,
+      "sha256": "1d1237ec3ca236b0ff1ab4cda436fb7d97a1bfb9a0e82bc41cb24af4a3023b46"
+    },
+    {
+      "original": "/tmp/ai-lab-armor-preset/evidence-manifest.json",
+      "payload": "reviewed/evidence-manifest.json",
+      "bytes": 1571,
+      "sha256": "1455ad0d7d623f7a524140627532c754fb592c74747c1cf7d893c5264631f1be"
+    },
+    {
+      "original": "/tmp/ai-lab-armor-preset/README.md",
+      "payload": "reviewed/README.md",
+      "bytes": 3213,
+      "sha256": "0a1b9ee4782f2875d45f144e7398edad20a3003df64f9e6793fc0ce48c94e1eb"
+    },
+    {
+      "original": "/tmp/ai-lab-armor-preset/preset-results.json",
+      "payload": "reviewed/preset-results.json",
+      "bytes": 25200,
+      "sha256": "15ae734f49ebad6897862c6653ba5ce12952d4c5268fd47d7b285f0d6c425cae"
+    },
+    {
+      "original": "/tmp/ai-lab-armor-preset/test-ai-lab.log",
+      "payload": "reviewed/test-ai-lab.log",
+      "bytes": 227,
+      "sha256": "2cf8da0d68c15620c21b08936f796439eb87e7947ba043b4c64b3818fae54279"
+    },
+    {
+      "original": "/tmp/ai-lab-armor-preset/test-ai-lab-final.log",
+      "payload": "reviewed/test-ai-lab-final.log",
+      "bytes": 227,
+      "sha256": "328552f1fc62f05d9cb7d00b2ccbd0530b8313897cc1c3938f4eb1439dbb0cee"
+    },
+    {
+      "original": "/tmp/human-ai-root-armor-preset-test.log",
+      "payload": "logs/root-test-ai-lab.log",
+      "bytes": 247,
+      "sha256": "177f6c0e606ecf920a8beecdb877cf73b80ede3b2f48a44c691a9cc69e88e139"
+    },
+    {
+      "original": "/tmp/ai-lab-armor-preset/easy/report.json",
+      "payload": "native/easy/report.json",
+      "bytes": 958127,
+      "sha256": "fe004074be737c92b3cdb017948cf62a99c5dde9c6f1f0a6f9b2f944b03149ff"
+    },
+    {
+      "original": "/tmp/ai-lab-armor-preset/easy/report.html",
+      "payload": "native/easy/report.html",
+      "bytes": 496025,
+      "sha256": "ccfcd059e33a16aa202a4e3e91bca2e64f54c4139a53abc605204e14582044a3"
+    },
+    {
+      "original": "/tmp/ai-lab-armor-preset/normal/report.json",
+      "payload": "native/normal/report.json",
+      "bytes": 969181,
+      "sha256": "28e0337e94d416a3b06ff0e456cd5b1fbe227b2bfdcf92afabf497f60aa654f5"
+    },
+    {
+      "original": "/tmp/ai-lab-armor-preset/normal/report.html",
+      "payload": "native/normal/report.html",
+      "bytes": 500866,
+      "sha256": "8d2a886ec1c5f209ed7990d71df814449ff84babbd070d6f9b81368218039d81"
+    },
+    {
+      "original": "/tmp/ai-lab-armor-preset/hard/report.json",
+      "payload": "native/hard/report.json",
+      "bytes": 914583,
+      "sha256": "a957491381ff9574252e114e7e86ddc7af02a4d24aedf8a585fcdd4376cb4937"
+    },
+    {
+      "original": "/tmp/ai-lab-armor-preset/hard/report.html",
+      "payload": "native/hard/report.html",
+      "bytes": 468724,
+      "sha256": "2bd9a68d007365b2b1ac3ae1e40406ec8a6ff97a21a371c19af0608406dd68a2"
+    }
+  ],
+  "totalOriginalBytes": 4383889
+}

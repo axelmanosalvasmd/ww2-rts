@@ -1,0 +1,13 @@
+{
+  "name": "ww2-rts",
+  "private": true,
+  "type": "module",
+  "scripts": {
+    "start": "node server.js",
+    "test": "node test.js"
+  },
+  "dependencies": {
+    "three": "^0.186.1",
+    "ws": "^8.22.0"
+  }
+}

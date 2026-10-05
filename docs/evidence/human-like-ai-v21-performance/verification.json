@@ -1,0 +1,14 @@
+{
+  "status": "PASS",
+  "qualification": "Copy integrity only. Retained source-specific results are not new checks or acceptance.",
+  "archive": "v21-four-row-failure.tar.gz",
+  "archiveBytes": 378525,
+  "archiveSHA256": "58c1ed4fcc45d94b03a53f2fecddaf1db9e1e3dfb2d4aa9a5728d8667ccfad96",
+  "members": 69,
+  "originals": 66,
+  "originalCopiedBytes": 1370500,
+  "payloadBytes": 1397449,
+  "allOriginalBytesUnchanged": true,
+  "allRoundtripBytesMatch": true,
+  "manifestSHA256": "fc9a8a42b962ad642085b89f3c80fd4aff9cb42dc8142ce4c367601aa16dfab6"
+}

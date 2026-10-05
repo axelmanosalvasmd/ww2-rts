@@ -1,0 +1,1389 @@
+{
+  "verifiedAtUnix": 1791164787.38734,
+  "archive": "/home/judiazm/.t3/worktrees/ww2-rts/ai-human-commander/docs/evidence/human-like-ai-r8-full-failure/r8-full-and-remaining-failures.tar.gz",
+  "archiveSHA256": "63df6e5b9a7359da5dfc52bcb4db21eee128806900e08c656f07d7a9b3afc3c0",
+  "originalPayloadCount": 197,
+  "verifiedMembers": [
+    {
+      "member": "original-full-run/human-ai-r8-new-full-after.json",
+      "originalPath": "/tmp/human-ai-r8-new-full-after.json",
+      "sha256": "4af9411703a47034218ebab0699d3d140e463aadff8a7ac6104a3856db68dbcc",
+      "bytes": 437459,
+      "originalBytesCurrentlyEqual": true
+    },
+    {
+      "member": "original-full-run/human-ai-r8-new-full-background-launch.json",
+      "originalPath": "/tmp/human-ai-r8-new-full-background-launch.json",
+      "sha256": "4b9e7fa5666e64eedd45f9d5824c5759c94f37ed31bfaf9b852a9698bb7c25a1",
+      "bytes": 468,
+      "originalBytesCurrentlyEqual": true
+    },
+    {
+      "member": "original-full-run/human-ai-r8-new-full-before.json",
+      "originalPath": "/tmp/human-ai-r8-new-full-before.json",
+      "sha256": "73058262aead16baa534a1fcbdca42564c4e72cb2d940630d6b1b4fa27abbde7",
+      "bytes": 875170,
+      "originalBytesCurrentlyEqual": true
+    },
+    {
+      "member": "original-full-run/human-ai-r8-new-full-checks.jsonl",
+      "originalPath": "/tmp/human-ai-r8-new-full-checks.jsonl",
+      "sha256": "89dd47520e78060d4d3cf669712e0ef217a865303286827ef06d29217eb7f10e",
+      "bytes": 6817,
+      "originalBytesCurrentlyEqual": true
+    },
+    {
+      "member": "original-full-run/human-ai-r8-new-full-completion.json",
+      "originalPath": "/tmp/human-ai-r8-new-full-completion.json",
+      "sha256": "90062ba35425dfcc125161aa9a98f02768c6030e2becfa21ab6d80226b59faf2",
+      "bytes": 140,
+      "originalBytesCurrentlyEqual": true
+    },
+    {
+      "member": "original-full-run/human-ai-r8-new-full-controller.log",
+      "originalPath": "/tmp/human-ai-r8-new-full-controller.log",
+      "sha256": "19ff9219bd0023b92ee3ad60518c3e46f80f038b1c5df64d9fc9ad63e40baf77",
+      "bytes": 9944,
+      "originalBytesCurrentlyEqual": true
+    },
+    {
+      "member": "original-full-run/human-ai-r8-new-full-launch.json",
+      "originalPath": "/tmp/human-ai-r8-new-full-launch.json",
+      "sha256": "19d18c8f49ccbbce7a89ab310874212309e5a05e80a2098ce9829bf46b1d22cb",
+      "bytes": 368,
+      "originalBytesCurrentlyEqual": true
+    },
+    {
+      "member": "original-full-run/human-ai-r8-new-full-predeclared.json",
+      "originalPath": "/tmp/human-ai-r8-new-full-predeclared.json",
+      "sha256": "129049827fb9fe2b87022763127b7906914e26cfce1cd67476a46e948f347f92",
+      "bytes": 21325,
+      "originalBytesCurrentlyEqual": true
+    },
+    {
+      "member": "original-full-run/human-ai-r8-new-full-preparation-initial.log",
+      "originalPath": "/tmp/human-ai-r8-new-full-preparation-initial.log",
+      "sha256": "4185eb6ce09ffc403450791615548145dad9637eaed16dfbbab18b60ff85e69b",
+      "bytes": 11915,
+      "originalBytesCurrentlyEqual": true
+    },
+    {
+      "member": "original-full-run/human-ai-r8-new-full-preparation.log",
+      "originalPath": "/tmp/human-ai-r8-new-full-preparation.log",
+      "sha256": "5596034e96c84025e014ef282775e7a4b712920d1daab2f5e0aa3c432fde190f",
+      "bytes": 11915,
+      "originalBytesCurrentlyEqual": true
+    },
+    {
+      "member": "original-full-run/human-ai-r8-new-full-prospective-initial-preparation.json",
+      "originalPath": "/tmp/human-ai-r8-new-full-prospective-initial-preparation.json",
+      "sha256": "4185eb6ce09ffc403450791615548145dad9637eaed16dfbbab18b60ff85e69b",
+      "bytes": 11915,
+      "originalBytesCurrentlyEqual": true
+    },
+    {
+      "member": "original-full-run/human-ai-r8-new-full-prospective.json",
+      "originalPath": "/tmp/human-ai-r8-new-full-prospective.json",
+      "sha256": "5596034e96c84025e014ef282775e7a4b712920d1daab2f5e0aa3c432fde190f",
+      "bytes": 11915,
+      "originalBytesCurrentlyEqual": true
+    },
+    {
+      "member": "original-full-run/human-ai-r8-new-full-test-exit.txt",
+      "originalPath": "/tmp/human-ai-r8-new-full-test-exit.txt",
+      "sha256": "0aac2256ca135e9e2ce682d26e680d8ec767e0c2897215d636113386fbc768af",
+      "bytes": 12,
+      "originalBytesCurrentlyEqual": true
+    },
+    {
+      "member": "original-full-run/human-ai-r8-new-full-test.log",
+      "originalPath": "/tmp/human-ai-r8-new-full-test.log",
+      "sha256": "6e445c83928e17f54fba25b3b378e2612c55925987085ab7ab87f0dca50a6654",
+      "bytes": 13659,
+      "originalBytesCurrentlyEqual": true
+    },
+    {
+      "member": "original-full-run/human-ai-r8-new-full-verification.json",
+      "originalPath": "/tmp/human-ai-r8-new-full-verification.json",
+      "sha256": "d6b0face8f815d84f729bf1b0484f1ef93d3486060fb02fa6d06264139f11c92",
+      "bytes": 9914,
+      "originalBytesCurrentlyEqual": true
+    },
+    {
+      "member": "original-full-run/human-ai-r8-full-run.py",
+      "originalPath": "/tmp/human-ai-r8-full-run.py",
+      "sha256": "dc7cf775b73950f423fb5d5b4fc3183e4186f4e417b5e724c206de259fe38c76",
+      "bytes": 20510,
+      "originalBytesCurrentlyEqual": true
+    },
+    {
+      "member": "separate-remaining-children/checks.json",
+      "originalPath": "/tmp/human-ai-r8-remaining-children/checks.json",
+      "sha256": "cdc3efc65538056e25a701465710a72258c74d50ee8475cad2bcaf6b4811cc86",
+      "bytes": 13015,
+      "originalBytesCurrentlyEqual": true
+    },
+    {
+      "member": "separate-remaining-children/declaration.json",
+      "originalPath": "/tmp/human-ai-r8-remaining-children/declaration.json",
+      "sha256": "ecec671334a831fd216e11c3260c957ebf45f80b23a33f3231b40e4b5bcff39d",
+      "bytes": 12364,
+      "originalBytesCurrentlyEqual": true
+    },
+    {
+      "member": "separate-remaining-children/source-after.json",
+      "originalPath": "/tmp/human-ai-r8-remaining-children/source-after.json",
+      "sha256": "a09292efaf3a67b6007bb61e66cb1a67dc2ceccde12899b585050de7681207ce",
+      "bytes": 9437,
+      "originalBytesCurrentlyEqual": true
+    },
+    {
+      "member": "separate-remaining-children/test-ai-humanity-storage.js.log",
+      "originalPath": "/tmp/human-ai-r8-remaining-children/test-ai-humanity-storage.js.log",
+      "sha256": "d69fe9d5550b2bbd7aded20c711518cf4d88a84b3957991082de3c017ca1bf83",
+      "bytes": 265,
+      "originalBytesCurrentlyEqual": true
+    },
+    {
+      "member": "separate-remaining-children/test-ai-km-boundary.mjs.log",
+      "originalPath": "/tmp/human-ai-r8-remaining-children/test-ai-km-boundary.mjs.log",
+      "sha256": "3147852da26740c2b9ea18354808463bc0d465bdf28ef3d611fec1891520ab96",
+      "bytes": 110,
+      "originalBytesCurrentlyEqual": true
+    },
+    {
+      "member": "separate-remaining-children/test-ai-lab.js.log",
+      "originalPath": "/tmp/human-ai-r8-remaining-children/test-ai-lab.js.log",
+      "sha256": "776ca5391b93663087e2df4c10f3eb734f608b46231f909353ee401501317bb1",
+      "bytes": 247,
+      "originalBytesCurrentlyEqual": true
+    },
+    {
+      "member": "separate-remaining-children/test-client-terrain-transition.mjs.log",
+      "originalPath": "/tmp/human-ai-r8-remaining-children/test-client-terrain-transition.mjs.log",
+      "sha256": "707760427849b943d3064f318a844bb29b954a4e3ea8ebe4b7e611d8ecee0dd5",
+      "bytes": 105,
+      "originalBytesCurrentlyEqual": true
+    },
+    {
+      "member": "separate-remaining-children/test-engine-ai-accepted-destinations.js.log",
+      "originalPath": "/tmp/human-ai-r8-remaining-children/test-engine-ai-accepted-destinations.js.log",
+      "sha256": "ad741e6216d480b124f0fc33d16a16e99dc1331feb3c6879a19c4e6cbf1b0024",
+      "bytes": 690,
+      "originalBytesCurrentlyEqual": true
+    },
+    {
+      "member": "separate-remaining-children/test-engine-ai-ap-vehicles.js.log",
+      "originalPath": "/tmp/human-ai-r8-remaining-children/test-engine-ai-ap-vehicles.js.log",
+      "sha256": "4c5426ae9b625f2c3e72ee355291047c3a0e16d0cba7ea78e88a28b1a3e0fce0",
+      "bytes": 91,
+      "originalBytesCurrentlyEqual": true
+    },
+    {
+      "member": "separate-remaining-children/test-engine-ai-attended-danger.js.log",
+      "originalPath": "/tmp/human-ai-r8-remaining-children/test-engine-ai-attended-danger.js.log",
+      "sha256": "ebd4d62ca23b3ef037e6c67eb840b29c397e9c07810bcb084a4f6c0b69e8dcdc",
+      "bytes": 234,
+      "originalBytesCurrentlyEqual": true
+    },
+    {
+      "member": "separate-remaining-children/test-engine-ai-attended-guard.js.log",
+      "originalPath": "/tmp/human-ai-r8-remaining-children/test-engine-ai-attended-guard.js.log",
+      "sha256": "cf5596b209afd99b0ca59d9dee7457f55ef325e9fc6e68762513f48812e1c8d2",
+      "bytes": 138,
+      "originalBytesCurrentlyEqual": true
+    },
+    {
+      "member": "separate-remaining-children/test-engine-ai-attention-area.js.log",
+      "originalPath": "/tmp/human-ai-r8-remaining-children/test-engine-ai-attention-area.js.log",
+      "sha256": "a661a16b4d97584f4eb66ac4dc470012e117661bbd73b3a9a38d58d65390ca2d",
+      "bytes": 85,
+      "originalBytesCurrentlyEqual": true
+    },
+    {
+      "member": "separate-remaining-children/test-engine-ai-attention-yield.js.log",
+      "originalPath": "/tmp/human-ai-r8-remaining-children/test-engine-ai-attention-yield.js.log",
+      "sha256": "a5ccb23c195efe37e092633468e675ce1f7c1c459c1a1e162e2e6e6be1a8bb58",
+      "bytes": 112,
+      "originalBytesCurrentlyEqual": true
+    },
+    {
+      "member": "separate-remaining-children/test-engine-ai-automatic-armor-hit.js.log",
+      "originalPath": "/tmp/human-ai-r8-remaining-children/test-engine-ai-automatic-armor-hit.js.log",
+      "sha256": "f81151bbbcee129614eddd247eccc77b252389796b18834f50cf920099834338",
+      "bytes": 15418,
+      "originalBytesCurrentlyEqual": true
+    },
+    {
+      "member": "separate-remaining-children/test-engine-ai-behavior-cues.js.log",
+      "originalPath": "/tmp/human-ai-r8-remaining-children/test-engine-ai-behavior-cues.js.log",
+      "sha256": "e42cd18cd9ab49a590fe93e77d0e3d5745ac17ce3d30eaee479d77c387e06890",
+      "bytes": 870,
+      "originalBytesCurrentlyEqual": true
+    },
+    {
+      "member": "separate-remaining-children/test-engine-ai-bridge-repair.js.log",
+      "originalPath": "/tmp/human-ai-r8-remaining-children/test-engine-ai-bridge-repair.js.log",
+      "sha256": "e323d5d0335cade2362599c2104f0de5a903114e10824cae50875191d9168d53",
+      "bytes": 710,
+      "originalBytesCurrentlyEqual": true
+    },
+    {
+      "member": "separate-remaining-children/test-engine-ai-causal-orders.js.log",
+      "originalPath": "/tmp/human-ai-r8-remaining-children/test-engine-ai-causal-orders.js.log",
+      "sha256": "91828dc2685d7395a15c305151f677d35b694b880ffc2c73b56e8b30d6bf5a4e",
+      "bytes": 141,
+      "originalBytesCurrentlyEqual": true
+    },
+    {
+      "member": "separate-remaining-children/test-engine-ai-cover-opportunity.js.log",
+      "originalPath": "/tmp/human-ai-r8-remaining-children/test-engine-ai-cover-opportunity.js.log",
+      "sha256": "f9a4df1abe636a77292dcefc9184c5251dc42528c35f318bc4f600241d87d307",
+      "bytes": 136,
+      "originalBytesCurrentlyEqual": true
+    },
+    {
+      "member": "separate-remaining-children/test-engine-ai-decision-capture.js.log",
+      "originalPath": "/tmp/human-ai-r8-remaining-children/test-engine-ai-decision-capture.js.log",
+      "sha256": "9dccdbef56583007455c8ec856d5301f1d436a4d3be00bb85abb2e0c4db9471e",
+      "bytes": 15479,
+      "originalBytesCurrentlyEqual": true
+    },
+    {
+      "member": "separate-remaining-children/test-engine-ai-diagonal-pan.js.log",
+      "originalPath": "/tmp/human-ai-r8-remaining-children/test-engine-ai-diagonal-pan.js.log",
+      "sha256": "301ad4b9afa0b4803aebe6958daec3b5dc6aa54b7e78c61ca977ad05f21ff0dd",
+      "bytes": 166,
+      "originalBytesCurrentlyEqual": true
+    },
+    {
+      "member": "separate-remaining-children/test-engine-ai-engineer-shortage.js.log",
+      "originalPath": "/tmp/human-ai-r8-remaining-children/test-engine-ai-engineer-shortage.js.log",
+      "sha256": "708124c77d8f792cb64016ebcb4a9a45ae8c327c1e5950b9e9e60724722a3541",
+      "bytes": 96,
+      "originalBytesCurrentlyEqual": true
+    },
+    {
+      "member": "separate-remaining-children/test-engine-ai-formation-selection.js.log",
+      "originalPath": "/tmp/human-ai-r8-remaining-children/test-engine-ai-formation-selection.js.log",
+      "sha256": "48924dfe165dc9ce52bba227b721371f4b3213baef5090ed47df81dda95749bf",
+      "bytes": 142,
+      "originalBytesCurrentlyEqual": true
+    },
+    {
+      "member": "separate-remaining-children/test-engine-ai-fortification-cover.js.log",
+      "originalPath": "/tmp/human-ai-r8-remaining-children/test-engine-ai-fortification-cover.js.log",
+      "sha256": "f1eed39c95e194e636dcfd9691ca7524e88e73330318971fd09f7f2c7223d4f0",
+      "bytes": 176,
+      "originalBytesCurrentlyEqual": true
+    },
+    {
+      "member": "separate-remaining-children/test-engine-ai-garrison-framing.js.log",
+      "originalPath": "/tmp/human-ai-r8-remaining-children/test-engine-ai-garrison-framing.js.log",
+      "sha256": "e07c60c2d142055cfedaf041772deb0250db4fa54efaa3e77b64c3c2eff06e01",
+      "bytes": 51,
+      "originalBytesCurrentlyEqual": true
+    },
+    {
+      "member": "separate-remaining-children/test-engine-ai-group-reuse.js.log",
+      "originalPath": "/tmp/human-ai-r8-remaining-children/test-engine-ai-group-reuse.js.log",
+      "sha256": "0d6114fdc52f52f30c20368a25e850e559b24bff0709700d067bae49d95f50eb",
+      "bytes": 102,
+      "originalBytesCurrentlyEqual": true
+    },
+    {
+      "member": "separate-remaining-children/test-engine-ai-guard-ability-choice.js.log",
+      "originalPath": "/tmp/human-ai-r8-remaining-children/test-engine-ai-guard-ability-choice.js.log",
+      "sha256": "e8abf265d700f3cbc529968fb8d99ef350e7059c526aaea521905ec5f9a43202",
+      "bytes": 151,
+      "originalBytesCurrentlyEqual": true
+    },
+    {
+      "member": "separate-remaining-children/test-engine-ai-hesitation.js.log",
+      "originalPath": "/tmp/human-ai-r8-remaining-children/test-engine-ai-hesitation.js.log",
+      "sha256": "8004f904147d072dc0c3a280a07576e4fe73bf82097e743b0ef66d1c2c111431",
+      "bytes": 141,
+      "originalBytesCurrentlyEqual": true
+    },
+    {
+      "member": "separate-remaining-children/test-engine-ai-idle-guard-attention.js.log",
+      "originalPath": "/tmp/human-ai-r8-remaining-children/test-engine-ai-idle-guard-attention.js.log",
+      "sha256": "05c0560569a3ea6138d0f8ecbfeba52e6adbc7818e584f0116a6884ef6d6570f",
+      "bytes": 119,
+      "originalBytesCurrentlyEqual": true
+    },
+    {
+      "member": "separate-remaining-children/test-engine-ai-inspection-priority.js.log",
+      "originalPath": "/tmp/human-ai-r8-remaining-children/test-engine-ai-inspection-priority.js.log",
+      "sha256": "04b9ea3a3b3752ed25eef4ed45be511ac3ef487dc54ff4d4498b9a7aaf769577",
+      "bytes": 682,
+      "originalBytesCurrentlyEqual": true
+    },
+    {
+      "member": "separate-remaining-children/test-engine-ai-local-engineer.js.log",
+      "originalPath": "/tmp/human-ai-r8-remaining-children/test-engine-ai-local-engineer.js.log",
+      "sha256": "4e2c17350a6d79bbd9331654fc41a81c2dff8fa4fe26bcb6a6c885bcbc01afb7",
+      "bytes": 75,
+      "originalBytesCurrentlyEqual": true
+    },
+    {
+      "member": "separate-remaining-children/test-engine-ai-manual-response-isolation.js.log",
+      "originalPath": "/tmp/human-ai-r8-remaining-children/test-engine-ai-manual-response-isolation.js.log",
+      "sha256": "786bf1403ea08272ba9e133eda9d16dcedeebcca5817194faf59d56482b6dcd3",
+      "bytes": 775,
+      "originalBytesCurrentlyEqual": true
+    },
+    {
+      "member": "separate-remaining-children/test-engine-ai-manual-response-policy.js.log",
+      "originalPath": "/tmp/human-ai-r8-remaining-children/test-engine-ai-manual-response-policy.js.log",
+      "sha256": "88f87ac28a6688ed10a45adcf374d7ae1be650d06eb379ab6e1f30071647bc46",
+      "bytes": 99,
+      "originalBytesCurrentlyEqual": true
+    },
+    {
+      "member": "separate-remaining-children/test-engine-ai-manual-response-v3.js.log",
+      "originalPath": "/tmp/human-ai-r8-remaining-children/test-engine-ai-manual-response-v3.js.log",
+      "sha256": "d84d66496136784f9c462cdb37bab2e7d5e187edfbbdd1e36a51bc7986a619ee",
+      "bytes": 95,
+      "originalBytesCurrentlyEqual": true
+    },
+    {
+      "member": "separate-remaining-children/test-engine-ai-measurement-start.js.log",
+      "originalPath": "/tmp/human-ai-r8-remaining-children/test-engine-ai-measurement-start.js.log",
+      "sha256": "89d9a031bbacc343a13b1483faa7183afe94af040a77e63b45d756fe06178cf7",
+      "bytes": 82,
+      "originalBytesCurrentlyEqual": true
+    },
+    {
+      "member": "separate-remaining-children/test-engine-ai-measurement-streams.js.log",
+      "originalPath": "/tmp/human-ai-r8-remaining-children/test-engine-ai-measurement-streams.js.log",
+      "sha256": "af039e45c4c8e5c97ac07027566520181e0e4c218acb549ad8f5ec3b1820ffcd",
+      "bytes": 141,
+      "originalBytesCurrentlyEqual": true
+    },
+    {
+      "member": "separate-remaining-children/test-engine-ai-minimap-parity.js.log",
+      "originalPath": "/tmp/human-ai-r8-remaining-children/test-engine-ai-minimap-parity.js.log",
+      "sha256": "aafd7c909d5f426fd63885297deea73266843942b50209eb9cc0699deca5d36f",
+      "bytes": 82,
+      "originalBytesCurrentlyEqual": true
+    },
+    {
+      "member": "separate-remaining-children/test-engine-ai-observed-events.js.log",
+      "originalPath": "/tmp/human-ai-r8-remaining-children/test-engine-ai-observed-events.js.log",
+      "sha256": "d3f1b14ab901a94e1d5df19175478143c46fa9e15dda8c7cff24b9347225ef4f",
+      "bytes": 132,
+      "originalBytesCurrentlyEqual": true
+    },
+    {
+      "member": "separate-remaining-children/test-engine-ai-opening-saving.js.log",
+      "originalPath": "/tmp/human-ai-r8-remaining-children/test-engine-ai-opening-saving.js.log",
+      "sha256": "33b727c87eec31f1518144eee6d82a265dd7221eef79b9ebecac2f02d20a65c7",
+      "bytes": 115,
+      "originalBytesCurrentlyEqual": true
+    },
+    {
+      "member": "separate-remaining-children/test-engine-ai-pan-release.js.log",
+      "originalPath": "/tmp/human-ai-r8-remaining-children/test-engine-ai-pan-release.js.log",
+      "sha256": "8d622a4c24ca16a32fde545ad218f2e31e71fdad217373dd3b9d2c22b20e0dbf",
+      "bytes": 273,
+      "originalBytesCurrentlyEqual": true
+    },
+    {
+      "member": "separate-remaining-children/test-engine-ai-point-fog.js.log",
+      "originalPath": "/tmp/human-ai-r8-remaining-children/test-engine-ai-point-fog.js.log",
+      "sha256": "42f792c9b1d86de17dfeea2b484218a099e2a67e1f1e2ac0b6a0c8f880010e40",
+      "bytes": 94,
+      "originalBytesCurrentlyEqual": true
+    },
+    {
+      "member": "separate-remaining-children/test-engine-ai-pointer-tracking.js.log",
+      "originalPath": "/tmp/human-ai-r8-remaining-children/test-engine-ai-pointer-tracking.js.log",
+      "sha256": "762572a0671b8eecc82b4eff27f27dd121642eb10706ad764f6beab4f4324a93",
+      "bytes": 1145,
+      "originalBytesCurrentlyEqual": true
+    },
+    {
+      "member": "separate-remaining-children/test-engine-ai-priority.js.log",
+      "originalPath": "/tmp/human-ai-r8-remaining-children/test-engine-ai-priority.js.log",
+      "sha256": "167ef11e79a0ff216791b3cb634188cce210239974c69814fcfe161f6fb37331",
+      "bytes": 98,
+      "originalBytesCurrentlyEqual": true
+    },
+    {
+      "member": "separate-remaining-children/test-engine-ai-privacy.js.log",
+      "originalPath": "/tmp/human-ai-r8-remaining-children/test-engine-ai-privacy.js.log",
+      "sha256": "510c100ece33133a666925c98297348459886874c27799b99f5c284791e1f41d",
+      "bytes": 53,
+      "originalBytesCurrentlyEqual": true
+    },
+    {
+      "member": "separate-remaining-children/test-engine-ai-producer-substitution.js.log",
+      "originalPath": "/tmp/human-ai-r8-remaining-children/test-engine-ai-producer-substitution.js.log",
+      "sha256": "0b93cb59a3567308cd9baf13cd25d8db4d5c178a886bb9a2ac03314b35d69a71",
+      "bytes": 113,
+      "originalBytesCurrentlyEqual": true
+    },
+    {
+      "member": "separate-remaining-children/test-engine-ai-production-attention.js.log",
+      "originalPath": "/tmp/human-ai-r8-remaining-children/test-engine-ai-production-attention.js.log",
+      "sha256": "0410f27d9b842fa7072c47c00810023440538ab6e6cccbfeffe29ab94a8ab960",
+      "bytes": 197,
+      "originalBytesCurrentlyEqual": true
+    },
+    {
+      "member": "separate-remaining-children/test-engine-ai-public-alert-v2.js.log",
+      "originalPath": "/tmp/human-ai-r8-remaining-children/test-engine-ai-public-alert-v2.js.log",
+      "sha256": "4d6488d7c28ba5b779391ea308ee5aaa686d175ed838e6ad7a452c8c36ed262a",
+      "bytes": 165155,
+      "originalBytesCurrentlyEqual": true
+    },
+    {
+      "member": "separate-remaining-children/test-engine-ai-public-start.js.log",
+      "originalPath": "/tmp/human-ai-r8-remaining-children/test-engine-ai-public-start.js.log",
+      "sha256": "99031e87e3fe91adca752fff69e4bf2631810a0ec898d873d4a5c5ef776d6643",
+      "bytes": 889,
+      "originalBytesCurrentlyEqual": true
+    },
+    {
+      "member": "separate-remaining-children/test-engine-ai-purchase-receipts.js.log",
+      "originalPath": "/tmp/human-ai-r8-remaining-children/test-engine-ai-purchase-receipts.js.log",
+      "sha256": "7c940a94f633bf4186d446a3f6e40354ff85580d9f4f6812a39bf6c821a00668",
+      "bytes": 47,
+      "originalBytesCurrentlyEqual": true
+    },
+    {
+      "member": "separate-remaining-children/test-engine-ai-purpose.js.log",
+      "originalPath": "/tmp/human-ai-r8-remaining-children/test-engine-ai-purpose.js.log",
+      "sha256": "3ce63b7db18dfc0c0850e686119512747446f035cbff55f657ef94bfb87526a9",
+      "bytes": 89,
+      "originalBytesCurrentlyEqual": true
+    },
+    {
+      "member": "separate-remaining-children/test-engine-ai-selection-reuse.js.log",
+      "originalPath": "/tmp/human-ai-r8-remaining-children/test-engine-ai-selection-reuse.js.log",
+      "sha256": "a395ce02ccbdc5ba16be09873f03f09fe3e51547bbc520c0bb035f6bfec62d6e",
+      "bytes": 90,
+      "originalBytesCurrentlyEqual": true
+    },
+    {
+      "member": "separate-remaining-children/test-engine-ai-stale-stance.js.log",
+      "originalPath": "/tmp/human-ai-r8-remaining-children/test-engine-ai-stale-stance.js.log",
+      "sha256": "4f75841d17dd2e051c4621ffb7260d015ad310df8c5c7e397fa566aa55fecd0b",
+      "bytes": 108,
+      "originalBytesCurrentlyEqual": true
+    },
+    {
+      "member": "separate-remaining-children/test-engine-ai-stationary-armor-hit.js.log",
+      "originalPath": "/tmp/human-ai-r8-remaining-children/test-engine-ai-stationary-armor-hit.js.log",
+      "sha256": "950b9876a9245669b6831ec69a9fba22d44bb1a75bc976b94305a11f26c0bd92",
+      "bytes": 3149,
+      "originalBytesCurrentlyEqual": true
+    },
+    {
+      "member": "separate-remaining-children/test-engine-ai-tactical-reaction.js.log",
+      "originalPath": "/tmp/human-ai-r8-remaining-children/test-engine-ai-tactical-reaction.js.log",
+      "sha256": "ed84f1135c8c1d8816978c5ba892f2bef0645c16e51e953bf5649da82622e32b",
+      "bytes": 99,
+      "originalBytesCurrentlyEqual": true
+    },
+    {
+      "member": "separate-remaining-children/test-engine-ai-unseen-hit.js.log",
+      "originalPath": "/tmp/human-ai-r8-remaining-children/test-engine-ai-unseen-hit.js.log",
+      "sha256": "11426f45b315b7411b125d8e2b678f3fca8d3f5fbbbf38e462ee3e0093600538",
+      "bytes": 84,
+      "originalBytesCurrentlyEqual": true
+    },
+    {
+      "member": "separate-remaining-children/test-engine-authoring.js.log",
+      "originalPath": "/tmp/human-ai-r8-remaining-children/test-engine-authoring.js.log",
+      "sha256": "8a0945311ccb2fbc9ea7a981a120c13609753caefdaf162b0b669b3c54e146a5",
+      "bytes": 30,
+      "originalBytesCurrentlyEqual": true
+    },
+    {
+      "member": "separate-remaining-children/test-engine-breaches.mjs.log",
+      "originalPath": "/tmp/human-ai-r8-remaining-children/test-engine-breaches.mjs.log",
+      "sha256": "c8a6b5f823b850103faf71affa4d586f7f787360aad504ed0e034ebc552ee57d",
+      "bytes": 160,
+      "originalBytesCurrentlyEqual": true
+    },
+    {
+      "member": "separate-remaining-children/test-engine-debris.js.log",
+      "originalPath": "/tmp/human-ai-r8-remaining-children/test-engine-debris.js.log",
+      "sha256": "20a0bf2815ef4939d2523f33bb7534a6ead3fcfe920f24574b06922a98045c92",
+      "bytes": 32,
+      "originalBytesCurrentlyEqual": true
+    },
+    {
+      "member": "separate-remaining-children/test-engine-horde-queue.js.log",
+      "originalPath": "/tmp/human-ai-r8-remaining-children/test-engine-horde-queue.js.log",
+      "sha256": "afb9b4f405f5fc1a4337cdf122fcf17a2643f130a2da2e27e3e82606347cf856",
+      "bytes": 117,
+      "originalBytesCurrentlyEqual": true
+    },
+    {
+      "member": "separate-remaining-children/test-engine-localization.mjs.log",
+      "originalPath": "/tmp/human-ai-r8-remaining-children/test-engine-localization.mjs.log",
+      "sha256": "535cf6c76245fb124f6e3658871db5c35b99ad27f24501bc14bce5f22f4a58d9",
+      "bytes": 346,
+      "originalBytesCurrentlyEqual": true
+    },
+    {
+      "member": "separate-remaining-children/test-engine-scenario-start.js.log",
+      "originalPath": "/tmp/human-ai-r8-remaining-children/test-engine-scenario-start.js.log",
+      "sha256": "4c2fe3aed58a6f5ce6d236a533ee4bdf3f67ebc7b46af29fa3211cc98bb00269",
+      "bytes": 68,
+      "originalBytesCurrentlyEqual": true
+    },
+    {
+      "member": "separate-remaining-children/test-engine-spectators.js.log",
+      "originalPath": "/tmp/human-ai-r8-remaining-children/test-engine-spectators.js.log",
+      "sha256": "9ff597d3c76c3c1a30319cd0b6499c43c5b9316b2ad67159bd13886e1b4fe32a",
+      "bytes": 127,
+      "originalBytesCurrentlyEqual": true
+    },
+    {
+      "member": "separate-remaining-children/test-engine-traffic-privacy.js.log",
+      "originalPath": "/tmp/human-ai-r8-remaining-children/test-engine-traffic-privacy.js.log",
+      "sha256": "2416550e1b3b9b4e36cab0929754027504b4c77c4958945c7ea69e41d882c7b1",
+      "bytes": 1560,
+      "originalBytesCurrentlyEqual": true
+    },
+    {
+      "member": "separate-remaining-children/test-engine-vehicle-pose.mjs.log",
+      "originalPath": "/tmp/human-ai-r8-remaining-children/test-engine-vehicle-pose.mjs.log",
+      "sha256": "3297410853e9fad71fc99149f589187aa00de8edf4b756fe4fd9c49abf9d707e",
+      "bytes": 257,
+      "originalBytesCurrentlyEqual": true
+    },
+    {
+      "member": "separate-remaining-children/test-server-start-order.js.log",
+      "originalPath": "/tmp/human-ai-r8-remaining-children/test-server-start-order.js.log",
+      "sha256": "46a80590f8205d7504aaa8913b1a764a26a35c0f4232addd19cc34fe855a9b88",
+      "bytes": 119,
+      "originalBytesCurrentlyEqual": true
+    },
+    {
+      "member": "frozen-source/client/alerts.js",
+      "originalPath": "/tmp/human-ai-r8-new-full-source/client/alerts.js",
+      "sha256": "d3b69d54bafe2ae45bea10c7678823e17937ad3e6bd5a686ada2e3ac8fa2e23f",
+      "bytes": 8935,
+      "originalBytesCurrentlyEqual": true
+    },
+    {
+      "member": "frozen-source/client/keys.js",
+      "originalPath": "/tmp/human-ai-r8-new-full-source/client/keys.js",
+      "sha256": "867e3105b7e4665f8a313c2ab46e23fc3df9407f2163fd6862bb537a01ecd276",
+      "bytes": 7361,
+      "originalBytesCurrentlyEqual": true
+    },
+    {
+      "member": "frozen-source/package.json",
+      "originalPath": "/tmp/human-ai-r8-new-full-source/package.json",
+      "sha256": "38b34423b2e37b851381576f5dd67d9103d951ab7c7ddcf5cacb4112507b34db",
+      "bytes": 211,
+      "originalBytesCurrentlyEqual": true
+    },
+    {
+      "member": "frozen-source/server.js",
+      "originalPath": "/tmp/human-ai-r8-new-full-source/server.js",
+      "sha256": "16004b2b7f3cd427d3fb61750a6a2788f9fe0e7bd8a22c92b4cd01d486677e57",
+      "bytes": 44801,
+      "originalBytesCurrentlyEqual": true
+    },
+    {
+      "member": "frozen-source/shared/ai-attention.js",
+      "originalPath": "/tmp/human-ai-r8-new-full-source/shared/ai-attention.js",
+      "sha256": "a55272249248bf1a7166da3038fa44794d7db3a163089010f6f3b905ccc3405a",
+      "bytes": 31888,
+      "originalBytesCurrentlyEqual": true
+    },
+    {
+      "member": "frozen-source/shared/ai-commander.js",
+      "originalPath": "/tmp/human-ai-r8-new-full-source/shared/ai-commander.js",
+      "sha256": "16538e56be6a730b8f92480cd96e2726a1a1ca35312fc509a4c44011e929fba6",
+      "bytes": 30998,
+      "originalBytesCurrentlyEqual": true
+    },
+    {
+      "member": "frozen-source/shared/ai-hands.js",
+      "originalPath": "/tmp/human-ai-r8-new-full-source/shared/ai-hands.js",
+      "sha256": "d209f6861bf1d4165012372d21398c46985d51e357b79009c5b7e4b8dffbdaa9",
+      "bytes": 70724,
+      "originalBytesCurrentlyEqual": true
+    },
+    {
+      "member": "frozen-source/shared/ai-mind.js",
+      "originalPath": "/tmp/human-ai-r8-new-full-source/shared/ai-mind.js",
+      "sha256": "18bb411cb1d057ce8cffe0b042c21f64b71238ae157b584242df206d708e6b92",
+      "bytes": 19553,
+      "originalBytesCurrentlyEqual": true
+    },
+    {
+      "member": "frozen-source/shared/ai-perception.js",
+      "originalPath": "/tmp/human-ai-r8-new-full-source/shared/ai-perception.js",
+      "sha256": "50e611a932728940c5047a61bf4fd7554c696f93880d7907a952d8b39fdcf3fd",
+      "bytes": 34765,
+      "originalBytesCurrentlyEqual": true
+    },
+    {
+      "member": "frozen-source/shared/ai-persona.js",
+      "originalPath": "/tmp/human-ai-r8-new-full-source/shared/ai-persona.js",
+      "sha256": "34de5882046129d2000e5502e354123786f3ad7b7133f31e93863dcc36ba66cf",
+      "bytes": 3586,
+      "originalBytesCurrentlyEqual": true
+    },
+    {
+      "member": "frozen-source/shared/ai-priority.js",
+      "originalPath": "/tmp/human-ai-r8-new-full-source/shared/ai-priority.js",
+      "sha256": "597c6ae80d69bbe9bb77a794096be4dd98c5f0791cd7da0f7a11359536850ab9",
+      "bytes": 8934,
+      "originalBytesCurrentlyEqual": true
+    },
+    {
+      "member": "frozen-source/shared/ai-rng.js",
+      "originalPath": "/tmp/human-ai-r8-new-full-source/shared/ai-rng.js",
+      "sha256": "2d2f95266eda45ec4fa4862cb01079fc8464a98d8c88fa97ca89b54a5d6f8b90",
+      "bytes": 641,
+      "originalBytesCurrentlyEqual": true
+    },
+    {
+      "member": "frozen-source/shared/ai-view.js",
+      "originalPath": "/tmp/human-ai-r8-new-full-source/shared/ai-view.js",
+      "sha256": "4466958fc4b8e7a5d2f2bcb8dc3814e27c817a7480b0c765aa6ee2a98cbc87f7",
+      "bytes": 13935,
+      "originalBytesCurrentlyEqual": true
+    },
+    {
+      "member": "frozen-source/shared/ai.js",
+      "originalPath": "/tmp/human-ai-r8-new-full-source/shared/ai.js",
+      "sha256": "685c178754646223ba57cbf6b0d795b0676b0a5cba84f51bfdfcae0cd71bc005",
+      "bytes": 91945,
+      "originalBytesCurrentlyEqual": true
+    },
+    {
+      "member": "frozen-source/shared/alert-events.js",
+      "originalPath": "/tmp/human-ai-r8-new-full-source/shared/alert-events.js",
+      "sha256": "df5f0ae98145034e6893ce0b70c2df8938a2d786cc8de37a1fbbc1a9c8b634b0",
+      "bytes": 8219,
+      "originalBytesCurrentlyEqual": true
+    },
+    {
+      "member": "frozen-source/shared/command-feedback.js",
+      "originalPath": "/tmp/human-ai-r8-new-full-source/shared/command-feedback.js",
+      "sha256": "e851bb8f7e48291bd75f09be66fdeecbe7dca68dcc82c839c5c033083ce77a07",
+      "bytes": 303,
+      "originalBytesCurrentlyEqual": true
+    },
+    {
+      "member": "frozen-source/shared/debris-motion.js",
+      "originalPath": "/tmp/human-ai-r8-new-full-source/shared/debris-motion.js",
+      "sha256": "d6a0f330f958ec6d78cfcc7f95b209aa5c099369576bf15dfd1c84770287b3b4",
+      "bytes": 4384,
+      "originalBytesCurrentlyEqual": true
+    },
+    {
+      "member": "frozen-source/shared/formation.js",
+      "originalPath": "/tmp/human-ai-r8-new-full-source/shared/formation.js",
+      "sha256": "265fa63c8c72588f6c8f67057921fd4daa88f96e9d823faa2e41ba10a7dba005",
+      "bytes": 4865,
+      "originalBytesCurrentlyEqual": true
+    },
+    {
+      "member": "frozen-source/shared/grid.js",
+      "originalPath": "/tmp/human-ai-r8-new-full-source/shared/grid.js",
+      "sha256": "30b0a5d67d99e54548d189374684e6b28863ecb7bf92de5221359e5c24fc5afc",
+      "bytes": 2873,
+      "originalBytesCurrentlyEqual": true
+    },
+    {
+      "member": "frozen-source/shared/human-input.js",
+      "originalPath": "/tmp/human-ai-r8-new-full-source/shared/human-input.js",
+      "sha256": "dec728db485690620e527f912fa2a0b491f545c5bbdaafc4dc25fd1e425763ff",
+      "bytes": 7966,
+      "originalBytesCurrentlyEqual": true
+    },
+    {
+      "member": "frozen-source/shared/local-traffic.js",
+      "originalPath": "/tmp/human-ai-r8-new-full-source/shared/local-traffic.js",
+      "sha256": "abad3f6ba310783c3620cec8d599df90dac38bb74eed6509be7d19a8af1490f6",
+      "bytes": 7408,
+      "originalBytesCurrentlyEqual": true
+    },
+    {
+      "member": "frozen-source/shared/navigation.js",
+      "originalPath": "/tmp/human-ai-r8-new-full-source/shared/navigation.js",
+      "sha256": "c277c12f86c9990e281ae28a703dc374126aa1c737d9dc94a300f8d99c898472",
+      "bytes": 19838,
+      "originalBytesCurrentlyEqual": true
+    },
+    {
+      "member": "frozen-source/shared/projectiles.js",
+      "originalPath": "/tmp/human-ai-r8-new-full-source/shared/projectiles.js",
+      "sha256": "ded50f3bcd60cf79238d5dba48236d54e33b2b8032f704813118d1419708ccd7",
+      "bytes": 7769,
+      "originalBytesCurrentlyEqual": true
+    },
+    {
+      "member": "frozen-source/shared/scenarios.js",
+      "originalPath": "/tmp/human-ai-r8-new-full-source/shared/scenarios.js",
+      "sha256": "93f6cda90224a805cc97f42418b2dc11c49e3ea80654b66e0036de55f9b9ba97",
+      "bytes": 16044,
+      "originalBytesCurrentlyEqual": true
+    },
+    {
+      "member": "frozen-source/shared/sim.js",
+      "originalPath": "/tmp/human-ai-r8-new-full-source/shared/sim.js",
+      "sha256": "5e5f4c2d43d048be36d94f0cbcc68fb974c812fc8ab7e071cddb0a59079d89fa",
+      "bytes": 355291,
+      "originalBytesCurrentlyEqual": true
+    },
+    {
+      "member": "frozen-source/shared/story.js",
+      "originalPath": "/tmp/human-ai-r8-new-full-source/shared/story.js",
+      "sha256": "fa33e53e61a7d636959dd1d1916d7b5c3359db72b523dc730b16ceab525d170f",
+      "bytes": 3738,
+      "originalBytesCurrentlyEqual": true
+    },
+    {
+      "member": "frozen-source/shared/structures.js",
+      "originalPath": "/tmp/human-ai-r8-new-full-source/shared/structures.js",
+      "sha256": "933b100a9a4c19a0285f5b137cd29b46e44271776f031045a537009e0176e5a2",
+      "bytes": 4029,
+      "originalBytesCurrentlyEqual": true
+    },
+    {
+      "member": "frozen-source/shared/tutorial.js",
+      "originalPath": "/tmp/human-ai-r8-new-full-source/shared/tutorial.js",
+      "sha256": "3aaa5e6affd936dae0ae4741d5173eee5d006132a1705d4b553097d3d8fabf42",
+      "bytes": 6342,
+      "originalBytesCurrentlyEqual": true
+    },
+    {
+      "member": "frozen-source/shared/vehicle-motion.js",
+      "originalPath": "/tmp/human-ai-r8-new-full-source/shared/vehicle-motion.js",
+      "sha256": "05bd1e985a91b3268065a0a84ec4b9aee2c1079aafc4054c38a70677dfb1493b",
+      "bytes": 12185,
+      "originalBytesCurrentlyEqual": true
+    },
+    {
+      "member": "frozen-source/shared/weather.js",
+      "originalPath": "/tmp/human-ai-r8-new-full-source/shared/weather.js",
+      "sha256": "faad682d6e40fdc6629533f684e1caeec5c9ae49e26e9922651773727c0bc1e5",
+      "bytes": 7228,
+      "originalBytesCurrentlyEqual": true
+    },
+    {
+      "member": "frozen-source/shared/world-conquest.js",
+      "originalPath": "/tmp/human-ai-r8-new-full-source/shared/world-conquest.js",
+      "sha256": "1c251e6d340586d7fb367d4f47938d5898f5239824dac46f054880a3d897aeef",
+      "bytes": 7203,
+      "originalBytesCurrentlyEqual": true
+    },
+    {
+      "member": "frozen-source/shared/world-landforms.js",
+      "originalPath": "/tmp/human-ai-r8-new-full-source/shared/world-landforms.js",
+      "sha256": "ecb6916db6785484f8bb813f7745c8c48ccea370f084fea290ff736edc968e34",
+      "bytes": 6645,
+      "originalBytesCurrentlyEqual": true
+    },
+    {
+      "member": "frozen-source/shared/world-layers.js",
+      "originalPath": "/tmp/human-ai-r8-new-full-source/shared/world-layers.js",
+      "sha256": "f51f34b99946192107ada9a7077d787761c1a9cb6b1e316d7b7e243dd273bb22",
+      "bytes": 6770,
+      "originalBytesCurrentlyEqual": true
+    },
+    {
+      "member": "frozen-source/shared/world-roads.js",
+      "originalPath": "/tmp/human-ai-r8-new-full-source/shared/world-roads.js",
+      "sha256": "5fb243b63fa9e2c082135b5b093ee753e8a92c197a076d78067e53f08f1885db",
+      "bytes": 6491,
+      "originalBytesCurrentlyEqual": true
+    },
+    {
+      "member": "frozen-source/shared/world-territories.js",
+      "originalPath": "/tmp/human-ai-r8-new-full-source/shared/world-territories.js",
+      "sha256": "bb33a449d7f2c4d657dbceab8dbd0171eb8ccaa7494cedf9e18707822d8f717f",
+      "bytes": 4110,
+      "originalBytesCurrentlyEqual": true
+    },
+    {
+      "member": "frozen-source/test-ai-humanity-storage.js",
+      "originalPath": "/tmp/human-ai-r8-new-full-source/test-ai-humanity-storage.js",
+      "sha256": "b50d2668f43161b5ce79feb6b165724e89f7ec221ff0a0754a58b0369c62753b",
+      "bytes": 18846,
+      "originalBytesCurrentlyEqual": true
+    },
+    {
+      "member": "frozen-source/test-ai-km-boundary.mjs",
+      "originalPath": "/tmp/human-ai-r8-new-full-source/test-ai-km-boundary.mjs",
+      "sha256": "4793d744eb23ca2daf40a2044c9fcde2591608b2bbe611e3bbb3e8a21ce9629a",
+      "bytes": 5406,
+      "originalBytesCurrentlyEqual": true
+    },
+    {
+      "member": "frozen-source/test-ai-lab.js",
+      "originalPath": "/tmp/human-ai-r8-new-full-source/test-ai-lab.js",
+      "sha256": "e6677a2b4d12c6c89af06b8392052dee02cd8214ed8736c98381f117b69b1288",
+      "bytes": 12491,
+      "originalBytesCurrentlyEqual": true
+    },
+    {
+      "member": "frozen-source/test-client-terrain-transition.mjs",
+      "originalPath": "/tmp/human-ai-r8-new-full-source/test-client-terrain-transition.mjs",
+      "sha256": "e5eebd30a8ecb033551bedbff59c6d1539368882eab134228bc05be1e65ab664",
+      "bytes": 4458,
+      "originalBytesCurrentlyEqual": true
+    },
+    {
+      "member": "frozen-source/test-engine-ai-accepted-destinations.js",
+      "originalPath": "/tmp/human-ai-r8-new-full-source/test-engine-ai-accepted-destinations.js",
+      "sha256": "85fc81c2a08cd9af9907a4e0dc78a78292904f17bafc5c95fd8df181f2bea450",
+      "bytes": 7989,
+      "originalBytesCurrentlyEqual": true
+    },
+    {
+      "member": "frozen-source/test-engine-ai-ap-vehicles.js",
+      "originalPath": "/tmp/human-ai-r8-new-full-source/test-engine-ai-ap-vehicles.js",
+      "sha256": "33c6174f07be1a80a9e5c53fcbf3d522ed7d6bb3a9ffc095f378d0b63dfdcd30",
+      "bytes": 6229,
+      "originalBytesCurrentlyEqual": true
+    },
+    {
+      "member": "frozen-source/test-engine-ai-attended-danger.js",
+      "originalPath": "/tmp/human-ai-r8-new-full-source/test-engine-ai-attended-danger.js",
+      "sha256": "f09952d8a6c3aee851bc85fb17692c6963531c3074d6ecb0ac48f9cd3f4174d5",
+      "bytes": 10239,
+      "originalBytesCurrentlyEqual": true
+    },
+    {
+      "member": "frozen-source/test-engine-ai-attended-guard.js",
+      "originalPath": "/tmp/human-ai-r8-new-full-source/test-engine-ai-attended-guard.js",
+      "sha256": "faec59b5fe8ff5dc1cd22e424034f4d5ed6c231d19bb9644732705e8fa732f58",
+      "bytes": 4713,
+      "originalBytesCurrentlyEqual": true
+    },
+    {
+      "member": "frozen-source/test-engine-ai-attention-area.js",
+      "originalPath": "/tmp/human-ai-r8-new-full-source/test-engine-ai-attention-area.js",
+      "sha256": "7fbc1dfc8fc952108ed46566b5dec34948473819ecabd81afde273667f269ecf",
+      "bytes": 18144,
+      "originalBytesCurrentlyEqual": true
+    },
+    {
+      "member": "frozen-source/test-engine-ai-attention-yield.js",
+      "originalPath": "/tmp/human-ai-r8-new-full-source/test-engine-ai-attention-yield.js",
+      "sha256": "1101cd6373273e9dbcbcb14d50dbf90b3cf367c7575ade879ddca83ce223329f",
+      "bytes": 9673,
+      "originalBytesCurrentlyEqual": true
+    },
+    {
+      "member": "frozen-source/test-engine-ai-automatic-armor-hit.js",
+      "originalPath": "/tmp/human-ai-r8-new-full-source/test-engine-ai-automatic-armor-hit.js",
+      "sha256": "544638e24bf5be79928dbdb8c638ab0b2b54bb1f655ae2e5806a06ade655d1a5",
+      "bytes": 6662,
+      "originalBytesCurrentlyEqual": true
+    },
+    {
+      "member": "frozen-source/test-engine-ai-behavior-cues.js",
+      "originalPath": "/tmp/human-ai-r8-new-full-source/test-engine-ai-behavior-cues.js",
+      "sha256": "15d85b863c2da69eb9cd054fa8690fe39e1adaf2f5ad39b87945534bd0a7946c",
+      "bytes": 16779,
+      "originalBytesCurrentlyEqual": true
+    },
+    {
+      "member": "frozen-source/test-engine-ai-bridge-repair.js",
+      "originalPath": "/tmp/human-ai-r8-new-full-source/test-engine-ai-bridge-repair.js",
+      "sha256": "b4d99b5667ad2db8f32909a761e666f1c9cff9cb5a8badd60373590727bff1c8",
+      "bytes": 10847,
+      "originalBytesCurrentlyEqual": true
+    },
+    {
+      "member": "frozen-source/test-engine-ai-causal-orders.js",
+      "originalPath": "/tmp/human-ai-r8-new-full-source/test-engine-ai-causal-orders.js",
+      "sha256": "38bad0e598f7ad0e00be8ac0a4480bb5f299cdfa32df6d2857e5ffd04a8e713c",
+      "bytes": 10722,
+      "originalBytesCurrentlyEqual": true
+    },
+    {
+      "member": "frozen-source/test-engine-ai-cover-opportunity.js",
+      "originalPath": "/tmp/human-ai-r8-new-full-source/test-engine-ai-cover-opportunity.js",
+      "sha256": "6c73673c99e5c7d07f3fb9908bb2ef2b0f2c26440d99c3c0d40186556567cb9c",
+      "bytes": 7476,
+      "originalBytesCurrentlyEqual": true
+    },
+    {
+      "member": "frozen-source/test-engine-ai-decision-capture.js",
+      "originalPath": "/tmp/human-ai-r8-new-full-source/test-engine-ai-decision-capture.js",
+      "sha256": "b0bb0c436e31c2db7ba42f6cd95e30f603aa2eb7220174f45d9ec1c97806d685",
+      "bytes": 7613,
+      "originalBytesCurrentlyEqual": true
+    },
+    {
+      "member": "frozen-source/test-engine-ai-diagonal-pan.js",
+      "originalPath": "/tmp/human-ai-r8-new-full-source/test-engine-ai-diagonal-pan.js",
+      "sha256": "8bbc5c6e447d7dfa6433e81d64443c513f6aa2f9bc006910d14f050d748882a3",
+      "bytes": 9086,
+      "originalBytesCurrentlyEqual": true
+    },
+    {
+      "member": "frozen-source/test-engine-ai-engineer-shortage.js",
+      "originalPath": "/tmp/human-ai-r8-new-full-source/test-engine-ai-engineer-shortage.js",
+      "sha256": "7686db7ee2c96709b780362d0e8595a9b5c9034ec5f137a88cdf2d83585c0edd",
+      "bytes": 9319,
+      "originalBytesCurrentlyEqual": true
+    },
+    {
+      "member": "frozen-source/test-engine-ai-formation-selection.js",
+      "originalPath": "/tmp/human-ai-r8-new-full-source/test-engine-ai-formation-selection.js",
+      "sha256": "04aac2d1e9c7128b09cabb75cd658b95640d08b51bad8843328de668a5584c6c",
+      "bytes": 6753,
+      "originalBytesCurrentlyEqual": true
+    },
+    {
+      "member": "frozen-source/test-engine-ai-fortification-cover.js",
+      "originalPath": "/tmp/human-ai-r8-new-full-source/test-engine-ai-fortification-cover.js",
+      "sha256": "56fb15c8737f75aaaf726558022fe87614274f5e06c9e2e180a333558ae0825c",
+      "bytes": 6800,
+      "originalBytesCurrentlyEqual": true
+    },
+    {
+      "member": "frozen-source/test-engine-ai-garrison-framing.js",
+      "originalPath": "/tmp/human-ai-r8-new-full-source/test-engine-ai-garrison-framing.js",
+      "sha256": "8060a1dd9aaecbd17dd42d21e0e73d15e5ef003bddf35e804c4b96472572c736",
+      "bytes": 6535,
+      "originalBytesCurrentlyEqual": true
+    },
+    {
+      "member": "frozen-source/test-engine-ai-group-reuse.js",
+      "originalPath": "/tmp/human-ai-r8-new-full-source/test-engine-ai-group-reuse.js",
+      "sha256": "d5a1c5bbd3f20fc97508b7228dc6290a81bf7f6f89187efee9f950f4d43689b6",
+      "bytes": 11667,
+      "originalBytesCurrentlyEqual": true
+    },
+    {
+      "member": "frozen-source/test-engine-ai-guard-ability-choice.js",
+      "originalPath": "/tmp/human-ai-r8-new-full-source/test-engine-ai-guard-ability-choice.js",
+      "sha256": "5642722c1aa7a52c111a97a3a47ab8644c7e7cadca5f5c949af81391b530aaf5",
+      "bytes": 7199,
+      "originalBytesCurrentlyEqual": true
+    },
+    {
+      "member": "frozen-source/test-engine-ai-hesitation.js",
+      "originalPath": "/tmp/human-ai-r8-new-full-source/test-engine-ai-hesitation.js",
+      "sha256": "a29d8f1b7a66bfac956bb5483fbb7d16c07c8dda56def60e06eddb956d055331",
+      "bytes": 8728,
+      "originalBytesCurrentlyEqual": true
+    },
+    {
+      "member": "frozen-source/test-engine-ai-idle-guard-attention.js",
+      "originalPath": "/tmp/human-ai-r8-new-full-source/test-engine-ai-idle-guard-attention.js",
+      "sha256": "92757c743866c2f1c935bdb978fd247e21c5b74a86338245c85e4709aecc373a",
+      "bytes": 10778,
+      "originalBytesCurrentlyEqual": true
+    },
+    {
+      "member": "frozen-source/test-engine-ai-inspection-priority.js",
+      "originalPath": "/tmp/human-ai-r8-new-full-source/test-engine-ai-inspection-priority.js",
+      "sha256": "38c96965e56e1064a54ec09bc21e805dd430c3c3d64211cdb916d13fe121faad",
+      "bytes": 9352,
+      "originalBytesCurrentlyEqual": true
+    },
+    {
+      "member": "frozen-source/test-engine-ai-inspection.js",
+      "originalPath": "/tmp/human-ai-r8-new-full-source/test-engine-ai-inspection.js",
+      "sha256": "77d6938b00bfe3eb460af83405cf733de7734e4146d59b6807a0dbe11c651188",
+      "bytes": 15478,
+      "originalBytesCurrentlyEqual": true
+    },
+    {
+      "member": "frozen-source/test-engine-ai-local-engineer.js",
+      "originalPath": "/tmp/human-ai-r8-new-full-source/test-engine-ai-local-engineer.js",
+      "sha256": "04de1e48a4ac2c6a0c6e37b66ade5e30cd91452a1933968cdb98769b42aa8caf",
+      "bytes": 7058,
+      "originalBytesCurrentlyEqual": true
+    },
+    {
+      "member": "frozen-source/test-engine-ai-manual-response-isolation.js",
+      "originalPath": "/tmp/human-ai-r8-new-full-source/test-engine-ai-manual-response-isolation.js",
+      "sha256": "0d93169112a983e6f8ac15c98be9e76f8a2b705d598c56d4cda941b838779e7d",
+      "bytes": 4691,
+      "originalBytesCurrentlyEqual": true
+    },
+    {
+      "member": "frozen-source/test-engine-ai-manual-response-policy.js",
+      "originalPath": "/tmp/human-ai-r8-new-full-source/test-engine-ai-manual-response-policy.js",
+      "sha256": "37769179660b63e7bef016869db1ae82c999bded6d68747e69321aa5341244b0",
+      "bytes": 42924,
+      "originalBytesCurrentlyEqual": true
+    },
+    {
+      "member": "frozen-source/test-engine-ai-manual-response-v3.js",
+      "originalPath": "/tmp/human-ai-r8-new-full-source/test-engine-ai-manual-response-v3.js",
+      "sha256": "ee51561c9509fe0764c47c173b12ed35d161d4aa6d6ebf5985e06a9df78e9342",
+      "bytes": 10682,
+      "originalBytesCurrentlyEqual": true
+    },
+    {
+      "member": "frozen-source/test-engine-ai-measurement-start.js",
+      "originalPath": "/tmp/human-ai-r8-new-full-source/test-engine-ai-measurement-start.js",
+      "sha256": "79c2c1938af527f071d2d10b0b5ab9c307264418bd5e87027ea838c68a5d29ef",
+      "bytes": 12811,
+      "originalBytesCurrentlyEqual": true
+    },
+    {
+      "member": "frozen-source/test-engine-ai-measurement-streams.js",
+      "originalPath": "/tmp/human-ai-r8-new-full-source/test-engine-ai-measurement-streams.js",
+      "sha256": "1ab914ccaba8e3786d04c154489639bc1d9eee2e2a128cef54749b7a81a566e1",
+      "bytes": 18955,
+      "originalBytesCurrentlyEqual": true
+    },
+    {
+      "member": "frozen-source/test-engine-ai-minimap-parity.js",
+      "originalPath": "/tmp/human-ai-r8-new-full-source/test-engine-ai-minimap-parity.js",
+      "sha256": "6b4eb5a4197abeb717b70df7f5765d58fc8795ba7bb1ea7a83c816ec23ad3378",
+      "bytes": 4218,
+      "originalBytesCurrentlyEqual": true
+    },
+    {
+      "member": "frozen-source/test-engine-ai-observed-events.js",
+      "originalPath": "/tmp/human-ai-r8-new-full-source/test-engine-ai-observed-events.js",
+      "sha256": "351f40937cad312ed7984b5153ab5e237d4ad6ddc18049dd95eec59d943e695d",
+      "bytes": 13960,
+      "originalBytesCurrentlyEqual": true
+    },
+    {
+      "member": "frozen-source/test-engine-ai-opening-saving.js",
+      "originalPath": "/tmp/human-ai-r8-new-full-source/test-engine-ai-opening-saving.js",
+      "sha256": "9fa2f64fa702f015f098f528da71c264d76db4a5f576db491c77d8912b1d3d7b",
+      "bytes": 7779,
+      "originalBytesCurrentlyEqual": true
+    },
+    {
+      "member": "frozen-source/test-engine-ai-pan-release.js",
+      "originalPath": "/tmp/human-ai-r8-new-full-source/test-engine-ai-pan-release.js",
+      "sha256": "dc03fb315b6ab1d3b044caa19f3a54c146a178ec54bcad228a415c28b7d73596",
+      "bytes": 11884,
+      "originalBytesCurrentlyEqual": true
+    },
+    {
+      "member": "frozen-source/test-engine-ai-point-fog.js",
+      "originalPath": "/tmp/human-ai-r8-new-full-source/test-engine-ai-point-fog.js",
+      "sha256": "6638ae18a7932a237cfaf75175b2347eed73ed56c3a15d1d7180bb4c91ab44cc",
+      "bytes": 7961,
+      "originalBytesCurrentlyEqual": true
+    },
+    {
+      "member": "frozen-source/test-engine-ai-pointer-tracking.js",
+      "originalPath": "/tmp/human-ai-r8-new-full-source/test-engine-ai-pointer-tracking.js",
+      "sha256": "36e72f9cd68a0f5af282595bc855955440e08022bb1607c325ef2ac13cfca99f",
+      "bytes": 18140,
+      "originalBytesCurrentlyEqual": true
+    },
+    {
+      "member": "frozen-source/test-engine-ai-priority.js",
+      "originalPath": "/tmp/human-ai-r8-new-full-source/test-engine-ai-priority.js",
+      "sha256": "fc66fa621166266f6a555020de6701944ea8a0365fc1dd077b4197efd05670e0",
+      "bytes": 9278,
+      "originalBytesCurrentlyEqual": true
+    },
+    {
+      "member": "frozen-source/test-engine-ai-privacy.js",
+      "originalPath": "/tmp/human-ai-r8-new-full-source/test-engine-ai-privacy.js",
+      "sha256": "f76f32bc9fd3577334ebd3c3d82906e2c02b8290c0023a952a291532367924c5",
+      "bytes": 5170,
+      "originalBytesCurrentlyEqual": true
+    },
+    {
+      "member": "frozen-source/test-engine-ai-producer-substitution.js",
+      "originalPath": "/tmp/human-ai-r8-new-full-source/test-engine-ai-producer-substitution.js",
+      "sha256": "b4056209bd3e795dcd71dc5ec39e2ccb961c726cf1ab19b5bd1aa808cae66b0c",
+      "bytes": 6622,
+      "originalBytesCurrentlyEqual": true
+    },
+    {
+      "member": "frozen-source/test-engine-ai-production-attention.js",
+      "originalPath": "/tmp/human-ai-r8-new-full-source/test-engine-ai-production-attention.js",
+      "sha256": "1d4bea468044defbb6b1a4550747e7b2f78926136e86001d1653e9787baae169",
+      "bytes": 5311,
+      "originalBytesCurrentlyEqual": true
+    },
+    {
+      "member": "frozen-source/test-engine-ai-public-alert-v2.js",
+      "originalPath": "/tmp/human-ai-r8-new-full-source/test-engine-ai-public-alert-v2.js",
+      "sha256": "7f2816b796b02babef56d3d59d8fc15f56883067f5a3f95e2ac2dcf209fc3e60",
+      "bytes": 14730,
+      "originalBytesCurrentlyEqual": true
+    },
+    {
+      "member": "frozen-source/test-engine-ai-public-start.js",
+      "originalPath": "/tmp/human-ai-r8-new-full-source/test-engine-ai-public-start.js",
+      "sha256": "5e27dc8b36aee9aac06422f24800fda86f4d2ea45717347b25115548ddc9608b",
+      "bytes": 5096,
+      "originalBytesCurrentlyEqual": true
+    },
+    {
+      "member": "frozen-source/test-engine-ai-purchase-receipts.js",
+      "originalPath": "/tmp/human-ai-r8-new-full-source/test-engine-ai-purchase-receipts.js",
+      "sha256": "04e0039a90edc6d45c3ff03e651cfe0b38581375902c52fbf007f3160b2eb123",
+      "bytes": 5465,
+      "originalBytesCurrentlyEqual": true
+    },
+    {
+      "member": "frozen-source/test-engine-ai-purpose.js",
+      "originalPath": "/tmp/human-ai-r8-new-full-source/test-engine-ai-purpose.js",
+      "sha256": "b2d132df3dbaacc114d5616d79c8cf0cabf59375a10eee89009e43f58f02b718",
+      "bytes": 18095,
+      "originalBytesCurrentlyEqual": true
+    },
+    {
+      "member": "frozen-source/test-engine-ai-selection-reuse.js",
+      "originalPath": "/tmp/human-ai-r8-new-full-source/test-engine-ai-selection-reuse.js",
+      "sha256": "25c42c0def6d8d08cb553f972b7ed9261983c396a1a9b86a1d16f4c8facb12e1",
+      "bytes": 6636,
+      "originalBytesCurrentlyEqual": true
+    },
+    {
+      "member": "frozen-source/test-engine-ai-stale-stance.js",
+      "originalPath": "/tmp/human-ai-r8-new-full-source/test-engine-ai-stale-stance.js",
+      "sha256": "e1af9650db8ac60587d13409a36987a00cbe28860e34324cae289c01e32e9aa1",
+      "bytes": 3317,
+      "originalBytesCurrentlyEqual": true
+    },
+    {
+      "member": "frozen-source/test-engine-ai-stationary-armor-hit.js",
+      "originalPath": "/tmp/human-ai-r8-new-full-source/test-engine-ai-stationary-armor-hit.js",
+      "sha256": "3ecc2d7ac314d42aca443a885e9c2468291ba8b64d8423d845eb162e4fcbd16d",
+      "bytes": 8076,
+      "originalBytesCurrentlyEqual": true
+    },
+    {
+      "member": "frozen-source/test-engine-ai-tactical-reaction.js",
+      "originalPath": "/tmp/human-ai-r8-new-full-source/test-engine-ai-tactical-reaction.js",
+      "sha256": "00d5e28156fb796aad6304f651a6a8c6d7da241e9fd9e59798458a32813b36cc",
+      "bytes": 11618,
+      "originalBytesCurrentlyEqual": true
+    },
+    {
+      "member": "frozen-source/test-engine-ai-unseen-hit.js",
+      "originalPath": "/tmp/human-ai-r8-new-full-source/test-engine-ai-unseen-hit.js",
+      "sha256": "dc1dca1e324ccbb5e2c4475447c5e712ef6b820ea870fdda3ae95a7af7914b00",
+      "bytes": 8974,
+      "originalBytesCurrentlyEqual": true
+    },
+    {
+      "member": "frozen-source/test-engine-authoring.js",
+      "originalPath": "/tmp/human-ai-r8-new-full-source/test-engine-authoring.js",
+      "sha256": "da2228f9fcb43afc189a2ee1d2a3ecbafbd305d26b79ff4ce341a55b197cc4fa",
+      "bytes": 7335,
+      "originalBytesCurrentlyEqual": true
+    },
+    {
+      "member": "frozen-source/test-engine-breaches.mjs",
+      "originalPath": "/tmp/human-ai-r8-new-full-source/test-engine-breaches.mjs",
+      "sha256": "56bff02676e0253f8ee3b5d1137c19737ab1318115caf4ffd994e9ee15aa2234",
+      "bytes": 6012,
+      "originalBytesCurrentlyEqual": true
+    },
+    {
+      "member": "frozen-source/test-engine-debris.js",
+      "originalPath": "/tmp/human-ai-r8-new-full-source/test-engine-debris.js",
+      "sha256": "1547a05ef3952f0a8e7c860a676040e68a0fb863e84ef1c2073f430b9e39f9d0",
+      "bytes": 6904,
+      "originalBytesCurrentlyEqual": true
+    },
+    {
+      "member": "frozen-source/test-engine-horde-queue.js",
+      "originalPath": "/tmp/human-ai-r8-new-full-source/test-engine-horde-queue.js",
+      "sha256": "fd5646bef8542ac4039e4e02c30569e06487da86b21887cf3668f2cb1adcc2fd",
+      "bytes": 6914,
+      "originalBytesCurrentlyEqual": true
+    },
+    {
+      "member": "frozen-source/test-engine-localization.mjs",
+      "originalPath": "/tmp/human-ai-r8-new-full-source/test-engine-localization.mjs",
+      "sha256": "b48ed1d7689a964c84cf5e3f23a206e965e2fce516920b1f12d839bea3cde441",
+      "bytes": 6724,
+      "originalBytesCurrentlyEqual": true
+    },
+    {
+      "member": "frozen-source/test-engine-scenario-start.js",
+      "originalPath": "/tmp/human-ai-r8-new-full-source/test-engine-scenario-start.js",
+      "sha256": "ca1ddbbbe284680485ae108e18e1ee07ef5e547e0491d8753fce7792bfab5e7d",
+      "bytes": 3780,
+      "originalBytesCurrentlyEqual": true
+    },
+    {
+      "member": "frozen-source/test-engine-spectators.js",
+      "originalPath": "/tmp/human-ai-r8-new-full-source/test-engine-spectators.js",
+      "sha256": "4d64916ff9931c8f09dbe300e68718881995b3d3c9f43d7995a3d2a15ab23237",
+      "bytes": 11518,
+      "originalBytesCurrentlyEqual": true
+    },
+    {
+      "member": "frozen-source/test-engine-traffic-privacy.js",
+      "originalPath": "/tmp/human-ai-r8-new-full-source/test-engine-traffic-privacy.js",
+      "sha256": "eb1f7ab966eaf3f4998ebe2a36b9cd296a824cba131741953e98c8273b126a68",
+      "bytes": 13983,
+      "originalBytesCurrentlyEqual": true
+    },
+    {
+      "member": "frozen-source/test-engine-vehicle-pose.mjs",
+      "originalPath": "/tmp/human-ai-r8-new-full-source/test-engine-vehicle-pose.mjs",
+      "sha256": "74122febb84f13c1f03185c0f847317a553fb6bfe745d587ee2ef1703341dacf",
+      "bytes": 12721,
+      "originalBytesCurrentlyEqual": true
+    },
+    {
+      "member": "frozen-source/test-server-start-order.js",
+      "originalPath": "/tmp/human-ai-r8-new-full-source/test-server-start-order.js",
+      "sha256": "c157e80c1bf054108f4755c7a420e26675db6ae00fd58b3e439b7649be569168",
+      "bytes": 13451,
+      "originalBytesCurrentlyEqual": true
+    },
+    {
+      "member": "frozen-source/test.js",
+      "originalPath": "/tmp/human-ai-r8-new-full-source/test.js",
+      "sha256": "e408e605f8e9ce45afb9528a0fad1bf4604ca5e3668ed04a2a3e9121f9da22b7",
+      "bytes": 593961,
+      "originalBytesCurrentlyEqual": true
+    },
+    {
+      "member": "frozen-source/tools/ai-balance.mjs",
+      "originalPath": "/tmp/human-ai-r8-new-full-source/tools/ai-balance.mjs",
+      "sha256": "bf5b5ea07e3bf0eea2e4134647457191d9fe212a05b138677817f0cf5ec8db4b",
+      "bytes": 14906,
+      "originalBytesCurrentlyEqual": true
+    },
+    {
+      "member": "frozen-source/tools/ai-humanity.mjs",
+      "originalPath": "/tmp/human-ai-r8-new-full-source/tools/ai-humanity.mjs",
+      "sha256": "5aaf88664e7a8af5504286de5d0b82f640ab2b8b3adc386a13fc8d541e5bf791",
+      "bytes": 97622,
+      "originalBytesCurrentlyEqual": true
+    },
+    {
+      "member": "frozen-source/tools/ai-lab-browser.mjs",
+      "originalPath": "/tmp/human-ai-r8-new-full-source/tools/ai-lab-browser.mjs",
+      "sha256": "9017bac6153e3df8e55428a1bb89fb1586afa67402de3526d6c28e68507b49c9",
+      "bytes": 8245,
+      "originalBytesCurrentlyEqual": true
+    },
+    {
+      "member": "frozen-source/tools/ai-lab-node.mjs",
+      "originalPath": "/tmp/human-ai-r8-new-full-source/tools/ai-lab-node.mjs",
+      "sha256": "3a673bac091d805ee0807862ba3c580bd6c75f36724521ceee582406529a8657",
+      "bytes": 1125,
+      "originalBytesCurrentlyEqual": true
+    },
+    {
+      "member": "frozen-source/tools/ai-lab-report.mjs",
+      "originalPath": "/tmp/human-ai-r8-new-full-source/tools/ai-lab-report.mjs",
+      "sha256": "f13340cb3513a5d430ebb023947e4bc9bdede94c56c19a61155505bc6563e06e",
+      "bytes": 3951,
+      "originalBytesCurrentlyEqual": true
+    },
+    {
+      "member": "frozen-source/tools/ai-lab-runner.mjs",
+      "originalPath": "/tmp/human-ai-r8-new-full-source/tools/ai-lab-runner.mjs",
+      "sha256": "d5f2e87078e6f1ea35300a653d86e0200aea554681ec60c4bd83eacabe17fb25",
+      "bytes": 13565,
+      "originalBytesCurrentlyEqual": true
+    },
+    {
+      "member": "frozen-source/tools/ai-lab-server.mjs",
+      "originalPath": "/tmp/human-ai-r8-new-full-source/tools/ai-lab-server.mjs",
+      "sha256": "fb9124d7f4a0d18fbdc18a89964d190987f7e1a084807b43cc06cdefa1ac6a9a",
+      "bytes": 2169,
+      "originalBytesCurrentlyEqual": true
+    },
+    {
+      "member": "frozen-source/tools/ai-lab.mjs",
+      "originalPath": "/tmp/human-ai-r8-new-full-source/tools/ai-lab.mjs",
+      "sha256": "4aabd289dd136b04febfe0b6829628e542d7adb2492a774800a8f147a824100b",
+      "bytes": 2832,
+      "originalBytesCurrentlyEqual": true
+    },
+    {
+      "member": "frozen-source/tools/ai-manual-response-capture-v3.mjs",
+      "originalPath": "/tmp/human-ai-r8-new-full-source/tools/ai-manual-response-capture-v3.mjs",
+      "sha256": "19e1a93ae79b04f3eb768263052d48b344b086831b261ae40e7da0b004ea8775",
+      "bytes": 6778,
+      "originalBytesCurrentlyEqual": true
+    },
+    {
+      "member": "frozen-source/tools/ai-manual-response-capture.mjs",
+      "originalPath": "/tmp/human-ai-r8-new-full-source/tools/ai-manual-response-capture.mjs",
+      "sha256": "9ea0b3163788366234c4ff43cdb22f5127158a0a32bcc7e8ec27f978ca3102fc",
+      "bytes": 6600,
+      "originalBytesCurrentlyEqual": true
+    },
+    {
+      "member": "frozen-source/tools/ai-manual-response-policy-v3.mjs",
+      "originalPath": "/tmp/human-ai-r8-new-full-source/tools/ai-manual-response-policy-v3.mjs",
+      "sha256": "c45e589d661b4980a79181ca987b503054ebb3e7e554f1bc272dd3eab50a6928",
+      "bytes": 29858,
+      "originalBytesCurrentlyEqual": true
+    },
+    {
+      "member": "frozen-source/tools/ai-manual-response-policy.mjs",
+      "originalPath": "/tmp/human-ai-r8-new-full-source/tools/ai-manual-response-policy.mjs",
+      "sha256": "a5044b77c2b35d25d12d05d8d61135c956e59ee84451f15a3a8f5c0c05470373",
+      "bytes": 26551,
+      "originalBytesCurrentlyEqual": true
+    },
+    {
+      "member": "frozen-source/tools/ai-public-alert-response-v2.mjs",
+      "originalPath": "/tmp/human-ai-r8-new-full-source/tools/ai-public-alert-response-v2.mjs",
+      "sha256": "e54b5bbf07f2e637cde592e2f6d079ef3a41f3ac4003dd3d68f70f706104c997",
+      "bytes": 24115,
+      "originalBytesCurrentlyEqual": true
+    },
+    {
+      "member": "frozen-source/tools/ai-public-alert-response.mjs",
+      "originalPath": "/tmp/human-ai-r8-new-full-source/tools/ai-public-alert-response.mjs",
+      "sha256": "6ea2b5b42af9f1ed1bc87f14433adb66da05fdd71f8c6fbe35ca36180fed9baa",
+      "bytes": 20592,
+      "originalBytesCurrentlyEqual": true
+    },
+    {
+      "member": "frozen-source/tools/ai-screen-v1-oracle-provenance.json",
+      "originalPath": "/tmp/human-ai-r8-new-full-source/tools/ai-screen-v1-oracle-provenance.json",
+      "sha256": "7d6de7111625c96649ab2d80e3d2cb7cb4510a3dc6ec407dfc85ba3e0a797400",
+      "bytes": 576,
+      "originalBytesCurrentlyEqual": true
+    },
+    {
+      "member": "frozen-source/tools/ai-screen-v1-oracle.js",
+      "originalPath": "/tmp/human-ai-r8-new-full-source/tools/ai-screen-v1-oracle.js",
+      "sha256": "6b3894b551f3bf9151372b048b2efc77ffc86a6a173d0871278b27417358b398",
+      "bytes": 28180,
+      "originalBytesCurrentlyEqual": true
+    },
+    {
+      "member": "frozen-source/tools/hash-json-native.mjs",
+      "originalPath": "/tmp/human-ai-r8-new-full-source/tools/hash-json-native.mjs",
+      "sha256": "84d9f9c2273071831d86fe88e4244bda6013c762412ef837a5dc4c90a08e41c5",
+      "bytes": 3875,
+      "originalBytesCurrentlyEqual": true
+    },
+    {
+      "member": "frozen-source/tools/json-stream.mjs",
+      "originalPath": "/tmp/human-ai-r8-new-full-source/tools/json-stream.mjs",
+      "sha256": "34f01a09d4996f356a3dafc61084aae27a4bf18cd8e6b63b2fda9e95c5168798",
+      "bytes": 9588,
+      "originalBytesCurrentlyEqual": true
+    },
+    {
+      "member": "frozen-source/tools/km-median-boundary.mjs",
+      "originalPath": "/tmp/human-ai-r8-new-full-source/tools/km-median-boundary.mjs",
+      "sha256": "e92de6b62be628796cf1390a0b4333b87be32a2083f3d2193cf2dd3ac3755469",
+      "bytes": 1037,
+      "originalBytesCurrentlyEqual": true
+    }
+  ],
+  "unresolved": [],
+  "allPayloadsVerified": true
+}

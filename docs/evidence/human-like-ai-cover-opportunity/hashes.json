@@ -1,0 +1,37 @@
+{
+  "shared/ai.js": {
+    "root": "2e01129543e4095b95bdbb693f89ce278a810796528718fac192436ac7bf9f21",
+    "candidate": "05b91f642a855bea7b71f97705601afd4b59c3805dc2581fffc3799e2ab2b3bf"
+  },
+  "shared/ai-attention.js": {
+    "root": "07c48dbdcc92f326eeb52222518f274dcf05a4d746dfd474126d932ed05ca7ba",
+    "candidate": "07c48dbdcc92f326eeb52222518f274dcf05a4d746dfd474126d932ed05ca7ba"
+  },
+  "shared/ai-commander.js": {
+    "root": "19112a1e4c94da72d62564d940497d38cf7e93e3086c9bde3db9c29d088703df",
+    "candidate": "19112a1e4c94da72d62564d940497d38cf7e93e3086c9bde3db9c29d088703df"
+  },
+  "shared/ai-hands.js": {
+    "root": "8bd373c3afb8261bf8ca2a53f24512522b91f0ddc6568eaa61dbf7039684b9a3",
+    "candidate": "8bd373c3afb8261bf8ca2a53f24512522b91f0ddc6568eaa61dbf7039684b9a3"
+  },
+  "shared/ai-perception.js": {
+    "root": "50e611a932728940c5047a61bf4fd7554c696f93880d7907a952d8b39fdcf3fd",
+    "candidate": "50e611a932728940c5047a61bf4fd7554c696f93880d7907a952d8b39fdcf3fd"
+  },
+  "shared/ai-view.js": {
+    "root": "ca4c85c25ea800eb43f33977b3c02f3989a8eebc60142f88e52740b3d422ae59",
+    "candidate": "ca4c85c25ea800eb43f33977b3c02f3989a8eebc60142f88e52740b3d422ae59"
+  },
+  "shared/sim.js": {
+    "root": "7bc57ac179b4982bdb94b469ce029e2e2178567fcb23fa1756476a17f791f018",
+    "candidate": "7bc57ac179b4982bdb94b469ce029e2e2178567fcb23fa1756476a17f791f018"
+  },
+  "tools/ai-lab-runner.mjs": {
+    "root": "01020a610e714ca538ca12b81c03652d77bba31d7a99ea696aec786b97c34ea2",
+    "candidate": "01020a610e714ca538ca12b81c03652d77bba31d7a99ea696aec786b97c34ea2"
+  },
+  "test-engine-ai-cover-opportunity.js": "89abf4965254ce6e830102105e43b7cf3596f9c06828974a4b8c79f4ed754373",
+  "native-controls.json": "462e1251587b3ab07fbc9eaf0ee3bc23ba2489dd11be09aeb828370819ec9446",
+  "cover-opportunity.patch": "4f17fd69b09495cdeb7588620df242de95cddb4d155006b71281fde77fe61c0c"
+}

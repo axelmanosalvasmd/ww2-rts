@@ -1,0 +1,31 @@
+#roomBanners {
+  position: fixed; top: var(--room-banner-top, 16px); left: 50%; transform: translateX(-50%);
+  display: grid; justify-items: center; gap: 4px; z-index: 25;
+  max-width: min(510px, calc(100vw - 40px)); pointer-events: none;
+}
+#roomBanners > div {
+  padding: 6px 12px; border: 1px solid rgba(176, 164, 122, 0.46); border-radius: 2px;
+  background: rgba(25, 28, 30, 0.95); color: #e2dfd3;
+  font: 500 14px/1.35 'Barlow Semi Condensed', 'Arial Narrow', sans-serif;
+  text-align: center; overflow-wrap: anywhere;
+}
+#roomBanners #connectionBanner { border-color: rgba(200, 72, 59, 0.8); }
+#replacedSeat {
+  position: fixed; inset: 0; z-index: 40; display: grid; place-items: center; padding: 20px;
+  background: rgba(22, 25, 27, 0.92); color: #e2dfd3;
+  font: 500 15px/1.4 'Barlow Semi Condensed', 'Arial Narrow', sans-serif;
+}
+#replacedSeat .seatCard {
+  width: min(400px, 100%); padding: 22px 24px; border-radius: 2px;
+  background: #1a1d1f; border: 1px solid rgba(176, 164, 122, 0.46);
+}
+#replacedSeat h2 { margin: 0 0 16px; font: 600 20px/1.25 'Barlow Semi Condensed', 'Arial Narrow', sans-serif; }
+#replacedSeat button {
+  padding: 8px 14px; color: #191c1e; background: #d6b25e; border: 1px solid #d6b25e; border-radius: 2px;
+  font: 600 15px/1.3 'Barlow Semi Condensed', 'Arial Narrow', sans-serif;
+}
+#replacedSeat button:hover { background: #e2c374; border-color: #e2c374; }
+#replacedSeat button:focus-visible { outline: 1px solid #e2dfd3; outline-offset: 2px; }
+#menu #offlineSeats:empty { display: none; }
+#menu #offlineSeats { display: grid; gap: 4px; max-width: 330px; max-height: 160px; overflow: auto; }
+#menu #offlineSeats button { text-align: left; font-size: 13px; }

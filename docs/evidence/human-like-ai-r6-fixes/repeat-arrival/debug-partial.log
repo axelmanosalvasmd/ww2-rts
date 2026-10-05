@@ -1,0 +1,29 @@
+PARTIALDEBUG [{"tick":155,"cmd":{"t":"move","orders":[[9,119.3019359554182,56.107289367351555],[8,119,63],[7,118.7147510336795,65.08811415506915]],"together":true},"planned":{"t":"move","orders":[[9,119,60.6],[7,119,60.6],[8,119,60.6]]}},{"tick":178,"cmd":{"t":"move","orders":[[9,121.2507368622063,60.58652611279445],[8,116.76471142417832,60.94089282873403]],"together":true},"planned":{"t":"move","orders":[[9,119,60.6],[8,119,60.6]]}},{"tick":193,"cmd":{"t":"move","orders":[[9,119.73425507653621,58.322032602909395],[8,119,63]],"together":true},"planned":{"t":"move","orders":[[9,119,60.6],[8,119,60.6]]}}] [
+  [ 136, 'select-click', [ 9 ] ],
+  [ 143, 'select-add-click', [ 9, 7 ] ],
+  [ 149, 'select-add-click', [ 9, 7, 8 ] ],
+  [ 155, 'rightclick', [ 9, 7, 8 ] ],
+  [ 169, 'select-click', [ 9 ] ],
+  [ 174, 'select-add-click', [ 9, 8 ] ],
+  [ 178, 'rightclick', [ 9, 8 ] ],
+  [ 193, 'rightclick', [ 9, 8 ] ],
+  [ 196, 'group-set', [ 9, 8 ] ]
+]
+node:internal/modules/run_main:107
+    triggerUncaughtException(
+    ^
+
+AssertionError [ERR_ASSERTION]: the box physically acquires only intended surviving companions
+    at file:///tmp/r6-repeat-intent/root-proposed/debug-partial.js:49:145
+    at ModuleJob.run (node:internal/modules/esm/module_job:561:25)
+    at async node:internal/modules/esm/loader:647:26
+    at async asyncRunEntryPointWithESMLoader (node:internal/modules/run_main:101:5) {
+  generatedMessage: false,
+  code: 'ERR_ASSERTION',
+  actual: false,
+  expected: true,
+  operator: '==',
+  diff: 'simple'
+}
+
+Node.js v24.21.0

@@ -1,0 +1,118 @@
+{
+  "readAtUnix": 1791148772.836696,
+  "reductions": {
+    "conquest": {
+      "rows": 60,
+      "winsByFaction": {
+        "USA": 23,
+        "Germany": 22,
+        "USSR": 15
+      },
+      "decisiveFractions": {
+        "USA": 0.38333333333333336,
+        "Germany": 0.36666666666666664,
+        "USSR": 0.25
+      },
+      "draws": 0,
+      "timeouts": 0,
+      "medianSeconds": 649.5,
+      "winsBySeat": null,
+      "originalGatePass": true
+    },
+    "classic": {
+      "rows": 30,
+      "winsByFaction": {
+        "USA": 7,
+        "Germany": 11,
+        "USSR": 8
+      },
+      "decisiveFractions": {
+        "USA": 0.2692307692307692,
+        "Germany": 0.4230769230769231,
+        "USSR": 0.3076923076923077
+      },
+      "draws": 4,
+      "timeouts": 0,
+      "medianSeconds": 1600.0,
+      "winsBySeat": null,
+      "originalGatePass": false
+    },
+    "easy20": {
+      "rows": 20,
+      "winsByFaction": {
+        "USA": 9,
+        "Germany": 4,
+        "USSR": 7
+      },
+      "decisiveFractions": {
+        "USA": 0.45,
+        "Germany": 0.2,
+        "USSR": 0.35
+      },
+      "draws": 0,
+      "timeouts": 0,
+      "medianSeconds": 381.35,
+      "winsBySeat": [
+        15,
+        5
+      ],
+      "originalGatePass": true
+    },
+    "normal20": {
+      "rows": 20,
+      "winsByFaction": {
+        "USA": 6,
+        "Germany": 9,
+        "USSR": 5
+      },
+      "decisiveFractions": {
+        "USA": 0.3,
+        "Germany": 0.45,
+        "USSR": 0.25
+      },
+      "draws": 0,
+      "timeouts": 0,
+      "medianSeconds": 399.2,
+      "winsBySeat": [
+        17,
+        3
+      ],
+      "originalGatePass": true
+    },
+    "hard20": {
+      "rows": 20,
+      "winsByFaction": {
+        "USA": 7,
+        "Germany": 5,
+        "USSR": 8
+      },
+      "decisiveFractions": {
+        "USA": 0.35,
+        "Germany": 0.25,
+        "USSR": 0.4
+      },
+      "draws": 0,
+      "timeouts": 0,
+      "medianSeconds": 430.55,
+      "winsBySeat": [
+        13,
+        7
+      ],
+      "originalGatePass": true
+    }
+  },
+  "allOriginalRows": 150,
+  "allRecordedArtifactsByteVerified": true,
+  "overallHistoricalGatePass": false,
+  "sourceAfterNativeChecks": {
+    "files": 1635,
+    "mismatches": [],
+    "fileManifestDigest": "8759f332f37f5069571044e4ed672de0b499d85dad6152f3803a9b08f1de859d",
+    "sourceSymlinks": 2,
+    "readOnlySourceChecked": true,
+    "externalDependencyContentsCertified": false,
+    "checkedAtUTC": "2026-10-04T20:58:27.920232+00:00"
+  },
+  "finishedAtUTC": "2026-10-04T20:58:27.688992+00:00",
+  "qualification": "Independent root reduction of every original report row, seed, faction, draw, timeout and duration. Root validates all recorded artifact bytes; controller checkpoint/log identity audit is retained. This is V16 historical evidence, not current-source acceptance."
+}

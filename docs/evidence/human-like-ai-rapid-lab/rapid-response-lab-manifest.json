@@ -1,0 +1,557 @@
+{
+  "schema": "ww2-ai-lab-byte-manifest-v1",
+  "archive": "rapid-response-lab.tar.gz",
+  "declaredScope": "Original complete native raw timelines and recorded scoring populations. No simulated experiment or rescoring is performed by packaging.",
+  "members": {
+    "REPORT.md": {
+      "source": "/tmp/ai-lab-response-current/REPORT.md",
+      "bytes": 4713,
+      "sha256": "337129ebc07e184c886943e620a75c98f1ba755e46ae41cc9fbf78a02644adf7"
+    },
+    "captured-lab.mjs": {
+      "source": "/tmp/ai-lab-response-current/captured-lab.mjs",
+      "bytes": 14429,
+      "sha256": "2d0652a268a7fbd199f2a2502aea0f648dbb10bb1ebb494cd10a1278d8327a58"
+    },
+    "episodes/easy-1-late-contact-160.json": {
+      "source": "/tmp/ai-lab-response-current/episodes/easy-1-late-contact-160.json",
+      "bytes": 1091935,
+      "sha256": "6bdae529dc624d371fa0235b9d531acf82ea4b26561bfb57ec006c96a3073d20"
+    },
+    "episodes/easy-1-late-contact-240.json": {
+      "source": "/tmp/ai-lab-response-current/episodes/easy-1-late-contact-240.json",
+      "bytes": 1146140,
+      "sha256": "0ca7e0ae92b470b5993c8cf6713e7c0813cd9b717c1e6d3485c912746b4cde00"
+    },
+    "episodes/easy-1-late-contact-400.json": {
+      "source": "/tmp/ai-lab-response-current/episodes/easy-1-late-contact-400.json",
+      "bytes": 1064208,
+      "sha256": "7d47cf0981b5f351d07b9327d15ba019d2607ccad5bae3d07cf1733b64dc2f7e"
+    },
+    "episodes/easy-1-native-weapon-240.json": {
+      "source": "/tmp/ai-lab-response-current/episodes/easy-1-native-weapon-240.json",
+      "bytes": 1149507,
+      "sha256": "f4ff6fd7449189699d4dac1f4e74c740ba4afa20e1bc097bf71e13cc0800a733"
+    },
+    "episodes/easy-1-offscreen-hurt-160.json": {
+      "source": "/tmp/ai-lab-response-current/episodes/easy-1-offscreen-hurt-160.json",
+      "bytes": 1055171,
+      "sha256": "3a45af6ace77e7ec5d7c117d645769ec4d37cb374f28aa8189370315d2182b37"
+    },
+    "episodes/easy-1-offscreen-hurt-240.json": {
+      "source": "/tmp/ai-lab-response-current/episodes/easy-1-offscreen-hurt-240.json",
+      "bytes": 1137431,
+      "sha256": "32bf360ea04e1a3f48a841a18362d4b9045e259511c93cc157c69a97e4f4bb88"
+    },
+    "episodes/easy-1-offscreen-hurt-400.json": {
+      "source": "/tmp/ai-lab-response-current/episodes/easy-1-offscreen-hurt-400.json",
+      "bytes": 1048881,
+      "sha256": "7888e627d6965010514d46dd18e10721a74b5456835f6f4c6c7f00225c003951"
+    },
+    "episodes/easy-1-onscreen-hurt-160.json": {
+      "source": "/tmp/ai-lab-response-current/episodes/easy-1-onscreen-hurt-160.json",
+      "bytes": 1158385,
+      "sha256": "f0fccd57ffb2a8f08ffcb7baf3b6f3b01e3019f0dcc2475f53911858e5df1827"
+    },
+    "episodes/easy-1-onscreen-hurt-240.json": {
+      "source": "/tmp/ai-lab-response-current/episodes/easy-1-onscreen-hurt-240.json",
+      "bytes": 1208598,
+      "sha256": "ef57173eeef9999294a8d8bd24b787f1e7ebc4416d52d744f7a3088646df4faf"
+    },
+    "episodes/easy-1-onscreen-hurt-400.json": {
+      "source": "/tmp/ai-lab-response-current/episodes/easy-1-onscreen-hurt-400.json",
+      "bytes": 1208271,
+      "sha256": "1f1e4cb886af6ec7b71b141bbc08161ab05fd571fb6e28fb9328dc1a0e301d28"
+    },
+    "episodes/easy-2-late-contact-160.json": {
+      "source": "/tmp/ai-lab-response-current/episodes/easy-2-late-contact-160.json",
+      "bytes": 1174569,
+      "sha256": "ed45d464dc968d655f0f1896ff25962a81410ae7459dd7a3044679c91f2e485a"
+    },
+    "episodes/easy-2-late-contact-240.json": {
+      "source": "/tmp/ai-lab-response-current/episodes/easy-2-late-contact-240.json",
+      "bytes": 1147147,
+      "sha256": "c948e55224d3782b5867cb366b458d91da6633e4ebbcc4138b5bcbfe916cb534"
+    },
+    "episodes/easy-2-late-contact-400.json": {
+      "source": "/tmp/ai-lab-response-current/episodes/easy-2-late-contact-400.json",
+      "bytes": 1071892,
+      "sha256": "9173cffaa1045fcf34b84500897aa0a5ce315a8dfdb353cb5ff2209b8e7930b0"
+    },
+    "episodes/easy-2-native-weapon-240.json": {
+      "source": "/tmp/ai-lab-response-current/episodes/easy-2-native-weapon-240.json",
+      "bytes": 1152420,
+      "sha256": "4ba85b6e4e92c92cacf94b6238906ed6892204083325d89da548b29591f1f314"
+    },
+    "episodes/easy-2-offscreen-hurt-160.json": {
+      "source": "/tmp/ai-lab-response-current/episodes/easy-2-offscreen-hurt-160.json",
+      "bytes": 1057534,
+      "sha256": "b430fadc9c5b4f821b298f87c69ef8adc9942188b13ec2a66595059e3b95f8df"
+    },
+    "episodes/easy-2-offscreen-hurt-240.json": {
+      "source": "/tmp/ai-lab-response-current/episodes/easy-2-offscreen-hurt-240.json",
+      "bytes": 1104034,
+      "sha256": "dc1141623bd01dca75bf234096747ce446c4db427f304ae2c24dbe326a1d2f71"
+    },
+    "episodes/easy-2-offscreen-hurt-400.json": {
+      "source": "/tmp/ai-lab-response-current/episodes/easy-2-offscreen-hurt-400.json",
+      "bytes": 1028240,
+      "sha256": "ac7ec26561136af96ffe34aeca423c459f3106134e4f9d21693d5980f9cc4612"
+    },
+    "episodes/easy-2-onscreen-hurt-160.json": {
+      "source": "/tmp/ai-lab-response-current/episodes/easy-2-onscreen-hurt-160.json",
+      "bytes": 1206442,
+      "sha256": "9d7d4641155acf3cea9ac6a195a03e238a6f56d44291f4d8e994a449f4bafe10"
+    },
+    "episodes/easy-2-onscreen-hurt-240.json": {
+      "source": "/tmp/ai-lab-response-current/episodes/easy-2-onscreen-hurt-240.json",
+      "bytes": 1200389,
+      "sha256": "d1ea7e2f7607c7a54ea1a3dd6baeddd8a768769880e09dd6434e8cfe0ac28b48"
+    },
+    "episodes/easy-2-onscreen-hurt-400.json": {
+      "source": "/tmp/ai-lab-response-current/episodes/easy-2-onscreen-hurt-400.json",
+      "bytes": 1221184,
+      "sha256": "a1dbfd40b887fb947c6d7db1954ba2bbb920c7aebb9cc14ce26c853d20d3b3b4"
+    },
+    "episodes/easy-3-late-contact-160.json": {
+      "source": "/tmp/ai-lab-response-current/episodes/easy-3-late-contact-160.json",
+      "bytes": 1177657,
+      "sha256": "4bb22081f353cd227f2cbbc4cb2faf602a3c9e4c55e6e31fded58fbeb069d4e0"
+    },
+    "episodes/easy-3-late-contact-240.json": {
+      "source": "/tmp/ai-lab-response-current/episodes/easy-3-late-contact-240.json",
+      "bytes": 1133444,
+      "sha256": "89c7be8fffcc31d55a07a3c914a9b6229ec03b02c79694d62644e990df037194"
+    },
+    "episodes/easy-3-late-contact-400.json": {
+      "source": "/tmp/ai-lab-response-current/episodes/easy-3-late-contact-400.json",
+      "bytes": 1077262,
+      "sha256": "a4ee0ec47d0c332a990bdd1d15d9010857af1f4362d1e0fdeb1e655e7ac10541"
+    },
+    "episodes/easy-3-native-weapon-240.json": {
+      "source": "/tmp/ai-lab-response-current/episodes/easy-3-native-weapon-240.json",
+      "bytes": 1157827,
+      "sha256": "79f36379e9481a5bd652d897521b134554391b58f80e2cb7797dee1a21aca105"
+    },
+    "episodes/easy-3-offscreen-hurt-160.json": {
+      "source": "/tmp/ai-lab-response-current/episodes/easy-3-offscreen-hurt-160.json",
+      "bytes": 1038060,
+      "sha256": "dedba82b490eafdd3f78089b87d3c099e3a577a8644d97a7558231257edf7900"
+    },
+    "episodes/easy-3-offscreen-hurt-240.json": {
+      "source": "/tmp/ai-lab-response-current/episodes/easy-3-offscreen-hurt-240.json",
+      "bytes": 1106388,
+      "sha256": "041af98e537e7819ca31b74f0ec607027d5862cfea7b48e170abdb6b698dc734"
+    },
+    "episodes/easy-3-offscreen-hurt-400.json": {
+      "source": "/tmp/ai-lab-response-current/episodes/easy-3-offscreen-hurt-400.json",
+      "bytes": 1026989,
+      "sha256": "055121651895dbb4fb3d0e1478dea4dd3740dda62b58ab08aa017b753f36f0d2"
+    },
+    "episodes/easy-3-onscreen-hurt-160.json": {
+      "source": "/tmp/ai-lab-response-current/episodes/easy-3-onscreen-hurt-160.json",
+      "bytes": 1162655,
+      "sha256": "164fd865020c886fec146ae7efefcb8acc54e8f0752d2ac1a8159ff6d0b356f0"
+    },
+    "episodes/easy-3-onscreen-hurt-240.json": {
+      "source": "/tmp/ai-lab-response-current/episodes/easy-3-onscreen-hurt-240.json",
+      "bytes": 1163692,
+      "sha256": "2b710e861bf35ffddea102e25a5f9ca5e5368fada26566d8837e1441473f37c3"
+    },
+    "episodes/easy-3-onscreen-hurt-400.json": {
+      "source": "/tmp/ai-lab-response-current/episodes/easy-3-onscreen-hurt-400.json",
+      "bytes": 1170481,
+      "sha256": "0f67aaa1a5b6f007ca60dc5955af479ff39e029453537592759ff4c22abe728b"
+    },
+    "episodes/hard-1-late-contact-160.json": {
+      "source": "/tmp/ai-lab-response-current/episodes/hard-1-late-contact-160.json",
+      "bytes": 1194639,
+      "sha256": "6a1d1b93411a303a70daa51cbf7a669c41dd9ccb68c7f966c3deb2590e4a4175"
+    },
+    "episodes/hard-1-late-contact-240.json": {
+      "source": "/tmp/ai-lab-response-current/episodes/hard-1-late-contact-240.json",
+      "bytes": 1121185,
+      "sha256": "e9964464e55735693dd5da0190b2c5eb590a369537d116679c8b34e55fcce0c0"
+    },
+    "episodes/hard-1-late-contact-400.json": {
+      "source": "/tmp/ai-lab-response-current/episodes/hard-1-late-contact-400.json",
+      "bytes": 1053515,
+      "sha256": "8ac4a15473443c4a7baf10e4b8267d3176549b8b23490f1c55e8114be1476176"
+    },
+    "episodes/hard-1-native-weapon-240.json": {
+      "source": "/tmp/ai-lab-response-current/episodes/hard-1-native-weapon-240.json",
+      "bytes": 1196412,
+      "sha256": "48d955c240da64862f3f8ab7bd19f468ff8e6bf4e0b69244fe33cab5feb151ae"
+    },
+    "episodes/hard-1-offscreen-hurt-160.json": {
+      "source": "/tmp/ai-lab-response-current/episodes/hard-1-offscreen-hurt-160.json",
+      "bytes": 1258074,
+      "sha256": "49f48dcc100f9e83143deab66f0fa39e3fee9299f2411a567143e006e61d569c"
+    },
+    "episodes/hard-1-offscreen-hurt-240.json": {
+      "source": "/tmp/ai-lab-response-current/episodes/hard-1-offscreen-hurt-240.json",
+      "bytes": 1188129,
+      "sha256": "83a4f0953e52507a5757142148fd827b3ccba293356c59b38d6332ee0444e558"
+    },
+    "episodes/hard-1-offscreen-hurt-400.json": {
+      "source": "/tmp/ai-lab-response-current/episodes/hard-1-offscreen-hurt-400.json",
+      "bytes": 1171293,
+      "sha256": "c602091f492e156b49020a74f8d669417230ba9788e1e008cd3a4343b5e36e19"
+    },
+    "episodes/hard-1-onscreen-hurt-160.json": {
+      "source": "/tmp/ai-lab-response-current/episodes/hard-1-onscreen-hurt-160.json",
+      "bytes": 1133168,
+      "sha256": "0218d04f91ea785e4e84e13ba2a7a1c1c2cba6ba859db269bd8359cf8f7fba66"
+    },
+    "episodes/hard-1-onscreen-hurt-240.json": {
+      "source": "/tmp/ai-lab-response-current/episodes/hard-1-onscreen-hurt-240.json",
+      "bytes": 1163296,
+      "sha256": "79cd3719710e2719ed677afa9b9fb8da197a01fc8b0cf6df460717d0192d84da"
+    },
+    "episodes/hard-1-onscreen-hurt-400.json": {
+      "source": "/tmp/ai-lab-response-current/episodes/hard-1-onscreen-hurt-400.json",
+      "bytes": 1235130,
+      "sha256": "6c7641b545f776e7d1d3ec5a37f23f85eb4499e4c7d341d3c45626a35bd18aec"
+    },
+    "episodes/hard-1-rich-60s.json": {
+      "source": "/tmp/ai-lab-response-current/episodes/hard-1-rich-60s.json",
+      "bytes": 4074744,
+      "sha256": "57e8c283bfebb279427f8e874cfd9271ce19bde446f38120e6bb465a0b6982be"
+    },
+    "episodes/hard-2-late-contact-160.json": {
+      "source": "/tmp/ai-lab-response-current/episodes/hard-2-late-contact-160.json",
+      "bytes": 1184849,
+      "sha256": "312f4119207ac1a6ed8c05fdc66144f33517b0c6955ef05afed16eba32be9f69"
+    },
+    "episodes/hard-2-late-contact-240.json": {
+      "source": "/tmp/ai-lab-response-current/episodes/hard-2-late-contact-240.json",
+      "bytes": 1149923,
+      "sha256": "d7d8f52b4364fd50ba7407fd716c178b1026e731867de91d97d0a425102ab337"
+    },
+    "episodes/hard-2-late-contact-400.json": {
+      "source": "/tmp/ai-lab-response-current/episodes/hard-2-late-contact-400.json",
+      "bytes": 1096858,
+      "sha256": "cdf2bbcff93e0c577966b623de7361649d0a0e0111722f07c9f88c8bedc0b196"
+    },
+    "episodes/hard-2-native-weapon-240.json": {
+      "source": "/tmp/ai-lab-response-current/episodes/hard-2-native-weapon-240.json",
+      "bytes": 1192272,
+      "sha256": "5ff7ae091935c13803b4a22ad47b1822890dc2a0948352155b32806a3b056d15"
+    },
+    "episodes/hard-2-offscreen-hurt-160.json": {
+      "source": "/tmp/ai-lab-response-current/episodes/hard-2-offscreen-hurt-160.json",
+      "bytes": 1232527,
+      "sha256": "cf5f020c3a4b3c82581909b03dc87907d56e4f1e232208ac3206a12283ba8bdf"
+    },
+    "episodes/hard-2-offscreen-hurt-240.json": {
+      "source": "/tmp/ai-lab-response-current/episodes/hard-2-offscreen-hurt-240.json",
+      "bytes": 1194846,
+      "sha256": "ba2c97f0c7b7d95137cc54c4658dd4d92536fbf70285cf7f79b26ccb196b4173"
+    },
+    "episodes/hard-2-offscreen-hurt-400.json": {
+      "source": "/tmp/ai-lab-response-current/episodes/hard-2-offscreen-hurt-400.json",
+      "bytes": 1123218,
+      "sha256": "f6966b946ac8a93efd8f51c5c98479197602e02a90296b9c0da9d492ba4d634f"
+    },
+    "episodes/hard-2-onscreen-hurt-160.json": {
+      "source": "/tmp/ai-lab-response-current/episodes/hard-2-onscreen-hurt-160.json",
+      "bytes": 1135037,
+      "sha256": "6dc97027eee99f4eaaec806bd845c621801eca611a7acbf17bc346c852ecb5f5"
+    },
+    "episodes/hard-2-onscreen-hurt-240.json": {
+      "source": "/tmp/ai-lab-response-current/episodes/hard-2-onscreen-hurt-240.json",
+      "bytes": 1175522,
+      "sha256": "fb662606188bb5e542cf0b1c20f50b67e55d323c08e253820b05cd7316556c78"
+    },
+    "episodes/hard-2-onscreen-hurt-400.json": {
+      "source": "/tmp/ai-lab-response-current/episodes/hard-2-onscreen-hurt-400.json",
+      "bytes": 1178173,
+      "sha256": "922f29f9a8ce621bef3bad86140822e3a09fe9cc75aacee144dd3f9e7b41d07b"
+    },
+    "episodes/hard-2-rich-60s.json": {
+      "source": "/tmp/ai-lab-response-current/episodes/hard-2-rich-60s.json",
+      "bytes": 4122502,
+      "sha256": "d351515b4a4d3bddf21b241b78453f6dfe487f7e15a3efe0a05dcf45f270c5f6"
+    },
+    "episodes/hard-3-late-contact-160.json": {
+      "source": "/tmp/ai-lab-response-current/episodes/hard-3-late-contact-160.json",
+      "bytes": 1182848,
+      "sha256": "8c8a35b99311d94a292858a08baf6492b63229c1b563045524923e6f25892b36"
+    },
+    "episodes/hard-3-late-contact-240.json": {
+      "source": "/tmp/ai-lab-response-current/episodes/hard-3-late-contact-240.json",
+      "bytes": 1148345,
+      "sha256": "aeae16bc8a0aa9385e66c216ce6ce1e7d79ffe35758cf7b35af3e9c91b7f2839"
+    },
+    "episodes/hard-3-late-contact-400.json": {
+      "source": "/tmp/ai-lab-response-current/episodes/hard-3-late-contact-400.json",
+      "bytes": 1070395,
+      "sha256": "c2421eb8b306c0e4b342c0e42aeae028eed2ebc03021fd540aa16e3b330d717c"
+    },
+    "episodes/hard-3-native-weapon-240.json": {
+      "source": "/tmp/ai-lab-response-current/episodes/hard-3-native-weapon-240.json",
+      "bytes": 1201800,
+      "sha256": "c4a7aea7bb597dcd2f45f78217b180aba543fcafa9e599adc8b8a8526df272dc"
+    },
+    "episodes/hard-3-offscreen-hurt-160.json": {
+      "source": "/tmp/ai-lab-response-current/episodes/hard-3-offscreen-hurt-160.json",
+      "bytes": 1227369,
+      "sha256": "6f9813fb6d75e3588c2130981d3b7e16e6c465e312e6956e5ffe445f36284d03"
+    },
+    "episodes/hard-3-offscreen-hurt-240.json": {
+      "source": "/tmp/ai-lab-response-current/episodes/hard-3-offscreen-hurt-240.json",
+      "bytes": 1190153,
+      "sha256": "bcf6362c62b1479ed05172547ce8b869f3c329ea068e12a21f5c669b01798b96"
+    },
+    "episodes/hard-3-offscreen-hurt-400.json": {
+      "source": "/tmp/ai-lab-response-current/episodes/hard-3-offscreen-hurt-400.json",
+      "bytes": 1139446,
+      "sha256": "54030cbb43c5d92ab351c2b39db315e071573e6c2e34f8afe205c3b1045b6544"
+    },
+    "episodes/hard-3-onscreen-hurt-160.json": {
+      "source": "/tmp/ai-lab-response-current/episodes/hard-3-onscreen-hurt-160.json",
+      "bytes": 1132391,
+      "sha256": "7a909a6fe1b875a961c387b5788317083a66695f57b0af15059b3cab9d78d56f"
+    },
+    "episodes/hard-3-onscreen-hurt-240.json": {
+      "source": "/tmp/ai-lab-response-current/episodes/hard-3-onscreen-hurt-240.json",
+      "bytes": 1167516,
+      "sha256": "2f25ca6081ae6c1cfbe40a51025ef121a794a79ac1bbbb2ef68042b8beebcfca"
+    },
+    "episodes/hard-3-onscreen-hurt-400.json": {
+      "source": "/tmp/ai-lab-response-current/episodes/hard-3-onscreen-hurt-400.json",
+      "bytes": 1255643,
+      "sha256": "d14e35ade934a217382d23edf6aa4400bfc8fae4fbfda07ee26ef7b7e9b54502"
+    },
+    "episodes/hard-3-rich-60s.json": {
+      "source": "/tmp/ai-lab-response-current/episodes/hard-3-rich-60s.json",
+      "bytes": 3913759,
+      "sha256": "f76b9654f1b0d3bba4f21f41df357fc5def073ca6501d51c776858b0b36fdc72"
+    },
+    "episodes/normal-1-late-contact-160.json": {
+      "source": "/tmp/ai-lab-response-current/episodes/normal-1-late-contact-160.json",
+      "bytes": 1144340,
+      "sha256": "8975b6b46dc494516b43fc066407977333caafc2c501ed3902ca1d2356a603cd"
+    },
+    "episodes/normal-1-late-contact-240.json": {
+      "source": "/tmp/ai-lab-response-current/episodes/normal-1-late-contact-240.json",
+      "bytes": 1154671,
+      "sha256": "a8b535a8f1b8cf950830127224c3bc85f3f24a49ecae06f971318549338d90c7"
+    },
+    "episodes/normal-1-late-contact-400.json": {
+      "source": "/tmp/ai-lab-response-current/episodes/normal-1-late-contact-400.json",
+      "bytes": 1069564,
+      "sha256": "0d478e6b8ec0b884c4aab091e56ec8057ade783c67903c92fe857cf5607cbd79"
+    },
+    "episodes/normal-1-native-weapon-240.json": {
+      "source": "/tmp/ai-lab-response-current/episodes/normal-1-native-weapon-240.json",
+      "bytes": 1178836,
+      "sha256": "1f95ffecb4e420880ae5ebdd1385e3de980e88ac1f414336e7375d45e0cb8dcc"
+    },
+    "episodes/normal-1-offscreen-hurt-160.json": {
+      "source": "/tmp/ai-lab-response-current/episodes/normal-1-offscreen-hurt-160.json",
+      "bytes": 1073330,
+      "sha256": "6d7e641dede2c6e1df3a2a4838b17c38ba9a78100df9cdcffdffa54463bd416f"
+    },
+    "episodes/normal-1-offscreen-hurt-240.json": {
+      "source": "/tmp/ai-lab-response-current/episodes/normal-1-offscreen-hurt-240.json",
+      "bytes": 1062976,
+      "sha256": "2d104cb1346779cd7749f9f34699c8cccdf566b21acb48b9c08914f60d12b825"
+    },
+    "episodes/normal-1-offscreen-hurt-400.json": {
+      "source": "/tmp/ai-lab-response-current/episodes/normal-1-offscreen-hurt-400.json",
+      "bytes": 1068399,
+      "sha256": "18811d5156c2a2b1ff0dd85b558f6d7a9f435b93477c8aad27ff7eda5fd02958"
+    },
+    "episodes/normal-1-onscreen-hurt-160.json": {
+      "source": "/tmp/ai-lab-response-current/episodes/normal-1-onscreen-hurt-160.json",
+      "bytes": 1171201,
+      "sha256": "fdbabd238e6da143f02d90d70810cd5b84ef81f836f1a8905376ab84456be75a"
+    },
+    "episodes/normal-1-onscreen-hurt-240.json": {
+      "source": "/tmp/ai-lab-response-current/episodes/normal-1-onscreen-hurt-240.json",
+      "bytes": 1230645,
+      "sha256": "bbc355a38ae1e94d0b05b91a5ef0dc60097333db14dacd35cb494b3a5bada27b"
+    },
+    "episodes/normal-1-onscreen-hurt-400.json": {
+      "source": "/tmp/ai-lab-response-current/episodes/normal-1-onscreen-hurt-400.json",
+      "bytes": 1229784,
+      "sha256": "dab956c3f47ea1f0cbe2930702f27134ed12ccdbd1089863abc635c7e1227b02"
+    },
+    "episodes/normal-2-late-contact-160.json": {
+      "source": "/tmp/ai-lab-response-current/episodes/normal-2-late-contact-160.json",
+      "bytes": 1197171,
+      "sha256": "406a633d31c1dd671ce7de72ee740f1817bfdc207761abaa9b3e012641af5940"
+    },
+    "episodes/normal-2-late-contact-240.json": {
+      "source": "/tmp/ai-lab-response-current/episodes/normal-2-late-contact-240.json",
+      "bytes": 1141459,
+      "sha256": "5efeee4a8c81d28a88e84e6910f57356b739eb752994f664ab35ddb626010c93"
+    },
+    "episodes/normal-2-late-contact-400.json": {
+      "source": "/tmp/ai-lab-response-current/episodes/normal-2-late-contact-400.json",
+      "bytes": 1075161,
+      "sha256": "8774d5806e2d533c60f7a16f83cee9287a52e930e3cc19b00b81ebd8680ca280"
+    },
+    "episodes/normal-2-native-weapon-240.json": {
+      "source": "/tmp/ai-lab-response-current/episodes/normal-2-native-weapon-240.json",
+      "bytes": 1222671,
+      "sha256": "fb633f6d54af4e9677c3f9df2a8174c23d26d69775b0cb4ee0cda0e716213fb3"
+    },
+    "episodes/normal-2-offscreen-hurt-160.json": {
+      "source": "/tmp/ai-lab-response-current/episodes/normal-2-offscreen-hurt-160.json",
+      "bytes": 1070269,
+      "sha256": "b74d424b666ae52b80a1bcb99a81fa079ca17520dc61a84d92a79b159651bb5c"
+    },
+    "episodes/normal-2-offscreen-hurt-240.json": {
+      "source": "/tmp/ai-lab-response-current/episodes/normal-2-offscreen-hurt-240.json",
+      "bytes": 1033780,
+      "sha256": "9cc74aa999d8cbad447da409eb59c48d30326f99209870fca4d6239ce503fd0f"
+    },
+    "episodes/normal-2-offscreen-hurt-400.json": {
+      "source": "/tmp/ai-lab-response-current/episodes/normal-2-offscreen-hurt-400.json",
+      "bytes": 1127676,
+      "sha256": "c11a7f187274327e5f89d1553a09ac0370185d632b64cbb6e15b334b371785cb"
+    },
+    "episodes/normal-2-onscreen-hurt-160.json": {
+      "source": "/tmp/ai-lab-response-current/episodes/normal-2-onscreen-hurt-160.json",
+      "bytes": 1182666,
+      "sha256": "cf85d6bb8433371af0acea5fad0f94d8003bcef96a31c2bee19fd3273d1442a2"
+    },
+    "episodes/normal-2-onscreen-hurt-240.json": {
+      "source": "/tmp/ai-lab-response-current/episodes/normal-2-onscreen-hurt-240.json",
+      "bytes": 1213257,
+      "sha256": "c2f8de020fb2fe73aa45576056a37ea1b56d596f9e42514925993312e922cf2a"
+    },
+    "episodes/normal-2-onscreen-hurt-400.json": {
+      "source": "/tmp/ai-lab-response-current/episodes/normal-2-onscreen-hurt-400.json",
+      "bytes": 1154515,
+      "sha256": "00b52dbd73d9c6b8db279e23d3269364d4dfda7effd455eeafaf2259114a27e8"
+    },
+    "episodes/normal-3-late-contact-160.json": {
+      "source": "/tmp/ai-lab-response-current/episodes/normal-3-late-contact-160.json",
+      "bytes": 1189200,
+      "sha256": "d20656087c7ec1043db923a9026894b6ce56ef76337f175c99b2367d991ec21a"
+    },
+    "episodes/normal-3-late-contact-240.json": {
+      "source": "/tmp/ai-lab-response-current/episodes/normal-3-late-contact-240.json",
+      "bytes": 1134607,
+      "sha256": "92fbd2d30fb29d295e41f4214946cdc94114d8b4eb0ce772955b61952c262032"
+    },
+    "episodes/normal-3-late-contact-400.json": {
+      "source": "/tmp/ai-lab-response-current/episodes/normal-3-late-contact-400.json",
+      "bytes": 1071097,
+      "sha256": "3f70328db89fc87fc94ea01e042b0873f4159af2bf812bf83e0502daa5436665"
+    },
+    "episodes/normal-3-native-weapon-240.json": {
+      "source": "/tmp/ai-lab-response-current/episodes/normal-3-native-weapon-240.json",
+      "bytes": 1163365,
+      "sha256": "23abc9befc7cbd481010413ba4ff7a81b98809f09520476ba702ed64adf501fc"
+    },
+    "episodes/normal-3-offscreen-hurt-160.json": {
+      "source": "/tmp/ai-lab-response-current/episodes/normal-3-offscreen-hurt-160.json",
+      "bytes": 1142728,
+      "sha256": "cdcf1315020d9fde1a55a19b94cbe80d71910cb0d1bbe50292f1ffe2401a53c1"
+    },
+    "episodes/normal-3-offscreen-hurt-240.json": {
+      "source": "/tmp/ai-lab-response-current/episodes/normal-3-offscreen-hurt-240.json",
+      "bytes": 1068999,
+      "sha256": "b45dc49738b9923a3835ab7281ff4ad834cfa4acddf2e7092484dbf0c741a334"
+    },
+    "episodes/normal-3-offscreen-hurt-400.json": {
+      "source": "/tmp/ai-lab-response-current/episodes/normal-3-offscreen-hurt-400.json",
+      "bytes": 1083966,
+      "sha256": "fc7f2b376b2342c1948339d1657de9ad9accf901ee469b6fd14ffee993d966b0"
+    },
+    "episodes/normal-3-onscreen-hurt-160.json": {
+      "source": "/tmp/ai-lab-response-current/episodes/normal-3-onscreen-hurt-160.json",
+      "bytes": 1228385,
+      "sha256": "f91d2f444657ac006c8d2e5a2fd6db025a8ceda82008ce29699be5fbf8a0687e"
+    },
+    "episodes/normal-3-onscreen-hurt-240.json": {
+      "source": "/tmp/ai-lab-response-current/episodes/normal-3-onscreen-hurt-240.json",
+      "bytes": 1201945,
+      "sha256": "460164ade30b7debcf9abaf4158843238f1c44738defb4ef606d6637925bb355"
+    },
+    "episodes/normal-3-onscreen-hurt-400.json": {
+      "source": "/tmp/ai-lab-response-current/episodes/normal-3-onscreen-hurt-400.json",
+      "bytes": 1247037,
+      "sha256": "68c31b1eba0fab2109f8fef3a997ee4d385041d73a775c289dce8249559edd42"
+    },
+    "rapid-readout.json": {
+      "source": "/tmp/ai-lab-response-current/rapid-readout.json",
+      "bytes": 15126,
+      "sha256": "52bb66bc9f2f6fbe4bdff664aecac85ff36caea9e66f6c2c438db81afb1e2448"
+    },
+    "run.log": {
+      "source": "/tmp/ai-lab-response-current/run.log",
+      "bytes": 4251,
+      "sha256": "d5e05b67482f12f608b322491c80a872ad2ac900d5af369ffa0bfff8597d04b7"
+    },
+    "run.mjs": {
+      "source": "/tmp/ai-lab-response-current/run.mjs",
+      "bytes": 5245,
+      "sha256": "3255c8665062585a90048ca7ba654814f8460ff1d8522c16e77acfd8ca2a2815"
+    },
+    "smoke.log": {
+      "source": "/tmp/ai-lab-response-current/smoke.log",
+      "bytes": 16861,
+      "sha256": "b863b50e33b83440e8fc26fe7fdb1c2326012fb237672b3a87eebf1f381bb44c"
+    },
+    "smoke.mjs": {
+      "source": "/tmp/ai-lab-response-current/smoke.mjs",
+      "bytes": 751,
+      "sha256": "bd4d6908af63cf24bcd52b73d13e1cf3fcef02ca415ba7f5e999b4cf11e408b2"
+    },
+    "source-declarations.json": {
+      "source": "/tmp/ai-lab-final-evidence/source-declarations.json",
+      "bytes": 303351,
+      "sha256": "e790bbca65d65f48c5d65a9baff82979052452c90501f9fac58aae821e059a19"
+    },
+    "source-excerpts/shared/ai-attention.js": {
+      "source": "/tmp/ai-lab-response-current/source/shared/ai-attention.js",
+      "bytes": 27980,
+      "sha256": "07c48dbdcc92f326eeb52222518f274dcf05a4d746dfd474126d932ed05ca7ba"
+    },
+    "source-excerpts/shared/ai-commander.js": {
+      "source": "/tmp/ai-lab-response-current/source/shared/ai-commander.js",
+      "bytes": 30709,
+      "sha256": "19112a1e4c94da72d62564d940497d38cf7e93e3086c9bde3db9c29d088703df"
+    },
+    "source-excerpts/shared/ai.js": {
+      "source": "/tmp/ai-lab-response-current/source/shared/ai.js",
+      "bytes": 87523,
+      "sha256": "2e01129543e4095b95bdbb693f89ce278a810796528718fac192436ac7bf9f21"
+    },
+    "source-excerpts/tools/ai-lab-runner.mjs": {
+      "source": "/tmp/ai-lab-response-current/source/tools/ai-lab-runner.mjs",
+      "bytes": 12594,
+      "sha256": "01020a610e714ca538ca12b81c03652d77bba31d7a99ea696aec786b97c34ea2"
+    },
+    "source-excerpts/tools/ai-manual-response-capture-v3.mjs": {
+      "source": "/tmp/ai-lab-response-current/source/tools/ai-manual-response-capture-v3.mjs",
+      "bytes": 6778,
+      "sha256": "19e1a93ae79b04f3eb768263052d48b344b086831b261ae40e7da0b004ea8775"
+    },
+    "source-excerpts/tools/ai-manual-response-policy-v3.mjs": {
+      "source": "/tmp/ai-lab-response-current/source/tools/ai-manual-response-policy-v3.mjs",
+      "bytes": 29858,
+      "sha256": "c45e589d661b4980a79181ca987b503054ebb3e7e554f1bc272dd3eab50a6928"
+    },
+    "source-excerpts/tools/ai-public-alert-response.mjs": {
+      "source": "/tmp/ai-lab-response-current/source/tools/ai-public-alert-response.mjs",
+      "bytes": 15049,
+      "sha256": "f548de11aef467e7655c0beaa66d22ad1de1c9d1f252f1048ca81e06b3a87c4a"
+    },
+    "source-manifest.json": {
+      "source": "/tmp/ai-lab-response-current/source-manifest.json",
+      "bytes": 47046,
+      "sha256": "ebd6f3298e58c94946f60c50362613a89722a8bbdd7917f48f2db5f06ae896e0"
+    },
+    "summary.json": {
+      "source": "/tmp/ai-lab-response-current/summary.json",
+      "bytes": 560203,
+      "sha256": "91252898dddcac1873a16a24ad799ee99d2fb4c84eec005727ef71ff7e6235ce"
+    }
+  }
+}

@@ -1,0 +1,108 @@
+{
+  "diagnosticOnly": true,
+  "roots": 85,
+  "warmupPairs": 3,
+  "measuredPairs": 12,
+  "sweeps": 40,
+  "baselineMedianMS": 19.83763350000001,
+  "candidateMedianMS": 15.912904999999995,
+  "pairs": [
+    {
+      "order": [
+        "baseline",
+        "candidate"
+      ],
+      "baselineMS": 20.966127999999998,
+      "candidateMS": 16.025385
+    },
+    {
+      "order": [
+        "candidate",
+        "baseline"
+      ],
+      "candidateMS": 15.778697999999991,
+      "baselineMS": 19.919601
+    },
+    {
+      "order": [
+        "baseline",
+        "candidate"
+      ],
+      "baselineMS": 19.867549999999966,
+      "candidateMS": 15.775598000000002
+    },
+    {
+      "order": [
+        "candidate",
+        "baseline"
+      ],
+      "candidateMS": 15.957637999999974,
+      "baselineMS": 19.83031299999999
+    },
+    {
+      "order": [
+        "baseline",
+        "candidate"
+      ],
+      "baselineMS": 19.831755000000044,
+      "candidateMS": 15.868172000000015
+    },
+    {
+      "order": [
+        "candidate",
+        "baseline"
+      ],
+      "candidateMS": 15.966586000000007,
+      "baselineMS": 19.745112000000006
+    },
+    {
+      "order": [
+        "baseline",
+        "candidate"
+      ],
+      "baselineMS": 19.76853,
+      "candidateMS": 15.996911999999952
+    },
+    {
+      "order": [
+        "candidate",
+        "baseline"
+      ],
+      "candidateMS": 15.779246999999998,
+      "baselineMS": 20.112758000000042
+    },
+    {
+      "order": [
+        "baseline",
+        "candidate"
+      ],
+      "baselineMS": 19.814058999999986,
+      "candidateMS": 16.00093400000003
+    },
+    {
+      "order": [
+        "candidate",
+        "baseline"
+      ],
+      "candidateMS": 16.586554000000035,
+      "baselineMS": 19.843511999999976
+    },
+    {
+      "order": [
+        "baseline",
+        "candidate"
+      ],
+      "baselineMS": 19.187900000000013,
+      "candidateMS": 15.302498000000014
+    },
+    {
+      "order": [
+        "candidate",
+        "baseline"
+      ],
+      "candidateMS": 15.222443999999996,
+      "baselineMS": 21.438421999999946
+    }
+  ],
+  "savingPercent": 19.784257532532866
+}

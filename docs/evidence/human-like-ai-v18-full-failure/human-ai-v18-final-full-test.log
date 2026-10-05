@@ -1,0 +1,127 @@
+tutorial: all nine steps and bridgehead victory checked
+PASS authored infantry source, four factions, atlas retention, poses, distant meshes and skin continuity
+PASS terrain relief low: ramps, centers, bounds, tops, hills, saddles, cliffs, seams, independent triangle queries, incremental tangents, trenches and water bridges (0 failures)
+PASS terrain relief high: ramps, centers, bounds, tops, hills, saddles, cliffs, seams, independent triangle queries, incremental tangents, trenches and water bridges (0 failures)
+PASS terrain relief full world: seed 20261003, 512x512, 237 dry centers, 587 dry edges, independent slope and cliff triangle queries
+PASS terrain relief suite (1.63s)
+PASS: variable main rivers, real raster paths and per-river crossings
+PASS: seed-dependent connected, non-uphill, fordable tributaries and wider downstream rivers
+PASS: roads and settlements preserve river and tributary centerlines on both map sizes
+ww2-rts on http://127.0.0.1:0
+World rifle and tank long orders crossed all 2 main rivers through generated fords
+ww2-rts on http://127.0.0.1:0
+World rifle and tank long orders crossed all 3 main rivers through generated fords
+PASS: substantial relief
+PASS: lakes and bridges
+PASS: both sizes, deterministic generation and tank-clearance connectivity after all bridges destroyed
+PASS: discovered territory borders and membership
+ww2-rts on http://127.0.0.1:0
+World Conquest start and discovery checks passed
+World Conquest destruction and infantry claim checks passed
+World Conquest paid construction and recruitment checks passed
+World Conquest paid recovery checks passed
+ww2-rts on http://127.0.0.1:0
+World team, discovery, defeat, victory and 300 AI ticks passed (52346 ms AI fixture)
+ww2-rts on http://127.0.0.1:0
+PASS contested capture, production-locked recapture, income and capacity loss (9365 ms)
+PASS team home loss keeps command ownership and relocates retreat (2830 ms)
+PASS reconnect restores discovered terrain without revealing remote updates (1122 ms)
+PASS World Conquest crosses the Classic deadline without Sudden Death (3304 ms)
+PASS hidden-state perturbations do not change the recipient world (758 ms)
+PASS Huge and Massive seeded connectivity and usable homes (5981 ms)
+Remaining World Conquest acceptance checks passed
+ww2-rts on http://127.0.0.1:0
+PASS unseen regional contest and claim state stay remembered
+PASS AI pursues a remembered regional blocker and attacks after rediscovery
+ww2-rts on http://127.0.0.1:0
+World long movement, hidden terrain, collision, continued arrival and stop checked
+ww2-rts on http://127.0.0.1:0
+World rifle and tank long orders crossed all 1 main rivers through generated fords
+ww2-rts on http://127.0.0.1:0
+Engine controls acceptance passed: paid queue identity/refunds, guards/reconnect, Alert history, group transfer and key chords
+PASS layered world, anchored sections, paid bridge rebuild, remembered destruction and shared building health
+ww2-rts on http://127.0.0.1:0
+PASS response/braking, short reverse, control interruption, swept turn, two-way crossing, protected passing, shoreline recovery, bounded queue recovery and naval boarding
+Observed terrain wall initialization and incremental boundaries: 932 cases passed
+PASS queue negative control: dropped middle destinations fail the lab
+PASS cliff negative control: illegal height crossings fail the lab
+PASS movement lab: 264 authoritative scenarios across all ground vehicles, rifles and support guns; profile limits and deterministic replay
+all engine projectile checks passed
+Structured scenario checks passed
+Wave 8, three defenders, seed 55: {
+  infantry: { units: 39, spent: 4270, share: 91 },
+  armor: { units: 17, spent: 4280, share: 86 },
+  siege: { units: 24, spent: 4290, share: 64 }
+}
+Engine AI and Horde contracts passed.
+AI caller public setup0, first actor2, old-module compatibility, delivery, odd-beat alerts, bounded transients and once-only balance counters passed
+AI hands: opening, motor inputs, locality, formation, reaction, APM, deterministic logs and handover passed
+AI camera perception, attention and shared alert checks passed
+easy: first command 4.5s, 20 commands, 57 physical inputs over 120s
+normal: first command 3.4s, 31 commands, 98 physical inputs over 120s
+hard: first command 2.7s, 37 commands, 105 physical inputs over 120s
+Default commander action-level camera detail invariance and on-camera negative control passed.
+Full human commander opening, physical inputs, reaction floor, locality, APM, determinism and handover passed.
+Living group recall: accepted pair moves 119/224, binding 227, switch 244, recall 256, accepted survivor move 265.
+Camera arrival: old deadline 80, paid pans 96/121, fresh plan 128, command 136.
+Interrupted camera pending-emergency: cue 78, held finish 96, paid return 120, native accepted retreat 137.
+Interrupted camera expired-concern: cue 78, held finish 96, paid return 120, native accepted retreat 139.
+Commander accepted multi-event responses, refusal, wrong actor and target, fixed links, direct singleton selection, living group recall and paid camera visits passed.
+AI canonical effects, cache history, private refresh and World fog isolation passed
+Stable threat estimates, camera reacquisition, option choices, loss and VP mood, and persistent persona passed.
+AI humanity metrics: censored populations, causal actors, concerns, simulation spending, live bindings, measured key fits and evidence packaging passed.
+Prospective multi-event fixtures passed: actual group attack/support, independent dedup, intended miss, actor/target/timing/population rejection and one-input APM.
+Human commander empty-cycle pause, delayed formation acknowledgement and refused support commitment passed.
+Base advances require an available local formation, with isolated and busy-buddy negative controls.
+Idle and expansion visits act on their actual destinations; affordable production visits execute useful purchase batches.
+Observed damage triggers a physical group retreat while the remote squad remains untouched.
+Commander movement conflicts, unfinished-move commitment and accepted failed-effect ability backoff passed.
+Emergency interruption cancels an unpressed approach, completes a held drag, and preserves selection and reaction latency.
+Arrived A-B-A return guard, local damage response and separate line/support formations passed.
+Local base emergency override and noncausal fortification provenance passed.
+ww2-rts on http://127.0.0.1:0
+Disabled server refuses human recording requests over WebSocket
+ww2-rts on http://127.0.0.1:0
+AI spectator diagnostics and opt-in human telemetry privacy passed over WebSocket
+Human input opt-in, local log bounds, metadata privacy and spectator overlay checks passed
+ww2-rts on http://127.0.0.1:0
+PASS engine acceptance: waiting recruitment identity, refund, head progress and recipient ownership
+PASS engine acceptance: scenario capture ownership, exactly once rewards and durable private objectives
+PASS engine acceptance: road mine placement, clearing, hidden memory and separate bombardment
+PASS engine acceptance: local support failure, settled route and remembered reconnect
+FAIL engine acceptance: two way crowded crossing completes infantry, tank and support orders AssertionError [ERR_ASSERTION]: tank 7 completes its reachable crossing within 40 seconds ({"current":[7,"tank",0,114.7,90.6,-0.4,-0.4,360,0,0,0,0,6144,0,1,0,0,0,-0.4],"destination":[121,88],"plan":[7,1,121,88,121,88]})
+    at file:///home/judiazm/.t3/worktrees/ww2-rts/ai-human-commander/test-engine-acceptance.js:260:14
+    at async check (file:///home/judiazm/.t3/worktrees/ww2-rts/ai-human-commander/test-engine-acceptance.js:98:9)
+    at async file:///home/judiazm/.t3/worktrees/ww2-rts/ai-human-commander/test-engine-acceptance.js:242:3 {
+  generatedMessage: false,
+  code: 'ERR_ASSERTION',
+  actual: false,
+  expected: true,
+  operator: '==',
+  diff: 'simple'
+}
+PASS engine acceptance: authoritative gun flight stationary, arrival and hidden cue privacy
+PASS engine acceptance: authoritative gun flight moving, arrival and hidden cue privacy
+PASS engine acceptance: authoritative gun flight wall, arrival and hidden cue privacy
+PASS engine acceptance: Horde broad warning agrees with legal delivered first Wave
+1 engine acceptance group(s) failed: two way crowded crossing completes infantry, tank and support orders
+node:internal/errors:986
+  const err = new Error(message);
+              ^
+
+Error: Command failed: /usr/bin/node test-engine-acceptance.js
+    at genericNodeError (node:internal/errors:986:15)
+    at wrappedFn (node:internal/errors:540:14)
+    at checkExecSyncError (node:child_process:942:11)
+    at execFileSync (node:child_process:978:15)
+    at file:///home/judiazm/.t3/worktrees/ww2-rts/ai-human-commander/test.js:54:5
+    at process.processTicksAndRejections (node:internal/process/task_queues:104:5) {
+  status: 1,
+  signal: null,
+  output: [ null, null, null ],
+  pid: 1697318,
+  stdout: null,
+  stderr: null
+}
+
+Node.js v24.21.0

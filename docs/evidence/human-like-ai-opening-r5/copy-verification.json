@@ -1,0 +1,20 @@
+{
+  "status": "PASS",
+  "allPayloadFilesReverified": 63,
+  "bytes": 9418154,
+  "destinationBase": "docs/evidence/human-like-ai-opening-r5",
+  "manifest": {
+    "source": "/tmp/human-ai-opening-r5-copy/copy-manifest.json",
+    "destination": "docs/evidence/human-like-ai-opening-r5/copy-manifest.json",
+    "sha256": "4a2c7467584aa1ead75717fd9dba61707d280ca2c5c8269b32b3ce67f7277a33"
+  },
+  "review": {
+    "source": "/tmp/human-ai-opening-r5-copy/artifact-copy-review.md",
+    "destination": "docs/evidence/human-like-ai-opening-r5/README.md",
+    "sha256": "b34707a67edc2b71a7e546bb261f6a1e068387a091269d7174a120a25f15cf42",
+    "bytes": 19190,
+    "purpose": "Reviewable prospective evidence report with all original/final short diagnostics, source-scope differences and exact payload copy map."
+  },
+  "noRepositoryWrites": true,
+  "noNewCampaign": true
+}

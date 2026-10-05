@@ -1,0 +1,39 @@
+{
+  "status": "FAIL",
+  "scope": "Complete naturally ended V21 full suite, all original assertions retained",
+  "nativeExitCode": 1,
+  "startedAtUTC": "2026-10-04T23:32:40.211035Z",
+  "finishedAtUTC": "2026-10-05T00:06:57.355325Z",
+  "elapsedSeconds": 2057.1442902088165,
+  "registeredChildren": 92,
+  "sourceFilesBefore": 2039,
+  "sourceFilesAfter": 2039,
+  "allFileHashesIdentical": true,
+  "periodicChecks": 291,
+  "allPeriodicChecksValid": true,
+  "supervisorIntegrity": true,
+  "sourceManifestDigest": "6078e3de209395dc2313fb8209bd8557cee1875e96b8291b3f5b3cb2a7999361",
+  "nativeMainMatch": {
+    "winner": 2,
+    "simulationSeconds": 751,
+    "firstPointSeconds": 22,
+    "allPointsSeconds": 97,
+    "bought": 144,
+    "killed": 121,
+    "VP": [
+      797,
+      987,
+      1200
+    ]
+  },
+  "laterAssertion": {
+    "file": "test.js",
+    "line": 5818,
+    "message": "the spectator is back in the lobby with everyone",
+    "actual": "play",
+    "expected": "lobby"
+  },
+  "cause": "Not established by packaging. Original log retains the actual failure and stack.",
+  "newExecution": false,
+  "rootWrites": false
+}

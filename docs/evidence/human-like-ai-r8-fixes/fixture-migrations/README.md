@@ -1,0 +1,9 @@
+# R8 native fixture migrations
+
+These two compressed archives retain every original file from both migration directories, including native JSON graphs, first failures, later passes, probes, declarations, source bindings and fixtures. The human archive also retains its exact patch and original fixture reconstructed by reverse-applying that patch, verified against its recorded 5ab11ac9 hash. The adopted candidate is f3d74de9. The cover original 89abf496 and adopted 6c73673c fixtures are retained directly.
+
+Cover migration preserves the original Hard seed 42 scenes and horizons, replacing an invalid total-input comparison with actual paid cover-gesture assertions. Both bare runs had 16 total inputs because later camera/RNG paths differed; the control still paid 3 actual refused cover keys and the adopted run paid 0. Native inspection and final rows match. Full nearby-cover, wall, hidden-terrain and authoritative receipt assertions remain.
+
+Human migration preserves every original difficulty/seed/horizon and purpose/floor/locality/opening/APM assertion. Its passive scene originally had no idle contact opportunity after stricter purpose checks. The candidate uses native camera-local stop/holdFire setup and retains a genuine idle-opportunity assertion, plus the public geometry needed for actual LOS. Original failure/raw data stay unchanged. These diagnostic migrations do not relax a scoring gate or certify a new campaign.
+
+The recorded runtime is combined R8 AI 685c1787, commander bef81241 and hands 277cf756, before the upcoming early-release pan patch. Historical REVIEW files still use their original pre-adoption language and paths; ROOT later adopted both fixture patches. The archives retain that history without rewriting it. Manifest and verification files bind every archived member to exact original bytes. No simulation or test ran during packaging.

@@ -1,0 +1,1932 @@
+{
+  "source": "/tmp/r5-formation-audit/shared/ai-hands-proposed.js",
+  "results": [
+    {
+      "label": "recalled exact set with reversed planner order and same-position ties",
+      "selected": [
+        1,
+        3
+      ],
+      "inputUnits": [
+        {
+          "id": 1,
+          "type": "rifle",
+          "owner": 0,
+          "x": 122,
+          "z": 120,
+          "rot": 0,
+          "aim": 0,
+          "hp": 100,
+          "supp": 0,
+          "targetId": 0,
+          "cover": 0,
+          "cd": 0,
+          "flags": 24576,
+          "veterancy": 0,
+          "built": 1,
+          "path": [
+            {
+              "x": 137,
+              "z": 130.8
+            }
+          ],
+          "orders": [],
+          "attackId": 0,
+          "retreating": false,
+          "buff": 0,
+          "ap": false,
+          "reinf": 0,
+          "dig": null,
+          "garrison": -1,
+          "amove": null,
+          "build": 0,
+          "enter": -1,
+          "fireAt": -1,
+          "nade": null,
+          "entrench": null,
+          "holdFire": false,
+          "holdPos": false,
+          "autoRetreat": true,
+          "auto": true,
+          "orderPlan": {
+            "kind": 1,
+            "x": 137,
+            "z": 130.8
+          },
+          "worldGoal": {
+            "x": 137,
+            "z": 130.8
+          },
+          "moveOutcome": "moving",
+          "moveOutcomeTick": 128,
+          "hpBasis": "selected-hud",
+          "suppSource": "world-bar",
+          "suppressionBand": "normal",
+          "healthBand": "healthy",
+          "firstStillAt": 7.25,
+          "lastSeen": 7.85,
+          "lastScreenTick": 157,
+          "screenSeen": true,
+          "confidence": 1,
+          "hpSource": "selected-hud",
+          "hpObservedTick": 157,
+          "exactHPKnown": true,
+          "cdKnown": true,
+          "cdState": "selected-hud",
+          "cdObservedTick": 157,
+          "lastHUD": {
+            "type": "rifle",
+            "ids": [
+              1
+            ],
+            "hp": 100,
+            "maxHp": 100,
+            "ability": {
+              "id": "grenade",
+              "anyReady": true,
+              "cooldownSeconds": 0,
+              "allAuto": true,
+              "usable": true,
+              "reason": null
+            },
+            "observedTick": 157
+          }
+        },
+        {
+          "id": 3,
+          "type": "mg",
+          "owner": 0,
+          "x": 122,
+          "z": 120,
+          "rot": 0,
+          "aim": 0,
+          "hp": 75,
+          "supp": 0,
+          "targetId": 0,
+          "cover": 0,
+          "cd": 0,
+          "flags": 24576,
+          "veterancy": 0,
+          "built": 1,
+          "path": [
+            {
+              "x": 139.3,
+              "z": 127.2
+            }
+          ],
+          "orders": [],
+          "attackId": 0,
+          "retreating": false,
+          "buff": 0,
+          "ap": false,
+          "reinf": 0,
+          "dig": null,
+          "garrison": -1,
+          "amove": null,
+          "build": 0,
+          "enter": -1,
+          "fireAt": -1,
+          "nade": null,
+          "entrench": null,
+          "holdFire": false,
+          "holdPos": false,
+          "autoRetreat": true,
+          "auto": true,
+          "orderPlan": {
+            "kind": 1,
+            "x": 139.3,
+            "z": 127.2
+          },
+          "worldGoal": {
+            "x": 139.3,
+            "z": 127.2
+          },
+          "moveOutcome": "moving",
+          "moveOutcomeTick": 128,
+          "hpBasis": "selected-hud",
+          "suppSource": "world-bar",
+          "suppressionBand": "normal",
+          "healthBand": "healthy",
+          "firstStillAt": 7.25,
+          "lastSeen": 7.85,
+          "lastScreenTick": 157,
+          "screenSeen": true,
+          "confidence": 1,
+          "hpSource": "selected-hud",
+          "hpObservedTick": 157,
+          "exactHPKnown": true,
+          "cdKnown": true,
+          "cdState": "selected-hud",
+          "cdObservedTick": 157,
+          "lastHUD": {
+            "type": "mg",
+            "ids": [
+              3
+            ],
+            "hp": 75,
+            "maxHp": 75,
+            "ability": {
+              "id": "suppress",
+              "anyReady": true,
+              "cooldownSeconds": 0,
+              "allAuto": true,
+              "usable": true,
+              "reason": null
+            },
+            "observedTick": 157
+          }
+        }
+      ],
+      "jobUnits": [
+        {
+          "id": 3,
+          "type": "mg",
+          "owner": 0,
+          "x": 122,
+          "z": 120,
+          "rot": 0,
+          "aim": 0,
+          "hp": 75,
+          "supp": 0,
+          "targetId": 0,
+          "cover": 0,
+          "cd": null,
+          "flags": 24576,
+          "veterancy": 0,
+          "built": 1,
+          "path": [
+            {
+              "x": 139.3,
+              "z": 127.2
+            }
+          ],
+          "orders": [],
+          "attackId": 0,
+          "retreating": false,
+          "buff": 0,
+          "ap": false,
+          "reinf": 0,
+          "dig": null,
+          "garrison": -1,
+          "amove": null,
+          "build": 0,
+          "enter": -1,
+          "fireAt": -1,
+          "nade": null,
+          "entrench": null,
+          "holdFire": false,
+          "holdPos": false,
+          "autoRetreat": true,
+          "auto": true,
+          "orderPlan": {
+            "kind": 1,
+            "x": 139.3,
+            "z": 127.2
+          },
+          "worldGoal": {
+            "x": 139.3,
+            "z": 127.2
+          },
+          "moveOutcome": "moving",
+          "moveOutcomeTick": 128,
+          "hpBasis": "world-bar",
+          "suppSource": "world-bar",
+          "suppressionBand": "normal",
+          "healthBand": "healthy",
+          "firstStillAt": 7.25,
+          "lastSeen": 7.25,
+          "lastScreenTick": 145,
+          "screenSeen": true,
+          "confidence": 1,
+          "hpSource": "world-bar",
+          "hpObservedTick": 145,
+          "exactHPKnown": false,
+          "cdKnown": false,
+          "cdState": "stale-hud",
+          "cdObservedTick": 139,
+          "lastHUD": {
+            "type": "mg",
+            "ids": [
+              3
+            ],
+            "hp": 75,
+            "maxHp": 75,
+            "ability": {
+              "id": "suppress",
+              "anyReady": true,
+              "cooldownSeconds": 0,
+              "allAuto": true,
+              "usable": true,
+              "reason": null
+            },
+            "observedTick": 139
+          }
+        },
+        {
+          "id": 1,
+          "type": "rifle",
+          "owner": 0,
+          "x": 122,
+          "z": 120,
+          "rot": 0,
+          "aim": 0,
+          "hp": 100,
+          "supp": 0,
+          "targetId": 0,
+          "cover": 0,
+          "cd": null,
+          "flags": 24576,
+          "veterancy": 0,
+          "built": 1,
+          "path": [
+            {
+              "x": 137,
+              "z": 130.8
+            }
+          ],
+          "orders": [],
+          "attackId": 0,
+          "retreating": false,
+          "buff": 0,
+          "ap": false,
+          "reinf": 0,
+          "dig": null,
+          "garrison": -1,
+          "amove": null,
+          "build": 0,
+          "enter": -1,
+          "fireAt": -1,
+          "nade": null,
+          "entrench": null,
+          "holdFire": false,
+          "holdPos": false,
+          "autoRetreat": true,
+          "auto": true,
+          "orderPlan": {
+            "kind": 1,
+            "x": 137,
+            "z": 130.8
+          },
+          "worldGoal": {
+            "x": 137,
+            "z": 130.8
+          },
+          "moveOutcome": "moving",
+          "moveOutcomeTick": 128,
+          "hpBasis": "world-bar",
+          "suppSource": "world-bar",
+          "suppressionBand": "normal",
+          "healthBand": "healthy",
+          "firstStillAt": 7.25,
+          "lastSeen": 7.25,
+          "lastScreenTick": 145,
+          "screenSeen": true,
+          "confidence": 1,
+          "hpSource": "world-bar",
+          "hpObservedTick": 145,
+          "exactHPKnown": false,
+          "cdKnown": false,
+          "cdState": "stale-hud",
+          "cdObservedTick": 139,
+          "lastHUD": {
+            "type": "rifle",
+            "ids": [
+              1
+            ],
+            "hp": 100,
+            "maxHp": 100,
+            "ability": {
+              "id": "grenade",
+              "anyReady": true,
+              "cooldownSeconds": 0,
+              "allAuto": true,
+              "usable": true,
+              "reason": null
+            },
+            "observedTick": 139
+          }
+        }
+      ],
+      "clickedAt": {
+        "x": 138.92597558238415,
+        "z": 133.88199646411127
+      },
+      "ai": [
+        [
+          1,
+          140.22598972441972,
+          132.29692131431315
+        ],
+        [
+          3,
+          137.4991307923451,
+          135.62171309193846
+        ]
+      ],
+      "client": [
+        [
+          1,
+          140.22598972441972,
+          132.29692131431315
+        ],
+        [
+          3,
+          137.4991307923451,
+          135.62171309193846
+        ]
+      ],
+      "equal": true,
+      "accepted": true
+    },
+    {
+      "label": "dead-member-pruned real recall and reversed tied survivors",
+      "selected": [
+        1,
+        3
+      ],
+      "inputUnits": [
+        {
+          "id": 1,
+          "type": "rifle",
+          "owner": 0,
+          "x": 122,
+          "z": 120,
+          "rot": 0,
+          "aim": 0,
+          "hp": 100,
+          "supp": 0,
+          "targetId": 0,
+          "cover": 0,
+          "cd": 0,
+          "flags": 24576,
+          "veterancy": 0,
+          "built": 1,
+          "path": [
+            {
+              "x": 139.2,
+              "z": 128.9
+            }
+          ],
+          "orders": [],
+          "attackId": 0,
+          "retreating": false,
+          "buff": 0,
+          "ap": false,
+          "reinf": 0,
+          "dig": null,
+          "garrison": -1,
+          "amove": null,
+          "build": 0,
+          "enter": -1,
+          "fireAt": -1,
+          "nade": null,
+          "entrench": null,
+          "holdFire": false,
+          "holdPos": false,
+          "autoRetreat": true,
+          "auto": true,
+          "orderPlan": {
+            "kind": 1,
+            "x": 139.2,
+            "z": 128.9
+          },
+          "worldGoal": {
+            "x": 139.2,
+            "z": 128.9
+          },
+          "moveOutcome": "moving",
+          "moveOutcomeTick": 129,
+          "hpBasis": "selected-hud",
+          "suppSource": "world-bar",
+          "suppressionBand": "normal",
+          "healthBand": "healthy",
+          "firstStillAt": 6.55,
+          "lastSeen": 7.05,
+          "lastScreenTick": 141,
+          "screenSeen": true,
+          "confidence": 1,
+          "hpSource": "selected-hud",
+          "hpObservedTick": 141,
+          "exactHPKnown": true,
+          "cdKnown": true,
+          "cdState": "selected-hud",
+          "cdObservedTick": 141,
+          "lastHUD": {
+            "type": "rifle",
+            "ids": [
+              1
+            ],
+            "hp": 100,
+            "maxHp": 100,
+            "ability": {
+              "id": "grenade",
+              "anyReady": true,
+              "cooldownSeconds": 0,
+              "allAuto": true,
+              "usable": true,
+              "reason": null
+            },
+            "observedTick": 141
+          }
+        },
+        {
+          "id": 3,
+          "type": "mg",
+          "owner": 0,
+          "x": 122,
+          "z": 120,
+          "rot": 0,
+          "aim": 0,
+          "hp": 75,
+          "supp": 0,
+          "targetId": 0,
+          "cover": 0,
+          "cd": 0,
+          "flags": 24576,
+          "veterancy": 0,
+          "built": 1,
+          "path": [
+            {
+              "x": 141.1,
+              "z": 125
+            }
+          ],
+          "orders": [],
+          "attackId": 0,
+          "retreating": false,
+          "buff": 0,
+          "ap": false,
+          "reinf": 0,
+          "dig": null,
+          "garrison": -1,
+          "amove": null,
+          "build": 0,
+          "enter": -1,
+          "fireAt": -1,
+          "nade": null,
+          "entrench": null,
+          "holdFire": false,
+          "holdPos": false,
+          "autoRetreat": true,
+          "auto": true,
+          "orderPlan": {
+            "kind": 1,
+            "x": 141.1,
+            "z": 125
+          },
+          "worldGoal": {
+            "x": 141.1,
+            "z": 125
+          },
+          "moveOutcome": "moving",
+          "moveOutcomeTick": 129,
+          "hpBasis": "selected-hud",
+          "suppSource": "world-bar",
+          "suppressionBand": "normal",
+          "healthBand": "healthy",
+          "firstStillAt": 6.55,
+          "lastSeen": 7.05,
+          "lastScreenTick": 141,
+          "screenSeen": true,
+          "confidence": 1,
+          "hpSource": "selected-hud",
+          "hpObservedTick": 141,
+          "exactHPKnown": true,
+          "cdKnown": true,
+          "cdState": "selected-hud",
+          "cdObservedTick": 141,
+          "lastHUD": {
+            "type": "mg",
+            "ids": [
+              3
+            ],
+            "hp": 75,
+            "maxHp": 75,
+            "ability": {
+              "id": "suppress",
+              "anyReady": true,
+              "cooldownSeconds": 0,
+              "allAuto": true,
+              "usable": true,
+              "reason": null
+            },
+            "observedTick": 141
+          }
+        }
+      ],
+      "jobUnits": [
+        {
+          "id": 3,
+          "type": "mg",
+          "owner": 0,
+          "x": 122,
+          "z": 120,
+          "rot": 0,
+          "aim": 0,
+          "hp": 75,
+          "supp": 0,
+          "targetId": 0,
+          "cover": 0,
+          "cd": null,
+          "flags": 24576,
+          "veterancy": 0,
+          "built": 1,
+          "path": [
+            {
+              "x": 141.1,
+              "z": 125
+            }
+          ],
+          "orders": [],
+          "attackId": 0,
+          "retreating": false,
+          "buff": 0,
+          "ap": false,
+          "reinf": 0,
+          "dig": null,
+          "garrison": -1,
+          "amove": null,
+          "build": 0,
+          "enter": -1,
+          "fireAt": -1,
+          "nade": null,
+          "entrench": null,
+          "holdFire": false,
+          "holdPos": false,
+          "autoRetreat": true,
+          "auto": true,
+          "orderPlan": {
+            "kind": 1,
+            "x": 141.1,
+            "z": 125
+          },
+          "worldGoal": {
+            "x": 141.1,
+            "z": 125
+          },
+          "moveOutcome": "moving",
+          "moveOutcomeTick": 129,
+          "hpBasis": "world-bar",
+          "suppSource": "world-bar",
+          "suppressionBand": "normal",
+          "healthBand": "healthy",
+          "firstStillAt": 6.55,
+          "lastSeen": 6.55,
+          "lastScreenTick": 131,
+          "screenSeen": true,
+          "confidence": 1,
+          "hpSource": "world-bar",
+          "hpObservedTick": 131,
+          "exactHPKnown": false,
+          "cdKnown": false,
+          "cdState": "stale-hud",
+          "cdObservedTick": 131,
+          "lastHUD": {
+            "type": "mg",
+            "ids": [
+              3
+            ],
+            "hp": 75,
+            "maxHp": 75,
+            "ability": {
+              "id": "suppress",
+              "anyReady": true,
+              "cooldownSeconds": 0,
+              "allAuto": true,
+              "usable": true,
+              "reason": null
+            },
+            "observedTick": 131
+          }
+        },
+        {
+          "id": 1,
+          "type": "rifle",
+          "owner": 0,
+          "x": 122,
+          "z": 120,
+          "rot": 0,
+          "aim": 0,
+          "hp": 100,
+          "supp": 0,
+          "targetId": 0,
+          "cover": 0,
+          "cd": null,
+          "flags": 24576,
+          "veterancy": 0,
+          "built": 1,
+          "path": [
+            {
+              "x": 139.2,
+              "z": 128.9
+            }
+          ],
+          "orders": [],
+          "attackId": 0,
+          "retreating": false,
+          "buff": 0,
+          "ap": false,
+          "reinf": 0,
+          "dig": null,
+          "garrison": -1,
+          "amove": null,
+          "build": 0,
+          "enter": -1,
+          "fireAt": -1,
+          "nade": null,
+          "entrench": null,
+          "holdFire": false,
+          "holdPos": false,
+          "autoRetreat": true,
+          "auto": true,
+          "orderPlan": {
+            "kind": 1,
+            "x": 139.2,
+            "z": 128.9
+          },
+          "worldGoal": {
+            "x": 139.2,
+            "z": 128.9
+          },
+          "moveOutcome": "moving",
+          "moveOutcomeTick": 129,
+          "hpBasis": "world-bar",
+          "suppSource": "world-bar",
+          "suppressionBand": "normal",
+          "healthBand": "healthy",
+          "firstStillAt": 6.55,
+          "lastSeen": 6.55,
+          "lastScreenTick": 131,
+          "screenSeen": true,
+          "confidence": 1,
+          "hpSource": "world-bar",
+          "hpObservedTick": 131,
+          "exactHPKnown": false,
+          "cdKnown": false,
+          "cdState": "stale-hud",
+          "cdObservedTick": 131,
+          "lastHUD": {
+            "type": "rifle",
+            "ids": [
+              1
+            ],
+            "hp": 100,
+            "maxHp": 100,
+            "ability": {
+              "id": "grenade",
+              "anyReady": true,
+              "cooldownSeconds": 0,
+              "allAuto": true,
+              "usable": true,
+              "reason": null
+            },
+            "observedTick": 131
+          }
+        }
+      ],
+      "clickedAt": {
+        "x": 138.89690583862907,
+        "z": 133.95348329887912
+      },
+      "ai": [
+        [
+          1,
+          140.20224420650717,
+          132.37278986074972
+        ],
+        [
+          3,
+          137.46421738607992,
+          135.68839073097234
+        ]
+      ],
+      "client": [
+        [
+          1,
+          140.20224420650717,
+          132.37278986074972
+        ],
+        [
+          3,
+          137.46421738607992,
+          135.68839073097234
+        ]
+      ],
+      "equal": true,
+      "accepted": true
+    },
+    {
+      "label": "real paid group surviving singleton",
+      "selected": [
+        1
+      ],
+      "inputUnits": [
+        {
+          "id": 1,
+          "type": "rifle",
+          "owner": 0,
+          "x": 122,
+          "z": 120,
+          "rot": 0,
+          "aim": 0,
+          "hp": 100,
+          "supp": 0,
+          "targetId": 0,
+          "cover": 0,
+          "cd": 0,
+          "flags": 24576,
+          "veterancy": 0,
+          "built": 1,
+          "path": [
+            {
+              "x": 140.2,
+              "z": 132.4
+            }
+          ],
+          "orders": [],
+          "attackId": 0,
+          "retreating": false,
+          "buff": 0,
+          "ap": false,
+          "reinf": 0,
+          "dig": null,
+          "garrison": -1,
+          "amove": null,
+          "build": 0,
+          "enter": -1,
+          "fireAt": -1,
+          "nade": null,
+          "entrench": null,
+          "holdFire": false,
+          "holdPos": false,
+          "autoRetreat": true,
+          "auto": true,
+          "orderPlan": {
+            "kind": 1,
+            "x": 140.2,
+            "z": 132.4
+          },
+          "worldGoal": {
+            "x": 140.2,
+            "z": 132.4
+          },
+          "moveOutcome": "moving",
+          "moveOutcomeTick": 141,
+          "hpBasis": "selected-hud",
+          "suppSource": "world-bar",
+          "suppressionBand": "normal",
+          "healthBand": "healthy",
+          "firstStillAt": 6.55,
+          "lastSeen": 7.8,
+          "lastScreenTick": 156,
+          "screenSeen": true,
+          "confidence": 1,
+          "hpSource": "selected-hud",
+          "hpObservedTick": 156,
+          "exactHPKnown": true,
+          "cdKnown": true,
+          "cdState": "selected-hud",
+          "cdObservedTick": 156,
+          "lastHUD": {
+            "type": "rifle",
+            "ids": [
+              1
+            ],
+            "hp": 100,
+            "maxHp": 100,
+            "ability": {
+              "id": "grenade",
+              "anyReady": true,
+              "cooldownSeconds": 0,
+              "allAuto": true,
+              "usable": true,
+              "reason": null
+            },
+            "observedTick": 156
+          }
+        }
+      ],
+      "jobUnits": [
+        {
+          "id": 1,
+          "type": "rifle",
+          "owner": 0,
+          "x": 122,
+          "z": 120,
+          "rot": 0,
+          "aim": 0,
+          "hp": 100,
+          "supp": 0,
+          "targetId": 0,
+          "cover": 0,
+          "cd": null,
+          "flags": 24576,
+          "veterancy": 0,
+          "built": 1,
+          "path": [
+            {
+              "x": 140.2,
+              "z": 132.4
+            }
+          ],
+          "orders": [],
+          "attackId": 0,
+          "retreating": false,
+          "buff": 0,
+          "ap": false,
+          "reinf": 0,
+          "dig": null,
+          "garrison": -1,
+          "amove": null,
+          "build": 0,
+          "enter": -1,
+          "fireAt": -1,
+          "nade": null,
+          "entrench": null,
+          "holdFire": false,
+          "holdPos": false,
+          "autoRetreat": true,
+          "auto": true,
+          "orderPlan": {
+            "kind": 1,
+            "x": 140.2,
+            "z": 132.4
+          },
+          "worldGoal": {
+            "x": 140.2,
+            "z": 132.4
+          },
+          "moveOutcome": "moving",
+          "moveOutcomeTick": 141,
+          "hpBasis": "world-bar",
+          "suppSource": "world-bar",
+          "suppressionBand": "normal",
+          "healthBand": "healthy",
+          "firstStillAt": 6.55,
+          "lastSeen": 7.05,
+          "lastScreenTick": 141,
+          "screenSeen": true,
+          "confidence": 1,
+          "hpSource": "world-bar",
+          "hpObservedTick": 141,
+          "exactHPKnown": false,
+          "cdKnown": false,
+          "cdState": "stale-hud",
+          "cdObservedTick": 141,
+          "lastHUD": {
+            "type": "rifle",
+            "ids": [
+              1
+            ],
+            "hp": 100,
+            "maxHp": 100,
+            "ability": {
+              "id": "grenade",
+              "anyReady": true,
+              "cooldownSeconds": 0,
+              "allAuto": true,
+              "usable": true,
+              "reason": null
+            },
+            "observedTick": 141
+          }
+        }
+      ],
+      "clickedAt": {
+        "x": 138.8713824359954,
+        "z": 130.34170950963733
+      },
+      "ai": [
+        [
+          1,
+          138.8713824359954,
+          130.34170950963733
+        ]
+      ],
+      "client": [
+        [
+          1,
+          138.8713824359954,
+          130.34170950963733
+        ]
+      ],
+      "equal": true,
+      "accepted": true
+    },
+    {
+      "label": "persistent actual selection with reversed planner order and tied positions",
+      "selected": [
+        1,
+        3
+      ],
+      "inputUnits": [
+        {
+          "id": 1,
+          "type": "rifle",
+          "owner": 0,
+          "x": 122,
+          "z": 120,
+          "rot": 0,
+          "aim": 0,
+          "hp": 100,
+          "supp": 0,
+          "targetId": 0,
+          "cover": 0,
+          "cd": 0,
+          "flags": 24576,
+          "veterancy": 0,
+          "built": 1,
+          "path": [
+            {
+              "x": 132.5,
+              "z": 126.6
+            }
+          ],
+          "orders": [],
+          "attackId": 0,
+          "retreating": false,
+          "buff": 0,
+          "ap": false,
+          "reinf": 0,
+          "dig": null,
+          "garrison": -1,
+          "amove": null,
+          "build": 0,
+          "enter": -1,
+          "fireAt": -1,
+          "nade": null,
+          "entrench": null,
+          "holdFire": false,
+          "holdPos": false,
+          "autoRetreat": true,
+          "auto": true,
+          "orderPlan": {
+            "kind": 1,
+            "x": 132.5,
+            "z": 126.6
+          },
+          "worldGoal": {
+            "x": 132.5,
+            "z": 126.6
+          },
+          "moveOutcome": "moving",
+          "moveOutcomeTick": 119,
+          "hpBasis": "selected-hud",
+          "suppSource": "world-bar",
+          "suppressionBand": "normal",
+          "healthBand": "healthy",
+          "firstStillAt": 5.95,
+          "lastSeen": 6.4,
+          "lastScreenTick": 128,
+          "screenSeen": true,
+          "confidence": 1,
+          "hpSource": "selected-hud",
+          "hpObservedTick": 128,
+          "exactHPKnown": true,
+          "cdKnown": true,
+          "cdState": "selected-hud",
+          "cdObservedTick": 128,
+          "lastHUD": {
+            "type": "rifle",
+            "ids": [
+              1
+            ],
+            "hp": 100,
+            "maxHp": 100,
+            "ability": {
+              "id": "grenade",
+              "anyReady": true,
+              "cooldownSeconds": 0,
+              "allAuto": true,
+              "usable": true,
+              "reason": null
+            },
+            "observedTick": 128
+          }
+        },
+        {
+          "id": 3,
+          "type": "mg",
+          "owner": 0,
+          "x": 122,
+          "z": 120,
+          "rot": 0,
+          "aim": 0,
+          "hp": 75,
+          "supp": 0,
+          "targetId": 0,
+          "cover": 0,
+          "cd": 0,
+          "flags": 24576,
+          "veterancy": 0,
+          "built": 1,
+          "path": [
+            {
+              "x": 129.3,
+              "z": 129.5
+            }
+          ],
+          "orders": [],
+          "attackId": 0,
+          "retreating": false,
+          "buff": 0,
+          "ap": false,
+          "reinf": 0,
+          "dig": null,
+          "garrison": -1,
+          "amove": null,
+          "build": 0,
+          "enter": -1,
+          "fireAt": -1,
+          "nade": null,
+          "entrench": null,
+          "holdFire": false,
+          "holdPos": false,
+          "autoRetreat": true,
+          "auto": true,
+          "orderPlan": {
+            "kind": 1,
+            "x": 129.3,
+            "z": 129.5
+          },
+          "worldGoal": {
+            "x": 129.3,
+            "z": 129.5
+          },
+          "moveOutcome": "moving",
+          "moveOutcomeTick": 119,
+          "hpBasis": "selected-hud",
+          "suppSource": "world-bar",
+          "suppressionBand": "normal",
+          "healthBand": "healthy",
+          "firstStillAt": 5.95,
+          "lastSeen": 6.4,
+          "lastScreenTick": 128,
+          "screenSeen": true,
+          "confidence": 1,
+          "hpSource": "selected-hud",
+          "hpObservedTick": 128,
+          "exactHPKnown": true,
+          "cdKnown": true,
+          "cdState": "selected-hud",
+          "cdObservedTick": 128,
+          "lastHUD": {
+            "type": "mg",
+            "ids": [
+              3
+            ],
+            "hp": 75,
+            "maxHp": 75,
+            "ability": {
+              "id": "suppress",
+              "anyReady": true,
+              "cooldownSeconds": 0,
+              "allAuto": true,
+              "usable": true,
+              "reason": null
+            },
+            "observedTick": 128
+          }
+        }
+      ],
+      "jobUnits": [
+        {
+          "id": 3,
+          "type": "mg",
+          "owner": 0,
+          "x": 122,
+          "z": 120,
+          "rot": 0,
+          "aim": 0,
+          "hp": 75,
+          "supp": 0,
+          "targetId": 0,
+          "cover": 0,
+          "cd": 0,
+          "flags": 24576,
+          "veterancy": 0,
+          "built": 1,
+          "path": [
+            {
+              "x": 129.3,
+              "z": 129.5
+            }
+          ],
+          "orders": [],
+          "attackId": 0,
+          "retreating": false,
+          "buff": 0,
+          "ap": false,
+          "reinf": 0,
+          "dig": null,
+          "garrison": -1,
+          "amove": null,
+          "build": 0,
+          "enter": -1,
+          "fireAt": -1,
+          "nade": null,
+          "entrench": null,
+          "holdFire": false,
+          "holdPos": false,
+          "autoRetreat": true,
+          "auto": true,
+          "orderPlan": {
+            "kind": 1,
+            "x": 129.3,
+            "z": 129.5
+          },
+          "worldGoal": {
+            "x": 129.3,
+            "z": 129.5
+          },
+          "moveOutcome": "moving",
+          "moveOutcomeTick": 119,
+          "hpBasis": "selected-hud",
+          "suppSource": "world-bar",
+          "suppressionBand": "normal",
+          "healthBand": "healthy",
+          "firstStillAt": 5.95,
+          "lastSeen": 5.95,
+          "lastScreenTick": 119,
+          "screenSeen": true,
+          "confidence": 1,
+          "hpSource": "selected-hud",
+          "hpObservedTick": 119,
+          "exactHPKnown": true,
+          "cdKnown": true,
+          "cdState": "selected-hud",
+          "cdObservedTick": 119,
+          "lastHUD": {
+            "type": "mg",
+            "ids": [
+              3
+            ],
+            "hp": 75,
+            "maxHp": 75,
+            "ability": {
+              "id": "suppress",
+              "anyReady": true,
+              "cooldownSeconds": 0,
+              "allAuto": true,
+              "usable": true,
+              "reason": null
+            },
+            "observedTick": 119
+          }
+        },
+        {
+          "id": 1,
+          "type": "rifle",
+          "owner": 0,
+          "x": 122,
+          "z": 120,
+          "rot": 0,
+          "aim": 0,
+          "hp": 100,
+          "supp": 0,
+          "targetId": 0,
+          "cover": 0,
+          "cd": 0,
+          "flags": 24576,
+          "veterancy": 0,
+          "built": 1,
+          "path": [
+            {
+              "x": 132.5,
+              "z": 126.6
+            }
+          ],
+          "orders": [],
+          "attackId": 0,
+          "retreating": false,
+          "buff": 0,
+          "ap": false,
+          "reinf": 0,
+          "dig": null,
+          "garrison": -1,
+          "amove": null,
+          "build": 0,
+          "enter": -1,
+          "fireAt": -1,
+          "nade": null,
+          "entrench": null,
+          "holdFire": false,
+          "holdPos": false,
+          "autoRetreat": true,
+          "auto": true,
+          "orderPlan": {
+            "kind": 1,
+            "x": 132.5,
+            "z": 126.6
+          },
+          "worldGoal": {
+            "x": 132.5,
+            "z": 126.6
+          },
+          "moveOutcome": "moving",
+          "moveOutcomeTick": 119,
+          "hpBasis": "selected-hud",
+          "suppSource": "world-bar",
+          "suppressionBand": "normal",
+          "healthBand": "healthy",
+          "firstStillAt": 5.95,
+          "lastSeen": 5.95,
+          "lastScreenTick": 119,
+          "screenSeen": true,
+          "confidence": 1,
+          "hpSource": "selected-hud",
+          "hpObservedTick": 119,
+          "exactHPKnown": true,
+          "cdKnown": true,
+          "cdState": "selected-hud",
+          "cdObservedTick": 119,
+          "lastHUD": {
+            "type": "rifle",
+            "ids": [
+              1
+            ],
+            "hp": 100,
+            "maxHp": 100,
+            "ability": {
+              "id": "grenade",
+              "anyReady": true,
+              "cooldownSeconds": 0,
+              "allAuto": true,
+              "usable": true,
+              "reason": null
+            },
+            "observedTick": 119
+          }
+        }
+      ],
+      "clickedAt": {
+        "x": 139.09649678054802,
+        "z": 134.06155380179771
+      },
+      "ai": [
+        [
+          1,
+          140.39870784149716,
+          132.4782830249747
+        ],
+        [
+          3,
+          137.6672407380429,
+          135.799290020262
+        ]
+      ],
+      "client": [
+        [
+          1,
+          140.39870784149716,
+          132.4782830249747
+        ],
+        [
+          3,
+          137.6672407380429,
+          135.799290020262
+        ]
+      ],
+      "equal": true,
+      "accepted": true
+    },
+    {
+      "label": "physical box selection order differs from planner order without ties",
+      "selected": [
+        1,
+        3
+      ],
+      "inputUnits": [
+        {
+          "id": 1,
+          "type": "rifle",
+          "owner": 0,
+          "x": 120,
+          "z": 120,
+          "rot": 0,
+          "aim": 0,
+          "hp": 100,
+          "supp": 0,
+          "targetId": 0,
+          "cover": 0,
+          "cd": 0,
+          "flags": 24576,
+          "veterancy": 0,
+          "built": 1,
+          "path": [],
+          "orders": [],
+          "attackId": 0,
+          "retreating": false,
+          "buff": 0,
+          "ap": false,
+          "reinf": 0,
+          "dig": null,
+          "garrison": -1,
+          "amove": null,
+          "build": 0,
+          "enter": -1,
+          "fireAt": -1,
+          "nade": null,
+          "entrench": null,
+          "holdFire": false,
+          "holdPos": false,
+          "autoRetreat": true,
+          "auto": true,
+          "orderPlan": {
+            "kind": 0,
+            "x": 0,
+            "z": 0
+          },
+          "hpBasis": "selected-hud",
+          "suppSource": "world-bar",
+          "suppressionBand": "normal",
+          "healthBand": "healthy",
+          "firstStillAt": 5,
+          "lastSeen": 5.95,
+          "lastScreenTick": 119,
+          "screenSeen": true,
+          "confidence": 1,
+          "hpSource": "selected-hud",
+          "hpObservedTick": 119,
+          "exactHPKnown": true,
+          "cdKnown": true,
+          "cdState": "selected-hud",
+          "cdObservedTick": 119,
+          "lastHUD": {
+            "type": "rifle",
+            "ids": [
+              1
+            ],
+            "hp": 100,
+            "maxHp": 100,
+            "ability": {
+              "id": "grenade",
+              "anyReady": true,
+              "cooldownSeconds": 0,
+              "allAuto": true,
+              "usable": true,
+              "reason": null
+            },
+            "observedTick": 119
+          }
+        },
+        {
+          "id": 3,
+          "type": "mg",
+          "owner": 0,
+          "x": 124,
+          "z": 120,
+          "rot": 0,
+          "aim": 0,
+          "hp": 75,
+          "supp": 0,
+          "targetId": 0,
+          "cover": 0,
+          "cd": 0,
+          "flags": 24576,
+          "veterancy": 0,
+          "built": 1,
+          "path": [],
+          "orders": [],
+          "attackId": 0,
+          "retreating": false,
+          "buff": 0,
+          "ap": false,
+          "reinf": 0,
+          "dig": null,
+          "garrison": -1,
+          "amove": null,
+          "build": 0,
+          "enter": -1,
+          "fireAt": -1,
+          "nade": null,
+          "entrench": null,
+          "holdFire": false,
+          "holdPos": false,
+          "autoRetreat": true,
+          "auto": true,
+          "orderPlan": {
+            "kind": 0,
+            "x": 0,
+            "z": 0
+          },
+          "hpBasis": "selected-hud",
+          "suppSource": "world-bar",
+          "suppressionBand": "normal",
+          "healthBand": "healthy",
+          "firstStillAt": 5,
+          "lastSeen": 5.95,
+          "lastScreenTick": 119,
+          "screenSeen": true,
+          "confidence": 1,
+          "hpSource": "selected-hud",
+          "hpObservedTick": 119,
+          "exactHPKnown": true,
+          "cdKnown": true,
+          "cdState": "selected-hud",
+          "cdObservedTick": 119,
+          "lastHUD": {
+            "type": "mg",
+            "ids": [
+              3
+            ],
+            "hp": 75,
+            "maxHp": 75,
+            "ability": {
+              "id": "suppress",
+              "anyReady": true,
+              "cooldownSeconds": 0,
+              "allAuto": true,
+              "usable": true,
+              "reason": null
+            },
+            "observedTick": 119
+          }
+        }
+      ],
+      "jobUnits": [
+        {
+          "id": 3,
+          "type": "mg",
+          "owner": 0,
+          "x": 124,
+          "z": 120,
+          "rot": 0,
+          "aim": 0,
+          "hp": 75,
+          "supp": 0,
+          "targetId": 0,
+          "cover": 0,
+          "cd": null,
+          "flags": 24576,
+          "veterancy": 0,
+          "built": 1,
+          "path": [],
+          "orders": [],
+          "attackId": 0,
+          "retreating": false,
+          "buff": 0,
+          "ap": false,
+          "reinf": 0,
+          "dig": null,
+          "garrison": -1,
+          "amove": null,
+          "build": 0,
+          "enter": -1,
+          "fireAt": -1,
+          "nade": null,
+          "entrench": null,
+          "holdFire": false,
+          "holdPos": false,
+          "autoRetreat": true,
+          "auto": true,
+          "orderPlan": {
+            "kind": 0,
+            "x": 0,
+            "z": 0
+          },
+          "hpBasis": "world-bar",
+          "suppSource": "world-bar",
+          "suppressionBand": "normal",
+          "healthBand": "healthy",
+          "firstStillAt": 5,
+          "lastSeen": 5,
+          "lastScreenTick": 100,
+          "screenSeen": true,
+          "confidence": 1,
+          "hpSource": "world-bar",
+          "hpObservedTick": 100,
+          "exactHPKnown": false,
+          "cdKnown": false,
+          "cdState": "unknown",
+          "cdObservedTick": null
+        },
+        {
+          "id": 1,
+          "type": "rifle",
+          "owner": 0,
+          "x": 120,
+          "z": 120,
+          "rot": 0,
+          "aim": 0,
+          "hp": 100,
+          "supp": 0,
+          "targetId": 0,
+          "cover": 0,
+          "cd": null,
+          "flags": 24576,
+          "veterancy": 0,
+          "built": 1,
+          "path": [],
+          "orders": [],
+          "attackId": 0,
+          "retreating": false,
+          "buff": 0,
+          "ap": false,
+          "reinf": 0,
+          "dig": null,
+          "garrison": -1,
+          "amove": null,
+          "build": 0,
+          "enter": -1,
+          "fireAt": -1,
+          "nade": null,
+          "entrench": null,
+          "holdFire": false,
+          "holdPos": false,
+          "autoRetreat": true,
+          "auto": true,
+          "orderPlan": {
+            "kind": 0,
+            "x": 0,
+            "z": 0
+          },
+          "hpBasis": "world-bar",
+          "suppSource": "world-bar",
+          "suppressionBand": "normal",
+          "healthBand": "healthy",
+          "firstStillAt": 5,
+          "lastSeen": 5,
+          "lastScreenTick": 100,
+          "screenSeen": true,
+          "confidence": 1,
+          "hpSource": "world-bar",
+          "hpObservedTick": 100,
+          "exactHPKnown": false,
+          "cdKnown": false,
+          "cdState": "unknown",
+          "cdObservedTick": null
+        }
+      ],
+      "clickedAt": {
+        "x": 139.9447726822322,
+        "z": 132.96142746026993
+      },
+      "ai": [
+        [
+          3,
+          141.26221419249484,
+          131.13746258477565
+        ],
+        [
+          1,
+          138.74443708399292,
+          134.62326212460917
+        ]
+      ],
+      "client": [
+        [
+          3,
+          141.26221419249484,
+          131.13746258477565
+        ],
+        [
+          1,
+          138.74443708399292,
+          134.62326212460917
+        ]
+      ],
+      "equal": true,
+      "accepted": true
+    },
+    {
+      "label": "P1 partial physical box with reversed planner order and tied actual survivors",
+      "selected": [
+        1,
+        3
+      ],
+      "inputUnits": [
+        {
+          "id": 1,
+          "type": "rifle",
+          "owner": 0,
+          "x": 122,
+          "z": 120,
+          "rot": 0,
+          "aim": 0,
+          "hp": 100,
+          "supp": 0,
+          "targetId": 0,
+          "cover": 0,
+          "cd": 0,
+          "flags": 24576,
+          "veterancy": 0,
+          "built": 1,
+          "path": [],
+          "orders": [],
+          "attackId": 0,
+          "retreating": false,
+          "buff": 0,
+          "ap": false,
+          "reinf": 0,
+          "dig": null,
+          "garrison": -1,
+          "amove": null,
+          "build": 0,
+          "enter": -1,
+          "fireAt": -1,
+          "nade": null,
+          "entrench": null,
+          "holdFire": false,
+          "holdPos": false,
+          "autoRetreat": true,
+          "auto": true,
+          "orderPlan": {
+            "kind": 0,
+            "x": 0,
+            "z": 0
+          },
+          "hpBasis": "selected-hud",
+          "suppSource": "world-bar",
+          "suppressionBand": "normal",
+          "healthBand": "healthy",
+          "firstStillAt": 5,
+          "lastSeen": 5.95,
+          "lastScreenTick": 119,
+          "screenSeen": true,
+          "confidence": 1,
+          "hpSource": "selected-hud",
+          "hpObservedTick": 119,
+          "exactHPKnown": true,
+          "cdKnown": true,
+          "cdState": "selected-hud",
+          "cdObservedTick": 119,
+          "lastHUD": {
+            "type": "rifle",
+            "ids": [
+              1
+            ],
+            "hp": 100,
+            "maxHp": 100,
+            "ability": {
+              "id": "grenade",
+              "anyReady": true,
+              "cooldownSeconds": 0,
+              "allAuto": true,
+              "usable": true,
+              "reason": null
+            },
+            "observedTick": 119
+          }
+        },
+        {
+          "id": 3,
+          "type": "mg",
+          "owner": 0,
+          "x": 122,
+          "z": 120,
+          "rot": 0,
+          "aim": 0,
+          "hp": 75,
+          "supp": 0,
+          "targetId": 0,
+          "cover": 0,
+          "cd": 0,
+          "flags": 24576,
+          "veterancy": 0,
+          "built": 1,
+          "path": [],
+          "orders": [],
+          "attackId": 0,
+          "retreating": false,
+          "buff": 0,
+          "ap": false,
+          "reinf": 0,
+          "dig": null,
+          "garrison": -1,
+          "amove": null,
+          "build": 0,
+          "enter": -1,
+          "fireAt": -1,
+          "nade": null,
+          "entrench": null,
+          "holdFire": false,
+          "holdPos": false,
+          "autoRetreat": true,
+          "auto": true,
+          "orderPlan": {
+            "kind": 0,
+            "x": 0,
+            "z": 0
+          },
+          "hpBasis": "selected-hud",
+          "suppSource": "world-bar",
+          "suppressionBand": "normal",
+          "healthBand": "healthy",
+          "firstStillAt": 5,
+          "lastSeen": 5.95,
+          "lastScreenTick": 119,
+          "screenSeen": true,
+          "confidence": 1,
+          "hpSource": "selected-hud",
+          "hpObservedTick": 119,
+          "exactHPKnown": true,
+          "cdKnown": true,
+          "cdState": "selected-hud",
+          "cdObservedTick": 119,
+          "lastHUD": {
+            "type": "mg",
+            "ids": [
+              3
+            ],
+            "hp": 75,
+            "maxHp": 75,
+            "ability": {
+              "id": "suppress",
+              "anyReady": true,
+              "cooldownSeconds": 0,
+              "allAuto": true,
+              "usable": true,
+              "reason": null
+            },
+            "observedTick": 119
+          }
+        }
+      ],
+      "jobUnits": [
+        {
+          "id": 1,
+          "type": "rifle",
+          "owner": 0,
+          "x": 122,
+          "z": 120,
+          "rot": 0,
+          "aim": 0,
+          "hp": 100,
+          "supp": 0,
+          "targetId": 0,
+          "cover": 0,
+          "cd": null,
+          "flags": 24576,
+          "veterancy": 0,
+          "built": 1,
+          "path": [],
+          "orders": [],
+          "attackId": 0,
+          "retreating": false,
+          "buff": 0,
+          "ap": false,
+          "reinf": 0,
+          "dig": null,
+          "garrison": -1,
+          "amove": null,
+          "build": 0,
+          "enter": -1,
+          "fireAt": -1,
+          "nade": null,
+          "entrench": null,
+          "holdFire": false,
+          "holdPos": false,
+          "autoRetreat": true,
+          "auto": true,
+          "orderPlan": {
+            "kind": 0,
+            "x": 0,
+            "z": 0
+          },
+          "hpBasis": "world-bar",
+          "suppSource": "world-bar",
+          "suppressionBand": "normal",
+          "healthBand": "healthy",
+          "firstStillAt": 5,
+          "lastSeen": 5.6,
+          "lastScreenTick": 112,
+          "screenSeen": true,
+          "confidence": 1,
+          "hpSource": "world-bar",
+          "hpObservedTick": 112,
+          "exactHPKnown": false,
+          "cdKnown": false,
+          "cdState": "unknown",
+          "cdObservedTick": null
+        },
+        {
+          "id": 3,
+          "type": "mg",
+          "owner": 0,
+          "x": 122,
+          "z": 120,
+          "rot": 0,
+          "aim": 0,
+          "hp": 75,
+          "supp": 0,
+          "targetId": 0,
+          "cover": 0,
+          "cd": null,
+          "flags": 24576,
+          "veterancy": 0,
+          "built": 1,
+          "path": [],
+          "orders": [],
+          "attackId": 0,
+          "retreating": false,
+          "buff": 0,
+          "ap": false,
+          "reinf": 0,
+          "dig": null,
+          "garrison": -1,
+          "amove": null,
+          "build": 0,
+          "enter": -1,
+          "fireAt": -1,
+          "nade": null,
+          "entrench": null,
+          "holdFire": false,
+          "holdPos": false,
+          "autoRetreat": true,
+          "auto": true,
+          "orderPlan": {
+            "kind": 0,
+            "x": 0,
+            "z": 0
+          },
+          "hpBasis": "world-bar",
+          "suppSource": "world-bar",
+          "suppressionBand": "normal",
+          "healthBand": "healthy",
+          "firstStillAt": 5,
+          "lastSeen": 5.6,
+          "lastScreenTick": 112,
+          "screenSeen": true,
+          "confidence": 1,
+          "hpSource": "world-bar",
+          "hpObservedTick": 112,
+          "exactHPKnown": false,
+          "cdKnown": false,
+          "cdState": "unknown",
+          "cdObservedTick": null
+        }
+      ],
+      "clickedAt": {
+        "x": 138.9433334141244,
+        "z": 132.96099886440894
+      },
+      "ai": [
+        [
+          1,
+          140.18886881358586,
+          131.3327662125166
+        ],
+        [
+          3,
+          137.576282365935,
+          134.74808348233955
+        ]
+      ],
+      "client": [
+        [
+          1,
+          140.18886881358586,
+          131.3327662125166
+        ],
+        [
+          3,
+          137.576282365935,
+          134.74808348233955
+        ]
+      ],
+      "equal": true,
+      "accepted": true
+    }
+  ]
+}

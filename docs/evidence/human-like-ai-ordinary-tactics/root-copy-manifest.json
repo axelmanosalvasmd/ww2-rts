@@ -1,0 +1,9 @@
+{
+  "status": "PASS",
+  "independentRootByteVerification": true,
+  "archive": "ai-ordinary-tactics-bc677-evidence.tar.gz",
+  "bytes": 2923521,
+  "sha256": "0cbe8a47e6bc049626c88bbace4a2ac62632efe8af3a1286b93ad19e3d939c62",
+  "members": 145,
+  "qualification": "All36 original authored native episodes and4 observercontrols, diagnosticnotpopulation."
+}

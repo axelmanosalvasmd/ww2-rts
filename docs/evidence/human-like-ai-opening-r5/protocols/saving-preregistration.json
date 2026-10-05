@@ -1,0 +1,66 @@
+{
+  "declaredAt": "2026-10-04T13:17:54.617540+00:00",
+  "rootAuthorization": "Explicit bounded first preference20s paired20seed alllevel45s Conquest prototype; no production edits",
+  "sourceDirectories": {
+    "base": "/tmp/human-ai-opening-paired-base-source",
+    "candidate": "/tmp/human-ai-opening-paired-candidate-source"
+  },
+  "archiveSHA256": {
+    "base": "429f97f2de81a8e04f5e7685adb79b6dfeb30761228cb77ccbf8f92deb68f072",
+    "candidate": "580136394ae5497f02d18a91d28c64ca22b6c5ca965031b3234dbb079488593f"
+  },
+  "changedFiles": [
+    "shared/ai-persona.js",
+    "shared/ai.js"
+  ],
+  "configuration": {
+    "mode": "conquest",
+    "levels": [
+      "easy",
+      "normal",
+      "hard"
+    ],
+    "seeds": [
+      1,
+      2,
+      3,
+      4,
+      5,
+      6,
+      7,
+      8,
+      9,
+      10,
+      11,
+      12,
+      13,
+      14,
+      15,
+      16,
+      17,
+      18,
+      19,
+      20
+    ],
+    "seconds": 45,
+    "workers": 2,
+    "CPU": 6,
+    "map": "default",
+    "army": "standard",
+    "logs": true
+  },
+  "matchesEachTreatment": 60,
+  "seatsEachTreatment": 180,
+  "openingEndpoint": "First5accepted purchase-family prefixes within45seconds; unchanged V14 accepted-family mapping. >=3meaningful sequences and none>50% in each20seed faction/level group. Missing purchases and failures retained. Coordinates never count.",
+  "retention": "Persistent per-match full JSON spool + streamed complete full report + publicCLI gzip/compact package. Each actual native timeline and private frame remains unmodified; original+observed bothprimary/explicit scoring unchanged. All completed spools remain on any failure.",
+  "runtimeScope": "Initial saving guard only; later purchaseLimit repeated-choice behavior unchanged. Native fixture later Easy MG insufficient-MP refusal retained, not repaired.",
+  "fixtureProof": "/tmp/human-ai-opening-candidate-fixtures.json",
+  "attribution": "/tmp/human-ai-opening-attribution-v14.json",
+  "notAcceptance": "45second opening diagnosis cannot certify180second RT/APM campaign or performance gates.",
+  "externalStorageAdapter": {
+    "path": "/tmp/run-human-ai-opening-paired.mjs",
+    "sha256": "70b752d2250a2d7146f6293ebd8f8d9db6855c2ef223eda8a4eb871e9f191371",
+    "method": "Unchanged frozen collector Worker API and task assignment,explicit persistent spool directory. Uses each frozen tool aggregate/packageReport and json-stream writer. Source main definitions copied literally and base/candidate equality asserted. Default publicCLI cleans temporary spools on failure; persistent adapter retains every completed raw match even if a later match/report fails. No simulation/measurement changes."
+  },
+  "launchCommand": "taskset -c 6 node /tmp/run-human-ai-opening-paired.mjs --launch-authorized"
+}

@@ -1,0 +1,12 @@
+{
+  "diagnosticOnly": true,
+  "exitCode": 0,
+  "elapsedSeconds": 1638.321,
+  "excludedCount": 90,
+  "sourceIntegrityChanges": [],
+  "log": "/tmp/human-ai-core-only-preflight/native.log",
+  "qualification": "native main-body diagnostic; not the registered full suite",
+  "transformedTestIntegrityPassed": true,
+  "transformedTestSHA256": "d60f41ef74295df1839d3b195abf0d7cdc663a500b5cab4caf9ef3e1f02752d7",
+  "checkedUnchangedFiles": 1888
+}

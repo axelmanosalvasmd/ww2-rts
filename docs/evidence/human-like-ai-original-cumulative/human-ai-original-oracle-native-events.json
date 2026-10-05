@@ -1,0 +1,389 @@
+{
+  "frames": [
+    {
+      "tick": 0,
+      "observationTick": 0,
+      "original": {
+        "policy": "screen-v1",
+        "baselineTick": 0,
+        "events": [],
+        "newEvents": []
+      },
+      "observed": {
+        "policy": "screen-observed-v1",
+        "events": [],
+        "newEvents": []
+      },
+      "links": []
+    },
+    {
+      "tick": 2,
+      "observationTick": 2,
+      "original": {
+        "policy": "screen-v1",
+        "baselineTick": 0,
+        "events": [
+          {
+            "id": "screen:2:1",
+            "kind": "screen-damage",
+            "tick": 2,
+            "observationTick": 2,
+            "source": "screen",
+            "onScreen": true,
+            "x": 41,
+            "z": 41,
+            "unitId": 7,
+            "amount": 1,
+            "episode": "7:1",
+            "episodeTick": 2,
+            "provenance": "retreat-risk-crossing",
+            "responseRequired": true,
+            "responseReason": "retreat-risk-crossing",
+            "responsePolicy": "screen-v1",
+            "responseUnits": [
+              7
+            ]
+          }
+        ],
+        "newEvents": [
+          {
+            "id": "screen:2:1",
+            "kind": "screen-damage",
+            "tick": 2,
+            "observationTick": 2,
+            "source": "screen",
+            "onScreen": true,
+            "x": 41,
+            "z": 41,
+            "unitId": 7,
+            "amount": 1,
+            "episode": "7:1",
+            "episodeTick": 2,
+            "provenance": "retreat-risk-crossing",
+            "responseRequired": true,
+            "responseReason": "retreat-risk-crossing",
+            "responsePolicy": "screen-v1",
+            "responseUnits": [
+              7
+            ]
+          }
+        ]
+      },
+      "observed": {
+        "policy": "screen-observed-v1",
+        "events": [],
+        "newEvents": []
+      },
+      "links": []
+    },
+    {
+      "tick": 4,
+      "observationTick": 4,
+      "original": {
+        "policy": "screen-v1",
+        "baselineTick": 0,
+        "events": [
+          {
+            "id": "screen:2:1",
+            "kind": "screen-damage",
+            "tick": 2,
+            "observationTick": 2,
+            "source": "screen",
+            "onScreen": true,
+            "x": 41,
+            "z": 41,
+            "unitId": 7,
+            "amount": 1,
+            "episode": "7:1",
+            "episodeTick": 2,
+            "provenance": "retreat-risk-crossing",
+            "responseRequired": true,
+            "responseReason": "retreat-risk-crossing",
+            "responsePolicy": "screen-v1",
+            "responseUnits": [
+              7
+            ]
+          }
+        ],
+        "newEvents": []
+      },
+      "observed": {
+        "policy": "screen-observed-v1",
+        "events": [],
+        "newEvents": []
+      },
+      "links": []
+    },
+    {
+      "tick": 6,
+      "observationTick": 6,
+      "original": {
+        "policy": "screen-v1",
+        "baselineTick": 0,
+        "events": [
+          {
+            "id": "screen:2:1",
+            "kind": "screen-damage",
+            "tick": 2,
+            "observationTick": 2,
+            "source": "screen",
+            "onScreen": true,
+            "x": 41,
+            "z": 41,
+            "unitId": 7,
+            "amount": 1,
+            "episode": "7:1",
+            "episodeTick": 2,
+            "provenance": "retreat-risk-crossing",
+            "responseRequired": true,
+            "responseReason": "retreat-risk-crossing",
+            "responsePolicy": "screen-v1",
+            "responseUnits": [
+              7
+            ]
+          },
+          {
+            "id": "screen:6:2",
+            "kind": "screen-damage",
+            "tick": 6,
+            "observationTick": 6,
+            "source": "screen",
+            "onScreen": true,
+            "x": 41,
+            "z": 41,
+            "unitId": 7,
+            "amount": 25,
+            "episode": "7:1",
+            "episodeTick": 2,
+            "provenance": "heavy-damage",
+            "responseRequired": true,
+            "responseReason": "heavy-damage",
+            "responsePolicy": "screen-v1",
+            "responseUnits": [
+              7
+            ]
+          }
+        ],
+        "newEvents": [
+          {
+            "id": "screen:6:2",
+            "kind": "screen-damage",
+            "tick": 6,
+            "observationTick": 6,
+            "source": "screen",
+            "onScreen": true,
+            "x": 41,
+            "z": 41,
+            "unitId": 7,
+            "amount": 25,
+            "episode": "7:1",
+            "episodeTick": 2,
+            "provenance": "heavy-damage",
+            "responseRequired": true,
+            "responseReason": "heavy-damage",
+            "responsePolicy": "screen-v1",
+            "responseUnits": [
+              7
+            ]
+          }
+        ]
+      },
+      "observed": {
+        "policy": "screen-observed-v1",
+        "events": [
+          {
+            "id": "observed-screen:6:1",
+            "kind": "screen-damage",
+            "tick": 6,
+            "observationTick": 6,
+            "source": "screen",
+            "onScreen": true,
+            "x": 41,
+            "z": 41,
+            "unitId": 7,
+            "amount": 22.5,
+            "episode": "7:1",
+            "episodeTick": 6,
+            "provenance": "heavy-damage",
+            "observedDanger": {
+              "healthShare": 0.05,
+              "lossShare": 0.3,
+              "healthBand": "critical",
+              "suppressionBand": "normal",
+              "retreatRisk": true,
+              "alreadyRetreating": false,
+              "alreadyEngaged": false,
+              "autoRetreatCovered": false
+            },
+            "responseRequired": true,
+            "responseReason": "heavy-damage",
+            "responsePolicy": "screen-observed-v1",
+            "responseUnits": [
+              7
+            ]
+          }
+        ],
+        "newEvents": [
+          {
+            "id": "observed-screen:6:1",
+            "kind": "screen-damage",
+            "tick": 6,
+            "observationTick": 6,
+            "source": "screen",
+            "onScreen": true,
+            "x": 41,
+            "z": 41,
+            "unitId": 7,
+            "amount": 22.5,
+            "episode": "7:1",
+            "episodeTick": 6,
+            "provenance": "heavy-damage",
+            "observedDanger": {
+              "healthShare": 0.05,
+              "lossShare": 0.3,
+              "healthBand": "critical",
+              "suppressionBand": "normal",
+              "retreatRisk": true,
+              "alreadyRetreating": false,
+              "alreadyEngaged": false,
+              "autoRetreatCovered": false
+            },
+            "responseRequired": true,
+            "responseReason": "heavy-damage",
+            "responsePolicy": "screen-observed-v1",
+            "responseUnits": [
+              7
+            ]
+          }
+        ]
+      },
+      "links": [
+        {
+          "runtimeId": "observed-screen:6:1",
+          "originalIds": [
+            "screen:6:2"
+          ]
+        }
+      ]
+    },
+    {
+      "tick": 8,
+      "observationTick": 8,
+      "original": {
+        "policy": "screen-v1",
+        "baselineTick": 0,
+        "events": [
+          {
+            "id": "screen:2:1",
+            "kind": "screen-damage",
+            "tick": 2,
+            "observationTick": 2,
+            "source": "screen",
+            "onScreen": true,
+            "x": 41,
+            "z": 41,
+            "unitId": 7,
+            "amount": 1,
+            "episode": "7:1",
+            "episodeTick": 2,
+            "provenance": "retreat-risk-crossing",
+            "responseRequired": true,
+            "responseReason": "retreat-risk-crossing",
+            "responsePolicy": "screen-v1",
+            "responseUnits": [
+              7
+            ]
+          },
+          {
+            "id": "screen:6:2",
+            "kind": "screen-damage",
+            "tick": 6,
+            "observationTick": 6,
+            "source": "screen",
+            "onScreen": true,
+            "x": 41,
+            "z": 41,
+            "unitId": 7,
+            "amount": 25,
+            "episode": "7:1",
+            "episodeTick": 2,
+            "provenance": "heavy-damage",
+            "responseRequired": true,
+            "responseReason": "heavy-damage",
+            "responsePolicy": "screen-v1",
+            "responseUnits": [
+              7
+            ]
+          }
+        ],
+        "newEvents": []
+      },
+      "observed": {
+        "policy": "screen-observed-v1",
+        "events": [
+          {
+            "id": "observed-screen:6:1",
+            "kind": "screen-damage",
+            "tick": 6,
+            "observationTick": 6,
+            "source": "screen",
+            "onScreen": true,
+            "x": 41,
+            "z": 41,
+            "unitId": 7,
+            "amount": 22.5,
+            "episode": "7:1",
+            "episodeTick": 6,
+            "provenance": "heavy-damage",
+            "observedDanger": {
+              "healthShare": 0.05,
+              "lossShare": 0.3,
+              "healthBand": "critical",
+              "suppressionBand": "normal",
+              "retreatRisk": true,
+              "alreadyRetreating": false,
+              "alreadyEngaged": false,
+              "autoRetreatCovered": false
+            },
+            "responseRequired": true,
+            "responseReason": "heavy-damage",
+            "responsePolicy": "screen-observed-v1",
+            "responseUnits": [
+              7
+            ]
+          }
+        ],
+        "newEvents": []
+      },
+      "links": []
+    }
+  ],
+  "runtimeEvents": [
+    {
+      "id": "observed-screen:6:1",
+      "kind": "screen-damage",
+      "tick": 6,
+      "observationTick": 6,
+      "source": "screen",
+      "onScreen": true,
+      "x": 41,
+      "z": 41,
+      "unitId": 7,
+      "amount": 22.5,
+      "episode": "7:1",
+      "episodeTick": 6,
+      "provenance": "heavy-damage",
+      "observedDanger": {
+        "healthShare": 0.05,
+        "lossShare": 0.3,
+        "healthBand": "critical",
+        "suppressionBand": "normal",
+        "retreatRisk": true,
+        "alreadyRetreating": false,
+        "alreadyEngaged": false,
+        "autoRetreatCovered": false
+      }
+    }
+  ],
+  "callbackMutationIsolated": true
+}

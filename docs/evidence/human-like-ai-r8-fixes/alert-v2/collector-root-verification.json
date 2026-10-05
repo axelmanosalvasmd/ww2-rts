@@ -1,0 +1,615 @@
+{
+  "verifiedAt": "2026-10-05T01:07:13.002019+00:00",
+  "verifier": "ROOT independent every archived member read against its physical original, after source inspection",
+  "archive": "human-ai-alert-v2-cli-hook-evidence.tar.gz",
+  "sha256": "63f270cad75932722cf486a7df65a1d5a6ff3651414a349385e2b4f404beafd3",
+  "members": [
+    {
+      "member": "tools/ai-humanity.mjs",
+      "bytes": 97622,
+      "sha256": "5aaf88664e7a8af5504286de5d0b82f640ab2b8b3adc386a13fc8d541e5bf791",
+      "originalByteMatch": true
+    },
+    {
+      "member": "docs/public-danger-alert-v2-prospective-declaration.md",
+      "bytes": 11531,
+      "sha256": "6d780d3db3cd651ec2e71ebcd18804540ab61224757f9e850063d9b1d1bc7002",
+      "originalByteMatch": true
+    },
+    {
+      "member": "collector-hook.patch",
+      "bytes": 23384,
+      "sha256": "e7590a465f915525fb92562f4340530588bb6b6f3787987d81d48ff1e35ea0da",
+      "originalByteMatch": true
+    },
+    {
+      "member": "HOOK-REVIEW.md",
+      "bytes": 3269,
+      "sha256": "8f025ac782f4c4a9f66fdbdd82e4a9018f1b324aa1ceb34cf4701542f61d23a8",
+      "originalByteMatch": true
+    },
+    {
+      "member": "ai-humanity.before.mjs",
+      "bytes": 95489,
+      "sha256": "187293809db16f7d571b03c5824aeef54914406b66e9128e328123907546b76a",
+      "originalByteMatch": true
+    },
+    {
+      "member": "cli-smoke.py",
+      "bytes": 1656,
+      "sha256": "c97b47ced03a41662846503dd15609410df64afcdc26972cfc403256bc5a2755",
+      "originalByteMatch": true
+    },
+    {
+      "member": "validate-cli.py",
+      "bytes": 4966,
+      "sha256": "cba15c1ef6f4b7ca35057c9b1f9e87e004fc99e37164f9f6d78743e6ee5b20a4",
+      "originalByteMatch": true
+    },
+    {
+      "member": "native-isolation.mjs",
+      "bytes": 2970,
+      "sha256": "fe6210cd61d2df1a456ce340f4747ca0f0722363d4fed2bd3079e17996c1b54c",
+      "originalByteMatch": true
+    },
+    {
+      "member": "cli-processes.json",
+      "bytes": 154365,
+      "sha256": "e50f3741172b1a2ef2cf60382223466376cd321ef175d01eb71212c86c9306d5",
+      "originalByteMatch": true
+    },
+    {
+      "member": "cli-proof.json",
+      "bytes": 4286,
+      "sha256": "b14ff3136cf6f2177a76ad074f7bf09baa2b44b89f7b16de38f40f8e2f2866d2",
+      "originalByteMatch": true
+    },
+    {
+      "member": "help.process.json",
+      "bytes": 1965,
+      "sha256": "bebfc554c8f091d421a63a1f88f89c5235cea153b26c5908446ef5b33f7b83ad",
+      "originalByteMatch": true
+    },
+    {
+      "member": "legacy-v1.process.json",
+      "bytes": 1496,
+      "sha256": "9aaf4b6978d7fd0c4cc5e1a4752d2304d4af08ebbccbc2142e74c5e8b914b3dc",
+      "originalByteMatch": true
+    },
+    {
+      "member": "legacy-v2.process.json",
+      "bytes": 1497,
+      "sha256": "71009bc2e919fe5783409cd40d48822a957b929f67c8a1b20ea55184623e3939",
+      "originalByteMatch": true
+    },
+    {
+      "member": "native-isolation-proof.json",
+      "bytes": 2307,
+      "sha256": "01b12f00c390ea681b1eaa58dcf2c6817391bd5e2622c759781bcb8639dc2a8a",
+      "originalByteMatch": true
+    },
+    {
+      "member": "off.json",
+      "bytes": 278956,
+      "sha256": "6bf82d1b557b2bc3c5f49a1009da99f26499d8be2c4270cd4680b71c4ed7008f",
+      "originalByteMatch": true
+    },
+    {
+      "member": "off.process.json",
+      "bytes": 36719,
+      "sha256": "da1b73361df586489bf667d3863d2996dd8d818cf0a446fd43bf235e1a16b120",
+      "originalByteMatch": true
+    },
+    {
+      "member": "original-v1.json",
+      "bytes": 282984,
+      "sha256": "b20e41bd9d1f8c9e6caa22572301c0583fd053cb7b5bb4b81e8b5a727cf6224a",
+      "originalByteMatch": true
+    },
+    {
+      "member": "original-v1.process.json",
+      "bytes": 37396,
+      "sha256": "35a752cb9e7161cbb111232517d7e7a48cd22fdb38291e9e24b6e0518cdc7e4f",
+      "originalByteMatch": true
+    },
+    {
+      "member": "unknown-policy.process.json",
+      "bytes": 1493,
+      "sha256": "b245b0e4a1af64d1a5a42014f8e666a9ecbe5300c37e65c4e0c176b999860194",
+      "originalByteMatch": true
+    },
+    {
+      "member": "v1.json",
+      "bytes": 282984,
+      "sha256": "20398c9c2d8892b77055bee5681e5d640d39bb42827b52af08cc34a4a103b2cd",
+      "originalByteMatch": true
+    },
+    {
+      "member": "v1.process.json",
+      "bytes": 37375,
+      "sha256": "31b44130de1cd8d5a8d1864372793f5841a0d19b703832b7cb0254efca46e6ce",
+      "originalByteMatch": true
+    },
+    {
+      "member": "v2.json",
+      "bytes": 334838,
+      "sha256": "7d790ea5ebc8a68f38fc62db83aba0fa7c5a385d60a561c8f9bac1e33ea862c7",
+      "originalByteMatch": true
+    },
+    {
+      "member": "v2.process.json",
+      "bytes": 38015,
+      "sha256": "92ba10968e65eb11e67ec4fd7d0103aca3603cccb8348e17185732592951aedf",
+      "originalByteMatch": true
+    },
+    {
+      "member": "native-isolation-process.log",
+      "bytes": 1789,
+      "sha256": "bd949400a810188127e8cce19edfa5b34a8c0505f0349d222ca0bfd5571bcd9f",
+      "originalByteMatch": true
+    },
+    {
+      "member": "first-hook-proof/cli-processes.json",
+      "bytes": 154376,
+      "sha256": "9361fc617e54961b12593c9fcc631b320b720e046d0aaee6bc6dcb5d5df95c03",
+      "originalByteMatch": true
+    },
+    {
+      "member": "first-hook-proof/cli-proof.json",
+      "bytes": 4181,
+      "sha256": "b9ed2443750dda53edf0c2bb93bc48aa96c39a8bd8b9e05e843f2945cf61c838",
+      "originalByteMatch": true
+    },
+    {
+      "member": "first-hook-proof/legacy-v1.process.json",
+      "bytes": 1497,
+      "sha256": "9e7459e2709046c0b3babc3cb7b3d2768418bf087831b90d75aad6b711a29dbe",
+      "originalByteMatch": true
+    },
+    {
+      "member": "first-hook-proof/legacy-v2.process.json",
+      "bytes": 1497,
+      "sha256": "773b2a573628341993424dc979f35edcb013f69c6912941305b0739e19cfa9d2",
+      "originalByteMatch": true
+    },
+    {
+      "member": "first-hook-proof/native-isolation-process.log",
+      "bytes": 1571,
+      "sha256": "b4aa37cc53e4ff6329773810c197963b26bdede961a78d55c2690bc9b9e5d507",
+      "originalByteMatch": true
+    },
+    {
+      "member": "first-hook-proof/native-isolation-proof.json",
+      "bytes": 2074,
+      "sha256": "829b86c240b752ed68d2991f94c8e3cd825ae74864d94c8bef1041f7addec4ed",
+      "originalByteMatch": true
+    },
+    {
+      "member": "first-hook-proof/off.json",
+      "bytes": 278956,
+      "sha256": "4f92af7abcc2b976dc4ec43328776913bc4b7aff16f879263ed7b1308e73e6f3",
+      "originalByteMatch": true
+    },
+    {
+      "member": "first-hook-proof/off.process.json",
+      "bytes": 36720,
+      "sha256": "759b775fdd35641deaf10f32e98633784e0bab26c51b37ba2c31f33d4cd95096",
+      "originalByteMatch": true
+    },
+    {
+      "member": "first-hook-proof/original-v1.json",
+      "bytes": 282983,
+      "sha256": "0542470d9e2137b902cbe08a17868698c3ac998b84270d987f20456bd68e51a0",
+      "originalByteMatch": true
+    },
+    {
+      "member": "first-hook-proof/original-v1.process.json",
+      "bytes": 37407,
+      "sha256": "14b27078145492d2a97306a56bea032ac05274947bceb94f32c7b230bf981830",
+      "originalByteMatch": true
+    },
+    {
+      "member": "first-hook-proof/package.json",
+      "bytes": 211,
+      "sha256": "38b34423b2e37b851381576f5dd67d9103d951ab7c7ddcf5cacb4112507b34db",
+      "originalByteMatch": true
+    },
+    {
+      "member": "first-hook-proof/unknown-policy.process.json",
+      "bytes": 1493,
+      "sha256": "d1e174b55212997b4fbb9cdc04dcfba023cc5a1f13ab835e407991566ed69393",
+      "originalByteMatch": true
+    },
+    {
+      "member": "first-hook-proof/v1.json",
+      "bytes": 282983,
+      "sha256": "a1341c46755f68e9793a3359df5c7950f2b519a3482b323f3adf71e7685faab4",
+      "originalByteMatch": true
+    },
+    {
+      "member": "first-hook-proof/v1.process.json",
+      "bytes": 37374,
+      "sha256": "92543fb7e37579ca9fdc28e40c10957f08e288491d21e82afe6a53398a69e411",
+      "originalByteMatch": true
+    },
+    {
+      "member": "first-hook-proof/v2.json",
+      "bytes": 334721,
+      "sha256": "f9b88d52d10b5c154b777d4efb95b19441d3fd0d3da002ece9391494afc78d7a",
+      "originalByteMatch": true
+    },
+    {
+      "member": "first-hook-proof/v2.process.json",
+      "bytes": 38014,
+      "sha256": "cc6a1989d272fcfbc85ffcb336a17b5223e0d61cb82ef29ba5980a594a2f65ba",
+      "originalByteMatch": true
+    },
+    {
+      "member": "checkpoint-hook-proof/cli-processes.json",
+      "bytes": 154378,
+      "sha256": "f4d74f1aee8b860a3943f25aa326a4013b9198242ce900bf3509dfd0e3c4287a",
+      "originalByteMatch": true
+    },
+    {
+      "member": "checkpoint-hook-proof/cli-proof.json",
+      "bytes": 4181,
+      "sha256": "b9ed2443750dda53edf0c2bb93bc48aa96c39a8bd8b9e05e843f2945cf61c838",
+      "originalByteMatch": true
+    },
+    {
+      "member": "checkpoint-hook-proof/legacy-v1.process.json",
+      "bytes": 1497,
+      "sha256": "8e1ffa68cac6fb35825d3e5db6b7b2ebfba144ff4e10d3fd3886ce319127a183",
+      "originalByteMatch": true
+    },
+    {
+      "member": "checkpoint-hook-proof/legacy-v2.process.json",
+      "bytes": 1497,
+      "sha256": "cfc371b947bb78c31857131b9aa13b361f7eb282fd397e3491d620c9d5ffc3fb",
+      "originalByteMatch": true
+    },
+    {
+      "member": "checkpoint-hook-proof/native-isolation-proof.json",
+      "bytes": 2074,
+      "sha256": "829b86c240b752ed68d2991f94c8e3cd825ae74864d94c8bef1041f7addec4ed",
+      "originalByteMatch": true
+    },
+    {
+      "member": "checkpoint-hook-proof/off.json",
+      "bytes": 278956,
+      "sha256": "4e3a4ef2bdda0eaeb134fdaca8a0d95813c8cce93a3aafb0bc26ad175030e745",
+      "originalByteMatch": true
+    },
+    {
+      "member": "checkpoint-hook-proof/off.process.json",
+      "bytes": 36720,
+      "sha256": "233c095d0a032f3d66c292d58828c0090f109cdf96c648e2954cca53623def80",
+      "originalByteMatch": true
+    },
+    {
+      "member": "checkpoint-hook-proof/original-v1.json",
+      "bytes": 282984,
+      "sha256": "ab5c319f6d6fbd3147c28e71064f939d8887d0bea79267570434d32827dc2c53",
+      "originalByteMatch": true
+    },
+    {
+      "member": "checkpoint-hook-proof/original-v1.process.json",
+      "bytes": 37408,
+      "sha256": "cad12142da559a20593c225a3c2834a9dc75193ead2d06d75252f1d6c865d5aa",
+      "originalByteMatch": true
+    },
+    {
+      "member": "checkpoint-hook-proof/package.json",
+      "bytes": 211,
+      "sha256": "38b34423b2e37b851381576f5dd67d9103d951ab7c7ddcf5cacb4112507b34db",
+      "originalByteMatch": true
+    },
+    {
+      "member": "checkpoint-hook-proof/unknown-policy.process.json",
+      "bytes": 1493,
+      "sha256": "2810c342d4f2627bdac9986e82814043c4d086c92231ce3c5e23f9cebc1fd702",
+      "originalByteMatch": true
+    },
+    {
+      "member": "checkpoint-hook-proof/v1.json",
+      "bytes": 282984,
+      "sha256": "0d54e53fc5776ebd154175f2b081f948bb8232fa21d2c668b408965392584515",
+      "originalByteMatch": true
+    },
+    {
+      "member": "checkpoint-hook-proof/v1.process.json",
+      "bytes": 37374,
+      "sha256": "1bc916337302b7adc575cb650b4f8c2fe8f87e7c5f845b6e8607b9c5c1d69c45",
+      "originalByteMatch": true
+    },
+    {
+      "member": "checkpoint-hook-proof/v2.json",
+      "bytes": 334838,
+      "sha256": "72ba67ceb131c8ff1a209cf3da88633d5d7804910a0bb2c0353bf0d6b4809e98",
+      "originalByteMatch": true
+    },
+    {
+      "member": "checkpoint-hook-proof/v2.process.json",
+      "bytes": 38015,
+      "sha256": "d4328e758cb26dd5a6cfcf07288d6579286624d68d1fb93407b90a1668e6d4aa",
+      "originalByteMatch": true
+    },
+    {
+      "member": "current-source/client/alerts.js",
+      "bytes": 8935,
+      "sha256": "d3b69d54bafe2ae45bea10c7678823e17937ad3e6bd5a686ada2e3ac8fa2e23f",
+      "originalByteMatch": true
+    },
+    {
+      "member": "current-source/client/keys.js",
+      "bytes": 7361,
+      "sha256": "867e3105b7e4665f8a313c2ab46e23fc3df9407f2163fd6862bb537a01ecd276",
+      "originalByteMatch": true
+    },
+    {
+      "member": "current-source/maps/default.json",
+      "bytes": 14367,
+      "sha256": "e9362e35e16a6982d15c2e45129f213b0af3d526376c18b9c89379aa7bcce04d",
+      "originalByteMatch": true
+    },
+    {
+      "member": "current-source/shared/ai-attention.js",
+      "bytes": 31888,
+      "sha256": "a55272249248bf1a7166da3038fa44794d7db3a163089010f6f3b905ccc3405a",
+      "originalByteMatch": true
+    },
+    {
+      "member": "current-source/shared/ai-commander.js",
+      "bytes": 30976,
+      "sha256": "bef812412db48a0df84d398fb31eef885ce8c9fa9fa3c557dc9e9f874fd1ab34",
+      "originalByteMatch": true
+    },
+    {
+      "member": "current-source/shared/ai-hands.js",
+      "bytes": 67889,
+      "sha256": "277cf75623b9432612db94e0356cfe098695214625605ac130e6984789211c4b",
+      "originalByteMatch": true
+    },
+    {
+      "member": "current-source/shared/ai-mind.js",
+      "bytes": 19553,
+      "sha256": "18bb411cb1d057ce8cffe0b042c21f64b71238ae157b584242df206d708e6b92",
+      "originalByteMatch": true
+    },
+    {
+      "member": "current-source/shared/ai-perception.js",
+      "bytes": 34765,
+      "sha256": "50e611a932728940c5047a61bf4fd7554c696f93880d7907a952d8b39fdcf3fd",
+      "originalByteMatch": true
+    },
+    {
+      "member": "current-source/shared/ai-persona.js",
+      "bytes": 3586,
+      "sha256": "34de5882046129d2000e5502e354123786f3ad7b7133f31e93863dcc36ba66cf",
+      "originalByteMatch": true
+    },
+    {
+      "member": "current-source/shared/ai-priority.js",
+      "bytes": 8934,
+      "sha256": "597c6ae80d69bbe9bb77a794096be4dd98c5f0791cd7da0f7a11359536850ab9",
+      "originalByteMatch": true
+    },
+    {
+      "member": "current-source/shared/ai-rng.js",
+      "bytes": 641,
+      "sha256": "2d2f95266eda45ec4fa4862cb01079fc8464a98d8c88fa97ca89b54a5d6f8b90",
+      "originalByteMatch": true
+    },
+    {
+      "member": "current-source/shared/ai-view.js",
+      "bytes": 13935,
+      "sha256": "4466958fc4b8e7a5d2f2bcb8dc3814e27c817a7480b0c765aa6ee2a98cbc87f7",
+      "originalByteMatch": true
+    },
+    {
+      "member": "current-source/shared/ai.js",
+      "bytes": 91945,
+      "sha256": "685c178754646223ba57cbf6b0d795b0676b0a5cba84f51bfdfcae0cd71bc005",
+      "originalByteMatch": true
+    },
+    {
+      "member": "current-source/shared/alert-events.js",
+      "bytes": 8219,
+      "sha256": "df5f0ae98145034e6893ce0b70c2df8938a2d786cc8de37a1fbbc1a9c8b634b0",
+      "originalByteMatch": true
+    },
+    {
+      "member": "current-source/shared/command-feedback.js",
+      "bytes": 303,
+      "sha256": "e851bb8f7e48291bd75f09be66fdeecbe7dca68dcc82c839c5c033083ce77a07",
+      "originalByteMatch": true
+    },
+    {
+      "member": "current-source/shared/debris-motion.js",
+      "bytes": 4384,
+      "sha256": "d6a0f330f958ec6d78cfcc7f95b209aa5c099369576bf15dfd1c84770287b3b4",
+      "originalByteMatch": true
+    },
+    {
+      "member": "current-source/shared/formation.js",
+      "bytes": 4865,
+      "sha256": "265fa63c8c72588f6c8f67057921fd4daa88f96e9d823faa2e41ba10a7dba005",
+      "originalByteMatch": true
+    },
+    {
+      "member": "current-source/shared/grid.js",
+      "bytes": 2873,
+      "sha256": "30b0a5d67d99e54548d189374684e6b28863ecb7bf92de5221359e5c24fc5afc",
+      "originalByteMatch": true
+    },
+    {
+      "member": "current-source/shared/human-input.js",
+      "bytes": 7966,
+      "sha256": "dec728db485690620e527f912fa2a0b491f545c5bbdaafc4dc25fd1e425763ff",
+      "originalByteMatch": true
+    },
+    {
+      "member": "current-source/shared/local-traffic.js",
+      "bytes": 7408,
+      "sha256": "abad3f6ba310783c3620cec8d599df90dac38bb74eed6509be7d19a8af1490f6",
+      "originalByteMatch": true
+    },
+    {
+      "member": "current-source/shared/navigation.js",
+      "bytes": 19838,
+      "sha256": "c277c12f86c9990e281ae28a703dc374126aa1c737d9dc94a300f8d99c898472",
+      "originalByteMatch": true
+    },
+    {
+      "member": "current-source/shared/projectiles.js",
+      "bytes": 7769,
+      "sha256": "ded50f3bcd60cf79238d5dba48236d54e33b2b8032f704813118d1419708ccd7",
+      "originalByteMatch": true
+    },
+    {
+      "member": "current-source/shared/scenarios.js",
+      "bytes": 16044,
+      "sha256": "93f6cda90224a805cc97f42418b2dc11c49e3ea80654b66e0036de55f9b9ba97",
+      "originalByteMatch": true
+    },
+    {
+      "member": "current-source/shared/sim.js",
+      "bytes": 355291,
+      "sha256": "5e5f4c2d43d048be36d94f0cbcc68fb974c812fc8ab7e071cddb0a59079d89fa",
+      "originalByteMatch": true
+    },
+    {
+      "member": "current-source/shared/story.js",
+      "bytes": 3738,
+      "sha256": "fa33e53e61a7d636959dd1d1916d7b5c3359db72b523dc730b16ceab525d170f",
+      "originalByteMatch": true
+    },
+    {
+      "member": "current-source/shared/structures.js",
+      "bytes": 4029,
+      "sha256": "933b100a9a4c19a0285f5b137cd29b46e44271776f031045a537009e0176e5a2",
+      "originalByteMatch": true
+    },
+    {
+      "member": "current-source/shared/tutorial.js",
+      "bytes": 6342,
+      "sha256": "3aaa5e6affd936dae0ae4741d5173eee5d006132a1705d4b553097d3d8fabf42",
+      "originalByteMatch": true
+    },
+    {
+      "member": "current-source/shared/vehicle-motion.js",
+      "bytes": 12185,
+      "sha256": "05bd1e985a91b3268065a0a84ec4b9aee2c1079aafc4054c38a70677dfb1493b",
+      "originalByteMatch": true
+    },
+    {
+      "member": "current-source/shared/weather.js",
+      "bytes": 7228,
+      "sha256": "faad682d6e40fdc6629533f684e1caeec5c9ae49e26e9922651773727c0bc1e5",
+      "originalByteMatch": true
+    },
+    {
+      "member": "current-source/shared/world-conquest.js",
+      "bytes": 7203,
+      "sha256": "1c251e6d340586d7fb367d4f47938d5898f5239824dac46f054880a3d897aeef",
+      "originalByteMatch": true
+    },
+    {
+      "member": "current-source/shared/world-landforms.js",
+      "bytes": 6645,
+      "sha256": "ecb6916db6785484f8bb813f7745c8c48ccea370f084fea290ff736edc968e34",
+      "originalByteMatch": true
+    },
+    {
+      "member": "current-source/shared/world-layers.js",
+      "bytes": 6770,
+      "sha256": "f51f34b99946192107ada9a7077d787761c1a9cb6b1e316d7b7e243dd273bb22",
+      "originalByteMatch": true
+    },
+    {
+      "member": "current-source/shared/world-roads.js",
+      "bytes": 6491,
+      "sha256": "5fb243b63fa9e2c082135b5b093ee753e8a92c197a076d78067e53f08f1885db",
+      "originalByteMatch": true
+    },
+    {
+      "member": "current-source/shared/world-territories.js",
+      "bytes": 4110,
+      "sha256": "bb33a449d7f2c4d657dbceab8dbd0171eb8ccaa7494cedf9e18707822d8f717f",
+      "originalByteMatch": true
+    },
+    {
+      "member": "current-source/tools/ai-humanity.mjs",
+      "bytes": 97622,
+      "sha256": "5aaf88664e7a8af5504286de5d0b82f640ab2b8b3adc386a13fc8d541e5bf791",
+      "originalByteMatch": true
+    },
+    {
+      "member": "current-source/tools/ai-manual-response-capture-v3.mjs",
+      "bytes": 6778,
+      "sha256": "19e1a93ae79b04f3eb768263052d48b344b086831b261ae40e7da0b004ea8775",
+      "originalByteMatch": true
+    },
+    {
+      "member": "current-source/tools/ai-manual-response-capture.mjs",
+      "bytes": 6600,
+      "sha256": "9ea0b3163788366234c4ff43cdb22f5127158a0a32bcc7e8ec27f978ca3102fc",
+      "originalByteMatch": true
+    },
+    {
+      "member": "current-source/tools/ai-manual-response-policy-v3.mjs",
+      "bytes": 29858,
+      "sha256": "c45e589d661b4980a79181ca987b503054ebb3e7e554f1bc272dd3eab50a6928",
+      "originalByteMatch": true
+    },
+    {
+      "member": "current-source/tools/ai-manual-response-policy.mjs",
+      "bytes": 26551,
+      "sha256": "a5044b77c2b35d25d12d05d8d61135c956e59ee84451f15a3a8f5c0c05470373",
+      "originalByteMatch": true
+    },
+    {
+      "member": "current-source/tools/ai-public-alert-response-v2.mjs",
+      "bytes": 24115,
+      "sha256": "e54b5bbf07f2e637cde592e2f6d079ef3a41f3ac4003dd3d68f70f706104c997",
+      "originalByteMatch": true
+    },
+    {
+      "member": "current-source/tools/ai-public-alert-response.mjs",
+      "bytes": 18485,
+      "sha256": "6d83c1a6a226de399fb386b612cbc54037aabc39bb155ffbaf74251518a30f08",
+      "originalByteMatch": true
+    },
+    {
+      "member": "current-source/tools/ai-screen-v1-oracle.js",
+      "bytes": 28180,
+      "sha256": "6b3894b551f3bf9151372b048b2efc77ffc86a6a173d0871278b27417358b398",
+      "originalByteMatch": true
+    },
+    {
+      "member": "current-source/tools/json-stream.mjs",
+      "bytes": 9588,
+      "sha256": "34f01a09d4996f356a3dafc61084aae27a4bf18cd8e6b63b2fda9e95c5168798",
+      "originalByteMatch": true
+    },
+    {
+      "member": "current-source/tools/km-median-boundary.mjs",
+      "bytes": 1037,
+      "sha256": "e92de6b62be628796cf1390a0b4333b87be32a2083f3d2193cf2dd3ac3755469",
+      "originalByteMatch": true
+    },
+    {
+      "member": "original-collector-source/tools/ai-humanity.mjs",
+      "bytes": 95489,
+      "sha256": "187293809db16f7d571b03c5824aeef54914406b66e9128e328123907546b76a",
+      "originalByteMatch": true
+    },
+    {
+      "member": "manifest.json",
+      "bytes": 26444,
+      "sha256": "fe963b4cfab7d38e56dc4c24cfa0115b74e473a4701b32b62d50c2f4246c7e69",
+      "originalByteMatch": true
+    }
+  ],
+  "qualifications": "Policy and collector proofs predate adopted early-release source; current combined checks remain separate. Historical raw cases are not rescored."
+}

@@ -1,0 +1,29 @@
+[
+  { name: 'open', targetVisible: true, version: 1 },
+  { name: 'smoke', targetVisible: false, version: 2 },
+  { name: 'clearSmoke', targetVisible: true, version: 3 },
+  { name: 'hill', targetVisible: true, version: 3 },
+  { name: 'lowerHill', targetVisible: true, version: 4 },
+  { name: 'sightWall', targetVisible: false, version: 5 },
+  { name: 'clearWall', targetVisible: true, version: 6 },
+  { name: 'motion', targetVisible: true, version: 7 },
+  { name: 'nullHeight', targetVisible: true, version: 8 }
+]
+node:internal/modules/run_main:107
+    triggerUncaughtException(
+    ^
+
+AssertionError [ERR_ASSERTION]: Expected values to be strictly equal:
+
+true !== false
+
+    at file:///tmp/test-v15-terrain-fog-sequence.mjs:21:158 {
+  generatedMessage: true,
+  code: 'ERR_ASSERTION',
+  actual: true,
+  expected: false,
+  operator: 'strictEqual',
+  diff: 'simple'
+}
+
+Node.js v24.21.0

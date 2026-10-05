@@ -1,0 +1,47 @@
+{
+  "motion": [
+    {
+      "mode": "selection",
+      "level": "easy",
+      "seeds": 20,
+      "successes": 19,
+      "maximumDisplacement": 140.23133503819736
+    },
+    {
+      "mode": "selection",
+      "level": "normal",
+      "seeds": 20,
+      "successes": 20,
+      "maximumDisplacement": 73.68087095227293
+    },
+    {
+      "mode": "selection",
+      "level": "hard",
+      "seeds": 20,
+      "successes": 20,
+      "maximumDisplacement": 42.78244119809392
+    },
+    {
+      "mode": "target",
+      "level": "easy",
+      "seeds": 20,
+      "successes": 20,
+      "maximumDisplacement": 137.8545327494146
+    },
+    {
+      "mode": "target",
+      "level": "normal",
+      "seeds": 20,
+      "successes": 20,
+      "maximumDisplacement": 73.68087095227315
+    },
+    {
+      "mode": "target",
+      "level": "hard",
+      "seeds": 20,
+      "successes": 20,
+      "maximumDisplacement": 42.78244119809415
+    }
+  ],
+  "contracts": "stationary endpoint error, deterministic travel, paid motor/RNG/deadline/caps, stale/offscreen/dead/full-pose privacy, actual subset formation/context, named actor, stance and engineering negatives"
+}

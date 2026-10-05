@@ -1,0 +1,157 @@
+{
+  "schema": "ww2-ai-lab-byte-manifest-v1",
+  "archive": "stationary-armor-lab.tar.gz",
+  "declaredScope": "Original complete native raw timelines and recorded scoring populations. No simulated experiment or rescoring is performed by packaging.",
+  "members": {
+    "PROPOSAL.md": {
+      "source": "/tmp/ai-lab-stationary-armor-fallback/PROPOSAL.md",
+      "bytes": 5498,
+      "sha256": "f23772ef2e20cc1fc3a565112859c2e03bb32caadc305834ed3c288246f37788"
+    },
+    "adoption-manifest.json": {
+      "source": "/tmp/ai-lab-stationary-armor-fallback/adoption-manifest.json",
+      "bytes": 324,
+      "sha256": "75c9a30ec3f40de01c0ee7a72dbbad9955ce2a32c49e3e21ffaba51e4135e4a0"
+    },
+    "captured-combined.mjs": {
+      "source": "/tmp/ai-lab-stationary-armor-fallback/captured-combined.mjs",
+      "bytes": 14469,
+      "sha256": "9ff488d746b01f596e92e62b00c55a78e8afbf6d9e5575ace4441992cc042dbc"
+    },
+    "captured-control.mjs": {
+      "source": "/tmp/ai-lab-stationary-armor-fallback/captured-control.mjs",
+      "bytes": 14465,
+      "sha256": "2f93cedb2de2b94807df632edd575592c26ecfd06caeb3497abb51d0178de936"
+    },
+    "captured-lab.mjs": {
+      "source": "/tmp/ai-lab-stationary-armor-fallback/captured-lab.mjs",
+      "bytes": 14433,
+      "sha256": "0fbbdd8acfec13c5129fda8ce3ac1cd3ee6793eb3d244367c6909574e0a5ab22"
+    },
+    "combined-pair-results.json": {
+      "source": "/tmp/ai-lab-stationary-armor-fallback/combined-pair-results.json",
+      "bytes": 40107,
+      "sha256": "0d545e4999839ba85a4d3c85dbbab2c39cbe177b41eb2be8bc0979a6c2d96834"
+    },
+    "combined-pair.log": {
+      "source": "/tmp/ai-lab-stationary-armor-fallback/combined-pair.log",
+      "bytes": 502,
+      "sha256": "61d8f2b61f10d382e3a887ed27651f3174ef355f642d9d5c023f2f3cb4670a3e"
+    },
+    "combined-pair.mjs": {
+      "source": "/tmp/ai-lab-stationary-armor-fallback/combined-pair.mjs",
+      "bytes": 2246,
+      "sha256": "709b05c449aeb83c8fb86d11b9af0a1aafe8c589cd0c374355c3ef7b52368a86"
+    },
+    "current-combined-portable-treasury-corrected.log": {
+      "source": "/tmp/ai-lab-stationary-armor-fallback/current-combined-portable-treasury-corrected.log",
+      "bytes": 3148,
+      "sha256": "34ea142fb9a5b051beb715c4b706d8660c0263086a8f344b42a816b929b3fe53"
+    },
+    "current-combined-portable.log": {
+      "source": "/tmp/ai-lab-stationary-armor-fallback/current-combined-portable.log",
+      "bytes": 3148,
+      "sha256": "34ea142fb9a5b051beb715c4b706d8660c0263086a8f344b42a816b929b3fe53"
+    },
+    "development/corrections.md": {
+      "source": "/tmp/ai-lab-final-evidence/development-corrections.md",
+      "bytes": 996,
+      "sha256": "19c9988c737f50d0f65481ffb708fb597cd544be034ca80511b10c884d55bd91"
+    },
+    "development/original-test.js": {
+      "source": "/tmp/ai-lab-stationary-armor-fallback/runtime/test-engine-ai-stationary-armor-hit.js",
+      "bytes": 8067,
+      "sha256": "187d542917346b38251b81f010c62c72f210b2b43c0b37693b9bc30449c9fb3c"
+    },
+    "easy-combined.json": {
+      "source": "/tmp/ai-lab-stationary-armor-fallback/easy-combined.json",
+      "bytes": 1082821,
+      "sha256": "886c0a44b13fa198a4f33c081104e296f1284146ec9a112b8d1fb64ed7c9f35f"
+    },
+    "easy-cover-only.json": {
+      "source": "/tmp/ai-lab-stationary-armor-fallback/easy-cover-only.json",
+      "bytes": 1060758,
+      "sha256": "f16056a6c23c806abebdb6fca28576d673cdde09047676678f44e16f8fbbcfdc"
+    },
+    "evidence-manifest.json": {
+      "source": "/tmp/ai-lab-stationary-armor-fallback/evidence-manifest.json",
+      "bytes": 1635,
+      "sha256": "a56169744b700fc2282ee2d243c6743758c566c7a80eaf4b2bded689c995d0d7"
+    },
+    "hard-combined.json": {
+      "source": "/tmp/ai-lab-stationary-armor-fallback/hard-combined.json",
+      "bytes": 1108338,
+      "sha256": "8d70a0410d7fa7ef06bcfd3c1f40a42471f8a3e1e21fc11da8fd4adb006ca6bc"
+    },
+    "hard-cover-only.json": {
+      "source": "/tmp/ai-lab-stationary-armor-fallback/hard-cover-only.json",
+      "bytes": 1088761,
+      "sha256": "9035c6c805b8f741d777b436c5c6ffb427d37c759e7f67643069d47183f16938"
+    },
+    "integration-before-player-slot-fixture.patch": {
+      "source": "/tmp/ai-lab-stationary-armor-fallback/integration-before-player-slot-fixture.patch",
+      "bytes": 12072,
+      "sha256": "6c274076aa4855b175aba12a2a2dffbdb6bb1f86ad933c4afbaca69f4887be8a"
+    },
+    "integration.patch": {
+      "source": "/tmp/ai-lab-stationary-armor-fallback/integration.patch",
+      "bytes": 12081,
+      "sha256": "e6d97b986f554a65a5d5dbf09fed0e269217b2a2c2581293bf5baa06c02588a0"
+    },
+    "native-positive.json": {
+      "source": "/tmp/ai-lab-stationary-armor-fallback/native-positive.json",
+      "bytes": 1160882,
+      "sha256": "66587c326837541e679f94f0f745b7c5e126acf806a062ea0766a6444698f8c0"
+    },
+    "normal-combined.json": {
+      "source": "/tmp/ai-lab-stationary-armor-fallback/normal-combined.json",
+      "bytes": 1142588,
+      "sha256": "33356c5ea653c46600f57c62f3f081241628b528501b5ab298f86c05751e4437"
+    },
+    "normal-cover-only.json": {
+      "source": "/tmp/ai-lab-stationary-armor-fallback/normal-cover-only.json",
+      "bytes": 1104263,
+      "sha256": "eae489856158bda36879daf5fa378f37cb19a9c62ac46b91a4f3b2c7e5e9384a"
+    },
+    "portable.log": {
+      "source": "/tmp/ai-lab-stationary-armor-fallback/portable.log",
+      "bytes": 2294,
+      "sha256": "097bf37b0b33569b599ad9d91990cdd9d826498a1924cf15f253df5621812ece"
+    },
+    "portable/test-engine-ai-stationary-armor-hit.js": {
+      "source": "/tmp/ai-lab-stationary-armor-fallback/current-combined/test-engine-ai-stationary-armor-hit.js",
+      "bytes": 8076,
+      "sha256": "3ecc2d7ac314d42aca443a885e9c2468291ba8b64d8423d845eb162e4fcbd16d"
+    },
+    "quick.log": {
+      "source": "/tmp/ai-lab-stationary-armor-fallback/quick.log",
+      "bytes": 8864,
+      "sha256": "ee61edb0d6fa0a8c22339997c968b0634aa1e1c439841424c7f44dca208fc706"
+    },
+    "quick.mjs": {
+      "source": "/tmp/ai-lab-stationary-armor-fallback/quick.mjs",
+      "bytes": 801,
+      "sha256": "b6d7ea9e85c46dc8420b45159666e71d5d212276f5d345bdb06e7e413b9b87c6"
+    },
+    "source-declarations.json": {
+      "source": "/tmp/ai-lab-final-evidence/source-declarations.json",
+      "bytes": 303351,
+      "sha256": "e790bbca65d65f48c5d65a9baff82979052452c90501f9fac58aae821e059a19"
+    },
+    "source-excerpts/combined-ai.js": {
+      "source": "/tmp/ai-lab-stationary-armor-fallback/current-combined/shared/ai.js",
+      "bytes": 91476,
+      "sha256": "84e5d86a69c1a3832c393e18346f4243e2c4697b1ad0a8a88eeb8c82130c7046"
+    },
+    "source-excerpts/cover-only-ai.js": {
+      "source": "/tmp/ai-lab-stationary-armor-fallback/current-control/shared/ai.js",
+      "bytes": 88355,
+      "sha256": "a903af250df0ea8d738a63ee75c43eb66b40c9b14e63333598ab0b76c68fc5b3"
+    },
+    "source-excerpts/original-candidate-ai.js": {
+      "source": "/tmp/ai-lab-stationary-armor-fallback/runtime/shared/ai.js",
+      "bytes": 90644,
+      "sha256": "865ee530ca9f5bf0187bd0800ea94ee50bd15c9026f7fa947c438adf61768577"
+    }
+  }
+}

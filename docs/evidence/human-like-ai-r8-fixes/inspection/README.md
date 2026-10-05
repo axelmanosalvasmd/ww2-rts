@@ -1,0 +1,9 @@
+# R8 inspection fix and independent checks
+
+This archive preserves the original42-member agent package in full, plus its exact original tar.gz. Every original tar member was compared with its physical file before copying. Rejected broad and inspection-only candidate logs, first native failures, diagnostics, full final native input and command graphs, unchanged fixture clocks and source manifests remain intact. The450 recorded agent source files were checked against their actual physical bytes; relevant executable dependencies are included without duplicating the copied browser assets tree.
+
+The inspection rule separates a useful local HUD question from an accepted useful response. Unknown readiness can justify reading the actually affected actor, while the accepted response still requires the original strict purpose and effect checks. The original inspection and inspection-priority failures remain beside all later results. No original assertion, clock or deadline was waived.
+
+Agent checks predate ROOT adoption. Their final candidate priority8bf45be4 and commander54ac5736 match the adopted ROOT bytes exactly. ROOT independently ran all five complete modules: inspection, inspection-priority, priority, purpose and manual-response-v3. All exited0 with recorded before/after source equality; complete original logs and receipts are included separately. These focused results do not certify the concurrently running full suite or a new campaign.
+
+Historical failure records can point to ROOT files that now contain the fix. Their manifests remain untouched. The separate source qualification maps each old baseline hash to the read-only original full archive and includes those matching physical source copies. Candidate, baseline and later ROOT evidence remain distinguishable. Packaging copied and verified bytes only, with no tests, simulations, signals, source edits or commits.

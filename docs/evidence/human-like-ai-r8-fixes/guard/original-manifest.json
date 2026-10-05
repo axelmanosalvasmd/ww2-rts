@@ -1,0 +1,1015 @@
+{
+  "excludesSelf": true,
+  "files": [
+    {
+      "path": "REVIEW.md",
+      "bytes": 7754,
+      "sha256": "08dea3fcceb4ef34e6fc9f159ec02b1170d94a192f2940a796af5e9a9d042fcf"
+    },
+    {
+      "path": "ai-attention.js.patch",
+      "bytes": 5451,
+      "sha256": "48f94cd0d54d5921bf354a4a82eaba502bfc13241c71605970fd83580200ead6"
+    },
+    {
+      "path": "ai-commander.js.patch",
+      "bytes": 1442,
+      "sha256": "c813d9ea86cbfec0014aaec401c845211d4182d79e72e47763d2eb9e0ff358be"
+    },
+    {
+      "path": "baseline/engineer-controls.json",
+      "bytes": 27629,
+      "sha256": "120af4d1a6c064a4d52113206438b1e1cc5c7497df91ebfe8f7c5ab4c8097184"
+    },
+    {
+      "path": "baseline/episode-library.mjs",
+      "bytes": 7898,
+      "sha256": "e342ee979fe8f0c02a09f7ab7917f9828ec455a76e07fb4a1202f59482c0bf64"
+    },
+    {
+      "path": "baseline/flank-easy-1.json",
+      "bytes": 2078342,
+      "sha256": "d2869e6ab3e892764ec1f5848780759702af6a8b14dc802abc6508091f2db179"
+    },
+    {
+      "path": "baseline/flank-hard-1.json",
+      "bytes": 2161504,
+      "sha256": "2f0b5042bb0b7567b88159d8a987bdba2263c66ae1e0135d559eaad3ed6e836b"
+    },
+    {
+      "path": "baseline/flank-normal-1.json",
+      "bytes": 2045246,
+      "sha256": "0a86b281bfa1ea6b94d6accfc2b6c0eb1234f499f59c49b7d097175a670a588f"
+    },
+    {
+      "path": "baseline/guardgrenade-hard-1.json",
+      "bytes": 601068,
+      "sha256": "451ebf4971ebe765989ab5a9f34f45e0a8810779c310434457fba747944f04b6"
+    },
+    {
+      "path": "baseline/lateflank-hard-1.json",
+      "bytes": 2231060,
+      "sha256": "17d1e5315d91f60b62129cc5a2adeea5139f8fbcb2dd1d26588f52f954755424"
+    },
+    {
+      "path": "baseline/plainidle-hard-1.json",
+      "bytes": 786807,
+      "sha256": "d0120d028d2b845587fcc9203d9c5e6492cfd53f4cb5f981b56c85fc0a1cac06"
+    },
+    {
+      "path": "baseline/quietguard-hard-1.json",
+      "bytes": 1880059,
+      "sha256": "8039c7411060cbd2c205f9aeca782ce3e5e3e86711e6694af4aaee4b5e59bf89"
+    },
+    {
+      "path": "baseline/source/client/keys.js",
+      "bytes": 7361,
+      "sha256": "867e3105b7e4665f8a313c2ab46e23fc3df9407f2163fd6862bb537a01ecd276"
+    },
+    {
+      "path": "baseline/source/package.json",
+      "bytes": 18,
+      "sha256": "1239d4d885dcad42201a27ed9324f8f0f760b78700d8db9ced39a511cffe7eae"
+    },
+    {
+      "path": "baseline/source/shared/ai-attention.js",
+      "bytes": 27980,
+      "sha256": "07c48dbdcc92f326eeb52222518f274dcf05a4d746dfd474126d932ed05ca7ba"
+    },
+    {
+      "path": "baseline/source/shared/ai-commander.js",
+      "bytes": 30709,
+      "sha256": "19112a1e4c94da72d62564d940497d38cf7e93e3086c9bde3db9c29d088703df"
+    },
+    {
+      "path": "baseline/source/shared/ai-hands.js",
+      "bytes": 63608,
+      "sha256": "8bd373c3afb8261bf8ca2a53f24512522b91f0ddc6568eaa61dbf7039684b9a3"
+    },
+    {
+      "path": "baseline/source/shared/ai-mind.js",
+      "bytes": 19553,
+      "sha256": "18bb411cb1d057ce8cffe0b042c21f64b71238ae157b584242df206d708e6b92"
+    },
+    {
+      "path": "baseline/source/shared/ai-perception.js",
+      "bytes": 34765,
+      "sha256": "50e611a932728940c5047a61bf4fd7554c696f93880d7907a952d8b39fdcf3fd"
+    },
+    {
+      "path": "baseline/source/shared/ai-persona.js",
+      "bytes": 3586,
+      "sha256": "34de5882046129d2000e5502e354123786f3ad7b7133f31e93863dcc36ba66cf"
+    },
+    {
+      "path": "baseline/source/shared/ai-priority.js",
+      "bytes": 5884,
+      "sha256": "6b5d5a8a22968209fe03c8235648a859b36919b9eafd44cd390a8252ab6b3542"
+    },
+    {
+      "path": "baseline/source/shared/ai-rng.js",
+      "bytes": 641,
+      "sha256": "2d2f95266eda45ec4fa4862cb01079fc8464a98d8c88fa97ca89b54a5d6f8b90"
+    },
+    {
+      "path": "baseline/source/shared/ai-view.js",
+      "bytes": 13935,
+      "sha256": "4466958fc4b8e7a5d2f2bcb8dc3814e27c817a7480b0c765aa6ee2a98cbc87f7"
+    },
+    {
+      "path": "baseline/source/shared/ai.js",
+      "bytes": 91781,
+      "sha256": "c99be94a933f5c122d8ba7f32750f1a4bff66bf2875c8f3ec8e86322eb3d7e43"
+    },
+    {
+      "path": "baseline/source/shared/alert-events.js",
+      "bytes": 8219,
+      "sha256": "df5f0ae98145034e6893ce0b70c2df8938a2d786cc8de37a1fbbc1a9c8b634b0"
+    },
+    {
+      "path": "baseline/source/shared/command-feedback.js",
+      "bytes": 303,
+      "sha256": "e851bb8f7e48291bd75f09be66fdeecbe7dca68dcc82c839c5c033083ce77a07"
+    },
+    {
+      "path": "baseline/source/shared/debris-motion.js",
+      "bytes": 4384,
+      "sha256": "d6a0f330f958ec6d78cfcc7f95b209aa5c099369576bf15dfd1c84770287b3b4"
+    },
+    {
+      "path": "baseline/source/shared/formation.js",
+      "bytes": 4865,
+      "sha256": "265fa63c8c72588f6c8f67057921fd4daa88f96e9d823faa2e41ba10a7dba005"
+    },
+    {
+      "path": "baseline/source/shared/grid.js",
+      "bytes": 2873,
+      "sha256": "30b0a5d67d99e54548d189374684e6b28863ecb7bf92de5221359e5c24fc5afc"
+    },
+    {
+      "path": "baseline/source/shared/human-input.js",
+      "bytes": 7966,
+      "sha256": "dec728db485690620e527f912fa2a0b491f545c5bbdaafc4dc25fd1e425763ff"
+    },
+    {
+      "path": "baseline/source/shared/local-traffic.js",
+      "bytes": 7408,
+      "sha256": "abad3f6ba310783c3620cec8d599df90dac38bb74eed6509be7d19a8af1490f6"
+    },
+    {
+      "path": "baseline/source/shared/navigation.js",
+      "bytes": 19838,
+      "sha256": "c277c12f86c9990e281ae28a703dc374126aa1c737d9dc94a300f8d99c898472"
+    },
+    {
+      "path": "baseline/source/shared/projectiles.js",
+      "bytes": 7769,
+      "sha256": "ded50f3bcd60cf79238d5dba48236d54e33b2b8032f704813118d1419708ccd7"
+    },
+    {
+      "path": "baseline/source/shared/scenarios.js",
+      "bytes": 16044,
+      "sha256": "93f6cda90224a805cc97f42418b2dc11c49e3ea80654b66e0036de55f9b9ba97"
+    },
+    {
+      "path": "baseline/source/shared/sim.js",
+      "bytes": 355291,
+      "sha256": "5e5f4c2d43d048be36d94f0cbcc68fb974c812fc8ab7e071cddb0a59079d89fa"
+    },
+    {
+      "path": "baseline/source/shared/story.js",
+      "bytes": 3738,
+      "sha256": "fa33e53e61a7d636959dd1d1916d7b5c3359db72b523dc730b16ceab525d170f"
+    },
+    {
+      "path": "baseline/source/shared/structures.js",
+      "bytes": 4029,
+      "sha256": "933b100a9a4c19a0285f5b137cd29b46e44271776f031045a537009e0176e5a2"
+    },
+    {
+      "path": "baseline/source/shared/tutorial.js",
+      "bytes": 6342,
+      "sha256": "3aaa5e6affd936dae0ae4741d5173eee5d006132a1705d4b553097d3d8fabf42"
+    },
+    {
+      "path": "baseline/source/shared/vehicle-motion.js",
+      "bytes": 12185,
+      "sha256": "05bd1e985a91b3268065a0a84ec4b9aee2c1079aafc4054c38a70677dfb1493b"
+    },
+    {
+      "path": "baseline/source/shared/weather.js",
+      "bytes": 7228,
+      "sha256": "faad682d6e40fdc6629533f684e1caeec5c9ae49e26e9922651773727c0bc1e5"
+    },
+    {
+      "path": "baseline/source/shared/world-conquest.js",
+      "bytes": 7203,
+      "sha256": "1c251e6d340586d7fb367d4f47938d5898f5239824dac46f054880a3d897aeef"
+    },
+    {
+      "path": "baseline/source/shared/world-landforms.js",
+      "bytes": 6645,
+      "sha256": "ecb6916db6785484f8bb813f7745c8c48ccea370f084fea290ff736edc968e34"
+    },
+    {
+      "path": "baseline/source/shared/world-layers.js",
+      "bytes": 6770,
+      "sha256": "f51f34b99946192107ada9a7077d787761c1a9cb6b1e316d7b7e243dd273bb22"
+    },
+    {
+      "path": "baseline/source/shared/world-roads.js",
+      "bytes": 6491,
+      "sha256": "5fb243b63fa9e2c082135b5b093ee753e8a92c197a076d78067e53f08f1885db"
+    },
+    {
+      "path": "baseline/source/shared/world-territories.js",
+      "bytes": 4110,
+      "sha256": "bb33a449d7f2c4d657dbceab8dbd0171eb8ccaa7494cedf9e18707822d8f717f"
+    },
+    {
+      "path": "baseline/source/test-engine-ai-local-engineer.js",
+      "bytes": 7167,
+      "sha256": "ce9d2ce219afc4e993acdd7fd3a763a9f22dfa40a0fe287448cfbe7ac3f0925c"
+    },
+    {
+      "path": "baseline/source/tools/ai-balance.mjs",
+      "bytes": 14906,
+      "sha256": "bf5b5ea07e3bf0eea2e4134647457191d9fe212a05b138677817f0cf5ec8db4b"
+    },
+    {
+      "path": "baseline/source/tools/ai-humanity.mjs",
+      "bytes": 95489,
+      "sha256": "187293809db16f7d571b03c5824aeef54914406b66e9128e328123907546b76a"
+    },
+    {
+      "path": "baseline/source/tools/ai-lab-browser.mjs",
+      "bytes": 8245,
+      "sha256": "9017bac6153e3df8e55428a1bb89fb1586afa67402de3526d6c28e68507b49c9"
+    },
+    {
+      "path": "baseline/source/tools/ai-lab-node.mjs",
+      "bytes": 1125,
+      "sha256": "3a673bac091d805ee0807862ba3c580bd6c75f36724521ceee582406529a8657"
+    },
+    {
+      "path": "baseline/source/tools/ai-lab-report.mjs",
+      "bytes": 3951,
+      "sha256": "f13340cb3513a5d430ebb023947e4bc9bdede94c56c19a61155505bc6563e06e"
+    },
+    {
+      "path": "baseline/source/tools/ai-lab-runner.mjs",
+      "bytes": 13565,
+      "sha256": "d5f2e87078e6f1ea35300a653d86e0200aea554681ec60c4bd83eacabe17fb25"
+    },
+    {
+      "path": "baseline/source/tools/ai-lab-server.mjs",
+      "bytes": 2169,
+      "sha256": "fb9124d7f4a0d18fbdc18a89964d190987f7e1a084807b43cc06cdefa1ac6a9a"
+    },
+    {
+      "path": "baseline/source/tools/ai-lab.mjs",
+      "bytes": 2832,
+      "sha256": "4aabd289dd136b04febfe0b6829628e542d7adb2492a774800a8f147a824100b"
+    },
+    {
+      "path": "baseline/source/tools/ai-manual-response-capture-v3.mjs",
+      "bytes": 6778,
+      "sha256": "19e1a93ae79b04f3eb768263052d48b344b086831b261ae40e7da0b004ea8775"
+    },
+    {
+      "path": "baseline/source/tools/ai-manual-response-capture.mjs",
+      "bytes": 6600,
+      "sha256": "9ea0b3163788366234c4ff43cdb22f5127158a0a32bcc7e8ec27f978ca3102fc"
+    },
+    {
+      "path": "baseline/source/tools/ai-manual-response-policy-v3.mjs",
+      "bytes": 29858,
+      "sha256": "c45e589d661b4980a79181ca987b503054ebb3e7e554f1bc272dd3eab50a6928"
+    },
+    {
+      "path": "baseline/source/tools/ai-manual-response-policy.mjs",
+      "bytes": 26551,
+      "sha256": "a5044b77c2b35d25d12d05d8d61135c956e59ee84451f15a3a8f5c0c05470373"
+    },
+    {
+      "path": "baseline/source/tools/ai-public-alert-response.mjs",
+      "bytes": 15189,
+      "sha256": "7974a9d20da09b9df2a3b8cb296e385d2ac2f94374be24396ac6df275c3cb829"
+    },
+    {
+      "path": "baseline/source/tools/balance.mjs",
+      "bytes": 10497,
+      "sha256": "42b7c3355c2fd06513fee58c7d04bc2783050c7259b1329426f7c2dc50ab9d18"
+    },
+    {
+      "path": "baseline/source/tools/bench-engine.mjs",
+      "bytes": 32433,
+      "sha256": "4e84f2b7f86009b9ee47585bc6fc592b50defc2cea0cc1d9cc484ed85d0568be"
+    },
+    {
+      "path": "baseline/source/tools/bench-ground.mjs",
+      "bytes": 3281,
+      "sha256": "5d0e37369daf978eb29317409ac601f1d5df13aec2c835b69ccb41e77a76bd30"
+    },
+    {
+      "path": "baseline/source/tools/bench-move.mjs",
+      "bytes": 4599,
+      "sha256": "5b9577bb58e6f7a67593f59262e20c9f7e402449ac1343cf2b6bc1e6ef378c0a"
+    },
+    {
+      "path": "baseline/source/tools/bench-world-conquest.mjs",
+      "bytes": 13956,
+      "sha256": "4a24bd8b0d7e3fdffb2f1811b64993f3ef4373ebb019a69cdab72b68d5a45ada"
+    },
+    {
+      "path": "baseline/source/tools/bench.mjs",
+      "bytes": 8183,
+      "sha256": "0c026604acaba5ec8f477080b83a948e901d4724c8bf06d325d334a1b244b49d"
+    },
+    {
+      "path": "baseline/source/tools/build-audio.mjs",
+      "bytes": 13322,
+      "sha256": "e066f7bef14691def1edf934d574fd29b0d3f489b43d15c1b4f8dcdfd14f7714"
+    },
+    {
+      "path": "baseline/source/tools/build-fx-atlas.mjs",
+      "bytes": 13451,
+      "sha256": "3e26da8a6fcb1f5887926a5853c7a0873fe105a55ba8a66d1f91be12423753ec"
+    },
+    {
+      "path": "baseline/source/tools/check-new-models.mjs",
+      "bytes": 1309,
+      "sha256": "f8092868eb3ca7ff75319ec01f5581379e07aff3e73ec9406495ff6e51b61b90"
+    },
+    {
+      "path": "baseline/source/tools/diag.mjs",
+      "bytes": 4386,
+      "sha256": "c554e37684d21821a0f5c7036904178f7e7388c9d26337887b378c1e4cde5e7b"
+    },
+    {
+      "path": "baseline/source/tools/genmap-bridge.mjs",
+      "bytes": 8003,
+      "sha256": "94c6b6850b521bae65feedd49e441c014d407086ba4c1240b13d320144c3b909"
+    },
+    {
+      "path": "baseline/source/tools/genmap-islands.mjs",
+      "bytes": 3060,
+      "sha256": "73b79b2d7771a0cefb55283d5845cae4d5e26dca14da9122178ed05c556b96c6"
+    },
+    {
+      "path": "baseline/source/tools/genmap-trenches.mjs",
+      "bytes": 4576,
+      "sha256": "14c5d6ede58df9cd3ca282e599d64865d9ea3131c48f7243ed76dc7c61fe432c"
+    },
+    {
+      "path": "baseline/source/tools/hash-json-native.mjs",
+      "bytes": 3875,
+      "sha256": "84d9f9c2273071831d86fe88e4244bda6013c762412ef837a5dc4c90a08e41c5"
+    },
+    {
+      "path": "baseline/source/tools/horde.mjs",
+      "bytes": 2223,
+      "sha256": "d23d6c320497a55df56222297256d084dba53d6851934f2212bd6e0be00521af"
+    },
+    {
+      "path": "baseline/source/tools/json-stream.mjs",
+      "bytes": 9588,
+      "sha256": "34f01a09d4996f356a3dafc61084aae27a4bf18cd8e6b63b2fda9e95c5168798"
+    },
+    {
+      "path": "baseline/source/tools/km-median-boundary.mjs",
+      "bytes": 1037,
+      "sha256": "e92de6b62be628796cf1390a0b4333b87be32a2083f3d2193cf2dd3ac3755469"
+    },
+    {
+      "path": "baseline/source/tools/mapstats.mjs",
+      "bytes": 8721,
+      "sha256": "3ec678dda56d0a056dd70046199cb1120e5821dfc378f9876a2e29cfbbfff442"
+    },
+    {
+      "path": "baseline/source/tools/mapwork.mjs",
+      "bytes": 8411,
+      "sha256": "668a2464bddcab7377dd9f02fb0c695c13c02bceb2f15a466624d77e8f7223e7"
+    },
+    {
+      "path": "baseline/source/tools/movement-lab.mjs",
+      "bytes": 2177,
+      "sha256": "4aa4fd104a888e5e587a29e92ad4b1a26b75a25fe58f8c3fe7fedd88bc5dcf4c"
+    },
+    {
+      "path": "baseline/source/tools/preview-world-generation.mjs",
+      "bytes": 1768,
+      "sha256": "f05dba5305cb8a16c11543b19c7520021998e5e2aefb938cc9d43525b6090e99"
+    },
+    {
+      "path": "baseline/source/tools/roads.mjs",
+      "bytes": 1917,
+      "sha256": "1ba0af74d2e0436105ed4ebcd9f7a519fe2e4d783739613f496488cea1af180a"
+    },
+    {
+      "path": "baseline/source/tools/serve-movement-lab.mjs",
+      "bytes": 3108,
+      "sha256": "1776d74dfe20dbe513e95385ed1ba792c18582e391be8f9da1a21f7e63f5095a"
+    },
+    {
+      "path": "baseline/source/tools/test-public-lobby-browser.mjs",
+      "bytes": 5036,
+      "sha256": "666cb37cbe27526abd35131b3ce68968d4079973a643b3a89f3be2fa9019f298"
+    },
+    {
+      "path": "baseline/source/tools/test-world-waterway-seeds.mjs",
+      "bytes": 1721,
+      "sha256": "69b9d3f48ff30249de5a863c38fe12b5b5365951e037d7d7ba2d0bacdb3a3e13"
+    },
+    {
+      "path": "baseline/source/tools/woods.mjs",
+      "bytes": 2239,
+      "sha256": "33012d24d1a7686804e0b1dcb773a24931e72dc129114e463716c5834dbb25f3"
+    },
+    {
+      "path": "candidate/engineer-controls.json",
+      "bytes": 27629,
+      "sha256": "120af4d1a6c064a4d52113206438b1e1cc5c7497df91ebfe8f7c5ab4c8097184"
+    },
+    {
+      "path": "candidate/episode-library.mjs",
+      "bytes": 7899,
+      "sha256": "ed1fcb601988f041b826af5138c0b0b8b8d22b337b4a731c49a903671fde4dd6"
+    },
+    {
+      "path": "candidate/flank-easy-1.json",
+      "bytes": 2060280,
+      "sha256": "e24ade3211125110baa15489843ecc0258855dc541bdace0abee53ec7e80c86b"
+    },
+    {
+      "path": "candidate/flank-hard-1.json",
+      "bytes": 2190942,
+      "sha256": "e887c17f790e4ec3be0646fc946ad1c7aa56e4174af91384f6dadb11c79479a0"
+    },
+    {
+      "path": "candidate/flank-normal-1.json",
+      "bytes": 2313382,
+      "sha256": "81264d7e94b38793aef1513668848fbba235910c4282c7e89f713d3f582955c9"
+    },
+    {
+      "path": "candidate/guardgrenade-hard-1.json",
+      "bytes": 601004,
+      "sha256": "fc0b71b0f87d7ced358626a7b7e5af1c02559e606888bcc6c8757d846399a8e8"
+    },
+    {
+      "path": "candidate/lateflank-hard-1.json",
+      "bytes": 2107292,
+      "sha256": "92c3c300cbc6c5484d8f9e164f59266138a8b1ac42251f8916fae05ce30b1c57"
+    },
+    {
+      "path": "candidate/plainidle-hard-1.json",
+      "bytes": 786807,
+      "sha256": "d0120d028d2b845587fcc9203d9c5e6492cfd53f4cb5f981b56c85fc0a1cac06"
+    },
+    {
+      "path": "candidate/quietguard-hard-1.json",
+      "bytes": 2025420,
+      "sha256": "2fe65a340f9a3b357079b22eb0b751085b2ad00606aee7d86b3dbf56537036de"
+    },
+    {
+      "path": "candidate/source/client/keys.js",
+      "bytes": 7361,
+      "sha256": "867e3105b7e4665f8a313c2ab46e23fc3df9407f2163fd6862bb537a01ecd276"
+    },
+    {
+      "path": "candidate/source/package.json",
+      "bytes": 18,
+      "sha256": "1239d4d885dcad42201a27ed9324f8f0f760b78700d8db9ced39a511cffe7eae"
+    },
+    {
+      "path": "candidate/source/shared/ai-attention.js",
+      "bytes": 31888,
+      "sha256": "a55272249248bf1a7166da3038fa44794d7db3a163089010f6f3b905ccc3405a"
+    },
+    {
+      "path": "candidate/source/shared/ai-commander.js",
+      "bytes": 30837,
+      "sha256": "265897bb68678ef9cc0aade29154becde84c114f56f8ff8745fbcd58b7174af5"
+    },
+    {
+      "path": "candidate/source/shared/ai-hands.js",
+      "bytes": 63608,
+      "sha256": "8bd373c3afb8261bf8ca2a53f24512522b91f0ddc6568eaa61dbf7039684b9a3"
+    },
+    {
+      "path": "candidate/source/shared/ai-mind.js",
+      "bytes": 19553,
+      "sha256": "18bb411cb1d057ce8cffe0b042c21f64b71238ae157b584242df206d708e6b92"
+    },
+    {
+      "path": "candidate/source/shared/ai-perception.js",
+      "bytes": 34765,
+      "sha256": "50e611a932728940c5047a61bf4fd7554c696f93880d7907a952d8b39fdcf3fd"
+    },
+    {
+      "path": "candidate/source/shared/ai-persona.js",
+      "bytes": 3586,
+      "sha256": "34de5882046129d2000e5502e354123786f3ad7b7133f31e93863dcc36ba66cf"
+    },
+    {
+      "path": "candidate/source/shared/ai-priority.js",
+      "bytes": 5884,
+      "sha256": "6b5d5a8a22968209fe03c8235648a859b36919b9eafd44cd390a8252ab6b3542"
+    },
+    {
+      "path": "candidate/source/shared/ai-rng.js",
+      "bytes": 641,
+      "sha256": "2d2f95266eda45ec4fa4862cb01079fc8464a98d8c88fa97ca89b54a5d6f8b90"
+    },
+    {
+      "path": "candidate/source/shared/ai-view.js",
+      "bytes": 13935,
+      "sha256": "4466958fc4b8e7a5d2f2bcb8dc3814e27c817a7480b0c765aa6ee2a98cbc87f7"
+    },
+    {
+      "path": "candidate/source/shared/ai.js",
+      "bytes": 91781,
+      "sha256": "c99be94a933f5c122d8ba7f32750f1a4bff66bf2875c8f3ec8e86322eb3d7e43"
+    },
+    {
+      "path": "candidate/source/shared/alert-events.js",
+      "bytes": 8219,
+      "sha256": "df5f0ae98145034e6893ce0b70c2df8938a2d786cc8de37a1fbbc1a9c8b634b0"
+    },
+    {
+      "path": "candidate/source/shared/command-feedback.js",
+      "bytes": 303,
+      "sha256": "e851bb8f7e48291bd75f09be66fdeecbe7dca68dcc82c839c5c033083ce77a07"
+    },
+    {
+      "path": "candidate/source/shared/debris-motion.js",
+      "bytes": 4384,
+      "sha256": "d6a0f330f958ec6d78cfcc7f95b209aa5c099369576bf15dfd1c84770287b3b4"
+    },
+    {
+      "path": "candidate/source/shared/formation.js",
+      "bytes": 4865,
+      "sha256": "265fa63c8c72588f6c8f67057921fd4daa88f96e9d823faa2e41ba10a7dba005"
+    },
+    {
+      "path": "candidate/source/shared/grid.js",
+      "bytes": 2873,
+      "sha256": "30b0a5d67d99e54548d189374684e6b28863ecb7bf92de5221359e5c24fc5afc"
+    },
+    {
+      "path": "candidate/source/shared/human-input.js",
+      "bytes": 7966,
+      "sha256": "dec728db485690620e527f912fa2a0b491f545c5bbdaafc4dc25fd1e425763ff"
+    },
+    {
+      "path": "candidate/source/shared/local-traffic.js",
+      "bytes": 7408,
+      "sha256": "abad3f6ba310783c3620cec8d599df90dac38bb74eed6509be7d19a8af1490f6"
+    },
+    {
+      "path": "candidate/source/shared/navigation.js",
+      "bytes": 19838,
+      "sha256": "c277c12f86c9990e281ae28a703dc374126aa1c737d9dc94a300f8d99c898472"
+    },
+    {
+      "path": "candidate/source/shared/projectiles.js",
+      "bytes": 7769,
+      "sha256": "ded50f3bcd60cf79238d5dba48236d54e33b2b8032f704813118d1419708ccd7"
+    },
+    {
+      "path": "candidate/source/shared/scenarios.js",
+      "bytes": 16044,
+      "sha256": "93f6cda90224a805cc97f42418b2dc11c49e3ea80654b66e0036de55f9b9ba97"
+    },
+    {
+      "path": "candidate/source/shared/sim.js",
+      "bytes": 355291,
+      "sha256": "5e5f4c2d43d048be36d94f0cbcc68fb974c812fc8ab7e071cddb0a59079d89fa"
+    },
+    {
+      "path": "candidate/source/shared/story.js",
+      "bytes": 3738,
+      "sha256": "fa33e53e61a7d636959dd1d1916d7b5c3359db72b523dc730b16ceab525d170f"
+    },
+    {
+      "path": "candidate/source/shared/structures.js",
+      "bytes": 4029,
+      "sha256": "933b100a9a4c19a0285f5b137cd29b46e44271776f031045a537009e0176e5a2"
+    },
+    {
+      "path": "candidate/source/shared/tutorial.js",
+      "bytes": 6342,
+      "sha256": "3aaa5e6affd936dae0ae4741d5173eee5d006132a1705d4b553097d3d8fabf42"
+    },
+    {
+      "path": "candidate/source/shared/vehicle-motion.js",
+      "bytes": 12185,
+      "sha256": "05bd1e985a91b3268065a0a84ec4b9aee2c1079aafc4054c38a70677dfb1493b"
+    },
+    {
+      "path": "candidate/source/shared/weather.js",
+      "bytes": 7228,
+      "sha256": "faad682d6e40fdc6629533f684e1caeec5c9ae49e26e9922651773727c0bc1e5"
+    },
+    {
+      "path": "candidate/source/shared/world-conquest.js",
+      "bytes": 7203,
+      "sha256": "1c251e6d340586d7fb367d4f47938d5898f5239824dac46f054880a3d897aeef"
+    },
+    {
+      "path": "candidate/source/shared/world-landforms.js",
+      "bytes": 6645,
+      "sha256": "ecb6916db6785484f8bb813f7745c8c48ccea370f084fea290ff736edc968e34"
+    },
+    {
+      "path": "candidate/source/shared/world-layers.js",
+      "bytes": 6770,
+      "sha256": "f51f34b99946192107ada9a7077d787761c1a9cb6b1e316d7b7e243dd273bb22"
+    },
+    {
+      "path": "candidate/source/shared/world-roads.js",
+      "bytes": 6491,
+      "sha256": "5fb243b63fa9e2c082135b5b093ee753e8a92c197a076d78067e53f08f1885db"
+    },
+    {
+      "path": "candidate/source/shared/world-territories.js",
+      "bytes": 4110,
+      "sha256": "bb33a449d7f2c4d657dbceab8dbd0171eb8ccaa7494cedf9e18707822d8f717f"
+    },
+    {
+      "path": "candidate/source/test-engine-ai-idle-guard-attention.js",
+      "bytes": 10778,
+      "sha256": "92757c743866c2f1c935bdb978fd247e21c5b74a86338245c85e4709aecc373a"
+    },
+    {
+      "path": "candidate/source/test-engine-ai-local-engineer.js",
+      "bytes": 7167,
+      "sha256": "ce9d2ce219afc4e993acdd7fd3a763a9f22dfa40a0fe287448cfbe7ac3f0925c"
+    },
+    {
+      "path": "candidate/source/tools/ai-balance.mjs",
+      "bytes": 14906,
+      "sha256": "bf5b5ea07e3bf0eea2e4134647457191d9fe212a05b138677817f0cf5ec8db4b"
+    },
+    {
+      "path": "candidate/source/tools/ai-humanity.mjs",
+      "bytes": 95489,
+      "sha256": "187293809db16f7d571b03c5824aeef54914406b66e9128e328123907546b76a"
+    },
+    {
+      "path": "candidate/source/tools/ai-lab-browser.mjs",
+      "bytes": 8245,
+      "sha256": "9017bac6153e3df8e55428a1bb89fb1586afa67402de3526d6c28e68507b49c9"
+    },
+    {
+      "path": "candidate/source/tools/ai-lab-node.mjs",
+      "bytes": 1125,
+      "sha256": "3a673bac091d805ee0807862ba3c580bd6c75f36724521ceee582406529a8657"
+    },
+    {
+      "path": "candidate/source/tools/ai-lab-report.mjs",
+      "bytes": 3951,
+      "sha256": "f13340cb3513a5d430ebb023947e4bc9bdede94c56c19a61155505bc6563e06e"
+    },
+    {
+      "path": "candidate/source/tools/ai-lab-runner.mjs",
+      "bytes": 13565,
+      "sha256": "d5f2e87078e6f1ea35300a653d86e0200aea554681ec60c4bd83eacabe17fb25"
+    },
+    {
+      "path": "candidate/source/tools/ai-lab-server.mjs",
+      "bytes": 2169,
+      "sha256": "fb9124d7f4a0d18fbdc18a89964d190987f7e1a084807b43cc06cdefa1ac6a9a"
+    },
+    {
+      "path": "candidate/source/tools/ai-lab.mjs",
+      "bytes": 2832,
+      "sha256": "4aabd289dd136b04febfe0b6829628e542d7adb2492a774800a8f147a824100b"
+    },
+    {
+      "path": "candidate/source/tools/ai-manual-response-capture-v3.mjs",
+      "bytes": 6778,
+      "sha256": "19e1a93ae79b04f3eb768263052d48b344b086831b261ae40e7da0b004ea8775"
+    },
+    {
+      "path": "candidate/source/tools/ai-manual-response-capture.mjs",
+      "bytes": 6600,
+      "sha256": "9ea0b3163788366234c4ff43cdb22f5127158a0a32bcc7e8ec27f978ca3102fc"
+    },
+    {
+      "path": "candidate/source/tools/ai-manual-response-policy-v3.mjs",
+      "bytes": 29858,
+      "sha256": "c45e589d661b4980a79181ca987b503054ebb3e7e554f1bc272dd3eab50a6928"
+    },
+    {
+      "path": "candidate/source/tools/ai-manual-response-policy.mjs",
+      "bytes": 26551,
+      "sha256": "a5044b77c2b35d25d12d05d8d61135c956e59ee84451f15a3a8f5c0c05470373"
+    },
+    {
+      "path": "candidate/source/tools/ai-public-alert-response.mjs",
+      "bytes": 15189,
+      "sha256": "7974a9d20da09b9df2a3b8cb296e385d2ac2f94374be24396ac6df275c3cb829"
+    },
+    {
+      "path": "candidate/source/tools/balance.mjs",
+      "bytes": 10497,
+      "sha256": "42b7c3355c2fd06513fee58c7d04bc2783050c7259b1329426f7c2dc50ab9d18"
+    },
+    {
+      "path": "candidate/source/tools/bench-engine.mjs",
+      "bytes": 32433,
+      "sha256": "4e84f2b7f86009b9ee47585bc6fc592b50defc2cea0cc1d9cc484ed85d0568be"
+    },
+    {
+      "path": "candidate/source/tools/bench-ground.mjs",
+      "bytes": 3281,
+      "sha256": "5d0e37369daf978eb29317409ac601f1d5df13aec2c835b69ccb41e77a76bd30"
+    },
+    {
+      "path": "candidate/source/tools/bench-move.mjs",
+      "bytes": 4599,
+      "sha256": "5b9577bb58e6f7a67593f59262e20c9f7e402449ac1343cf2b6bc1e6ef378c0a"
+    },
+    {
+      "path": "candidate/source/tools/bench-world-conquest.mjs",
+      "bytes": 13956,
+      "sha256": "4a24bd8b0d7e3fdffb2f1811b64993f3ef4373ebb019a69cdab72b68d5a45ada"
+    },
+    {
+      "path": "candidate/source/tools/bench.mjs",
+      "bytes": 8183,
+      "sha256": "0c026604acaba5ec8f477080b83a948e901d4724c8bf06d325d334a1b244b49d"
+    },
+    {
+      "path": "candidate/source/tools/build-audio.mjs",
+      "bytes": 13322,
+      "sha256": "e066f7bef14691def1edf934d574fd29b0d3f489b43d15c1b4f8dcdfd14f7714"
+    },
+    {
+      "path": "candidate/source/tools/build-fx-atlas.mjs",
+      "bytes": 13451,
+      "sha256": "3e26da8a6fcb1f5887926a5853c7a0873fe105a55ba8a66d1f91be12423753ec"
+    },
+    {
+      "path": "candidate/source/tools/check-new-models.mjs",
+      "bytes": 1309,
+      "sha256": "f8092868eb3ca7ff75319ec01f5581379e07aff3e73ec9406495ff6e51b61b90"
+    },
+    {
+      "path": "candidate/source/tools/diag.mjs",
+      "bytes": 4386,
+      "sha256": "c554e37684d21821a0f5c7036904178f7e7388c9d26337887b378c1e4cde5e7b"
+    },
+    {
+      "path": "candidate/source/tools/genmap-bridge.mjs",
+      "bytes": 8003,
+      "sha256": "94c6b6850b521bae65feedd49e441c014d407086ba4c1240b13d320144c3b909"
+    },
+    {
+      "path": "candidate/source/tools/genmap-islands.mjs",
+      "bytes": 3060,
+      "sha256": "73b79b2d7771a0cefb55283d5845cae4d5e26dca14da9122178ed05c556b96c6"
+    },
+    {
+      "path": "candidate/source/tools/genmap-trenches.mjs",
+      "bytes": 4576,
+      "sha256": "14c5d6ede58df9cd3ca282e599d64865d9ea3131c48f7243ed76dc7c61fe432c"
+    },
+    {
+      "path": "candidate/source/tools/hash-json-native.mjs",
+      "bytes": 3875,
+      "sha256": "84d9f9c2273071831d86fe88e4244bda6013c762412ef837a5dc4c90a08e41c5"
+    },
+    {
+      "path": "candidate/source/tools/horde.mjs",
+      "bytes": 2223,
+      "sha256": "d23d6c320497a55df56222297256d084dba53d6851934f2212bd6e0be00521af"
+    },
+    {
+      "path": "candidate/source/tools/json-stream.mjs",
+      "bytes": 9588,
+      "sha256": "34f01a09d4996f356a3dafc61084aae27a4bf18cd8e6b63b2fda9e95c5168798"
+    },
+    {
+      "path": "candidate/source/tools/km-median-boundary.mjs",
+      "bytes": 1037,
+      "sha256": "e92de6b62be628796cf1390a0b4333b87be32a2083f3d2193cf2dd3ac3755469"
+    },
+    {
+      "path": "candidate/source/tools/mapstats.mjs",
+      "bytes": 8721,
+      "sha256": "3ec678dda56d0a056dd70046199cb1120e5821dfc378f9876a2e29cfbbfff442"
+    },
+    {
+      "path": "candidate/source/tools/mapwork.mjs",
+      "bytes": 8411,
+      "sha256": "668a2464bddcab7377dd9f02fb0c695c13c02bceb2f15a466624d77e8f7223e7"
+    },
+    {
+      "path": "candidate/source/tools/movement-lab.mjs",
+      "bytes": 2177,
+      "sha256": "4aa4fd104a888e5e587a29e92ad4b1a26b75a25fe58f8c3fe7fedd88bc5dcf4c"
+    },
+    {
+      "path": "candidate/source/tools/preview-world-generation.mjs",
+      "bytes": 1768,
+      "sha256": "f05dba5305cb8a16c11543b19c7520021998e5e2aefb938cc9d43525b6090e99"
+    },
+    {
+      "path": "candidate/source/tools/roads.mjs",
+      "bytes": 1917,
+      "sha256": "1ba0af74d2e0436105ed4ebcd9f7a519fe2e4d783739613f496488cea1af180a"
+    },
+    {
+      "path": "candidate/source/tools/serve-movement-lab.mjs",
+      "bytes": 3108,
+      "sha256": "1776d74dfe20dbe513e95385ed1ba792c18582e391be8f9da1a21f7e63f5095a"
+    },
+    {
+      "path": "candidate/source/tools/test-public-lobby-browser.mjs",
+      "bytes": 5036,
+      "sha256": "666cb37cbe27526abd35131b3ce68968d4079973a643b3a89f3be2fa9019f298"
+    },
+    {
+      "path": "candidate/source/tools/test-world-waterway-seeds.mjs",
+      "bytes": 1721,
+      "sha256": "69b9d3f48ff30249de5a863c38fe12b5b5365951e037d7d7ba2d0bacdb3a3e13"
+    },
+    {
+      "path": "candidate/source/tools/woods.mjs",
+      "bytes": 2239,
+      "sha256": "33012d24d1a7686804e0b1dcb773a24931e72dc129114e463716c5834dbb25f3"
+    },
+    {
+      "path": "controls.log",
+      "bytes": 269,
+      "sha256": "12bbd00b87021869d98e37e67a2c7577129cc607cad85e889d2e760b840e7643"
+    },
+    {
+      "path": "engineer-proof.log",
+      "bytes": 210,
+      "sha256": "5c4305d6f191107f842ac5ae5efbf7787cb57159abf37c98ea9d7b5e558a6fe0"
+    },
+    {
+      "path": "fixture-final.log",
+      "bytes": 119,
+      "sha256": "05c0560569a3ea6138d0f8ecbfeba52e6adbc7818e584f0116a6884ef6d6570f"
+    },
+    {
+      "path": "fixture-portable-final.log",
+      "bytes": 119,
+      "sha256": "05c0560569a3ea6138d0f8ecbfeba52e6adbc7818e584f0116a6884ef6d6570f"
+    },
+    {
+      "path": "fixture.log",
+      "bytes": 119,
+      "sha256": "05c0560569a3ea6138d0f8ecbfeba52e6adbc7818e584f0116a6884ef6d6570f"
+    },
+    {
+      "path": "fixture.patch",
+      "bytes": 10926,
+      "sha256": "9fa4ec07f2d000ab85549a484c65134cec37768e10c1c0060e381674eeb67ab9"
+    },
+    {
+      "path": "focused-evidence.json",
+      "bytes": 40393,
+      "sha256": "aa47e3e168f94fd459604899e0825b752232ab5727ed10c22a35858d06061893"
+    },
+    {
+      "path": "iteration-1/ai-attention.js",
+      "bytes": 31888,
+      "sha256": "a55272249248bf1a7166da3038fa44794d7db3a163089010f6f3b905ccc3405a"
+    },
+    {
+      "path": "iteration-1/ai-commander.js",
+      "bytes": 30795,
+      "sha256": "b59d30a57641dc908b8960f649b4725b01d38d0714acdd71f78edd06f87abe2d"
+    },
+    {
+      "path": "iteration-1/flank-easy-1.json",
+      "bytes": 2040530,
+      "sha256": "5ffe58c42d0326f3917a167f69c514683691388c4787f2b50ffb1263a5d01e73"
+    },
+    {
+      "path": "iteration-1/flank-hard-1.json",
+      "bytes": 2170354,
+      "sha256": "d792a54aebbe0a069b93a61839b43fa0374dfb05872ac730362631baf52084bb"
+    },
+    {
+      "path": "iteration-1/flank-normal-1.json",
+      "bytes": 2286514,
+      "sha256": "bdde84344cd3edabbc42ec1f5b211211eb6f47f89e1cfe2a41ccb85c76e89543"
+    },
+    {
+      "path": "iteration-1/guardgrenade-hard-1.json",
+      "bytes": 598349,
+      "sha256": "654735df5f3920de8db54b66fc052a82f470f595e2b269fc260af135c6da9a90"
+    },
+    {
+      "path": "iteration-1/lateflank-hard-1.json",
+      "bytes": 2083435,
+      "sha256": "4ab6524889fbad5c82b961f157485c9257ba55d906e34c61bdd48a8ad37d5e7b"
+    },
+    {
+      "path": "iteration-1/plainidle-hard-1.json",
+      "bytes": 785547,
+      "sha256": "05bfc6698fed2a88a482c1ac37a6f6b69d81ba9a1fd908605162860f79a336bb"
+    },
+    {
+      "path": "iteration-1/preregistration.json",
+      "bytes": 29063,
+      "sha256": "6570c5b66817dd25c96ace1688ccd61bf93680da0f33400ab9a41c3b6aa37ceb"
+    },
+    {
+      "path": "iteration-1/quietguard-hard-1.json",
+      "bytes": 1994687,
+      "sha256": "00a8fe469d00a1dd90ef1acbdf607f097c6c51f1621c37e7cb0f5ba6726bc863"
+    },
+    {
+      "path": "iteration-1/reducer-overbroad-equality-failure.log",
+      "bytes": 143759,
+      "sha256": "e63a2c7e0479c99ebeb91085b8db014fea63d39ae6d1a3e2e10bbf2c583e689f"
+    },
+    {
+      "path": "iteration-1/run.log",
+      "bytes": 4216,
+      "sha256": "7ecb0c23bf25bf11319c4de84701713e99d2828aecbb9aba4dd7f7cd56d4ceef"
+    },
+    {
+      "path": "portable-fixture-proof.json",
+      "bytes": 12085135,
+      "sha256": "16fd3ea50206272dce96682b3cea7ea53c0575d8e6a8ed5fca445968accc335b"
+    },
+    {
+      "path": "prepare.py",
+      "bytes": 2642,
+      "sha256": "77fd0c7a68aae369d44921c5029d13aaae15e625ba20d04a71ae0f8f219556a7"
+    },
+    {
+      "path": "preregistration.json",
+      "bytes": 29588,
+      "sha256": "be27388fd29b8518cbc1c545b42a17c9d338b4caa64264f4bb061a68c01bd298"
+    },
+    {
+      "path": "prose-lint.log",
+      "bytes": 72,
+      "sha256": "057870911f8809a4381f35a64f8cf6798283ec9c3435537f0061079b952f0650"
+    },
+    {
+      "path": "reduce.mjs",
+      "bytes": 2584,
+      "sha256": "9ad23e4782bf13ced1ed3ab864ac2b904ad320e92203a56c9a7aa1dbf4043a0f"
+    },
+    {
+      "path": "reducer.log",
+      "bytes": 95,
+      "sha256": "0865718f75573b596f3297c6aa48451ecb453ec7422a2963b2c6d88dc108e684"
+    },
+    {
+      "path": "run-controls.py",
+      "bytes": 640,
+      "sha256": "809dba0e86aec550a80b4c1d34e8e99f24f42d904d097c8e34c212e88b62ea6e"
+    },
+    {
+      "path": "run-engineer-proof.py",
+      "bytes": 688,
+      "sha256": "0230bbc2a93c83b57ef36ca146fca91d3ed566a8da890b1d58fd0c25283e3971"
+    },
+    {
+      "path": "run-final.log",
+      "bytes": 4216,
+      "sha256": "7ecb0c23bf25bf11319c4de84701713e99d2828aecbb9aba4dd7f7cd56d4ceef"
+    },
+    {
+      "path": "run.log",
+      "bytes": 4216,
+      "sha256": "7ecb0c23bf25bf11319c4de84701713e99d2828aecbb9aba4dd7f7cd56d4ceef"
+    },
+    {
+      "path": "run.mjs",
+      "bytes": 1183,
+      "sha256": "a31ea2871d4d46042440c7e4addae7b7f56d515acd4621c16b6ae589c9e5e0f4"
+    },
+    {
+      "path": "runtime.patch",
+      "bytes": 6893,
+      "sha256": "bfb855e3be3ea761865820ad299ba92efc153fff2ae4f6b76dbdfd943d317b66"
+    },
+    {
+      "path": "scratch-only-source-differences.json",
+      "bytes": 1059,
+      "sha256": "8a0bc85a2efdada38289f35a26b4a10098e9127388a91cd470796957c079e129"
+    },
+    {
+      "path": "source-bindings.json",
+      "bytes": 1224,
+      "sha256": "851e55789fcf33ffe450ed62c52a46492e29837a4d5fbcfb0120d6c5c21e9906"
+    },
+    {
+      "path": "test-engine-ai-idle-guard-attention.js",
+      "bytes": 10778,
+      "sha256": "92757c743866c2f1c935bdb978fd247e21c5b74a86338245c85e4709aecc373a"
+    }
+  ]
+}

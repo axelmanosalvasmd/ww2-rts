@@ -1,0 +1,26 @@
+{
+  "createdUTC": "2026-10-04T22:29:26.841513+00:00",
+  "diagnosticOnly": true,
+  "excludedOnly": "exact initial registered child-process block",
+  "excludedCount": 90,
+  "preservedInitialImports": [
+    "test-tutorial.js",
+    "test-infantry-authored.mjs",
+    "test-terrain-relief.mjs"
+  ],
+  "preservedTailChildren": [
+    "test-public-lobby.js",
+    "test-performance.mjs"
+  ],
+  "originalTestSHA256": "2a290f52fa436283c76d3ab7b0c0bbc2b4d69b3a7a3027ecaada05c01fc63cb4",
+  "transformedTestSHA256": "d60f41ef74295df1839d3b195abf0d7cdc663a500b5cab4caf9ef3e1f02752d7",
+  "aiSHA256": "bc677b3d7b2771941e6242f9c598084f04710dad944bdc54db24ef93ac354457",
+  "copiedFiles": 1889,
+  "command": "nice -n19 taskset -c4 node test.js",
+  "cwd": "/tmp/human-ai-core-only-preflight/source",
+  "outerTimeout": null,
+  "qualification": "complete native main body with only the separately registered initial child block excluded; never a full-suite result",
+  "assertionSourceRowsPreserved": 2233,
+  "originalLines": 8621,
+  "transformedLines": 8621
+}

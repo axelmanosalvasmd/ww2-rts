@@ -1,0 +1,45 @@
+{
+  "candidate": "selected-hud-v14",
+  "preparedSourceFingerprintSHA256": "ced042560b56c3b730ed401b4fcae2ecfc26e0e711a3368273023bdef9cd3100",
+  "startedAtUTC": "2026-10-04T11:37:21.359172+00:00",
+  "argv": [
+    "node",
+    "/tmp/human-ai-selected-hud-v14-balance-source/tools/ai-balance.mjs",
+    "--root",
+    "/tmp/human-ai-selected-hud-v14-balance-source",
+    "--ai",
+    "/tmp/human-ai-selected-hud-v14-balance-source/shared/ai.js",
+    "--mode",
+    "classic",
+    "--map",
+    "default",
+    "--matches",
+    "30",
+    "--seed",
+    "1",
+    "--workers",
+    "4",
+    "--factions",
+    "3",
+    "--army",
+    "standard",
+    "--checkpoint",
+    "/tmp/human-ai-selected-hud-v14-balance/classic-checkpoint.json"
+  ],
+  "resume": false,
+  "launcherPid": 1178675,
+  "candidateStatus": "frozen V14 final candidate, acceptance depends on complete evidence",
+  "launcherAffinity": [
+    0,
+    2,
+    8,
+    10
+  ],
+  "nodePid": 1178676,
+  "nodeAffinity": [
+    0,
+    2,
+    8,
+    10
+  ]
+}

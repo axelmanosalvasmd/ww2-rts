@@ -1,0 +1,14 @@
+{
+  "status": "PASS",
+  "qualification": "Copy integrity only. Retained source-specific results are not new checks or acceptance.",
+  "archive": "r8-full-and-remaining-failures.tar.gz",
+  "archiveBytes": 1051912,
+  "archiveSHA256": "63df6e5b9a7359da5dfc52bcb4db21eee128806900e08c656f07d7a9b3afc3c0",
+  "members": 200,
+  "originals": 197,
+  "originalCopiedBytes": 4073893,
+  "payloadBytes": 4153392,
+  "allOriginalBytesUnchanged": true,
+  "allRoundtripBytesMatch": true,
+  "manifestSHA256": "72577ca10f09ad7dd56fc0bd90b242a31c3383262a3a00d146a559151680f715"
+}

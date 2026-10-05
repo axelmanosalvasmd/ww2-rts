@@ -1,0 +1,663 @@
+{
+  "endpoint": "Conquest45second predeclared opening diagnostic,20seeds/level,180seats/treatment; no full180second acceptance",
+  "summary": {
+    "original": {
+      "acceptedPurchases": 400,
+      "acceptedNonBuy": 1534,
+      "physicalInputs": 5239,
+      "cameraInputs": 1201,
+      "purchaseSpendMP": 39510,
+      "refusedPurchases": 5
+    },
+    "savingGuard": {
+      "acceptedPurchases": 332,
+      "acceptedNonBuy": 1420,
+      "physicalInputs": 4929,
+      "cameraInputs": 1231,
+      "purchaseSpendMP": 39490,
+      "refusedPurchases": 40
+    },
+    "savingGuardAndReceipt": {
+      "acceptedPurchases": 341,
+      "acceptedNonBuy": 1429,
+      "physicalInputs": 4874,
+      "cameraInputs": 1239,
+      "purchaseSpendMP": 40280,
+      "refusedPurchases": 3
+    }
+  },
+  "groups": {
+    "easy/USA": {
+      "savingGuard": {
+        "distinctMeaningfulPrefixes": 7,
+        "mostCommonCount": 6,
+        "mostCommonShare": 0.3,
+        "passesOriginalOpeningGate": true,
+        "prefixCounts": {
+          "[\"infantry\",\"infantry\"]": 6,
+          "[\"antiTank\",\"infantry\"]": 1,
+          "[\"antiTank\"]": 3,
+          "[\"mortar\"]": 5,
+          "[\"machineGun\",\"infantry\"]": 2,
+          "[\"machineGun\"]": 2,
+          "[\"infantry\"]": 1
+        },
+        "firstFamilyCounts": {
+          "infantry": 7,
+          "antiTank": 4,
+          "mortar": 5,
+          "machineGun": 4
+        },
+        "missingFirstBuys": 0,
+        "seatsWithUsefulNontrivialMoveBeforeFirstBuy": 20,
+        "seatsWithRejectedBuyBeforeFirstAccepted": 0,
+        "rejectedPurchases": 4,
+        "acceptedPurchases": 29,
+        "acceptedNonBuy": 110,
+        "physicalInputs": 392,
+        "cameraInputs": 88,
+        "purchaseSpendMP": 3900,
+        "totalCommandSpendMP": 3900,
+        "seatsWithFirstBuyDecisionMultipleBuyInputs": 0,
+        "allDecisionMultipleBuyGroups": 0
+      },
+      "withReceipt": {
+        "distinctMeaningfulPrefixes": 7,
+        "mostCommonCount": 6,
+        "mostCommonShare": 0.3,
+        "passesOriginalOpeningGate": true,
+        "prefixCounts": {
+          "[\"infantry\",\"infantry\"]": 6,
+          "[\"antiTank\",\"infantry\"]": 1,
+          "[\"antiTank\"]": 3,
+          "[\"mortar\"]": 5,
+          "[\"machineGun\",\"infantry\"]": 2,
+          "[\"machineGun\"]": 2,
+          "[\"infantry\"]": 1
+        },
+        "firstFamilyCounts": {
+          "infantry": 7,
+          "antiTank": 4,
+          "mortar": 5,
+          "machineGun": 4
+        },
+        "missingFirstBuys": 0,
+        "seatsWithUsefulNontrivialMoveBeforeFirstBuy": 20,
+        "seatsWithRejectedBuyBeforeFirstAccepted": 0,
+        "rejectedPurchases": 0,
+        "acceptedPurchases": 29,
+        "acceptedNonBuy": 113,
+        "physicalInputs": 397,
+        "cameraInputs": 89,
+        "purchaseSpendMP": 3900,
+        "totalCommandSpendMP": 3900,
+        "seatsWithFirstBuyDecisionMultipleBuyInputs": 0,
+        "allDecisionMultipleBuyGroups": 0
+      }
+    },
+    "easy/Germany": {
+      "savingGuard": {
+        "distinctMeaningfulPrefixes": 7,
+        "mostCommonCount": 8,
+        "mostCommonShare": 0.4,
+        "passesOriginalOpeningGate": true,
+        "prefixCounts": {
+          "[\"infantry\",\"infantry\"]": 8,
+          "[\"machineGun\",\"infantry\"]": 2,
+          "[\"mortar\"]": 4,
+          "[\"infantry\",\"infantry\",\"infantry\"]": 1,
+          "[\"machineGun\"]": 1,
+          "[\"antiTank\"]": 3,
+          "[\"mortar\",\"machineGun\"]": 1
+        },
+        "firstFamilyCounts": {
+          "infantry": 9,
+          "machineGun": 3,
+          "mortar": 5,
+          "antiTank": 3
+        },
+        "missingFirstBuys": 0,
+        "seatsWithUsefulNontrivialMoveBeforeFirstBuy": 20,
+        "seatsWithRejectedBuyBeforeFirstAccepted": 0,
+        "rejectedPurchases": 6,
+        "acceptedPurchases": 33,
+        "acceptedNonBuy": 119,
+        "physicalInputs": 394,
+        "cameraInputs": 70,
+        "purchaseSpendMP": 4200,
+        "totalCommandSpendMP": 4200,
+        "seatsWithFirstBuyDecisionMultipleBuyInputs": 0,
+        "allDecisionMultipleBuyGroups": 0
+      },
+      "withReceipt": {
+        "distinctMeaningfulPrefixes": 6,
+        "mostCommonCount": 8,
+        "mostCommonShare": 0.4,
+        "passesOriginalOpeningGate": true,
+        "prefixCounts": {
+          "[\"infantry\",\"infantry\"]": 8,
+          "[\"machineGun\",\"infantry\"]": 2,
+          "[\"mortar\"]": 5,
+          "[\"infantry\",\"infantry\",\"infantry\"]": 1,
+          "[\"machineGun\"]": 1,
+          "[\"antiTank\"]": 3
+        },
+        "firstFamilyCounts": {
+          "infantry": 9,
+          "machineGun": 3,
+          "mortar": 5,
+          "antiTank": 3
+        },
+        "missingFirstBuys": 0,
+        "seatsWithUsefulNontrivialMoveBeforeFirstBuy": 20,
+        "seatsWithRejectedBuyBeforeFirstAccepted": 0,
+        "rejectedPurchases": 1,
+        "acceptedPurchases": 32,
+        "acceptedNonBuy": 114,
+        "physicalInputs": 371,
+        "cameraInputs": 72,
+        "purchaseSpendMP": 4050,
+        "totalCommandSpendMP": 4050,
+        "seatsWithFirstBuyDecisionMultipleBuyInputs": 0,
+        "allDecisionMultipleBuyGroups": 0
+      }
+    },
+    "easy/USSR": {
+      "savingGuard": {
+        "distinctMeaningfulPrefixes": 8,
+        "mostCommonCount": 6,
+        "mostCommonShare": 0.3,
+        "passesOriginalOpeningGate": true,
+        "prefixCounts": {
+          "[\"infantry\",\"infantry\"]": 6,
+          "[\"machineGun\",\"infantry\"]": 3,
+          "[\"infantry\",\"infantry\",\"infantry\"]": 3,
+          "[\"mortar\"]": 2,
+          "[\"machineGun\"]": 2,
+          "[\"antiTank\",\"infantry\"]": 1,
+          "[\"mortar\",\"infantry\"]": 1,
+          "[\"antiTank\"]": 2
+        },
+        "firstFamilyCounts": {
+          "infantry": 9,
+          "machineGun": 5,
+          "mortar": 3,
+          "antiTank": 3
+        },
+        "missingFirstBuys": 0,
+        "seatsWithUsefulNontrivialMoveBeforeFirstBuy": 20,
+        "seatsWithRejectedBuyBeforeFirstAccepted": 0,
+        "rejectedPurchases": 0,
+        "acceptedPurchases": 37,
+        "acceptedNonBuy": 133,
+        "physicalInputs": 410,
+        "cameraInputs": 83,
+        "purchaseSpendMP": 3970,
+        "totalCommandSpendMP": 3970,
+        "seatsWithFirstBuyDecisionMultipleBuyInputs": 0,
+        "allDecisionMultipleBuyGroups": 0
+      },
+      "withReceipt": {
+        "distinctMeaningfulPrefixes": 8,
+        "mostCommonCount": 7,
+        "mostCommonShare": 0.35,
+        "passesOriginalOpeningGate": true,
+        "prefixCounts": {
+          "[\"infantry\",\"infantry\"]": 7,
+          "[\"machineGun\",\"infantry\",\"infantry\"]": 1,
+          "[\"machineGun\",\"infantry\"]": 2,
+          "[\"mortar\"]": 3,
+          "[\"machineGun\"]": 2,
+          "[\"antiTank\",\"infantry\"]": 1,
+          "[\"antiTank\"]": 2,
+          "[\"infantry\",\"infantry\",\"infantry\"]": 2
+        },
+        "firstFamilyCounts": {
+          "infantry": 9,
+          "machineGun": 5,
+          "mortar": 3,
+          "antiTank": 3
+        },
+        "missingFirstBuys": 0,
+        "seatsWithUsefulNontrivialMoveBeforeFirstBuy": 20,
+        "seatsWithRejectedBuyBeforeFirstAccepted": 0,
+        "rejectedPurchases": 0,
+        "acceptedPurchases": 36,
+        "acceptedNonBuy": 131,
+        "physicalInputs": 406,
+        "cameraInputs": 83,
+        "purchaseSpendMP": 3890,
+        "totalCommandSpendMP": 3890,
+        "seatsWithFirstBuyDecisionMultipleBuyInputs": 0,
+        "allDecisionMultipleBuyGroups": 0
+      }
+    },
+    "normal/USA": {
+      "savingGuard": {
+        "distinctMeaningfulPrefixes": 8,
+        "mostCommonCount": 4,
+        "mostCommonShare": 0.2,
+        "passesOriginalOpeningGate": true,
+        "prefixCounts": {
+          "[\"infantry\",\"infantry\",\"infantry\"]": 3,
+          "[\"antiTank\"]": 3,
+          "[\"mortar\",\"infantry\"]": 2,
+          "[\"infantry\",\"infantry\"]": 4,
+          "[\"machineGun\"]": 2,
+          "[\"machineGun\",\"infantry\"]": 2,
+          "[\"mortar\"]": 3,
+          "[\"antiTank\",\"infantry\"]": 1
+        },
+        "firstFamilyCounts": {
+          "infantry": 7,
+          "antiTank": 4,
+          "mortar": 5,
+          "machineGun": 4
+        },
+        "missingFirstBuys": 0,
+        "seatsWithUsefulNontrivialMoveBeforeFirstBuy": 20,
+        "seatsWithRejectedBuyBeforeFirstAccepted": 0,
+        "rejectedPurchases": 3,
+        "acceptedPurchases": 35,
+        "acceptedNonBuy": 144,
+        "physicalInputs": 493,
+        "cameraInputs": 123,
+        "purchaseSpendMP": 4500,
+        "totalCommandSpendMP": 4620,
+        "seatsWithFirstBuyDecisionMultipleBuyInputs": 0,
+        "allDecisionMultipleBuyGroups": 0
+      },
+      "withReceipt": {
+        "distinctMeaningfulPrefixes": 8,
+        "mostCommonCount": 4,
+        "mostCommonShare": 0.2,
+        "passesOriginalOpeningGate": true,
+        "prefixCounts": {
+          "[\"infantry\",\"infantry\",\"infantry\"]": 4,
+          "[\"antiTank\"]": 3,
+          "[\"mortar\",\"infantry\"]": 4,
+          "[\"infantry\",\"infantry\"]": 3,
+          "[\"machineGun\"]": 2,
+          "[\"machineGun\",\"infantry\"]": 2,
+          "[\"antiTank\",\"infantry\"]": 1,
+          "[\"mortar\"]": 1
+        },
+        "firstFamilyCounts": {
+          "infantry": 7,
+          "antiTank": 4,
+          "mortar": 5,
+          "machineGun": 4
+        },
+        "missingFirstBuys": 0,
+        "seatsWithUsefulNontrivialMoveBeforeFirstBuy": 20,
+        "seatsWithRejectedBuyBeforeFirstAccepted": 0,
+        "rejectedPurchases": 0,
+        "acceptedPurchases": 38,
+        "acceptedNonBuy": 146,
+        "physicalInputs": 498,
+        "cameraInputs": 126,
+        "purchaseSpendMP": 4800,
+        "totalCommandSpendMP": 4840,
+        "seatsWithFirstBuyDecisionMultipleBuyInputs": 0,
+        "allDecisionMultipleBuyGroups": 0
+      }
+    },
+    "normal/Germany": {
+      "savingGuard": {
+        "distinctMeaningfulPrefixes": 8,
+        "mostCommonCount": 5,
+        "mostCommonShare": 0.25,
+        "passesOriginalOpeningGate": true,
+        "prefixCounts": {
+          "[\"infantry\",\"infantry\"]": 5,
+          "[\"machineGun\",\"infantry\"]": 1,
+          "[\"mortar\",\"infantry\"]": 3,
+          "[\"infantry\",\"infantry\",\"infantry\"]": 4,
+          "[\"machineGun\"]": 2,
+          "[\"antiTank\"]": 3,
+          "[\"mortar\",\"machineGun\"]": 1,
+          "[\"mortar\"]": 1
+        },
+        "firstFamilyCounts": {
+          "infantry": 9,
+          "machineGun": 3,
+          "mortar": 5,
+          "antiTank": 3
+        },
+        "missingFirstBuys": 0,
+        "seatsWithUsefulNontrivialMoveBeforeFirstBuy": 20,
+        "seatsWithRejectedBuyBeforeFirstAccepted": 0,
+        "rejectedPurchases": 4,
+        "acceptedPurchases": 38,
+        "acceptedNonBuy": 145,
+        "physicalInputs": 520,
+        "cameraInputs": 126,
+        "purchaseSpendMP": 4700,
+        "totalCommandSpendMP": 4780,
+        "seatsWithFirstBuyDecisionMultipleBuyInputs": 0,
+        "allDecisionMultipleBuyGroups": 0
+      },
+      "withReceipt": {
+        "distinctMeaningfulPrefixes": 9,
+        "mostCommonCount": 5,
+        "mostCommonShare": 0.25,
+        "passesOriginalOpeningGate": true,
+        "prefixCounts": {
+          "[\"infantry\",\"infantry\"]": 4,
+          "[\"machineGun\",\"infantry\"]": 2,
+          "[\"mortar\",\"infantry\"]": 3,
+          "[\"infantry\",\"infantry\",\"infantry\"]": 5,
+          "[\"mortar\"]": 1,
+          "[\"antiTank\",\"infantry\"]": 1,
+          "[\"mortar\",\"machineGun\"]": 1,
+          "[\"antiTank\"]": 2,
+          "[\"machineGun\"]": 1
+        },
+        "firstFamilyCounts": {
+          "infantry": 9,
+          "machineGun": 3,
+          "mortar": 5,
+          "antiTank": 3
+        },
+        "missingFirstBuys": 0,
+        "seatsWithUsefulNontrivialMoveBeforeFirstBuy": 20,
+        "seatsWithRejectedBuyBeforeFirstAccepted": 0,
+        "rejectedPurchases": 0,
+        "acceptedPurchases": 41,
+        "acceptedNonBuy": 143,
+        "physicalInputs": 505,
+        "cameraInputs": 130,
+        "purchaseSpendMP": 5000,
+        "totalCommandSpendMP": 5000,
+        "seatsWithFirstBuyDecisionMultipleBuyInputs": 0,
+        "allDecisionMultipleBuyGroups": 0
+      }
+    },
+    "normal/USSR": {
+      "savingGuard": {
+        "distinctMeaningfulPrefixes": 9,
+        "mostCommonCount": 4,
+        "mostCommonShare": 0.2,
+        "passesOriginalOpeningGate": true,
+        "prefixCounts": {
+          "[\"infantry\",\"infantry\",\"infantry\"]": 4,
+          "[\"machineGun\"]": 2,
+          "[\"infantry\",\"infantry\"]": 4,
+          "[\"mortar\"]": 3,
+          "[\"machineGun\",\"infantry\",\"infantry\"]": 2,
+          "[\"antiTank\",\"infantry\"]": 1,
+          "[\"antiTank\"]": 2,
+          "[\"machineGun\",\"infantry\"]": 1,
+          "[\"infantry\",\"infantry\",\"infantry\",\"infantry\"]": 1
+        },
+        "firstFamilyCounts": {
+          "infantry": 9,
+          "machineGun": 5,
+          "mortar": 3,
+          "antiTank": 3
+        },
+        "missingFirstBuys": 0,
+        "seatsWithUsefulNontrivialMoveBeforeFirstBuy": 20,
+        "seatsWithRejectedBuyBeforeFirstAccepted": 0,
+        "rejectedPurchases": 6,
+        "acceptedPurchases": 41,
+        "acceptedNonBuy": 154,
+        "physicalInputs": 529,
+        "cameraInputs": 131,
+        "purchaseSpendMP": 4290,
+        "totalCommandSpendMP": 4330,
+        "seatsWithFirstBuyDecisionMultipleBuyInputs": 0,
+        "allDecisionMultipleBuyGroups": 4
+      },
+      "withReceipt": {
+        "distinctMeaningfulPrefixes": 10,
+        "mostCommonCount": 4,
+        "mostCommonShare": 0.2,
+        "passesOriginalOpeningGate": true,
+        "prefixCounts": {
+          "[\"infantry\",\"infantry\",\"infantry\"]": 3,
+          "[\"machineGun\",\"infantry\",\"infantry\"]": 3,
+          "[\"infantry\",\"infantry\"]": 4,
+          "[\"machineGun\"]": 1,
+          "[\"mortar\",\"infantry\"]": 1,
+          "[\"antiTank\"]": 2,
+          "[\"mortar\"]": 2,
+          "[\"antiTank\",\"infantry\"]": 1,
+          "[\"infantry\",\"infantry\",\"infantry\",\"infantry\"]": 2,
+          "[\"machineGun\",\"infantry\"]": 1
+        },
+        "firstFamilyCounts": {
+          "infantry": 9,
+          "machineGun": 5,
+          "mortar": 3,
+          "antiTank": 3
+        },
+        "missingFirstBuys": 0,
+        "seatsWithUsefulNontrivialMoveBeforeFirstBuy": 20,
+        "seatsWithRejectedBuyBeforeFirstAccepted": 0,
+        "rejectedPurchases": 0,
+        "acceptedPurchases": 45,
+        "acceptedNonBuy": 157,
+        "physicalInputs": 536,
+        "cameraInputs": 129,
+        "purchaseSpendMP": 4610,
+        "totalCommandSpendMP": 4690,
+        "seatsWithFirstBuyDecisionMultipleBuyInputs": 0,
+        "allDecisionMultipleBuyGroups": 3
+      }
+    },
+    "hard/USA": {
+      "savingGuard": {
+        "distinctMeaningfulPrefixes": 9,
+        "mostCommonCount": 5,
+        "mostCommonShare": 0.25,
+        "passesOriginalOpeningGate": true,
+        "prefixCounts": {
+          "[\"infantry\",\"infantry\"]": 5,
+          "[\"antiTank\",\"infantry\"]": 2,
+          "[\"antiTank\"]": 2,
+          "[\"mortar\",\"infantry\"]": 3,
+          "[\"machineGun\"]": 1,
+          "[\"machineGun\",\"infantry\"]": 3,
+          "[\"infantry\",\"machineGun\"]": 1,
+          "[\"mortar\"]": 2,
+          "[\"infantry\",\"infantry\",\"machineGun\"]": 1
+        },
+        "firstFamilyCounts": {
+          "infantry": 7,
+          "antiTank": 4,
+          "mortar": 5,
+          "machineGun": 4
+        },
+        "missingFirstBuys": 0,
+        "seatsWithUsefulNontrivialMoveBeforeFirstBuy": 20,
+        "seatsWithRejectedBuyBeforeFirstAccepted": 0,
+        "rejectedPurchases": 7,
+        "acceptedPurchases": 36,
+        "acceptedNonBuy": 198,
+        "physicalInputs": 707,
+        "cameraInputs": 186,
+        "purchaseSpendMP": 4700,
+        "totalCommandSpendMP": 4860,
+        "seatsWithFirstBuyDecisionMultipleBuyInputs": 0,
+        "allDecisionMultipleBuyGroups": 2
+      },
+      "withReceipt": {
+        "distinctMeaningfulPrefixes": 9,
+        "mostCommonCount": 5,
+        "mostCommonShare": 0.25,
+        "passesOriginalOpeningGate": true,
+        "prefixCounts": {
+          "[\"infantry\",\"infantry\"]": 5,
+          "[\"antiTank\",\"infantry\"]": 2,
+          "[\"antiTank\"]": 2,
+          "[\"mortar\"]": 3,
+          "[\"machineGun\"]": 1,
+          "[\"mortar\",\"infantry\"]": 2,
+          "[\"machineGun\",\"infantry\"]": 3,
+          "[\"infantry\",\"machineGun\"]": 1,
+          "[\"infantry\",\"infantry\",\"machineGun\"]": 1
+        },
+        "firstFamilyCounts": {
+          "infantry": 7,
+          "antiTank": 4,
+          "mortar": 5,
+          "machineGun": 4
+        },
+        "missingFirstBuys": 0,
+        "seatsWithUsefulNontrivialMoveBeforeFirstBuy": 20,
+        "seatsWithRejectedBuyBeforeFirstAccepted": 0,
+        "rejectedPurchases": 1,
+        "acceptedPurchases": 35,
+        "acceptedNonBuy": 208,
+        "physicalInputs": 703,
+        "cameraInputs": 188,
+        "purchaseSpendMP": 4600,
+        "totalCommandSpendMP": 4720,
+        "seatsWithFirstBuyDecisionMultipleBuyInputs": 0,
+        "allDecisionMultipleBuyGroups": 0
+      }
+    },
+    "hard/Germany": {
+      "savingGuard": {
+        "distinctMeaningfulPrefixes": 8,
+        "mostCommonCount": 7,
+        "mostCommonShare": 0.35,
+        "passesOriginalOpeningGate": true,
+        "prefixCounts": {
+          "[\"infantry\",\"infantry\"]": 7,
+          "[\"machineGun\"]": 2,
+          "[\"mortar\",\"infantry\"]": 3,
+          "[\"infantry\",\"infantry\",\"infantry\"]": 1,
+          "[\"mortar\"]": 2,
+          "[\"antiTank\"]": 3,
+          "[\"infantry\",\"machineGun\"]": 1,
+          "[\"machineGun\",\"infantry\"]": 1
+        },
+        "firstFamilyCounts": {
+          "infantry": 9,
+          "machineGun": 3,
+          "mortar": 5,
+          "antiTank": 3
+        },
+        "missingFirstBuys": 0,
+        "seatsWithUsefulNontrivialMoveBeforeFirstBuy": 20,
+        "seatsWithRejectedBuyBeforeFirstAccepted": 0,
+        "rejectedPurchases": 6,
+        "acceptedPurchases": 34,
+        "acceptedNonBuy": 200,
+        "physicalInputs": 703,
+        "cameraInputs": 205,
+        "purchaseSpendMP": 4300,
+        "totalCommandSpendMP": 4380,
+        "seatsWithFirstBuyDecisionMultipleBuyInputs": 0,
+        "allDecisionMultipleBuyGroups": 0
+      },
+      "withReceipt": {
+        "distinctMeaningfulPrefixes": 9,
+        "mostCommonCount": 7,
+        "mostCommonShare": 0.35,
+        "passesOriginalOpeningGate": true,
+        "prefixCounts": {
+          "[\"infantry\",\"infantry\"]": 7,
+          "[\"machineGun\"]": 1,
+          "[\"mortar\",\"infantry\"]": 3,
+          "[\"machineGun\",\"infantry\"]": 2,
+          "[\"infantry\",\"infantry\",\"infantry\"]": 1,
+          "[\"mortar\"]": 2,
+          "[\"antiTank\"]": 2,
+          "[\"infantry\",\"machineGun\"]": 1,
+          "[\"antiTank\",\"infantry\"]": 1
+        },
+        "firstFamilyCounts": {
+          "infantry": 9,
+          "machineGun": 3,
+          "mortar": 5,
+          "antiTank": 3
+        },
+        "missingFirstBuys": 0,
+        "seatsWithUsefulNontrivialMoveBeforeFirstBuy": 20,
+        "seatsWithRejectedBuyBeforeFirstAccepted": 0,
+        "rejectedPurchases": 0,
+        "acceptedPurchases": 36,
+        "acceptedNonBuy": 200,
+        "physicalInputs": 692,
+        "cameraInputs": 201,
+        "purchaseSpendMP": 4500,
+        "totalCommandSpendMP": 4620,
+        "seatsWithFirstBuyDecisionMultipleBuyInputs": 0,
+        "allDecisionMultipleBuyGroups": 0
+      }
+    },
+    "hard/USSR": {
+      "savingGuard": {
+        "distinctMeaningfulPrefixes": 8,
+        "mostCommonCount": 7,
+        "mostCommonShare": 0.35,
+        "passesOriginalOpeningGate": true,
+        "prefixCounts": {
+          "[\"infantry\",\"infantry\",\"infantry\"]": 7,
+          "[\"machineGun\",\"infantry\"]": 4,
+          "[\"mortar\",\"infantry\"]": 3,
+          "[\"antiTank\"]": 1,
+          "[\"antiTank\",\"infantry\"]": 2,
+          "[\"infantry\",\"infantry\",\"infantry\",\"infantry\"]": 1,
+          "[\"infantry\",\"infantry\"]": 1,
+          "[\"machineGun\",\"infantry\",\"infantry\"]": 1
+        },
+        "firstFamilyCounts": {
+          "infantry": 9,
+          "machineGun": 5,
+          "mortar": 3,
+          "antiTank": 3
+        },
+        "missingFirstBuys": 0,
+        "seatsWithUsefulNontrivialMoveBeforeFirstBuy": 20,
+        "seatsWithRejectedBuyBeforeFirstAccepted": 0,
+        "rejectedPurchases": 4,
+        "acceptedPurchases": 49,
+        "acceptedNonBuy": 217,
+        "physicalInputs": 781,
+        "cameraInputs": 219,
+        "purchaseSpendMP": 4930,
+        "totalCommandSpendMP": 5050,
+        "seatsWithFirstBuyDecisionMultipleBuyInputs": 0,
+        "allDecisionMultipleBuyGroups": 3
+      },
+      "withReceipt": {
+        "distinctMeaningfulPrefixes": 7,
+        "mostCommonCount": 8,
+        "mostCommonShare": 0.4,
+        "passesOriginalOpeningGate": true,
+        "prefixCounts": {
+          "[\"infantry\",\"infantry\",\"infantry\"]": 8,
+          "[\"machineGun\",\"infantry\"]": 4,
+          "[\"mortar\",\"infantry\"]": 3,
+          "[\"antiTank\"]": 2,
+          "[\"antiTank\",\"infantry\"]": 1,
+          "[\"infantry\",\"infantry\",\"infantry\",\"infantry\"]": 1,
+          "[\"machineGun\",\"infantry\",\"infantry\"]": 1
+        },
+        "firstFamilyCounts": {
+          "infantry": 9,
+          "machineGun": 5,
+          "mortar": 3,
+          "antiTank": 3
+        },
+        "missingFirstBuys": 0,
+        "seatsWithUsefulNontrivialMoveBeforeFirstBuy": 20,
+        "seatsWithRejectedBuyBeforeFirstAccepted": 0,
+        "rejectedPurchases": 1,
+        "acceptedPurchases": 49,
+        "acceptedNonBuy": 217,
+        "physicalInputs": 766,
+        "cameraInputs": 221,
+        "purchaseSpendMP": 4930,
+        "totalCommandSpendMP": 4970,
+        "seatsWithFirstBuyDecisionMultipleBuyInputs": 0,
+        "allDecisionMultipleBuyGroups": 1
+      }
+    }
+  },
+  "remainingRefusals": "All3exact native-prefix replays prove automatic home reinforcement between enqueue and physical click. No stale receipt refusals remain."
+}

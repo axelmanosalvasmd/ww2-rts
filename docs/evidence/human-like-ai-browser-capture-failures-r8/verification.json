@@ -1,0 +1,14 @@
+{
+  "status": "PASS",
+  "qualification": "Copy integrity only. Retained source-specific results are not new checks or acceptance.",
+  "archive": "browser-capture-failures-r8.tar.gz",
+  "archiveBytes": 2229415,
+  "archiveSHA256": "45824b447490bdcf8554979a77f66297782a19d35299ea3827e69b03a2db07dd",
+  "members": 235,
+  "originals": 232,
+  "originalCopiedBytes": 4954042,
+  "payloadBytes": 5052397,
+  "allOriginalBytesUnchanged": true,
+  "allRoundtripBytesMatch": true,
+  "manifestSHA256": "d7af00d4d09d4e06c6f4bc387d98373917b19cb11ce9561a5637fbfcc3a2a609"
+}

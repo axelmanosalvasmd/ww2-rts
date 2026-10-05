@@ -1,0 +1,7 @@
+{
+  "registeredChildCount": 66,
+  "requiredAIFileCount": 35,
+  "missingRequiredOrThinkCallerTests": [],
+  "missingRegisteredFiles": [],
+  "perChildTimeoutMilliseconds": 180000
+}

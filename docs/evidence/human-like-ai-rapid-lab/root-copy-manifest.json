@@ -1,0 +1,7 @@
+{
+  "status": "PASS",
+  "verifiedBy": "ROOT independent decompressed member comparison against originals and internal manifest identity",
+  "members": 111,
+  "archiveSHA256": "2236f9ee926b582cb3e96068872b2b4b3c09c90f0dadc9cf1ae9a72bc52f54cb",
+  "qualification": "Authored native diagnostic evidence only; censors and failed bands retained, no population acceptance claim."
+}

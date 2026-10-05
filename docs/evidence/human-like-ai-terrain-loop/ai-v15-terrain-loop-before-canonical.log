@@ -1,0 +1,2 @@
+ai: 1000 ticks, p50/p95/p99 4.097/21.92/37.217 ms
+REPORT /tmp/ai-v15-terrain-loop-before-canonical.json

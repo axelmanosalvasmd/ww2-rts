@@ -1,0 +1,213 @@
+{
+  "launchAuthorized": true,
+  "freezeAnnouncement": "root11:34:17UTC",
+  "reviewReference": "/tmp/human-ai-review-round4.md",
+  "sourceArchiveDirectory": "/tmp/human-ai-final-observed-runtime-v14-source",
+  "sourceArchiveSHA256": "a4e605b3f924f7ac22ede29d394d0b206b17df60a671eb83a5b997120d1b09c9",
+  "expectedRuntimeCheckpointSHA256": "7c87de19ed1196044efbabad0d63bb8774d52acdd35e7695efac053a1f7c74a9",
+  "matches": 120,
+  "seatsExpected": 360,
+  "seedSets": {
+    "conquest": [
+      1,
+      2,
+      3,
+      4,
+      5,
+      6,
+      7,
+      8,
+      9,
+      10,
+      11,
+      12,
+      13,
+      14,
+      15,
+      16,
+      17,
+      18,
+      19,
+      20
+    ],
+    "classic": [
+      1,
+      2,
+      3,
+      4,
+      5,
+      6,
+      7,
+      8,
+      9,
+      10
+    ],
+    "world": [
+      1,
+      2,
+      3,
+      4,
+      5,
+      6,
+      7,
+      8,
+      9,
+      10
+    ]
+  },
+  "levels": [
+    "easy",
+    "normal",
+    "hard"
+  ],
+  "requestedSeconds": 180,
+  "durationPolicy": "Retain actual authoritative early termination, if any. Never extend games or alter requested180seconds; flag early-ended matches explicitly.",
+  "workers": 2,
+  "modeBatches": "conquest then classic then world, sequential",
+  "scoring": "Prospectively selected explicit-linked Version3 completed endpoints and unchanged frozen screen-v1 oracle population for original gates. Separate screen-observed-v1 comparison uses the same unchanged native timelines and only immutable same-frame runtime aliases; unperceived original stimuli remain censored. Report primaryOnly and explicitLinked on the exact same new logs, with every required unanswered censored stimulus. No favorable endpoint choice or policy/band changes.",
+  "baseline": "Exact original120 seed pairs; historical reaction instrumentation absent, spatial baseline160versuscurrent113 explicitly incomparable.",
+  "bounds": {
+    "easy": {
+      "screen": [
+        0.9,
+        1.4
+      ],
+      "offscreen": [
+        3,
+        6
+      ],
+      "physicalAPM60": [
+        20,
+        35
+      ],
+      "peakAPM10": 60,
+      "opening": [
+        4,
+        8
+      ]
+    },
+    "normal": {
+      "screen": [
+        0.5,
+        0.8
+      ],
+      "offscreen": [
+        1.5,
+        3
+      ],
+      "physicalAPM60": [
+        40,
+        70
+      ],
+      "peakAPM10": 120,
+      "opening": [
+        3,
+        6
+      ]
+    },
+    "hard": {
+      "screen": [
+        0.3,
+        0.45
+      ],
+      "offscreen": [
+        0.8,
+        1.6
+      ],
+      "physicalAPM60": [
+        80,
+        120
+      ],
+      "peakAPM10": 200,
+      "opening": [
+        2,
+        4
+      ]
+    }
+  },
+  "commands": {
+    "conquest": [
+      "node",
+      "/tmp/human-ai-final-observed-runtime-v14-source/tools/ai-humanity.mjs",
+      "--mode",
+      "conquest",
+      "--level",
+      "all",
+      "--seeds",
+      "1-20",
+      "--seconds",
+      "180",
+      "--workers",
+      "2",
+      "--logs",
+      "--screen-span",
+      "113",
+      "--out",
+      "/tmp/human-ai-final-observed-runtime-v14/conquest-full.json"
+    ],
+    "classic": [
+      "node",
+      "/tmp/human-ai-final-observed-runtime-v14-source/tools/ai-humanity.mjs",
+      "--mode",
+      "classic",
+      "--level",
+      "all",
+      "--seeds",
+      "1-10",
+      "--seconds",
+      "180",
+      "--workers",
+      "2",
+      "--logs",
+      "--screen-span",
+      "113",
+      "--out",
+      "/tmp/human-ai-final-observed-runtime-v14/classic-full.json"
+    ],
+    "world": [
+      "node",
+      "/tmp/human-ai-final-observed-runtime-v14-source/tools/ai-humanity.mjs",
+      "--mode",
+      "world",
+      "--level",
+      "all",
+      "--seeds",
+      "1-10",
+      "--seconds",
+      "180",
+      "--workers",
+      "2",
+      "--logs",
+      "--screen-span",
+      "113",
+      "--out",
+      "/tmp/human-ai-final-observed-runtime-v14/world-full.json"
+    ],
+    "merge": [
+      "node",
+      "/tmp/human-ai-final-observed-runtime-v14-source/tools/ai-humanity.mjs",
+      "--merge",
+      "/tmp/human-ai-final-observed-runtime-v14/conquest-full.json,/tmp/human-ai-final-observed-runtime-v14/classic-full.json,/tmp/human-ai-final-observed-runtime-v14/world-full.json",
+      "--compare",
+      "/tmp/human-ai-final-observed-runtime-v14-source/docs/ai-humanity-before.json",
+      "--out",
+      "/tmp/human-ai-final-observed-runtime-v14/final120-full.json"
+    ],
+    "package": [
+      "node",
+      "/tmp/human-ai-final-observed-runtime-v14-source/tools/ai-humanity.mjs",
+      "--package",
+      "/tmp/human-ai-final-observed-runtime-v14/final120-full.json",
+      "--archive",
+      "/tmp/human-ai-final-observed-runtime-v14/final120-full.json.gz",
+      "--out",
+      "/tmp/human-ai-final-observed-runtime-v14/final120-compact.json"
+    ]
+  },
+  "retention": "Preserve full mode reports, logs, merged fullraw gzip, compact per-seat metrics, both scores, source checkpoints and timeline digests. No automatic gate acceptance or release.",
+  "recovery": "Storage-only external frozen Worker API. Rerun every original120seed/config; immediate per-match exact compact JSON gzip/native graph checks; streamed full gzip; original failed archive preserved.",
+  "failedFirstLaunch": "/tmp/human-ai-final-observed-runtime-v14",
+  "serializerProof": "serializer-proof.json",
+  "pinning": "All process/worker/libuv affinity CPU6 inherited from taskset.",
+  "externalWrapperSHA256": "aded22e0aae38fb1d34834fa0cc48c6d756a22c69eaf46fa7966266464328e2d"
+}

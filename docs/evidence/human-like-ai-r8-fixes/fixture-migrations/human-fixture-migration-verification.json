@@ -1,0 +1,13 @@
+{
+  "status": "PASS",
+  "archive": "human-fixture-migration.tar.gz",
+  "archiveBytes": 39602,
+  "archiveSHA256": "461ebabf0bc37b4e0d155c4106de1282bc33f971a4777bca0fa53bd80192ffd2",
+  "members": 16,
+  "payloadBytes": 286185,
+  "originalCopiedBytes": 281583,
+  "allRoundtripBytesMatch": true,
+  "allOriginalBytesUnchanged": true,
+  "manifestSHA256": "81d58797d2c3852ce21ca65004131c853f6a91338aa9bbf910a1bb17b0a14d88",
+  "manifestBytes": 3358
+}

@@ -1,11 +1,23 @@
+import { exactHalfBoundary } from './km-median-boundary.mjs';
+export { KM_MEDIAN_BOUNDARY_VERSION } from './km-median-boundary.mjs';
 // Seeded input and command measurements. Legacy command APM is not physical input APM.
-import { readFile, writeFile, readdir, stat, mkdir } from 'node:fs/promises';
+import assert from 'node:assert/strict';
+import {PUBLIC_ALERT_POLICY,createPublicAlertCapture,scorePublicAlerts,poolPublicAlerts} from './ai-public-alert-response.mjs';
+import {PUBLIC_ALERT_POLICY_V2,createPublicAlertCaptureV2,scorePublicAlertsV2,poolPublicAlertsV2} from './ai-public-alert-response-v2.mjs';
+import {createManualResponsePolicy,MANUAL_RESPONSE_POLICY} from './ai-manual-response-policy.mjs';
+import {createManualCapture} from './ai-manual-response-capture.mjs';
+import {createManualResponsePolicy as createManualV3Policy,MANUAL_RESPONSE_POLICY as MANUAL_V3_POLICY} from './ai-manual-response-policy-v3.mjs';
+import {createManualCapture as createManualV3Capture} from './ai-manual-response-capture-v3.mjs';
+export {createManualResponsePolicy,MANUAL_RESPONSE_POLICY,MANUAL_RESPONSE_STREAM} from './ai-manual-response-policy.mjs';
+export function manualResponseMetrics(log,seconds,rules) {return (log.manualMeasurements?.policy===MANUAL_V3_POLICY?createManualV3Policy:createManualResponsePolicy)(rules).scoreManualResponses(log,seconds,kaplanMeier);}
+import { readFile, writeFile, readdir, stat, mkdir, mkdtemp, rm } from 'node:fs/promises';
+import { tmpdir } from 'node:os';
+import { writeJSON, hashJSON, rawJSONFile, readReport, stageGzip, temporaryOutput } from './json-stream.mjs';
 import { createHash } from 'node:crypto';
-import { dirname, resolve, relative } from 'node:path';
+import { dirname, resolve, relative, join } from 'node:path';
 import { fileURLToPath } from 'node:url';
 import { isMainThread, parentPort, Worker, workerData } from 'node:worker_threads';
-import { gzip } from 'node:zlib';
-import { promisify } from 'node:util';
+import { isDeepStrictEqual } from 'node:util';
 
 const script = fileURLToPath(import.meta.url);
 const root = resolve(dirname(script), '..');
@@ -62,11 +74,12 @@ export function kaplanMeier(samples) {
   }
   const times = [...groups.keys()].sort((a, b) => a - b);
   let atRisk = valid.length, survival = 1, median = null;
+  const medianBoundary = exactHalfBoundary();
   const curve = times.map(seconds => {
     const { observed, censored } = groups.get(seconds);
     const risk = atRisk;
     if (observed) survival *= 1 - observed / atRisk;
-    if (median === null && survival <= .5) median = round(seconds);
+    if (median === null && medianBoundary(survival, risk, observed)) median = round(seconds);
     atRisk -= observed + censored;
     return { seconds: round(seconds), atRisk: risk, observed, censored, survival: round(survival) };
   });
@@ -314,6 +327,85 @@ export function reactionScoringComparison(log, seconds) {
   };
 }
 
+// Private diagnostic populations never enter the native command or physical input timeline.
+export function measurementScoringViews(log, seconds) {
+  const stream = log.perceptionMeasurements;
+  if (!stream || !Array.isArray(stream.frames)) return null;
+  const native = new Map((log.events ?? []).map(event => [eventKey(event), event]));
+  const original = new Map(), observed = new Map(), aliases = new Map();
+  const audit = { frames: stream.frames.length, declaredMappings: 0, validMappings: 0, unknownRuntimeMappings: 0,
+    unknownOriginalMappings: 0, mismatchedCreationMappings: 0, invalidRuntimeDescriptors: 0, unaliasedPrimaryInputs: 0, unaliasedExplicitLinks: 0 };
+  const clean = value => JSON.parse(JSON.stringify(value));
+  const publicDescriptor = event => {
+    const copy = { ...event };
+    for (const key of ['responseRequired', 'responsePolicy', 'responseReason', 'responseUnits']) delete copy[key];
+    return clean(copy);
+  };
+  const sameCreation = (runtime, raw) => ['source', 'kind', 'tick', 'observationTick', 'unitId', 'targetId', 'x', 'z']
+    .every(key => runtime[key] === raw[key]) && (runtime.source === 'screen' || runtime.id === raw.id);
+  const baselines = [];
+  for (const frame of stream.frames) {
+    if (Number.isSafeInteger(frame.original?.baselineTick)) baselines.push(frame.original.baselineTick);
+    for (const event of frame.original?.events ?? frame.original?.newEvents ?? []) if (event?.id != null) {
+      const key = eventKey(event); if (!original.has(key)) original.set(key, structuredClone(event));
+    }
+    for (const event of frame.observed?.events ?? frame.observed?.newEvents ?? []) if (event?.id != null) {
+      const key = eventKey(event); if (!observed.has(key)) observed.set(key, structuredClone(event));
+    }
+    for (const mapping of frame.links ?? []) for (const originalId of mapping.originalIds ?? []) {
+      audit.declaredMappings++;
+      const runtime = (frame.observed?.newEvents ?? []).find(event => event.id === mapping.runtimeId);
+      const delivered = runtime && native.get(eventKey(runtime));
+      if (!runtime || !delivered) { audit.unknownRuntimeMappings++; continue; }
+      if (!isDeepStrictEqual(clean(delivered), publicDescriptor(runtime))) { audit.invalidRuntimeDescriptors++; continue; }
+      const raw = (frame.original?.newEvents ?? []).find(event => event.id === originalId);
+      if (!raw) { audit.unknownOriginalMappings++; continue; }
+      const canonical = original.get(eventKey(raw));
+      if (!canonical || !isDeepStrictEqual(clean(raw), clean(canonical)) || !sameCreation(runtime, raw)
+        || (frame.original?.newEvents ?? []).filter(event => sameCreation(runtime, event)).length !== 1
+        || Number.isSafeInteger(frame.tick) && runtime.source === 'screen' && runtime.tick !== frame.tick
+        || Number.isSafeInteger(frame.observationTick) && runtime.observationTick !== frame.observationTick && runtime.source === 'screen') {
+        audit.mismatchedCreationMappings++; continue;
+      }
+      const key = eventKey(runtime), rows = aliases.get(key) ?? [];
+      if (!rows.some(event => eventKey(event) === eventKey(raw))) { rows.push(original.get(eventKey(raw))); aliases.set(key, rows); audit.validMappings++; }
+    }
+  }
+  const observedFor = runtime => {
+    const event = runtime && observed.get(eventKey(runtime));
+    return event && isDeepStrictEqual(clean(runtime), publicDescriptor(event)) ? [event] : [];
+  };
+  const derive = policy => {
+    const inputs = (log.inputs ?? []).map(input => {
+      const row = structuredClone(input);
+      const primary = input.event && native.get(`${input.event.id}/${input.eventTick ?? input.event.tick}`);
+      const primaryEvents = primary ? policy === 'originalOracle' ? aliases.get(eventKey(primary)) ?? [] : observedFor(primary) : [];
+      if (primaryEvents.length) { row.event = structuredClone(primaryEvents[0]); row.eventTick = primaryEvents[0].tick; }
+      else { delete row.event; delete row.eventTick; if (policy === 'originalOracle' && input.event) audit.unaliasedPrimaryInputs++; }
+      if (Array.isArray(input.responseEvents)) row.responseEvents = input.responseEvents.flatMap(link => {
+        const delivered = link && native.get(eventKey(link));
+        if (!delivered || !isDeepStrictEqual(clean(link), clean(delivered))) {
+          if (policy === 'originalOracle') audit.invalidRuntimeDescriptors++; return [];
+        }
+        const events = policy === 'originalOracle' ? aliases.get(eventKey(delivered)) ?? [] : observedFor(delivered);
+        if (!events.length && policy === 'originalOracle') audit.unaliasedExplicitLinks++;
+        return events.map(event => structuredClone(event));
+      });
+      return row;
+    });
+    const events = [...(policy === 'originalOracle' ? original : observed).values()];
+    const recorded = policy !== 'originalOracle' || stream.frames.some(frame => frame.original != null);
+    const derived = { ...log, inputs, ...(recorded ? { events, eventsRecorded: true } : { events: undefined, eventsRecorded: false }) }; delete derived.perceptionMeasurements;
+    return { log: derived, primaryOnly: primaryReactionMetrics(derived, seconds), explicitLinked: reactionMetrics(derived, seconds) };
+  };
+  const originalOracle = derive('originalOracle'), fairObserved = derive('observed');
+  return { originalOracle, observed: fairObserved, audit,
+    coverage: { originalRecorded: stream.frames.some(frame => frame.original != null), originalBaselineTicks: [...new Set(baselines)],
+      originalFromMatchStart: Number.isSafeInteger(stream.startedTick) && baselines.length ? stream.startedTick <= 1 && baselines.every(tick => tick === 0) : null,
+      nativeEvents: native.size, originalEvents: original.size, observedEvents: observed.size, originalEventsWithoutRuntimeAlias: [...original.keys()].filter(key => ![...aliases.values()].flat().some(event => eventKey(event) === key)).length },
+    method: 'Tool-only creation streams are scored on separate derived views of the unchanged native physical inputs and commands. Original screen-v1 is retained for gates; screen-observed-v1 is a separate comparison. Only immutable same-frame runtime creation aliases can answer original stimuli. Unperceived originals remain censored. Each policy reports primary-only and explicit-linked scoring; neither score changes the population or physical APM.' };
+}
+
 export function summarizeSeat(log, seconds, screenSpan = DEFAULT_SCREEN_SPAN) {
   const commands = log.commands ?? [];
   const accepted = commands.filter(c => c.accepted === true);
@@ -335,8 +427,9 @@ export function summarizeSeat(log, seconds, screenSpan = DEFAULT_SCREEN_SPAN) {
   }
   const physical = inputs.filter(i => i.countsAPM !== false && i.kind !== 'beat' && !(i.actor === 'human' && i.kind === 'command'));
   const physicalRecorded = physical.length > 0 || log.physicalInputsRecorded === true || inputs.some(i => i.observed?.physicalInputs === true);
-  const scoringComparison = reactionScoringComparison(log, seconds);
-  const reaction = scoringComparison?.explicitLinked ?? reactionMetrics(log, seconds);
+  const measurement = measurementScoringViews(log, seconds);
+  const scoringComparison = reactionScoringComparison(measurement?.originalOracle.log ?? log, seconds);
+  const reaction = measurement?.originalOracle.explicitLinked ?? scoringComparison?.explicitLinked ?? reactionMetrics(log, seconds);
   const camera = inputs.filter(i => i.kind === 'camera' || i.kind === 'cameraJump' || i.kind?.startsWith('camera-'));
   const cycles = new Map();
   for (const input of physical) {
@@ -355,6 +448,10 @@ export function summarizeSeat(log, seconds, screenSpan = DEFAULT_SCREEN_SPAN) {
     reactionMeasurementVersion: inputs.some(input => Array.isArray(input.responseEvents)) ? 3 : 2, reactionEvents: reaction.population,
     reactionSeconds: reaction.firstAction, reactionCommandSeconds: reaction.command,
     ...(scoringComparison ? { reactionScoringComparison: scoringComparison } : {}),
+    ...(measurement ? { measurementPolicyComparison: { method: measurement.method, audit: measurement.audit, coverage: measurement.coverage,
+      originalOracle: { primaryOnly: measurement.originalOracle.primaryOnly, explicitLinked: measurement.originalOracle.explicitLinked },
+      observed: { primaryOnly: measurement.observed.primaryOnly, explicitLinked: measurement.observed.explicitLinked } },
+      nativeReactionEvents: reactionMetrics(log, seconds).population } : {}),
     requiredScreenPopulation: reaction.requiredScreenPopulation, concernAlignment: concernMetrics(log),
     contactToTargetCommandSeconds: distribution(log.contactReactions ?? []),
     crossMap: { screenSpan, commandPairsWithinOneSecond: crossMapPairs, commandPairsWithinQuarterSecond: quarterSecondCrossMapPairs, bundledCommandsSpanningScreen: sameCommandCrossMap },
@@ -367,32 +464,97 @@ export function summarizeSeat(log, seconds, screenSpan = DEFAULT_SCREEN_SPAN) {
     opening: openingOf(commands), commandLogSHA256: digest(commands), inputLogSHA256: inputs.length ? digest(inputs) : null,
   };
 }
-export async function sourceCheckpoint(legacy) {
+export async function sourceCheckpoint(legacy, alertPolicy = null) {
   const shared = (await readdir(resolve(root, 'shared'))).filter(name => name.endsWith('.js')).sort().map(name => `shared/${name}`);
-  const files = ['tools/ai-humanity.mjs', ...shared, ...(legacy ? ['tools/legacy-ai/ai.js', 'tools/legacy-ai/ai-view.js', 'tools/legacy-ai/ai-mind.js'] : ['client/keys.js'])];
+  const files = ['tools/ai-humanity.mjs', 'tools/km-median-boundary.mjs', 'tools/ai-public-alert-response.mjs', ...(alertPolicy===PUBLIC_ALERT_POLICY_V2 ? ['tools/ai-public-alert-response-v2.mjs'] : []), 'client/alerts.js', 'tools/ai-manual-response-policy.mjs', 'tools/ai-manual-response-capture.mjs', 'tools/ai-manual-response-policy-v3.mjs', 'tools/ai-manual-response-capture-v3.mjs', 'tools/json-stream.mjs', ...shared, ...(legacy ? ['tools/legacy-ai/ai.js', 'tools/legacy-ai/ai-view.js', 'tools/legacy-ai/ai-mind.js'] : ['client/keys.js', 'tools/ai-screen-v1-oracle.js'])];
   const hashes = Object.fromEntries(await Promise.all(files.map(async file => [file, createHash('sha256').update(await readFile(resolve(root, file))).digest('hex')])));
   return { recordedAt: new Date().toISOString(), sha256: digest(hashes), files: hashes, method: 'File hashes captured in each worker immediately before its first commander import. The worker reuses those imported modules for its subsequent matches.' };
 }
-export async function packageReport(inputPath, outputPath, archivePath) {
+export async function packageReport(inputPath, outputPath, archivePath, { hashJSON: verifierHashJSON = hashJSON } = {}) {
+  if (typeof verifierHashJSON !== 'function') throw new TypeError('Packaging digest helper must be a function.');
   const input = resolve(inputPath), output = resolve(outputPath), archive = resolve(archivePath);
   if (new Set([input, output, archive]).size !== 3) throw Error('Source report, compact report and gzip archive must have different paths.');
-  const bytes = await readFile(input), report = JSON.parse(bytes.toString('utf8'));
-  if (!Array.isArray(report.results) || !report.results.length || report.results.some(result => !Array.isArray(result.logs) || result.logs.length !== result.seats?.length)) throw Error('Packaging requires full raw logs for every match and seat.');
-  const compressed = await promisify(gzip)(bytes, { level: 9 });
-  const sha256 = value => createHash('sha256').update(value).digest('hex');
-  const compact = { ...report, results: report.results.map(({ logs, ...result }) => ({ ...result,
-    timelinesSHA256: digest(logs), timelineDigests: logs.map((log, slot) => ({ slot, sha256: digest(log), commands: log.commands?.length ?? 0, inputs: log.inputs?.length ?? 0, events: log.events?.length ?? 0 })) })),
-    evidenceArchive: { format: 'gzip', path: relative(dirname(output), archive), sha256: sha256(compressed), bytes: compressed.length,
-      uncompressedSHA256: sha256(bytes), uncompressedBytes: bytes.length,
-      method: 'The gzip archive contains the complete source report bytes, including every raw timeline. Compact timeline digests hash JSON.stringify of each original log in array order. No measurements or historical event annotations are changed.' } };
-  await Promise.all([mkdir(dirname(output), { recursive: true }), mkdir(dirname(archive), { recursive: true })]);
-  await writeFile(archive, compressed);
-  await writeFile(output, JSON.stringify(compact) + '\n');
-  return compact;
+  // Stage both outputs before publishing either. Parse the staged archive so digests refer to the exact archived input bytes.
+  const compactOutput = await temporaryOutput(output); let evidence;
+  try {
+    evidence = await stageGzip(input, archive);
+    const compact = await readReport(evidence.staged.path, async ({ logs, ...result }) => {
+      if (!Array.isArray(logs) || logs.length !== result.seats?.length) throw Error('Packaging requires full raw logs for every match and seat.');
+      return { ...result, timelinesSHA256: (await verifierHashJSON(logs)).sha256,
+        timelineDigests: await Promise.all(logs.map(async (log, slot) => ({ slot, sha256: (await verifierHashJSON(log)).sha256,
+          commands: log.commands?.length ?? 0, inputs: log.inputs?.length ?? 0, events: log.events?.length ?? 0,
+          ...(log.perceptionMeasurements ? { measurementFrames: log.perceptionMeasurements.frames.length,
+            measurementStreamSHA256: (await verifierHashJSON(log.perceptionMeasurements)).sha256 } : {}) }))) };
+    }, { gzip: true });
+    if (!Array.isArray(compact.results) || !compact.results.length) throw Error('Packaging requires full raw logs for every match and seat.');
+    compact.evidenceArchive = { format: 'gzip', path: relative(dirname(output), archive), sha256: evidence.gzip.sha256, bytes: evidence.gzip.bytes,
+      uncompressedSHA256: evidence.raw.sha256, uncompressedBytes: evidence.raw.bytes,
+      method: 'The gzip archive contains the complete source report bytes, including every raw timeline. Compact timeline digests hash JSON.stringify of each original log in array order. No measurements or historical event annotations are changed.' };
+    await writeJSON(compactOutput.path, compact, { newline: true });
+    await evidence.staged.commit(); await compactOutput.commit(); return compact;
+  } finally { await compactOutput.cleanup(); await evidence?.staged.cleanup(); }
 }
-async function runMatch(options, task) {
+async function readCompactReport(path) {
+  return readReport(resolve(path), ({ logs, ...result }) => result);
+}
+async function spoolReport(path, directory, offset) {
+  const files = new Map();
+  const report = await readReport(resolve(path), async (result, index) => {
+    for (const seat of result.seats) if (!seat.metrics.idleSeconds && seat.metrics.unnoticedIdleSeconds) { seat.metrics.idleSeconds = seat.metrics.unnoticedIdleSeconds; seat.metrics.unnoticedIdleSeconds = null; }
+    const file = join(directory, `merged-${offset}-${index}.json`); await writeJSON(file, result);
+    const { logs, ...compact } = result; files.set(compact, file); return compact;
+  });
+  return { report, files };
+}
+export function privateTickZeroObservation(g, slot, cache, viewFor, oracle) {
+  assert.equal(g.tick, 0);
+  const projection = g.world ? { ...g, world: { ...g.world, memory: structuredClone(g.world.memory) } } : g;
+  const data = { ...viewFor(projection, slot, {}, cache) };
+  delete data.sees;
+  return oracle.detachedCopy(data);
+}
+
+export function bootstrapPrivateOracle(observation, slot, record, oracle) {
+  assert.equal(observation.tick, 0);
+  assert.equal(typeof record, 'function');
+  const data = { ...observation };
+  delete data.sees;
+  const initial = oracle.detachedCopy(data);
+  const state = { camera: oracle.startCamera(initial, slot), hands: { selected: [] } };
+  const first = oracle.perceive(initial, slot, state, 0);
+  record(oracle.detachedCopy({ tick: 0, observationTick: 0,
+    original: { policy: 'screen-v1', baselineTick: 0, events: state.events ?? [], newEvents: first.newEvents },
+    observed: { policy: 'screen-observed-v1', events: [], newEvents: [] }, links: [] }));
+  return {
+    measureRaw(delivered, actualSlot, diagnosticState, tick) {
+      assert.equal(actualSlot, slot);
+      state.camera = oracle.detachedCopy(diagnosticState.camera);
+      state.hands.selected = [...diagnosticState.hands.selected];
+      return oracle.perceive(delivered, actualSlot, state, tick);
+    },
+    onMeasurements(payload) {
+      assert.ok(payload.original);
+      const detached = oracle.detachedCopy(payload);
+      detached.original.baselineTick = 0;
+      detached.original.events = oracle.detachedCopy(state.events ?? []);
+      record(detached);
+    },
+  };
+}
+
+export async function runMatch(options, task) {
   const sim = await import('../shared/sim.js');
   const ai = await import(options.legacy ? './legacy-ai/ai.js' : '../shared/ai.js');
+  const oracle = ai.humanCommander ? await import('./ai-screen-v1-oracle.js') : null;
+  const viewModule = oracle ? await import('../shared/ai-view.js') : null;
+  const manualEnabled=[MANUAL_RESPONSE_POLICY,MANUAL_V3_POLICY].includes(options.manualPolicy);
+  if(options.manualPolicy && !manualEnabled || manualEnabled && !ai.humanCommander) throw Error('Unsupported manual policy or controller');
+  const alertV2=options.alertPolicy===PUBLIC_ALERT_POLICY_V2;
+  const alertEnabled=options.alertPolicy===PUBLIC_ALERT_POLICY || alertV2;
+  if(options.alertPolicy && !alertEnabled || alertEnabled && !ai.humanCommander) throw Error('Unsupported public alert policy or controller');
+  const publicModule=manualEnabled ? await import('../shared/ai-perception.js') : null;
+  const handsModule=manualEnabled || alertEnabled ? await import('../shared/ai-hands.js') : null;
+  const keyModule=manualEnabled ? await import('../client/keys.js') : null;
   const map = JSON.parse(await readFile(resolve(root, `maps/${options.map}.json`), 'utf8'));
   const slots = task.mode === 'world' ? 3 : sim.spawnsFor(map, task.mode).length;
   const originalRandom = Math.random; Math.random = seededRandom(task.seed);
@@ -402,7 +564,20 @@ async function runMatch(options, task) {
     const noticed = g.players.map(() => new Map()), reacted = g.players.map(() => new Set()), idle = g.players.map(() => new Map()), attention = g.players.map(() => null);
     const idleNoticed = g.players.map(() => new Set()), recordedEvents = g.players.map(() => new Set()), recordedProduction = g.players.map(() => new Set());
     const initialCache = sim.snapshotCache(g);
-    const views = g.players.map((_, slot) => ai.observe?.(g, slot, initialCache));
+    const recordMeasurements = slot => payload => {
+      const stream = logs[slot].perceptionMeasurements ??= { schema: 'ww2-private-perception-measurements-v1', toolOnly: true, startedTick: g.tick, frames: [] };
+      if (!stream.frames.length || payload.original?.newEvents?.length || payload.observed?.newEvents?.length || payload.links?.length)
+        stream.frames.push(structuredClone(payload));
+    };
+    const privateObservers = oracle ? g.players.map((_, slot) => bootstrapPrivateOracle(
+      privateTickZeroObservation(g, slot, initialCache, viewModule.viewFor, oracle), slot, recordMeasurements(slot), oracle)) : null;
+
+    const manualMemories=manualEnabled || alertEnabled ? g.players.map(()=>({})) : null;
+    const manualCaptures=manualEnabled ? g.players.map((_,slot)=>(options.manualPolicy===MANUAL_V3_POLICY?createManualV3Capture:createManualCapture)({slot,log:logs[slot],memory:manualMemories[slot],
+      rules:{...sim,bindings:keyModule.bindings},perceive:publicModule.perceive,observer:privateObservers[slot],onProof:options.manualProofTransform})) : null;
+    const alertCaptures=alertEnabled ? g.players.map((_,slot)=>(alertV2?createPublicAlertCaptureV2:createPublicAlertCapture)({slot,log:logs[slot],memory:manualMemories[slot],startedTick:g.tick})) : null;
+    const measurements=g.players.map((_,slot)=>{const base=manualCaptures?.[slot].perceptionMeasurements ?? privateObservers?.[slot];return alertCaptures?.[slot].wrapMeasurements(base) ?? base;});
+    const views = g.players.map((_, slot) => { if (ai.humanCommander && ai.startCommander) { ai.startCommander(g, slot, { w: g.w, h: g.h, spawn: g.players[slot].spawn, level: task.level, seed: task.seed },manualMemories ? {memory:manualMemories[slot]} : {}); return null; } return ai.observe?.(g, slot, initialCache); });
     const cameraSpan = options.screenSpan ?? DEFAULT_SCREEN_SPAN;
     const inputLog = (slot, input) => {
       const row = structuredClone(input), view = views[slot];
@@ -413,6 +588,8 @@ async function runMatch(options, task) {
         if (validPoint(target)) row.concernTarget = { x: target.x, z: target.z };
       }
       logs[slot].inputs.push(row);
+      manualCaptures?.[slot].input(row,logs[slot].inputs.length-1);
+      alertCaptures?.[slot].input(row,logs[slot].inputs.length-1);
     };
     for (let tick = 0; tick < Math.round(options.seconds / sim.TICK) && g.winner === null; tick++) {
       sim.step(g);
@@ -450,9 +627,17 @@ async function runMatch(options, task) {
           if (target && noticed[slot].has(target.id) && !reacted[slot].has(target.id) && result === undefined) { logs[slot].contactReactions.push((g.tick - noticed[slot].get(target.id)) * TICK); reacted[slot].add(target.id); }
           return result;
         };
-        const opts = { level: task.level, view: views[slot], submit, inputLog: input => inputLog(slot, input), seed: task.seed };
-        if (ai.humanCommander || (g.tick + slot * 13) % (ai.thinkEvery?.(task.level) ?? 40) === 0) ai.think(g, slot, opts);
-        const diagnostic = ai.aiDiagnostics?.(g, slot);
+        const opts = { level: task.level, view: views[slot], submit: alertV2 ? alertCaptures[slot].wrapSubmit(submit) : submit, inputLog: input => inputLog(slot, input), seed: task.seed,
+          ...(privateObservers ? { perceptionMeasurements: measurements[slot] } : {}),
+          ...(manualMemories ? {memory:manualMemories[slot]} : {}) };
+        if ((!ai.humanCommander || views[slot]) && (ai.humanCommander || (g.tick + slot * 13) % (ai.thinkEvery?.(task.level) ?? 40) === 0)) ai.think(g, slot, opts);
+        manualCaptures?.[slot].afterThink(g.tick);
+        alertCaptures?.[slot].afterThink(g.tick);
+        const manualState=manualMemories?.[slot].human;
+        const diagnostic = manualState?.hands ? {slot,...handsModule.diagnostics(manualState.hands,g.tick),persona:manualState.persona?.family,
+          attention:manualState.concern ? {id:manualState.concern.id,kind:manualState.concern.kind,since:manualState.concern.since,until:manualState.concern.until} : null,
+          screenIds:[...(manualState.view?.screenIds ?? [])],events:(manualState.events ?? []).map(event=>({...event})),
+          production:manualState.production ? structuredClone(manualState.production) : null} : ai.aiDiagnostics?.(g, slot);
         if (diagnostic?.production?.id != null && !recordedProduction[slot].has(diagnostic.production.id)) {
           recordedProduction[slot].add(diagnostic.production.id);
           (logs[slot].productionDecisions ??= []).push(structuredClone(diagnostic.production));
@@ -487,7 +672,9 @@ async function runMatch(options, task) {
     }
     const seconds = g.tick * TICK;
     logs.forEach((log, slot) => { for (const [id, start] of idle[slot]) { log.idleSeconds.push((g.tick - start) * TICK); if (!idleNoticed[slot].has(id)) log.unnoticedIdleCensoredSeconds.push((g.tick - start) * TICK); } if (attention[slot]) { log.attentionDwellSeconds.push((g.tick - attention[slot].start) * TICK); attention[slot].visit.endTick = g.tick; } });
-    return { ...task, seconds: round(seconds), ended: g.winner !== null, winner: g.winner, seats: logs.map((log, slot) => ({ slot, faction: ['USA', 'Germany', 'USSR'][g.players[slot].faction], metrics: summarizeSeat(log, seconds, cameraSpan) })), ...(options.logs ? { logs } : {}) };
+    alertCaptures?.forEach(capture=>capture.finish(g.tick));
+    options.nativeIsolationCapture?.(g,logs,Math.random());
+    return { ...task, seconds: round(seconds), ended: g.winner !== null, winner: g.winner, seats: logs.map((log, slot) => ({ slot, faction: ['USA', 'Germany', 'USSR'][g.players[slot].faction], metrics: {...summarizeSeat(log, seconds, cameraSpan),...(alertEnabled ? {publicAlertResponse:(alertV2?scorePublicAlertsV2:scorePublicAlerts)(log)} : {}),...(manualEnabled ? {manualResponsePolicy:manualResponseMetrics(log,seconds,{...sim,bindings:keyModule.bindings})} : {})} })), ...(options.logs ? { logs } : {}) };
   } finally { Math.random = originalRandom; }
 }
 export function aggregate(results) {
@@ -547,9 +734,31 @@ export function aggregate(results) {
     const reactionPopulations = seats.map(seat => seat.reactionEvents).filter(Boolean);
     const reactionEventPopulation = reactionPopulations.length ? { recordedSeats: reactionPopulations.length, totalSeats: seats.length, byType: Object.fromEntries(['screenNewContact', 'screenHpDamage', 'onScreenAlert', 'offScreenAlert', 'minimapContactExploratory', 'otherEventExploratory'].map(type => [type, { events: reactionPopulations.reduce((n, population) => n + population.byType[type].events, 0), firstActionAnswered: reactionPopulations.reduce((n, population) => n + population.byType[type].firstAction.answered, 0), firstActionUnanswered: reactionPopulations.reduce((n, population) => n + population.byType[type].firstAction.unanswered, 0), commandAnswered: reactionPopulations.reduce((n, population) => n + population.byType[type].attemptedCommand.answered, 0), commandUnanswered: reactionPopulations.reduce((n, population) => n + population.byType[type].attemptedCommand.unanswered, 0), acceptedCommandAnswered: reactionPopulations.reduce((n, population) => n + population.byType[type].acceptedCommand.answered, 0), acceptedCommandUnanswered: reactionPopulations.reduce((n, population) => n + population.byType[type].acceptedCommand.unanswered, 0) }])) } : null;
     groups[`${mode}/${level}`] = { requiredScreenPopulation, concernAlignment, reactionEventPopulation, reactionMeasurementVersion: seats.some(seat => seat.reactionMeasurementVersion === 3) ? (seats.every(seat => seat.reactionMeasurementVersion === 3) ? 3 : 'mixed') : seats.every(seat => seat.reactionMeasurementVersion === 2) ? 2 : 1, screenSpans, peakWindowStrideTicks, matches: matches.length, seats: seats.length, seconds: distribution(matches.map(r => r.seconds)), commandAPM: field(s => s.commandAPM.matchMean), physicalInputAPM: field(s => s.physicalInputAPM?.matchMean), commandAPM60WindowMean: field(s => s.commandAPM.windows60.mean), commandAPM10WindowPeak: field(s => s.commandAPM.windows10.max), physicalInputAPM60WindowMean: field(s => s.physicalInputAPM?.windows60.mean), physicalInputAPM10WindowPeak: field(s => s.physicalInputAPM?.windows10.max), maxCommandsPerTick: field(s => s.commandsPerTick.activeTickDistribution.max), firstOrderSeconds: field(s => s.firstOrderSeconds), firstBuySeconds: field(s => s.firstBuySeconds), firstAcceptedOrderSeconds: field(s => s.firstAcceptedOrderSeconds), firstAcceptedBuySeconds: field(s => s.firstAcceptedBuySeconds), onScreenFirstNonCameraActionMedianSeconds: field(s => s.reactionSeconds?.onScreen?.median), onScreenReactionMedianSeconds: field(s => s.reactionSeconds?.onScreen?.median), offScreenAlertFirstActionMedianSeconds: field(s => s.reactionSeconds?.offScreenAlert?.median), offScreenAlertReactionMedianSeconds: field(s => s.reactionSeconds?.offScreenAlert?.median), onScreenCommandReactionMedianSeconds: field(s => s.reactionCommandSeconds?.attempted?.onScreen?.median), offScreenAlertCommandReactionMedianSeconds: field(s => s.reactionCommandSeconds?.attempted?.offScreenAlert?.median), crossMapPairsWithinOneSecond: field(s => s.crossMap.commandPairsWithinOneSecond), cameraJumpsPerMinute: field(s => s.cameraJumpsPerMinute), dwellMedianSeconds: field(s => s.dwellSeconds?.median), actionsPerCycleMedian: field(s => s.actionsPerCycle?.median), floatingMPMean: field(s => s.floatingMP.mean), idleMedianSeconds: field(s => (s.idleSeconds ?? s.unnoticedIdleSeconds)?.median), unnoticedIdleMedianSeconds: field(s => s.unnoticedIdleSeconds?.median), openingsByFaction };
+    if(seats.some(seat=>seat.manualResponsePolicy)) {
+      const measured=seats.map(seat=>seat.manualResponsePolicy).filter(Boolean);
+      const pooled=endpoint=>kaplanMeier(measured.flatMap(score=>score[endpoint].survival.curve.flatMap(row=>[
+        ...Array.from({length:row.observed},()=>({seconds:row.seconds,observed:true})),
+        ...Array.from({length:row.censored},()=>({seconds:row.seconds,observed:false}))])));
+      groups[`${mode}/${level}`].manualResponsePolicy={policy:measured.every(score=>score.policy===measured[0].policy)?measured[0].policy:'mixed',totalSeats:seats.length,recordedSeats:measured.length,
+        evaluableSeats:measured.filter(score=>score.evaluable).length,
+        ...Object.fromEntries(['creationEvents','requiredEvents','monitoringEvents','unknownEvents'].map(key=>[key,measured.reduce((n,score)=>n+score[key],0)])),
+        firstCompletedAction:{answered:measured.reduce((n,score)=>n+score.firstCompletedAction.answered,0),censored:measured.reduce((n,score)=>n+score.firstCompletedAction.censored,0),survival:pooled('firstCompletedAction')},
+        acceptedCommand:{answered:measured.reduce((n,score)=>n+score.acceptedCommand.answered,0),censored:measured.reduce((n,score)=>n+score.acceptedCommand.censored,0),survival:pooled('acceptedCommand')},
+        audit:Object.fromEntries(Object.keys(measured[0].audit).map(key=>[key,measured.reduce((n,score)=>n+score.audit[key],0)]))};
+    }
+    if(seats.some(seat=>seat.publicAlertResponse)) {
+      const missing={recorded:false,evaluable:false,samples:[]}, scores=seats.map(seat=>seat.publicAlertResponse ?? missing);
+      const policies=[...new Set(scores.filter(score=>score.policy).map(score=>score.policy))];
+      const knownPolicies=[PUBLIC_ALERT_POLICY,PUBLIC_ALERT_POLICY_V2];
+      const recognized=policies.every(policy=>knownPolicies.includes(policy)) && scores.every(score=>!score.recorded || knownPolicies.includes(score.policy));
+      if(policies.length>1 || !recognized) groups[`${mode}/${level}`].publicAlertResponse={policy:policies.length>1?'mixed':'unknown',policies,totalSeats:scores.length,coverageComplete:false,gate:'unknown'};
+      else groups[`${mode}/${level}`].publicAlertResponse=policies.includes(PUBLIC_ALERT_POLICY_V2) ? poolPublicAlertsV2(scores,level) : poolPublicAlerts(scores,level);
+      if(policies.includes(PUBLIC_ALERT_POLICY_V2) || policies.length>1 || !recognized)
+        groups[`${mode}/${level}`].publicAlertResponse.originalV1=poolPublicAlerts(scores.map(score=>score.policy===PUBLIC_ALERT_POLICY ? score : score.originalV1 ?? missing),level);
+    }
     if (seats.some(seat => seat.reactionScoringComparison)) {
       const primaryResults = matches.map(match => ({ ...match, seats: match.seats.map(seat => {
-        const { reactionScoringComparison: comparison, ...metrics } = seat.metrics;
+        const { reactionScoringComparison: comparison, measurementPolicyComparison, ...metrics } = seat.metrics;
         const primary = comparison?.primaryOnly;
         return { ...seat, metrics: primary ? { ...metrics, reactionMeasurementVersion: 2, reactionEvents: primary.population,
           reactionSeconds: primary.firstAction, reactionCommandSeconds: primary.command, requiredScreenPopulation: primary.requiredScreenPopulation } : metrics };
@@ -563,6 +772,32 @@ export function aggregate(results) {
         instrumentedSeats: seats.filter(seat => seat.reactionScoringComparison).length, totalSeats: seats.length,
         primaryOnly: project(primary), explicitLinked: project(groups[`${mode}/${level}`]),
       };
+    }
+    if (seats.some(seat => seat.measurementPolicyComparison)) {
+      const measured = seats.map(seat => seat.measurementPolicyComparison).filter(Boolean);
+      const project = summary => Object.fromEntries(['reactionMeasurementVersion', 'requiredScreenPopulation', 'reactionEventPopulation',
+        'onScreenFirstNonCameraActionMedianSeconds', 'offScreenAlertFirstActionMedianSeconds',
+        'onScreenCommandReactionMedianSeconds', 'offScreenAlertCommandReactionMedianSeconds'].map(key => [key, summary[key]]));
+      const policies = Object.fromEntries(['originalOracle', 'observed'].map(policy => [policy, Object.fromEntries(['primaryOnly', 'explicitLinked'].map(endpoint => {
+        const derived = matches.map(match => ({ ...match, seats: match.seats.map(seat => {
+          const { reactionScoringComparison, measurementPolicyComparison, ...metrics } = seat.metrics;
+          const reaction = measurementPolicyComparison?.[policy]?.[endpoint];
+          return { ...seat, metrics: reaction ? { ...metrics, reactionMeasurementVersion: reaction.population?.version ?? null,
+            reactionEvents: reaction.population, reactionSeconds: reaction.firstAction, reactionCommandSeconds: reaction.command,
+            requiredScreenPopulation: reaction.requiredScreenPopulation } : { ...metrics, reactionEvents: null, reactionSeconds: null,
+              reactionCommandSeconds: null, requiredScreenPopulation: null, reactionMeasurementVersion: null } };
+        }) }));
+        return [endpoint, project(aggregate(derived)[`${mode}/${level}`])];
+      }))]));
+      groups[`${mode}/${level}`].measurementPolicyComparison = { method: measured[0].method, measuredSeats: measured.length, totalSeats: seats.length,
+        audit: Object.fromEntries(Object.keys(measured[0].audit).map(key => [key, measured.reduce((sum, value) => sum + value.audit[key], 0)])),
+        coverage: { originalRecordedSeats: measured.filter(value => value.coverage.originalRecorded).length,
+          originalFromMatchStartSeats: measured.filter(value => value.coverage.originalFromMatchStart === true).length,
+          originalBaselineTicks: [...new Set(measured.flatMap(value => value.coverage.originalBaselineTicks))],
+          nativeEvents: measured.reduce((sum, value) => sum + value.coverage.nativeEvents, 0),
+          originalEvents: measured.reduce((sum, value) => sum + value.coverage.originalEvents, 0),
+          observedEvents: measured.reduce((sum, value) => sum + value.coverage.observedEvents, 0),
+          originalEventsWithoutRuntimeAlias: measured.reduce((sum, value) => sum + value.coverage.originalEventsWithoutRuntimeAlias, 0) }, ...policies };
     }
   }
   return groups;
@@ -626,9 +861,11 @@ async function main() {
   for (let i = 2; i < process.argv.length; i++) {
     const key = process.argv[i].slice(2);
     if (['legacy', 'logs'].includes(key)) { options[key] = true; continue; }
-    if (!['mode', 'level', 'seeds', 'seconds', 'workers', 'map', 'out', 'compare', 'human-log', 'fit', 'screen-span', 'merge', 'package', 'archive'].includes(key) || !process.argv[i + 1]) throw Error('Usage: node tools/ai-humanity.mjs [--seeds N|1,3,8-10] [--mode conquest|classic|world|all] [--level easy|normal|hard|all] [--legacy] [--seconds N] [--workers N] [--out FILE] [--compare FILE] [--human-log FILE] [--fit FILE] [--logs] [--screen-span METRES] [--package FULL_REPORT --archive FILE.json.gz --out COMPACT_REPORT]');
+    if (!['mode', 'level', 'seeds', 'seconds', 'workers', 'map', 'out', 'compare', 'human-log', 'fit', 'screen-span', 'merge', 'package', 'archive', 'manual-policy', 'alert-policy'].includes(key) || !process.argv[i + 1]) throw Error('Usage: node tools/ai-humanity.mjs [--seeds N|1,3,8-10] [--mode conquest|classic|world|all] [--level easy|normal|hard|all] [--legacy] [--manual-policy screen-manual-v2|screen-manual-v3] [--alert-policy public-danger-alert-v1|public-danger-alert-v2] [--seconds N] [--workers N] [--out FILE] [--compare FILE] [--human-log FILE] [--fit FILE] [--logs] [--screen-span METRES] [--package FULL_REPORT --archive FILE.json.gz --out COMPACT_REPORT]');
     options[key] = process.argv[++i];
   }
+  if(options['manual-policy']) {if(![MANUAL_RESPONSE_POLICY,MANUAL_V3_POLICY].includes(options['manual-policy']) || options.legacy) throw Error('--manual-policy requires screen-manual-v2 or screen-manual-v3 and current commander'); options.manualPolicy=options['manual-policy'];options.logs=true;}
+  if(options['alert-policy']) {if(![PUBLIC_ALERT_POLICY,PUBLIC_ALERT_POLICY_V2].includes(options['alert-policy']) || options.legacy) throw Error('--alert-policy requires public-danger-alert-v1 or public-danger-alert-v2 and current commander');options.alertPolicy=options['alert-policy'];options.logs=true;}
   options.seconds = Number(options.seconds); options.workers = Number(options.workers); options.screenSpan = Number(options['screen-span'] ?? options.screenSpan);
   if (!Number.isFinite(options.seconds) || options.seconds < 1 || !Number.isSafeInteger(options.workers) || options.workers < 1 || !Number.isFinite(options.screenSpan) || options.screenSpan <= 0) throw Error('Seconds, workers and screen span must be positive.');
   if (options.package) {
@@ -638,7 +875,10 @@ async function main() {
   }
   if (options.archive) throw Error('--archive requires --package FULL_REPORT.');
   if (options.merge) {
-    const reports = await Promise.all(options.merge.split(',').map(path => readLog(path)));
+    const mergeDirectory = await mkdtemp(join(tmpdir(), 'ww2-ai-humanity-merge-'));
+    try {
+    const saved = []; for (const [index, path] of options.merge.split(',').entries()) saved.push(await spoolReport(path, mergeDirectory, index));
+    const reports = saved.map(item => item.report), rawFiles = new Map(saved.flatMap(item => [...item.files]));
     if (reports.some(r => r.source !== reports[0].source)) throw Error('Cannot merge different commander sources.');
     const results = reports.flatMap(r => r.results);
     for (const result of results) for (const seat of result.seats) if (!seat.metrics.idleSeconds && seat.metrics.unnoticedIdleSeconds) { seat.metrics.idleSeconds = seat.metrics.unnoticedIdleSeconds; seat.metrics.unnoticedIdleSeconds = null; }
@@ -651,9 +891,10 @@ async function main() {
     report.configuration.screenSpanByMode = spansByMode;
     const spans = [...new Set(Object.values(spansByMode).flat())];
     report.configuration.screenSpan = spans.length === 1 ? spans[0] : null;
-    if (options.compare) report.comparison = compareReports(await readLog(options.compare), report, options.compare);
-    await writeFile(resolve(options.out), JSON.stringify(report, null, 2) + '\n');
+    if (options.compare) report.comparison = compareReports(await readCompactReport(options.compare), report, options.compare);
+    await writeJSON(resolve(options.out), { ...report, results: results.map(result => rawJSONFile(rawFiles.get(result))) }, { space: 2, newline: true });
     console.log(JSON.stringify({ source: report.source, matches: results.length, summary: report.summary }, null, 2)); return;
+    } finally { await rm(mergeDirectory, { recursive: true, force: true }); }
   }
   if (options['human-log'] || options.fit) {
     const value = await readLog(options['human-log'] ?? options.fit);
@@ -672,26 +913,30 @@ async function main() {
     });
     const report = { schemaVersion: 1, source: 'recorded-human', recordings, timingFit: fitTiming(rows.filter(i => i.kind !== 'beat' && !(i.actor === 'human' && i.kind === 'command')).map(i => ({ ...i, seat: `${i.room ?? ''}/${i.matchId ?? 'match'}/${i.slot ?? i.seat ?? 0}` }))) };
     report.calibration = report.timingFit.calibration;
-    await writeFile(resolve(options.out), JSON.stringify(report, null, 2) + '\n'); console.log(JSON.stringify(report, null, 2)); return;
+    await writeJSON(resolve(options.out), report, { space: 2, newline: true }); console.log(JSON.stringify(report, null, 2)); return;
   }
   const modes = options.mode === 'all' ? MODES : [options.mode], levels = options.level === 'all' ? LEVELS : [options.level];
   if (modes.some(m => !MODES.includes(m)) || levels.some(l => !LEVELS.includes(l))) throw Error('Unknown mode or difficulty.');
   const seeds = seedList(options.seeds); if (!seeds.length) throw Error('At least one seed is required.');
   const tasks = modes.flatMap(mode => levels.flatMap(level => seeds.map(seed => ({ mode, level, seed }))));
-  const results = [], workers = [], sourceCheckpoints = {}; const started = performance.now();
+  const results = [], workers = [], sourceCheckpoints = {}, rawFiles = new Map(); const started = performance.now();
+  const spoolDirectory = options.logs ? await mkdtemp(join(tmpdir(), 'ww2-ai-humanity-')) : null;
+  try {
   try {
     await Promise.all(Array.from({ length: Math.min(options.workers, tasks.length) }, (_, index) => new Promise((done, fail) => {
-      const worker = new Worker(script, { workerData: { options, tasks: tasks.filter((_, i) => i % options.workers === index) } }); workers.push(worker);
-      worker.on('message', result => { if (result.type === 'sourceCheckpoint') { sourceCheckpoints[result.checkpoint.sha256] = result.checkpoint; return; } results.push(result); process.stderr.write(`${result.mode}/${result.level} seed ${result.seed}: ${results.length}/${tasks.length}\n`); });
+      const worker = new Worker(script, { workerData: { options, tasks: tasks.filter((_, i) => i % options.workers === index), spoolDirectory } }); workers.push(worker);
+      worker.on('message', result => { if (result.type === 'sourceCheckpoint') { sourceCheckpoints[result.checkpoint.sha256] = result.checkpoint; return; } const { spoolFile, ...compact } = result; if (spoolFile) rawFiles.set(compact, spoolFile); results.push(compact); process.stderr.write(`${result.mode}/${result.level} seed ${result.seed}: ${results.length}/${tasks.length}\n`); });
       worker.on('error', fail); worker.on('exit', code => code ? fail(Error(`Worker exited ${code}`)) : done());
     })));
   } catch (error) { await Promise.all(workers.map(w => w.terminate())); throw error; }
   results.sort((a, b) => MODES.indexOf(a.mode) - MODES.indexOf(b.mode) || LEVELS.indexOf(a.level) - LEVELS.indexOf(b.level) || a.seed - b.seed);
   const summary = aggregate(results);
-  const report = { schemaVersion: 1, source: options.legacy ? 'legacy-5293ddb' : 'current', configuration: { modes, levels, seeds, seconds: options.seconds, map: options.map, army: 'standard', worldSize: 'huge', screenSpan: options.screenSpan }, definitions: {
+  const report = { schemaVersion: 1, source: options.legacy ? 'legacy-5293ddb' : 'current', configuration: { modes, levels, seeds, seconds: options.seconds, map: options.map, army: 'standard', worldSize: 'huge', screenSpan: options.screenSpan,...(options.manualPolicy ? {manualPolicy:options.manualPolicy} : {}),...(options.alertPolicy ? {alertPolicy:options.alertPolicy} : {}) }, definitions: {
+    ...(options.alertPolicy ? {publicAlertResponse:options.alertPolicy===PUBLIC_ALERT_POLICY_V2 ? 'Prospective public-danger-alert-v2 retains the original version 1 result as originalV1. The creation population and Easy 3 to 6, Normal 1.5 to 3, Hard 0.8 to 1.6 second limits are unchanged. Native accepted defensive movement may validate the exact operation’s earlier complete selection. Sealed public creation facts, paid clocks, full actor membership and actual submission receipts are required. Unsupported purpose stays unknown and every unresolved event stays censored. Scores are created in the worker before serialization; historical logs are never rescored.' : 'Prospective public-danger-alert-v1 is a separate native stream. Every off-screen client red danger alert (base, attack, air, unitLost, pointLost) is required at native creation. ready and pointWon are informational; scripted event and unknown kinds block certification. First completed causal paid Space, WASD pan or minimap camera input requires live native enqueue/action identity, motor start/completion, applied camera placement and shared public onScreen geometry against the original alert. Unsupported causal endpoints stay unknown. All required unanswered events remain end-censored. Pool event-level Kaplan-Meier across every seat, including eventless seats and unknown coverage. Easy 3 to 6, Normal 1.5 to 3, Hard 0.8 to 1.6 seconds remain unchanged. Native collection scores in the worker before serialization; historical or fabricated logs never acquire live provenance.'} : {}),
     commandAPM: 'Every submitted simulation command, including rejected attempts. A command can contain several unit orders. This is not physical input APM.', physicalInputAPM: 'Logged motor inputs with countsAPM other than false. Null when the commander does not emit physical input records.',
     firstOrder: 'First submitted command other than buy, stance or recover.', reactionSeconds: 'Version3 applies only to explicit responseEvents instrumentation, with full diagnostic identity/descriptor matching and creation before enqueue and motor start. An explicit link must be enqueued within240ticks (12seconds) of creation; later completed inputs remain valid if their plan was timely. Stale links are rejected separately while every stimulus remains recorded and censored. Multiple linked stimuli receive independent completed action/actual command answers from one physical input, counted once for APM. Primary-only historical logs remain Version2. Version2: screen-contact and screen-damage events are stamped by perception at creation. On-screen first action (screen contact, screen damage, or an alert stamped on screen at creation) excludes camera inputs. Off-screen alerts allow a camera input as the first action. Actual attempted and accepted commands are reported separately. Minimap contacts are exploratory and excluded from both reaction gates. Missing event-population instrumentation yields null; historical logs retain their original definitions.',
     reactionScoringComparison: 'Both primary-only historical and explicit-linked scorings are reported on the same newly instrumented logs, per seat and pooled. They share population, recording duration, commands, input timeline and completed endpoints. Neither result is selected for favorable outcomes. Primary-only historical reports remain unchanged.',
+    measurementPolicyComparison: 'Current workers inject the frozen tools/ai-screen-v1-oracle.js only through the optional private measurement callback, from the first delivered frame. Native log.events and physical input rows contain actual fair runtime creations with no grading flags. Detached tool-only original screen-v1 and screen-observed-v1 populations plus same-frame creation aliases remain separate from those native timelines. The original oracle population remains the top-level gate, with all unperceived originals retained and censored. Both policies report primary-only and explicit-linked scores on separate derived views of the same physical timeline; native event counters and APM count each actual event/input once. Unknown oracle populations stay null. Baseline ticks and match-start coverage are explicit; late private recording cannot prove a complete match population. Historical logs without a private stream retain their existing metrics.',
     requiredScreenPopulation: 'Prospective annotations only. screen-v1 requires a novel hostile contact with an idle controllable ground combat unit within 45 metres, or damage of at least 25% maximum health, or crossing the fixed retreat risk (health below 35%, last model in a multi-model squad, or suppression at least 90 with health below 60%) without already retreating. All levels use the same rule. Source-proven automatic retreat and active firing exempt already handled events at creation; firing never exempts current retreat risk. Record every required and exempt reason at perception time, including unknown-home fallbacks that remain required. Alerts and minimap contacts have no required-population policy. First completed non-camera response requires intended actors in responseUnits or an explicit support target within 24 metres. Required unanswered events remain in Kaplan-Meier survival; an unidentified population median is null. Conditional completed medians alone cannot certify the gate. Historical events are never retrospectively classified.',
     concernAlignment: 'Actual expansion command targets within 20 metres of the delivered point or node concern. Idle input-context cycles count whether an actual attempted or accepted command includes the idle unit. Diagnostic attention visits use their own denominator. Production records actual own resource spending, rejection reasons, and explicit planner decisions; missing planner reasons remain unmeasured.',
     crossMap: 'Pairs of spatial commands no more than one second apart with target positions farther apart than screenSpan; commands without positions use addressed unit locations. Also reports quarter-second pairs and one command addressing multiple regions.',
@@ -699,8 +944,18 @@ async function main() {
     dwell: 'Measured attention residence from diagnostics, including silence. cycleInputSpanSeconds separately measures first-to-last input time for logged cycle IDs.',
     idle: 'Idle episodes sampled each second. Unnoticed idle is the delay until an idle unit next appears in diagnostic screenIds or receives a command. Units idle on capture points may be holding intentionally; screen visibility is a notice proxy, not proof of awareness. Episodes ending without a notice are reported separately as censored lower bounds.', opening: 'First five purchases and first three move target regions in the first 45 seconds, grouped by faction.', windows: 'Full non-overlapping 60-second windows and 10-second windows sliding every simulation tick, including quiet windows.',
   }, elapsedSeconds: round((performance.now() - started) / 1000), sourceCheckpoints, summary, results };
-  if (options.compare) { const before = JSON.parse(await readFile(resolve(options.compare), 'utf8')); report.comparison = compareReports(before, report, options.compare); }
-  await writeFile(resolve(options.out), JSON.stringify(report, null, 2) + '\n'); console.log(JSON.stringify({ source: report.source, elapsedSeconds: report.elapsedSeconds, summary }, null, 2));
+  if (options.compare) { const before = await readCompactReport(options.compare); report.comparison = compareReports(before, report, options.compare); }
+  await writeJSON(resolve(options.out), { ...report, results: results.map(result => rawFiles.has(result) ? rawJSONFile(rawFiles.get(result)) : result) }, { space: 2, newline: true }); console.log(JSON.stringify({ source: report.source, elapsedSeconds: report.elapsedSeconds, summary }, null, 2));
+  } finally { if (spoolDirectory) await rm(spoolDirectory, { recursive: true, force: true }); }
 }
-if (!isMainThread) { const checkpoint = await sourceCheckpoint(workerData.options.legacy); parentPort.postMessage({ type: 'sourceCheckpoint', checkpoint }); for (const task of workerData.tasks) { const result = await runMatch(workerData.options, task); result.sourceCheckpointSHA256 = checkpoint.sha256; parentPort.postMessage(result); } }
+if (!isMainThread) {
+  const checkpoint = await sourceCheckpoint(workerData.options.legacy,workerData.options.alertPolicy); parentPort.postMessage({ type: 'sourceCheckpoint', checkpoint });
+  for (const task of workerData.tasks) {
+    const result = await runMatch(workerData.options, task); result.sourceCheckpointSHA256 = checkpoint.sha256;
+    if (workerData.spoolDirectory) {
+      const spoolFile = join(workerData.spoolDirectory, `${task.mode}-${task.level}-${task.seed}.json`);
+      await writeJSON(spoolFile, result); const { logs, ...compact } = result; parentPort.postMessage({ ...compact, spoolFile });
+    } else parentPort.postMessage(result);
+  }
+}
 else if (process.argv[1] && resolve(process.argv[1]) === script) await main();

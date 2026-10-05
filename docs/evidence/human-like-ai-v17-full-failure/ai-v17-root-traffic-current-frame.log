@@ -1,0 +1,7 @@
+ww2-rts on http://127.0.0.1:0
+PASS traffic privacy: identical client trajectories before contact {"open":[{"tick":12,"x":40,"z":55,"rot":0},{"tick":14,"x":40,"z":55,"rot":0},{"tick":16,"x":40,"z":55,"rot":0},{"tick":18,"x":40,"z":55,"rot":0.2}],"hidden":[{"tick":12,"x":40,"z":55,"rot":0},{"tick":14,"x":40,"z":55,"rot":0},{"tick":16,"x":40,"z":55,"rot":0},{"tick":18,"x":40,"z":55,"rot":0.2}]}
+ww2-rts on http://127.0.0.1:0
+PASS live-truth control: opposite sides before contact {"open":[{"tick":12,"x":40,"z":55,"rot":0},{"tick":14,"x":40,"z":55,"rot":0},{"tick":16,"x":40,"z":55,"rot":0},{"tick":18,"x":40,"z":55,"rot":0.2}],"hidden":[{"tick":12,"x":40,"z":55,"rot":0},{"tick":14,"x":40,"z":55,"rot":0},{"tick":16,"x":40,"z":55,"rot":0},{"tick":18,"x":40,"z":55,"rot":-0.2}]}
+PASS cover privacy: identical infantry client trajectories before contact {"open":[{"tick":12,"x":40,"z":55,"rot":0},{"tick":14,"x":40,"z":55,"rot":0},{"tick":16,"x":40,"z":55,"rot":0},{"tick":18,"x":39.9,"z":55.4,"rot":1.7}],"hidden":[{"tick":12,"x":40,"z":55,"rot":0},{"tick":14,"x":40,"z":55,"rot":0},{"tick":16,"x":40,"z":55,"rot":0},{"tick":18,"x":39.9,"z":55.4,"rot":1.7}]}
+ww2-rts on http://127.0.0.1:0
+PASS live-cover control: opposite infantry sides before contact {"open":[{"tick":12,"x":40,"z":55,"rot":0},{"tick":14,"x":40,"z":55,"rot":0},{"tick":16,"x":40,"z":55,"rot":0},{"tick":18,"x":39.9,"z":55.4,"rot":1.7}],"hidden":[{"tick":12,"x":40,"z":55,"rot":0},{"tick":14,"x":40,"z":55,"rot":0},{"tick":16,"x":40,"z":55,"rot":0},{"tick":18,"x":39.9,"z":54.6,"rot":-1.8}]}

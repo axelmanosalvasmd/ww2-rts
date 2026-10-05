@@ -1,0 +1,7 @@
+Opening and restart contact sheets show starting squads at separate bases, then squads at different objectives as scores begin increasing. Small, sparse frames do not identify each squad selection or prove one accepted group order after another. Native timing needs simulation evidence.
+
+Fight frames show troops, armor, smoke, explosions and damaged buildings. On the minimap, independently changing colored AI camera outlines overlap parts of the central combat area. The main spectator camera was moved by the observer through native minimap input, so its placement is not an AI camera claim.
+
+The transition contact sheet remains in the active match with its menu open. It does not show a completed End or restart. Those transitions are proven separately by lobby-after-end.png, end-lobby-confirmed.json, restarted-live.png and the genuine public tick reset5922→40. Earlier stale readbacks and unsuccessful confirmation attempts remain in payload.
+
+Fight has23captured frames over43.8seconds; restart has28over31seconds. Repeated5fps encoding does not provide5independent observations each second. These frames cannot prove smooth motor motion, one-order-at-a-time timing, reaction bands, or a specific delayed response. Public spectator snapshots omit manpower, so floating MP is not measurable.

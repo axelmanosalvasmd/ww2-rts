@@ -1,0 +1,31 @@
+{
+  "at": "2026-10-04T18:53:36.499019+00:00",
+  "sources": {
+    "shared/ai.js": "7a465adf01c2a2ada277ff95f92d3a9d099184509b67ec07eda980c8f79a6678",
+    "test.js": "949097f1026a997f8154f8687da8cff42ed5ae038fd0eb80e3752c0bebe8ca9e",
+    "test-engine-ai-attended-guard.js": "faec59b5fe8ff5dc1cd22e424034f4d5ed6c231d19bb9644732705e8fa732f58",
+    "test-engine-ai-causal-orders.js": "38bad0e598f7ad0e00be8ac0a4480bb5f299cdfa32df6d2857e5ffd04a8e713c",
+    "test-engine-ai-tactical-reaction.js": "00d5e28156fb796aad6304f651a6a8c6d7da241e9fd9e59798458a32813b36cc",
+    "test-engine-ai-priority.js": "fc66fa621166266f6a555020de6701944ea8a0365fc1dd077b4197efd05670e0"
+  },
+  "tests": [
+    {
+      "test": "test-engine-ai-attended-guard.js",
+      "exit": 0,
+      "sha256": "cf5596b209afd99b0ca59d9dee7457f55ef325e9fc6e68762513f48812e1c8d2",
+      "bytes": 138
+    },
+    {
+      "test": "test-engine-ai-causal-orders.js",
+      "exit": 0,
+      "sha256": "91828dc2685d7395a15c305151f677d35b694b880ffc2c73b56e8b30d6bf5a4e",
+      "bytes": 141
+    },
+    {
+      "test": "test-engine-ai-tactical-reaction.js",
+      "exit": 1,
+      "sha256": "94f03e722516c62ec0537b49260caa72f39ebf2960222e922cca9cb804e2f9cf",
+      "bytes": 636
+    }
+  ]
+}

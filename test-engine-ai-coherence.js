@@ -4,6 +4,7 @@ import { createGame, command, step } from './shared/sim.js';
 import { viewFor } from './shared/ai-view.js';
 import { runCommander } from './shared/ai-commander.js';
 import { onScreen } from './shared/ai-perception.js';
+import { perceive as screenV1Oracle } from './tools/ai-screen-v1-oracle.js';
 import { queueCamera, createHands, enqueueDecision } from './shared/ai-hands.js';
 
 const mapOf = rows => ({ w: 80, h: 80, rows, spawns: [{ x: 20, y: 40 }, { x: 75, y: 40 }], points: [] });
@@ -14,7 +15,8 @@ const fixture = (rows = Array(80).fill('.'.repeat(80))) => {
   const unit = [...g.units.values()][0];
   Object.assign(unit, { x: 50, z: 80, holdFire: true, auto: false, autoRetreat: false });
   g.players[0].mun = 1000;
-  return { g, unit, memory: {}, inputs: [], accepted: [] };
+  const frames = [], measurements = { measureRaw: screenV1Oracle, onMeasurements: frame => frames.push(frame) };
+  return { g, unit, memory: {}, inputs: [], accepted: [], frames, measurements };
 };
 function advance(f, ticks, plan, simulate = false) {
   let view;
@@ -22,7 +24,7 @@ function advance(f, ticks, plan, simulate = false) {
     if (!simulate) f.g.tick = tick;
     f.beforeTick?.();
     if (!view || f.g.tick % 2 === 0) view = viewFor(f.g, 0, f.memory);
-    runCommander(view, 0, { tick: f.g.tick, level: 'normal', seed: 27, inputLog: input => f.inputs.push(structuredClone(input)) },
+    runCommander(view, 0, { tick: f.g.tick, level: 'normal', seed: 27, perceptionMeasurements: f.measurements, inputLog: input => f.inputs.push(structuredClone(input)) },
       f.memory, cmd => {
         const result = command(f.g, 0, cmd);
         if (result === undefined) f.accepted.push({ tick: f.g.tick, command: structuredClone(cmd) });
@@ -108,7 +110,7 @@ for (const phase of ['approach', 'held']) {
       home.hp *= .8;
     }
     if (!view || tick % 2 === 0) view = viewFor(f.g, 0, f.memory);
-    runCommander(view, 0, { tick, level: 'normal', seed: 27, inputLog: input => f.inputs.push(structuredClone(input)) },
+    runCommander(view, 0, { tick, level: 'normal', seed: 27, perceptionMeasurements: f.measurements, inputLog: input => f.inputs.push(structuredClone(input)) },
       f.memory, cmd => {
         const result = command(f.g, 0, cmd);
         if (result === undefined) f.accepted.push({ tick, command: structuredClone(cmd) });
@@ -190,7 +192,7 @@ console.log('Emergency interruption cancels an unpressed approach, completes a h
   });
   const first = f.accepted.find(entry => entry.command.orders?.some(row => row[0] === f.unit.id));
   assert.ok(first && damagedAt !== null && f.unit.path.length, 'heavy damage arrives while a different squad has an unfinished accepted move');
-  assert.ok(f.memory.human.events.some(event => event.kind === 'screen-damage' && event.unitId === victim.id && event.responseRequired),
+  assert.ok(f.frames.flatMap(frame => frame.original.events).some(event => event.kind === 'screen-damage' && event.unitId === victim.id && event.responseRequired),
     'the fixture observes real heavy screen damage requiring a response');
   assert.ok(f.inputs.some(input => input.command?.orders?.some(row => row[0] === victim.id) && input.event?.kind === 'screen-damage'),
     'the damaged squad receives a causal physical response');
@@ -261,9 +263,16 @@ console.log('Arrived A-B-A return guard, local damage response and separate line
   advance(f, 200, (_view, _slot, _opts, _memory, send) => {
     send({ t: 'dig', ids: [f.unit.id], kind: 'mines', x: 52, z: 80, dir: 0 });
   });
-  const damage = f.memory.human.events.find(event => event.kind === 'screen-damage' && event.tick >= damagedAt);
+  const damage = f.frames.flatMap(frame => frame.original.events).find(event => event.kind === 'screen-damage' && event.tick >= damagedAt);
   const fort = f.inputs.find(input => input.command?.t === 'dig' && input.tick > damagedAt);
+  const observedDamage = f.memory.human.events.find(event => event.kind === 'screen-damage' && event.tick >= damagedAt);
+  assert.ok(f.memory.human.hands.selected.includes(f.unit.id), 'the fortification gesture actually selected this singleton before its 1 HP loss');
+  assert.equal(f.memory.human.view.units.get(f.unit.id).hpSource, 'selected-hud');
+  assert.equal(observedDamage.amount, 1, 'the actual selected HUD exposes this 1 HP change despite an unchanged world-bar estimate');
+  assert.equal(observedDamage.observedDanger.lossShare, .01);
+  assert.equal(Object.hasOwn(observedDamage, 'responseRequired'), false);
   assert.ok(damagedAt !== null && damage && damage.responseRequired === false, 'routine damage is observed while a fortification click is in progress');
+  assert.equal(damage.amount, 1, 'the original oracle retains the exact routine damage amount');
   assert.ok(fort && f.accepted.some(entry => entry.command.t === 'dig'), 'the unrelated fortification completes through the command handle');
   assert.equal(fort.event, undefined, 'routine damage is not attached to unrelated fortification work');
   assert.equal(fort.eventTick, undefined, 'unrelated fortification work has no damage reaction timestamp');

@@ -1,0 +1,63 @@
+{
+  "at": "2026-10-04T21:07:14.068712+00:00",
+  "adopted": true,
+  "populationAcceptance": false,
+  "recordedTimingsSource": "Original proposals retain their own earlier source hashes. Root focused fixture results are separate.",
+  "currentSources": {
+    "shared/ai.js": "2e01129543e4095b95bdbb693f89ce278a810796528718fac192436ac7bf9f21",
+    "shared/ai-hands.js": "8bd373c3afb8261bf8ca2a53f24512522b91f0ddc6568eaa61dbf7039684b9a3",
+    "shared/ai-attention.js": "2b1f22635d43a11c40715c7859520a5eb4fc862d557ee7efb09ceb89425d92b5",
+    "shared/ai-commander.js": "19112a1e4c94da72d62564d940497d38cf7e93e3086c9bde3db9c29d088703df",
+    "tools/ai-humanity.mjs": "fac34526a548c8fec5b11e8bd10f07e28b84f6aa09b13206296c4d40a589af4c",
+    "test-engine-ai-ap-vehicles.js": "33c6174f07be1a80a9e5c53fcbf3d522ed7d6bb3a9ffc095f378d0b63dfdcd30",
+    "test-engine-ai-stale-stance.js": "e1af9650db8ac60587d13409a36987a00cbe28860e34324cae289c01e32e9aa1",
+    "test-engine-ai-public-alert.js": "0cbc147c68cc51e14db3c85a9e764deecc8ba6a0997d84a8019455eb8c47a2b5"
+  },
+  "members": [
+    {
+      "source": "/tmp/ai-lab-manual-v3-diagnostic/REVIEW.md",
+      "path": "docs/evidence/human-like-ai-ap-vehicles/REVIEW.md",
+      "sourceBytes": 4459,
+      "sourceSHA256": "27b9eb2ff2583331cceb5b4491682e1d240826a20d1496a97ba8d11bd01f7388",
+      "storedBytes": 4459,
+      "storedSHA256": "27b9eb2ff2583331cceb5b4491682e1d240826a20d1496a97ba8d11bd01f7388",
+      "gzip": false
+    },
+    {
+      "source": "/tmp/ai-lab-manual-v3-diagnostic/proposal.patch",
+      "path": "docs/evidence/human-like-ai-ap-vehicles/proposal.patch",
+      "sourceBytes": 7200,
+      "sourceSHA256": "b898b29cbb808780f45055f58e41fcea537d26ffb5999042b656f2ab55b5dc72",
+      "storedBytes": 7200,
+      "storedSHA256": "b898b29cbb808780f45055f58e41fcea537d26ffb5999042b656f2ab55b5dc72",
+      "gzip": false
+    },
+    {
+      "source": "/tmp/ai-lab-manual-v3-diagnostic/artifact-hashes.json",
+      "path": "docs/evidence/human-like-ai-ap-vehicles/artifact-hashes.json",
+      "sourceBytes": 671,
+      "sourceSHA256": "9e2c4f1fdd446331391f0da715ca8920c548cc250188965cd95c03dbe957d1e9",
+      "storedBytes": 671,
+      "storedSHA256": "9e2c4f1fdd446331391f0da715ca8920c548cc250188965cd95c03dbe957d1e9",
+      "gzip": false
+    },
+    {
+      "source": "/tmp/ai-lab-manual-v3-diagnostic/portable-final.log",
+      "path": "docs/evidence/human-like-ai-ap-vehicles/portable-final.log",
+      "sourceBytes": 91,
+      "sourceSHA256": "4c5426ae9b625f2c3e72ee355291047c3a0e16d0cba7ea78e88a28b1a3e0fce0",
+      "storedBytes": 91,
+      "storedSHA256": "4c5426ae9b625f2c3e72ee355291047c3a0e16d0cba7ea78e88a28b1a3e0fce0",
+      "gzip": false
+    },
+    {
+      "source": "/tmp/ai-lab-manual-v3-diagnostic/native-portable-proof.json",
+      "path": "docs/evidence/human-like-ai-ap-vehicles/native-portable-proof.json.gz",
+      "sourceBytes": 9150270,
+      "sourceSHA256": "67e3ed2177e8c5b0bca94dd7ebf1cb26a28fa22123738a16579062dd5c487771",
+      "storedBytes": 274092,
+      "storedSHA256": "a39ff80e6666f5488f08b4e05c2c3e1a3ba5345d24235144cec4bc00c4282e17",
+      "gzip": true
+    }
+  ]
+}

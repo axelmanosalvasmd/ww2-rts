@@ -1,0 +1,31 @@
+--- a/shared/ai-perception.js
++++ b/shared/ai-perception.js
+@@ -49,6 +49,19 @@
+ export function detachedCopy(value) {
+   try { return copyData(value, new Map()); }
+   catch { return structuredClone(value); }
++}
++// The root was just built by object spread here and has not been exposed. Nested
++// values still use descriptor checks and the original-root native fallback.
++function copyFreshRoot(value) {
++  try {
++    const result = {}, seen = new Map([[value, result]]);
++    for (const key of Object.keys(value)) {
++      const item = copyData(value[key], seen);
++      if (key === '__proto__') Object.defineProperty(result, key, { value: item, writable: true, enumerable: true, configurable: true });
++      else result[key] = item;
++    }
++    return result;
++  } catch { return structuredClone(value); }
+ }
+ function copyFreshData(value, seen) {
+   if (value === null) return value;
+@@ -295,7 +308,7 @@
+     const firstStillAt = stationary && Math.hypot(stationary.x - u.x, stationary.z - u.z) <= 0.1 + 1e-9 ? stationary.since : now;
+     state.screenStill.set(u.id, { x: u.x, z: u.z, since: firstStillAt });
+     screenSeenAt.set(u.id, eventTick);
+-    const seen = { ...clone(u), firstStillAt, lastSeen: now, lastScreenTick: eventTick, screenSeen: true, confidence: 1 };
++    const seen = { ...copyFreshRoot(u), firstStillAt, lastSeen: now, lastScreenTick: eventTick, screenSeen: true, confidence: 1 };
+     screen.set(u.id, seen); screenIds.add(u.id); state.screenMemory.set(u.id, copyFresh(seen));
+   }
+   for (const id of state.screenStill.keys()) if (!screenIds.has(id)) state.screenStill.delete(id);

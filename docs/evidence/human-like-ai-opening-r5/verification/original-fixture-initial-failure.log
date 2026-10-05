@@ -1,0 +1,13 @@
+node:internal/per_context/domexception:76
+    const self = new Error();
+                 ^
+
+DOMException [DataCloneError]: at => onScreen(at, state.camera, observation) && observation.sees?.(at) === true could not be cloned.
+    at new DOMException (node:internal/per_context/domexception:76:18)
+    at structuredClone (node:internal/worker/js_transferable:127:26)
+    at file:///tmp/human-ai-opening-candidate-fixtures.mjs:24:46
+    at ModuleJob.run (node:internal/modules/esm/module_job:561:25)
+    at async node:internal/modules/esm/loader:647:26
+    at async asyncRunEntryPointWithESMLoader (node:internal/modules/run_main:101:5)
+
+Node.js v24.21.0

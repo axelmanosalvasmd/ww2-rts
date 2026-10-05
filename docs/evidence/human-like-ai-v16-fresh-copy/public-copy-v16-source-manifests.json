@@ -1,0 +1,30 @@
+{
+  "baseline": "/tmp/human-ai-perf-v16-frozen",
+  "candidates": {
+    "root": {
+      "directory": "/tmp/ai-v16-fresh-root",
+      "filesChecked": 206,
+      "changedFiles": {
+        "shared/ai-perception.js": {
+          "baseline": "75b5f4877b5c4509a762028c880b45691a7c9e8d1923a7815e026f2174d33c9c",
+          "candidate": "012a015021bb96be02f768e92289a5df4d42e7ad49afcaac896d8188f6168f9c"
+        }
+      }
+    },
+    "pair": {
+      "directory": "/tmp/public-copy-pair-v16-candidate",
+      "filesChecked": 206,
+      "changedFiles": {
+        "shared/ai-perception.js": {
+          "baseline": "75b5f4877b5c4509a762028c880b45691a7c9e8d1923a7815e026f2174d33c9c",
+          "candidate": "4c19f3793b37b9cd8e17fb3aeaeb017ec8147ed1fb02dde11dbd13ca6331b19b"
+        }
+      }
+    }
+  },
+  "rootCurrentSHA256": "75b5f4877b5c4509a762028c880b45691a7c9e8d1923a7815e026f2174d33c9c",
+  "patches": {
+    "/tmp/ai-v16-fresh-root.patch": "a8efa08eb461ba237600051b96ba8be3181e718b7efd82dec72dbf5e9e01db2b",
+    "/tmp/public-copy-pair-v16.patch": "cb3ccbf1bb4fc9d58c63232f86f47e509f8f5e773869472d080e643a1ef8e5d8"
+  }
+}

@@ -397,7 +397,7 @@ function renderLobby(m) {
   if (r) $('result').textContent = r.ended ? 'Match ended by the host' : r.horde ? `Overrun on wave ${r.horde.wave}: ${r.horde.kills} kills in ${mins(r.horde.time)}${r.horde.record ? ', a new record' : r.horde.best ? `. Record: wave ${r.horde.best.wave}` : ''}` : w === -1 ? 'Draw' : w === r.teams[me] ? 'Victory'
     : `${r.names.filter((_, i) => r.teams[i] === w).join(' & ') || 'Enemy'} win${r.teams.filter(t => t === w).length > 1 ? '' : 's'}`;
   renderReport(r, $('report'), { colors: COLORS.map(css), me: m.you }); // the chart and table under it (client/report.js)
-  if (lobby) { lastStart = null; matchMemory.clear(); menuOpen(false); $('hud').classList.add('hidden'); receivePause({ paused: false }); audio.end(); epilogue.reset(); }
+  if (lobby) { clearTerrainDue(); lastStart = null; matchMemory.clear(); menuOpen(false); $('hud').classList.add('hidden'); receivePause({ paused: false }); audio.end(); epilogue.reset(); }
   positionRoomBanners();
 }
 
@@ -444,6 +444,7 @@ const units = new Map(), selected = new Set(), groups = {}, fx = [];
 
 let lastStart = null;
 function startGame(m, restored = null) {
+  clearTerrainDue();
   lobbyView.hide(); // frees the backdrop's renderer before the match builds its world
   clearFacing(); formationPreview.group.removeFromParent();
   pings.reset(); autocast.reset(); alerts.startMatch(m.matchId);
@@ -559,6 +560,8 @@ let props = null;
 let rubbleDecals = null;
 // big battles change cells every snapshot: the 3D pieces and the minimap's terrain are redone at most every 0.25 s
 const terrainDue = { pieces: false, minimap: false, props: false, wait: 0 };
+// Pending rebuilds belong to the match that received the terrain changes.
+function clearTerrainDue() { terrainDue.pieces = terrainDue.minimap = terrainDue.props = false; terrainDue.wait = 0; }
 function terrainFrame(dt) {
   if ((terrainDue.wait -= dt) > 0 || !(terrainDue.pieces || terrainDue.minimap || terrainDue.props)) return;
   if (terrainDue.pieces && terrain) buildStructures();

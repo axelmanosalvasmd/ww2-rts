@@ -1,0 +1,180 @@
+{
+  "copies": [
+    {
+      "source": "/tmp/ai-v15-terrain-loop-after-canonical.json",
+      "file": "ai-v15-terrain-loop-after-canonical.json",
+      "bytes": 664817,
+      "sha256": "5fb0ea210982340667957e188ee5f6a7c056d9c5291fec267f7b9ef5580b7606"
+    },
+    {
+      "source": "/tmp/ai-v15-terrain-loop-after-canonical.log",
+      "file": "ai-v15-terrain-loop-after-canonical.log",
+      "bytes": 104,
+      "sha256": "8de3711977a26e6a90c7725e00edad6cbdcd1ad3b52d7f565ba5d8786ad2f769"
+    },
+    {
+      "source": "/tmp/ai-v15-terrain-loop-after.json",
+      "file": "ai-v15-terrain-loop-after.json",
+      "bytes": 7965,
+      "sha256": "05fdbe1d9ec4d998a2b8f1e29a8d2ae39bd68512b2f10c2dbcd01c05830459d3"
+    },
+    {
+      "source": "/tmp/ai-v15-terrain-loop-after.log",
+      "file": "ai-v15-terrain-loop-after.log",
+      "bytes": 93,
+      "sha256": "a768e3cbd08ea322e777152121248240fe52ab1bc3c57113d7da514cb15f5b52"
+    },
+    {
+      "source": "/tmp/ai-v15-terrain-loop-before-canonical.json",
+      "file": "ai-v15-terrain-loop-before-canonical.json",
+      "bytes": 664813,
+      "sha256": "7793f19b5cdfc9cd7bb7d3b1a87de304163327fe691334a117ed822176b6a5fd"
+    },
+    {
+      "source": "/tmp/ai-v15-terrain-loop-before-canonical.log",
+      "file": "ai-v15-terrain-loop-before-canonical.log",
+      "bytes": 104,
+      "sha256": "c23d08732e6c0a06739aab1e7a20d7637a2c937496a7d1a01be41a54695d69fb"
+    },
+    {
+      "source": "/tmp/ai-v15-terrain-loop-before-delivery.log",
+      "file": "ai-v15-terrain-loop-before-delivery.log",
+      "bytes": 79,
+      "sha256": "f7f7d83f368e39595a1fc00200a832c3b796e846c0db8bc15454445dd441397c"
+    },
+    {
+      "source": "/tmp/ai-v15-terrain-loop-before-effects.log",
+      "file": "ai-v15-terrain-loop-before-effects.log",
+      "bytes": 84,
+      "sha256": "079f0cb4dbb46cb9261d24a88ccd8363cacb9fb71a1317c2dc11b25ed74ec363"
+    },
+    {
+      "source": "/tmp/ai-v15-terrain-loop-before-privacy.log",
+      "file": "ai-v15-terrain-loop-before-privacy.log",
+      "bytes": 53,
+      "sha256": "510c100ece33133a666925c98297348459886874c27799b99f5c284791e1f41d"
+    },
+    {
+      "source": "/tmp/ai-v15-terrain-loop-before.json",
+      "file": "ai-v15-terrain-loop-before.json",
+      "bytes": 7963,
+      "sha256": "bd086327cda14a9b71daba2ea8d9e495f06f25a3064829e6b395d1beeaadafa3"
+    },
+    {
+      "source": "/tmp/ai-v15-terrain-loop-before.log",
+      "file": "ai-v15-terrain-loop-before.log",
+      "bytes": 95,
+      "sha256": "ffec38eb60c6d18d114be7daa0df6c3db2aef1beba66be98d3a38f2bfa989ef0"
+    },
+    {
+      "source": "/tmp/ai-v15-terrain-loop-controls.json",
+      "file": "ai-v15-terrain-loop-controls.json",
+      "bytes": 201,
+      "sha256": "dbb234fd655cd64d6cbc64cd8de12888a09edaece60d795b0fa19ababf387f0c"
+    },
+    {
+      "source": "/tmp/ai-v15-terrain-loop-controls.log",
+      "file": "ai-v15-terrain-loop-controls.log",
+      "bytes": 188,
+      "sha256": "5eaf98407a88bfe83959a0e3785013404dc47491a7dab8d74b7cf3d55eab73e3"
+    },
+    {
+      "source": "/tmp/ai-v15-terrain-loop-delivery.log",
+      "file": "ai-v15-terrain-loop-delivery.log",
+      "bytes": 79,
+      "sha256": "f7f7d83f368e39595a1fc00200a832c3b796e846c0db8bc15454445dd441397c"
+    },
+    {
+      "source": "/tmp/ai-v15-terrain-loop-effects.log",
+      "file": "ai-v15-terrain-loop-effects.log",
+      "bytes": 84,
+      "sha256": "079f0cb4dbb46cb9261d24a88ccd8363cacb9fb71a1317c2dc11b25ed74ec363"
+    },
+    {
+      "source": "/tmp/ai-v15-terrain-loop-equivalence.json",
+      "file": "ai-v15-terrain-loop-equivalence.json",
+      "bytes": 1101,
+      "sha256": "8feaad3dd96ec54d6ce9941b8bbc316b3921be198571895f0f45efab7455a044"
+    },
+    {
+      "source": "/tmp/ai-v15-terrain-loop-fog-sequence-debug.log",
+      "file": "ai-v15-terrain-loop-fog-sequence-debug.log",
+      "bytes": 883,
+      "sha256": "667627cfc387f0a92c3c534a0f7b7cb1a0592dc95ad71de27d74b5fb5a118108"
+    },
+    {
+      "source": "/tmp/ai-v15-terrain-loop-fog-sequence.json",
+      "file": "ai-v15-terrain-loop-fog-sequence.json",
+      "bytes": 879,
+      "sha256": "00940f3fef8d908275eb8c636ab26a2a9d2d4f5f8faf893f1751e0f1c4155b6b"
+    },
+    {
+      "source": "/tmp/ai-v15-terrain-loop-fog-sequence.log",
+      "file": "ai-v15-terrain-loop-fog-sequence.log",
+      "bytes": 95,
+      "sha256": "0090642496a6ac9ca3f3c10c11202646398caf0d42c14781b55958684178ba4a"
+    },
+    {
+      "source": "/tmp/ai-v15-terrain-loop-micro.json",
+      "file": "ai-v15-terrain-loop-micro.json",
+      "bytes": 2366,
+      "sha256": "84d881dc7be2bc6bc7ab880c920214e231c74b7050c608c096200be386a1133d"
+    },
+    {
+      "source": "/tmp/ai-v15-terrain-loop-micro.log",
+      "file": "ai-v15-terrain-loop-micro.log",
+      "bytes": 1799,
+      "sha256": "e1d89bba03b045f54187ddb438d34325cf3e5b5ba19d6397c4a359b259794751"
+    },
+    {
+      "source": "/tmp/ai-v15-terrain-loop-privacy.log",
+      "file": "ai-v15-terrain-loop-privacy.log",
+      "bytes": 53,
+      "sha256": "510c100ece33133a666925c98297348459886874c27799b99f5c284791e1f41d"
+    },
+    {
+      "source": "/tmp/ai-v15-terrain-loop-protocol.json",
+      "file": "ai-v15-terrain-loop-protocol.json",
+      "bytes": 255862,
+      "sha256": "96ad05c66d170ca64beaf231d7ef51db45ea34a97d5aeba647e0dafce458ce7a"
+    },
+    {
+      "source": "/tmp/ai-v15-terrain-loop-review.md",
+      "file": "ai-v15-terrain-loop-review.md",
+      "bytes": 6795,
+      "sha256": "8bdcc7e822a51d293c6adacf33cfd838d1f36f3978f273dd7e16d944f3c2d505"
+    },
+    {
+      "source": "/tmp/ai-v15-terrain-loop.patch",
+      "file": "ai-v15-terrain-loop.patch",
+      "bytes": 1210,
+      "sha256": "30f0cd03b754984fc76061f81a969b3c4ebaa52185f6e58fce16720e56b9d392"
+    },
+    {
+      "source": "/tmp/test-v15-terrain-loop.mjs",
+      "file": "test-v15-terrain-loop.mjs",
+      "bytes": 4649,
+      "sha256": "8d0cb2468db5807cc3ffc861fbb4f01f0d57f7c27b40b97095363a64466f982c"
+    },
+    {
+      "source": "/tmp/r6-root-fog-privacy.log",
+      "file": "r6-root-fog-privacy.log",
+      "bytes": 53,
+      "sha256": "510c100ece33133a666925c98297348459886874c27799b99f5c284791e1f41d"
+    },
+    {
+      "source": "/tmp/r6-root-fog-effects.log",
+      "file": "r6-root-fog-effects.log",
+      "bytes": 84,
+      "sha256": "079f0cb4dbb46cb9261d24a88ccd8363cacb9fb71a1317c2dc11b25ed74ec363"
+    },
+    {
+      "source": "/tmp/r6-root-fog-delivery.log",
+      "file": "r6-root-fog-delivery.log",
+      "bytes": 79,
+      "sha256": "f7f7d83f368e39595a1fc00200a832c3b796e846c0db8bc15454445dd441397c"
+    }
+  ],
+  "bytes": 1622630,
+  "exactByteCopies": true
+}

@@ -1,0 +1,3591 @@
+{
+  "status": "PASS",
+  "method": "Exact immutable-source replay of every affected match only through its last rejected purchase; every emitted native input and actual command/resources/acceptance must equal retained original prefix. No source edits or new campaign.",
+  "cases": [
+    {
+      "treatment": "base",
+      "level": "easy",
+      "seed": 8,
+      "slot": 1,
+      "faction": "Germany",
+      "refusedTick": 806,
+      "queuedTick": 795,
+      "cycle": 19,
+      "command": {
+        "t": "buy",
+        "unit": "rifle"
+      },
+      "price": {
+        "mp": 100,
+        "fuel": 0
+      },
+      "rejectionReason": "mp",
+      "enqueue": {
+        "actualMP": 106.62829166666464,
+        "actualFuel": 0,
+        "observationTick": 794,
+        "observedMP": 106,
+        "observedFuel": 0
+      },
+      "click": {
+        "mp": 85.33208333333131,
+        "fuel": 0
+      },
+      "acceptedDeductionsSinceObserved": [],
+      "acceptedDeductionsWhileQueued": [],
+      "batchCost": 100,
+      "batch": [
+        {
+          "tick": 806,
+          "unit": "rifle",
+          "price": {
+            "mp": 100,
+            "fuel": 0
+          },
+          "accepted": false
+        }
+      ],
+      "classification": "other"
+    },
+    {
+      "treatment": "base",
+      "level": "normal",
+      "seed": 3,
+      "slot": 2,
+      "faction": "USSR",
+      "refusedTick": 744,
+      "queuedTick": 741,
+      "cycle": 27,
+      "command": {
+        "t": "buy",
+        "unit": "conscript"
+      },
+      "price": {
+        "mp": 80,
+        "fuel": 0
+      },
+      "rejectionReason": "mp",
+      "enqueue": {
+        "actualMP": 70.86324999999896,
+        "actualFuel": 0,
+        "observationTick": 740,
+        "observedMP": 80,
+        "observedFuel": 0
+      },
+      "click": {
+        "mp": 71.62837499999897,
+        "fuel": 0
+      },
+      "acceptedDeductionsSinceObserved": [],
+      "acceptedDeductionsWhileQueued": [],
+      "batchCost": 80,
+      "batch": [
+        {
+          "tick": 744,
+          "unit": "conscript",
+          "price": {
+            "mp": 80,
+            "fuel": 0
+          },
+          "accepted": false
+        }
+      ],
+      "classification": "stale-observation-after-accepted-deduction"
+    },
+    {
+      "treatment": "base",
+      "level": "normal",
+      "seed": 17,
+      "slot": 0,
+      "faction": "USA",
+      "refusedTick": 746,
+      "queuedTick": 737,
+      "cycle": 25,
+      "command": {
+        "t": "buy",
+        "unit": "rifle"
+      },
+      "price": {
+        "mp": 100,
+        "fuel": 0
+      },
+      "rejectionReason": "mp",
+      "enqueue": {
+        "actualMP": 87.36483333333202,
+        "actualFuel": 0,
+        "observationTick": 736,
+        "observedMP": 112,
+        "observedFuel": 0
+      },
+      "click": {
+        "mp": 89.80745833333202,
+        "fuel": 0
+      },
+      "acceptedDeductionsSinceObserved": [],
+      "acceptedDeductionsWhileQueued": [],
+      "batchCost": 100,
+      "batch": [
+        {
+          "tick": 746,
+          "unit": "rifle",
+          "price": {
+            "mp": 100,
+            "fuel": 0
+          },
+          "accepted": false
+        }
+      ],
+      "classification": "stale-observation-after-accepted-deduction"
+    },
+    {
+      "treatment": "base",
+      "level": "hard",
+      "seed": 15,
+      "slot": 1,
+      "faction": "Germany",
+      "refusedTick": 548,
+      "queuedTick": 545,
+      "cycle": 37,
+      "command": {
+        "t": "buy",
+        "unit": "rifle"
+      },
+      "price": {
+        "mp": 100,
+        "fuel": 0
+      },
+      "rejectionReason": "mp",
+      "enqueue": {
+        "actualMP": 14.499999999999119,
+        "actualFuel": 0,
+        "observationTick": 544,
+        "observedMP": 164,
+        "observedFuel": 0
+      },
+      "click": {
+        "mp": 15.249999999999119,
+        "fuel": 0
+      },
+      "acceptedDeductionsSinceObserved": [
+        {
+          "tick": 544,
+          "command": {
+            "t": "buy",
+            "unit": "mg"
+          },
+          "accepted": true,
+          "rejectionReason": null,
+          "locations": [],
+          "sourceLocations": [],
+          "region": null,
+          "resourcesBefore": {
+            "mp": 164.24999999999912,
+            "fuel": 0
+          },
+          "resourcesAfter": {
+            "mp": 14.249999999999119,
+            "fuel": 0
+          },
+          "purchasePrice": {
+            "mp": 150,
+            "fuel": 0
+          },
+          "spend": {
+            "mp": 150,
+            "fuel": 0
+          }
+        }
+      ],
+      "acceptedDeductionsWhileQueued": [],
+      "batchCost": 100,
+      "batch": [
+        {
+          "tick": 548,
+          "unit": "rifle",
+          "price": {
+            "mp": 100,
+            "fuel": 0
+          },
+          "accepted": false
+        }
+      ],
+      "classification": "stale-observation-after-accepted-deduction"
+    },
+    {
+      "treatment": "base",
+      "level": "hard",
+      "seed": 19,
+      "slot": 0,
+      "faction": "USA",
+      "refusedTick": 762,
+      "queuedTick": 759,
+      "cycle": 57,
+      "command": {
+        "t": "buy",
+        "unit": "rifle"
+      },
+      "price": {
+        "mp": 100,
+        "fuel": 0
+      },
+      "rejectionReason": "mp",
+      "enqueue": {
+        "actualMP": 6.456041666664629,
+        "actualFuel": 0,
+        "observationTick": 758,
+        "observedMP": 156,
+        "observedFuel": 0
+      },
+      "click": {
+        "mp": 7.65579166666463,
+        "fuel": 0
+      },
+      "acceptedDeductionsSinceObserved": [
+        {
+          "tick": 758,
+          "command": {
+            "t": "buy",
+            "unit": "mg"
+          },
+          "accepted": true,
+          "rejectionReason": null,
+          "locations": [],
+          "sourceLocations": [],
+          "region": null,
+          "resourcesBefore": {
+            "mp": 156.05612499999796,
+            "fuel": 0
+          },
+          "resourcesAfter": {
+            "mp": 6.056124999997962,
+            "fuel": 0
+          },
+          "purchasePrice": {
+            "mp": 150,
+            "fuel": 0
+          },
+          "spend": {
+            "mp": 150,
+            "fuel": 0
+          }
+        }
+      ],
+      "acceptedDeductionsWhileQueued": [],
+      "batchCost": 100,
+      "batch": [
+        {
+          "tick": 762,
+          "unit": "rifle",
+          "price": {
+            "mp": 100,
+            "fuel": 0
+          },
+          "accepted": false
+        }
+      ],
+      "classification": "stale-observation-after-accepted-deduction"
+    },
+    {
+      "treatment": "candidate",
+      "level": "easy",
+      "seed": 3,
+      "slot": 1,
+      "faction": "Germany",
+      "refusedTick": 283,
+      "queuedTick": 279,
+      "cycle": 3,
+      "command": {
+        "t": "buy",
+        "unit": "rifle"
+      },
+      "price": {
+        "mp": 100,
+        "fuel": 0
+      },
+      "rejectionReason": "mp",
+      "enqueue": {
+        "actualMP": 25.79999999999684,
+        "actualFuel": 0,
+        "observationTick": 278,
+        "observedMP": 205,
+        "observedFuel": 0
+      },
+      "click": {
+        "mp": 26.599999999996836,
+        "fuel": 0
+      },
+      "acceptedDeductionsSinceObserved": [
+        {
+          "tick": 278,
+          "command": {
+            "t": "buy",
+            "unit": "mortar"
+          },
+          "accepted": true,
+          "rejectionReason": null,
+          "locations": [],
+          "sourceLocations": [],
+          "region": null,
+          "resourcesBefore": {
+            "mp": 205.59999999999684,
+            "fuel": 0
+          },
+          "resourcesAfter": {
+            "mp": 25.59999999999684,
+            "fuel": 0
+          },
+          "purchasePrice": {
+            "mp": 180,
+            "fuel": 0
+          },
+          "spend": {
+            "mp": 180,
+            "fuel": 0
+          }
+        }
+      ],
+      "acceptedDeductionsWhileQueued": [],
+      "batchCost": 100,
+      "batch": [
+        {
+          "tick": 283,
+          "unit": "rifle",
+          "price": {
+            "mp": 100,
+            "fuel": 0
+          },
+          "accepted": false
+        }
+      ],
+      "classification": "stale-observation-after-accepted-deduction"
+    },
+    {
+      "treatment": "candidate",
+      "level": "easy",
+      "seed": 4,
+      "slot": 0,
+      "faction": "USA",
+      "refusedTick": 251,
+      "queuedTick": 247,
+      "cycle": 3,
+      "command": {
+        "t": "buy",
+        "unit": "mg"
+      },
+      "price": {
+        "mp": 150,
+        "fuel": 0
+      },
+      "rejectionReason": "mp",
+      "enqueue": {
+        "actualMP": 19.399999999997203,
+        "actualFuel": 0,
+        "observationTick": 246,
+        "observedMP": 199,
+        "observedFuel": 0
+      },
+      "click": {
+        "mp": 20.1999999999972,
+        "fuel": 0
+      },
+      "acceptedDeductionsSinceObserved": [
+        {
+          "tick": 246,
+          "command": {
+            "t": "buy",
+            "unit": "mortar"
+          },
+          "accepted": true,
+          "rejectionReason": null,
+          "locations": [],
+          "sourceLocations": [],
+          "region": null,
+          "resourcesBefore": {
+            "mp": 199.1999999999972,
+            "fuel": 0
+          },
+          "resourcesAfter": {
+            "mp": 19.199999999997203,
+            "fuel": 0
+          },
+          "purchasePrice": {
+            "mp": 180,
+            "fuel": 0
+          },
+          "spend": {
+            "mp": 180,
+            "fuel": 0
+          }
+        }
+      ],
+      "acceptedDeductionsWhileQueued": [],
+      "batchCost": 150,
+      "batch": [
+        {
+          "tick": 251,
+          "unit": "mg",
+          "price": {
+            "mp": 150,
+            "fuel": 0
+          },
+          "accepted": false
+        }
+      ],
+      "classification": "stale-observation-after-accepted-deduction"
+    },
+    {
+      "treatment": "candidate",
+      "level": "easy",
+      "seed": 8,
+      "slot": 1,
+      "faction": "Germany",
+      "refusedTick": 806,
+      "queuedTick": 795,
+      "cycle": 19,
+      "command": {
+        "t": "buy",
+        "unit": "rifle"
+      },
+      "price": {
+        "mp": 100,
+        "fuel": 0
+      },
+      "rejectionReason": "mp",
+      "enqueue": {
+        "actualMP": 106.62829166666464,
+        "actualFuel": 0,
+        "observationTick": 794,
+        "observedMP": 106,
+        "observedFuel": 0
+      },
+      "click": {
+        "mp": 85.33208333333131,
+        "fuel": 0
+      },
+      "acceptedDeductionsSinceObserved": [],
+      "acceptedDeductionsWhileQueued": [],
+      "batchCost": 100,
+      "batch": [
+        {
+          "tick": 806,
+          "unit": "rifle",
+          "price": {
+            "mp": 100,
+            "fuel": 0
+          },
+          "accepted": false
+        }
+      ],
+      "classification": "other"
+    },
+    {
+      "treatment": "candidate",
+      "level": "easy",
+      "seed": 10,
+      "slot": 1,
+      "faction": "Germany",
+      "refusedTick": 199,
+      "queuedTick": 195,
+      "cycle": 4,
+      "command": {
+        "t": "buy",
+        "unit": "mg"
+      },
+      "price": {
+        "mp": 150,
+        "fuel": 0
+      },
+      "rejectionReason": "mp",
+      "enqueue": {
+        "actualMP": 8.999999999997794,
+        "actualFuel": 0,
+        "observationTick": 194,
+        "observedMP": 188,
+        "observedFuel": 0
+      },
+      "click": {
+        "mp": 9.799999999997791,
+        "fuel": 0
+      },
+      "acceptedDeductionsSinceObserved": [
+        {
+          "tick": 194,
+          "command": {
+            "t": "buy",
+            "unit": "mortar"
+          },
+          "accepted": true,
+          "rejectionReason": null,
+          "locations": [],
+          "sourceLocations": [],
+          "region": null,
+          "resourcesBefore": {
+            "mp": 188.7999999999978,
+            "fuel": 0
+          },
+          "resourcesAfter": {
+            "mp": 8.799999999997794,
+            "fuel": 0
+          },
+          "purchasePrice": {
+            "mp": 180,
+            "fuel": 0
+          },
+          "spend": {
+            "mp": 180,
+            "fuel": 0
+          }
+        }
+      ],
+      "acceptedDeductionsWhileQueued": [],
+      "batchCost": 150,
+      "batch": [
+        {
+          "tick": 199,
+          "unit": "mg",
+          "price": {
+            "mp": 150,
+            "fuel": 0
+          },
+          "accepted": false
+        }
+      ],
+      "classification": "stale-observation-after-accepted-deduction"
+    },
+    {
+      "treatment": "candidate",
+      "level": "easy",
+      "seed": 11,
+      "slot": 0,
+      "faction": "USA",
+      "refusedTick": 259,
+      "queuedTick": 255,
+      "cycle": 3,
+      "command": {
+        "t": "buy",
+        "unit": "rifle"
+      },
+      "price": {
+        "mp": 100,
+        "fuel": 0
+      },
+      "rejectionReason": "mp",
+      "enqueue": {
+        "actualMP": 20.99999999999711,
+        "actualFuel": 0,
+        "observationTick": 254,
+        "observedMP": 200,
+        "observedFuel": 0
+      },
+      "click": {
+        "mp": 21.79999999999711,
+        "fuel": 0
+      },
+      "acceptedDeductionsSinceObserved": [
+        {
+          "tick": 254,
+          "command": {
+            "t": "buy",
+            "unit": "mortar"
+          },
+          "accepted": true,
+          "rejectionReason": null,
+          "locations": [],
+          "sourceLocations": [],
+          "region": null,
+          "resourcesBefore": {
+            "mp": 200.7999999999971,
+            "fuel": 0
+          },
+          "resourcesAfter": {
+            "mp": 20.799999999997112,
+            "fuel": 0
+          },
+          "purchasePrice": {
+            "mp": 180,
+            "fuel": 0
+          },
+          "spend": {
+            "mp": 180,
+            "fuel": 0
+          }
+        }
+      ],
+      "acceptedDeductionsWhileQueued": [],
+      "batchCost": 100,
+      "batch": [
+        {
+          "tick": 259,
+          "unit": "rifle",
+          "price": {
+            "mp": 100,
+            "fuel": 0
+          },
+          "accepted": false
+        }
+      ],
+      "classification": "stale-observation-after-accepted-deduction"
+    },
+    {
+      "treatment": "candidate",
+      "level": "easy",
+      "seed": 11,
+      "slot": 1,
+      "faction": "Germany",
+      "refusedTick": 289,
+      "queuedTick": 285,
+      "cycle": 4,
+      "command": {
+        "t": "buy",
+        "unit": "mg"
+      },
+      "price": {
+        "mp": 150,
+        "fuel": 0
+      },
+      "rejectionReason": "mp",
+      "enqueue": {
+        "actualMP": 6.9999999999967715,
+        "actualFuel": 0,
+        "observationTick": 284,
+        "observedMP": 206,
+        "observedFuel": 0
+      },
+      "click": {
+        "mp": 7.799999999996772,
+        "fuel": 0
+      },
+      "acceptedDeductionsSinceObserved": [
+        {
+          "tick": 284,
+          "command": {
+            "t": "buy",
+            "unit": "at"
+          },
+          "accepted": true,
+          "rejectionReason": null,
+          "locations": [],
+          "sourceLocations": [],
+          "region": null,
+          "resourcesBefore": {
+            "mp": 206.79999999999677,
+            "fuel": 0
+          },
+          "resourcesAfter": {
+            "mp": 6.799999999996771,
+            "fuel": 0
+          },
+          "purchasePrice": {
+            "mp": 200,
+            "fuel": 0
+          },
+          "spend": {
+            "mp": 200,
+            "fuel": 0
+          }
+        }
+      ],
+      "acceptedDeductionsWhileQueued": [],
+      "batchCost": 150,
+      "batch": [
+        {
+          "tick": 289,
+          "unit": "mg",
+          "price": {
+            "mp": 150,
+            "fuel": 0
+          },
+          "accepted": false
+        }
+      ],
+      "classification": "stale-observation-after-accepted-deduction"
+    },
+    {
+      "treatment": "candidate",
+      "level": "easy",
+      "seed": 12,
+      "slot": 0,
+      "faction": "USA",
+      "refusedTick": 339,
+      "queuedTick": 335,
+      "cycle": 7,
+      "command": {
+        "t": "buy",
+        "unit": "rifle"
+      },
+      "price": {
+        "mp": 100,
+        "fuel": 0
+      },
+      "rejectionReason": "mp",
+      "enqueue": {
+        "actualMP": 16.999999999996202,
+        "actualFuel": 0,
+        "observationTick": 334,
+        "observedMP": 216,
+        "observedFuel": 0
+      },
+      "click": {
+        "mp": 17.7999999999962,
+        "fuel": 0
+      },
+      "acceptedDeductionsSinceObserved": [
+        {
+          "tick": 334,
+          "command": {
+            "t": "buy",
+            "unit": "at"
+          },
+          "accepted": true,
+          "rejectionReason": null,
+          "locations": [],
+          "sourceLocations": [],
+          "region": null,
+          "resourcesBefore": {
+            "mp": 216.7999999999962,
+            "fuel": 0
+          },
+          "resourcesAfter": {
+            "mp": 16.799999999996203,
+            "fuel": 0
+          },
+          "purchasePrice": {
+            "mp": 200,
+            "fuel": 0
+          },
+          "spend": {
+            "mp": 200,
+            "fuel": 0
+          }
+        }
+      ],
+      "acceptedDeductionsWhileQueued": [],
+      "batchCost": 100,
+      "batch": [
+        {
+          "tick": 339,
+          "unit": "rifle",
+          "price": {
+            "mp": 100,
+            "fuel": 0
+          },
+          "accepted": false
+        }
+      ],
+      "classification": "stale-observation-after-accepted-deduction"
+    },
+    {
+      "treatment": "candidate",
+      "level": "easy",
+      "seed": 16,
+      "slot": 1,
+      "faction": "Germany",
+      "refusedTick": 255,
+      "queuedTick": 251,
+      "cycle": 3,
+      "command": {
+        "t": "buy",
+        "unit": "mg"
+      },
+      "price": {
+        "mp": 150,
+        "fuel": 0
+      },
+      "rejectionReason": "mp",
+      "enqueue": {
+        "actualMP": 20.199999999997157,
+        "actualFuel": 0,
+        "observationTick": 250,
+        "observedMP": 199,
+        "observedFuel": 0
+      },
+      "click": {
+        "mp": 20.999999999997154,
+        "fuel": 0
+      },
+      "acceptedDeductionsSinceObserved": [
+        {
+          "tick": 250,
+          "command": {
+            "t": "buy",
+            "unit": "mortar"
+          },
+          "accepted": true,
+          "rejectionReason": null,
+          "locations": [],
+          "sourceLocations": [],
+          "region": null,
+          "resourcesBefore": {
+            "mp": 199.99999999999716,
+            "fuel": 0
+          },
+          "resourcesAfter": {
+            "mp": 19.999999999997158,
+            "fuel": 0
+          },
+          "purchasePrice": {
+            "mp": 180,
+            "fuel": 0
+          },
+          "spend": {
+            "mp": 180,
+            "fuel": 0
+          }
+        }
+      ],
+      "acceptedDeductionsWhileQueued": [],
+      "batchCost": 150,
+      "batch": [
+        {
+          "tick": 255,
+          "unit": "mg",
+          "price": {
+            "mp": 150,
+            "fuel": 0
+          },
+          "accepted": false
+        }
+      ],
+      "classification": "stale-observation-after-accepted-deduction"
+    },
+    {
+      "treatment": "candidate",
+      "level": "easy",
+      "seed": 17,
+      "slot": 0,
+      "faction": "USA",
+      "refusedTick": 267,
+      "queuedTick": 263,
+      "cycle": 3,
+      "command": {
+        "t": "buy",
+        "unit": "rifle"
+      },
+      "price": {
+        "mp": 100,
+        "fuel": 0
+      },
+      "rejectionReason": "mp",
+      "enqueue": {
+        "actualMP": 22.59999999999702,
+        "actualFuel": 0,
+        "observationTick": 262,
+        "observedMP": 202,
+        "observedFuel": 0
+      },
+      "click": {
+        "mp": 23.399999999997018,
+        "fuel": 0
+      },
+      "acceptedDeductionsSinceObserved": [
+        {
+          "tick": 262,
+          "command": {
+            "t": "buy",
+            "unit": "mortar"
+          },
+          "accepted": true,
+          "rejectionReason": null,
+          "locations": [],
+          "sourceLocations": [],
+          "region": null,
+          "resourcesBefore": {
+            "mp": 202.39999999999702,
+            "fuel": 0
+          },
+          "resourcesAfter": {
+            "mp": 22.39999999999702,
+            "fuel": 0
+          },
+          "purchasePrice": {
+            "mp": 180,
+            "fuel": 0
+          },
+          "spend": {
+            "mp": 180,
+            "fuel": 0
+          }
+        }
+      ],
+      "acceptedDeductionsWhileQueued": [],
+      "batchCost": 100,
+      "batch": [
+        {
+          "tick": 267,
+          "unit": "rifle",
+          "price": {
+            "mp": 100,
+            "fuel": 0
+          },
+          "accepted": false
+        }
+      ],
+      "classification": "stale-observation-after-accepted-deduction"
+    },
+    {
+      "treatment": "candidate",
+      "level": "easy",
+      "seed": 20,
+      "slot": 1,
+      "faction": "Germany",
+      "refusedTick": 313,
+      "queuedTick": 309,
+      "cycle": 7,
+      "command": {
+        "t": "buy",
+        "unit": "mg"
+      },
+      "price": {
+        "mp": 150,
+        "fuel": 0
+      },
+      "rejectionReason": "mp",
+      "enqueue": {
+        "actualMP": 11.799999999996498,
+        "actualFuel": 0,
+        "observationTick": 308,
+        "observedMP": 211,
+        "observedFuel": 0
+      },
+      "click": {
+        "mp": 12.599999999996495,
+        "fuel": 0
+      },
+      "acceptedDeductionsSinceObserved": [
+        {
+          "tick": 308,
+          "command": {
+            "t": "buy",
+            "unit": "at"
+          },
+          "accepted": true,
+          "rejectionReason": null,
+          "locations": [],
+          "sourceLocations": [],
+          "region": null,
+          "resourcesBefore": {
+            "mp": 211.5999999999965,
+            "fuel": 0
+          },
+          "resourcesAfter": {
+            "mp": 11.599999999996498,
+            "fuel": 0
+          },
+          "purchasePrice": {
+            "mp": 200,
+            "fuel": 0
+          },
+          "spend": {
+            "mp": 200,
+            "fuel": 0
+          }
+        }
+      ],
+      "acceptedDeductionsWhileQueued": [],
+      "batchCost": 150,
+      "batch": [
+        {
+          "tick": 313,
+          "unit": "mg",
+          "price": {
+            "mp": 150,
+            "fuel": 0
+          },
+          "accepted": false
+        }
+      ],
+      "classification": "stale-observation-after-accepted-deduction"
+    },
+    {
+      "treatment": "candidate",
+      "level": "normal",
+      "seed": 3,
+      "slot": 1,
+      "faction": "Germany",
+      "refusedTick": 190,
+      "queuedTick": 187,
+      "cycle": 3,
+      "command": {
+        "t": "buy",
+        "unit": "rifle"
+      },
+      "price": {
+        "mp": 100,
+        "fuel": 0
+      },
+      "rejectionReason": "mp",
+      "enqueue": {
+        "actualMP": 7.399999999997886,
+        "actualFuel": 0,
+        "observationTick": 186,
+        "observedMP": 187,
+        "observedFuel": 0
+      },
+      "click": {
+        "mp": 7.999999999997886,
+        "fuel": 0
+      },
+      "acceptedDeductionsSinceObserved": [
+        {
+          "tick": 186,
+          "command": {
+            "t": "buy",
+            "unit": "mortar"
+          },
+          "accepted": true,
+          "rejectionReason": null,
+          "locations": [],
+          "sourceLocations": [],
+          "region": null,
+          "resourcesBefore": {
+            "mp": 187.19999999999789,
+            "fuel": 0
+          },
+          "resourcesAfter": {
+            "mp": 7.199999999997885,
+            "fuel": 0
+          },
+          "purchasePrice": {
+            "mp": 180,
+            "fuel": 0
+          },
+          "spend": {
+            "mp": 180,
+            "fuel": 0
+          }
+        }
+      ],
+      "acceptedDeductionsWhileQueued": [],
+      "batchCost": 100,
+      "batch": [
+        {
+          "tick": 190,
+          "unit": "rifle",
+          "price": {
+            "mp": 100,
+            "fuel": 0
+          },
+          "accepted": false
+        }
+      ],
+      "classification": "stale-observation-after-accepted-deduction"
+    },
+    {
+      "treatment": "candidate",
+      "level": "normal",
+      "seed": 7,
+      "slot": 0,
+      "faction": "USA",
+      "refusedTick": 180,
+      "queuedTick": 177,
+      "cycle": 4,
+      "command": {
+        "t": "buy",
+        "unit": "mg"
+      },
+      "price": {
+        "mp": 150,
+        "fuel": 0
+      },
+      "rejectionReason": "mp",
+      "enqueue": {
+        "actualMP": 5.399999999997999,
+        "actualFuel": 0,
+        "observationTick": 176,
+        "observedMP": 185,
+        "observedFuel": 0
+      },
+      "click": {
+        "mp": 5.999999999998,
+        "fuel": 0
+      },
+      "acceptedDeductionsSinceObserved": [
+        {
+          "tick": 176,
+          "command": {
+            "t": "buy",
+            "unit": "mortar"
+          },
+          "accepted": true,
+          "rejectionReason": null,
+          "locations": [],
+          "sourceLocations": [],
+          "region": null,
+          "resourcesBefore": {
+            "mp": 185.199999999998,
+            "fuel": 0
+          },
+          "resourcesAfter": {
+            "mp": 5.199999999997999,
+            "fuel": 0
+          },
+          "purchasePrice": {
+            "mp": 180,
+            "fuel": 0
+          },
+          "spend": {
+            "mp": 180,
+            "fuel": 0
+          }
+        }
+      ],
+      "acceptedDeductionsWhileQueued": [],
+      "batchCost": 150,
+      "batch": [
+        {
+          "tick": 180,
+          "unit": "mg",
+          "price": {
+            "mp": 150,
+            "fuel": 0
+          },
+          "accepted": false
+        }
+      ],
+      "classification": "stale-observation-after-accepted-deduction"
+    },
+    {
+      "treatment": "candidate",
+      "level": "normal",
+      "seed": 7,
+      "slot": 2,
+      "faction": "USSR",
+      "refusedTick": 172,
+      "queuedTick": 169,
+      "cycle": 4,
+      "command": {
+        "t": "buy",
+        "unit": "mg"
+      },
+      "price": {
+        "mp": 150,
+        "fuel": 0
+      },
+      "rejectionReason": "mp",
+      "enqueue": {
+        "actualMP": 3.7999999999980902,
+        "actualFuel": 0,
+        "observationTick": 168,
+        "observedMP": 183,
+        "observedFuel": 0
+      },
+      "click": {
+        "mp": 4.399999999998091,
+        "fuel": 0
+      },
+      "acceptedDeductionsSinceObserved": [
+        {
+          "tick": 168,
+          "command": {
+            "t": "buy",
+            "unit": "mortar"
+          },
+          "accepted": true,
+          "rejectionReason": null,
+          "locations": [],
+          "sourceLocations": [],
+          "region": null,
+          "resourcesBefore": {
+            "mp": 183.5999999999981,
+            "fuel": 0
+          },
+          "resourcesAfter": {
+            "mp": 3.59999999999809,
+            "fuel": 0
+          },
+          "purchasePrice": {
+            "mp": 180,
+            "fuel": 0
+          },
+          "spend": {
+            "mp": 180,
+            "fuel": 0
+          }
+        }
+      ],
+      "acceptedDeductionsWhileQueued": [],
+      "batchCost": 150,
+      "batch": [
+        {
+          "tick": 172,
+          "unit": "mg",
+          "price": {
+            "mp": 150,
+            "fuel": 0
+          },
+          "accepted": false
+        }
+      ],
+      "classification": "stale-observation-after-accepted-deduction"
+    },
+    {
+      "treatment": "candidate",
+      "level": "normal",
+      "seed": 9,
+      "slot": 2,
+      "faction": "USSR",
+      "refusedTick": 304,
+      "queuedTick": 301,
+      "cycle": 7,
+      "command": {
+        "t": "buy",
+        "unit": "conscript"
+      },
+      "price": {
+        "mp": 80,
+        "fuel": 0
+      },
+      "rejectionReason": "mp",
+      "enqueue": {
+        "actualMP": 10.199999999996589,
+        "actualFuel": 0,
+        "observationTick": 300,
+        "observedMP": 209,
+        "observedFuel": 0
+      },
+      "click": {
+        "mp": 10.799999999996587,
+        "fuel": 0
+      },
+      "acceptedDeductionsSinceObserved": [
+        {
+          "tick": 300,
+          "command": {
+            "t": "buy",
+            "unit": "at"
+          },
+          "accepted": true,
+          "rejectionReason": null,
+          "locations": [],
+          "sourceLocations": [],
+          "region": null,
+          "resourcesBefore": {
+            "mp": 209.9999999999966,
+            "fuel": 0
+          },
+          "resourcesAfter": {
+            "mp": 9.99999999999659,
+            "fuel": 0
+          },
+          "purchasePrice": {
+            "mp": 200,
+            "fuel": 0
+          },
+          "spend": {
+            "mp": 200,
+            "fuel": 0
+          }
+        }
+      ],
+      "acceptedDeductionsWhileQueued": [],
+      "batchCost": 160,
+      "batch": [
+        {
+          "tick": 304,
+          "unit": "conscript",
+          "price": {
+            "mp": 80,
+            "fuel": 0
+          },
+          "accepted": false
+        },
+        {
+          "tick": 311,
+          "unit": "conscript",
+          "price": {
+            "mp": 80,
+            "fuel": 0
+          },
+          "accepted": false
+        }
+      ],
+      "classification": "stale-observation-after-accepted-deduction"
+    },
+    {
+      "treatment": "candidate",
+      "level": "normal",
+      "seed": 9,
+      "slot": 2,
+      "faction": "USSR",
+      "refusedTick": 311,
+      "queuedTick": 301,
+      "cycle": 7,
+      "command": {
+        "t": "buy",
+        "unit": "conscript"
+      },
+      "price": {
+        "mp": 80,
+        "fuel": 0
+      },
+      "rejectionReason": "mp",
+      "enqueue": {
+        "actualMP": 10.199999999996589,
+        "actualFuel": 0,
+        "observationTick": 300,
+        "observedMP": 209,
+        "observedFuel": 0
+      },
+      "click": {
+        "mp": 12.199999999996582,
+        "fuel": 0
+      },
+      "acceptedDeductionsSinceObserved": [
+        {
+          "tick": 300,
+          "command": {
+            "t": "buy",
+            "unit": "at"
+          },
+          "accepted": true,
+          "rejectionReason": null,
+          "locations": [],
+          "sourceLocations": [],
+          "region": null,
+          "resourcesBefore": {
+            "mp": 209.9999999999966,
+            "fuel": 0
+          },
+          "resourcesAfter": {
+            "mp": 9.99999999999659,
+            "fuel": 0
+          },
+          "purchasePrice": {
+            "mp": 200,
+            "fuel": 0
+          },
+          "spend": {
+            "mp": 200,
+            "fuel": 0
+          }
+        }
+      ],
+      "acceptedDeductionsWhileQueued": [],
+      "batchCost": 160,
+      "batch": [
+        {
+          "tick": 304,
+          "unit": "conscript",
+          "price": {
+            "mp": 80,
+            "fuel": 0
+          },
+          "accepted": false
+        },
+        {
+          "tick": 311,
+          "unit": "conscript",
+          "price": {
+            "mp": 80,
+            "fuel": 0
+          },
+          "accepted": false
+        }
+      ],
+      "classification": "stale-observation-after-accepted-deduction"
+    },
+    {
+      "treatment": "candidate",
+      "level": "normal",
+      "seed": 10,
+      "slot": 2,
+      "faction": "USSR",
+      "refusedTick": 176,
+      "queuedTick": 173,
+      "cycle": 6,
+      "command": {
+        "t": "buy",
+        "unit": "conscript"
+      },
+      "price": {
+        "mp": 80,
+        "fuel": 0
+      },
+      "rejectionReason": "mp",
+      "enqueue": {
+        "actualMP": 4.599999999998045,
+        "actualFuel": 0,
+        "observationTick": 172,
+        "observedMP": 184,
+        "observedFuel": 0
+      },
+      "click": {
+        "mp": 5.199999999998045,
+        "fuel": 0
+      },
+      "acceptedDeductionsSinceObserved": [
+        {
+          "tick": 172,
+          "command": {
+            "t": "buy",
+            "unit": "mortar"
+          },
+          "accepted": true,
+          "rejectionReason": null,
+          "locations": [],
+          "sourceLocations": [],
+          "region": null,
+          "resourcesBefore": {
+            "mp": 184.39999999999804,
+            "fuel": 0
+          },
+          "resourcesAfter": {
+            "mp": 4.399999999998045,
+            "fuel": 0
+          },
+          "purchasePrice": {
+            "mp": 180,
+            "fuel": 0
+          },
+          "spend": {
+            "mp": 180,
+            "fuel": 0
+          }
+        }
+      ],
+      "acceptedDeductionsWhileQueued": [],
+      "batchCost": 160,
+      "batch": [
+        {
+          "tick": 176,
+          "unit": "conscript",
+          "price": {
+            "mp": 80,
+            "fuel": 0
+          },
+          "accepted": false
+        },
+        {
+          "tick": 182,
+          "unit": "conscript",
+          "price": {
+            "mp": 80,
+            "fuel": 0
+          },
+          "accepted": false
+        }
+      ],
+      "classification": "stale-observation-after-accepted-deduction"
+    },
+    {
+      "treatment": "candidate",
+      "level": "normal",
+      "seed": 10,
+      "slot": 2,
+      "faction": "USSR",
+      "refusedTick": 182,
+      "queuedTick": 173,
+      "cycle": 6,
+      "command": {
+        "t": "buy",
+        "unit": "conscript"
+      },
+      "price": {
+        "mp": 80,
+        "fuel": 0
+      },
+      "rejectionReason": "mp",
+      "enqueue": {
+        "actualMP": 4.599999999998045,
+        "actualFuel": 0,
+        "observationTick": 172,
+        "observedMP": 184,
+        "observedFuel": 0
+      },
+      "click": {
+        "mp": 6.399999999998046,
+        "fuel": 0
+      },
+      "acceptedDeductionsSinceObserved": [
+        {
+          "tick": 172,
+          "command": {
+            "t": "buy",
+            "unit": "mortar"
+          },
+          "accepted": true,
+          "rejectionReason": null,
+          "locations": [],
+          "sourceLocations": [],
+          "region": null,
+          "resourcesBefore": {
+            "mp": 184.39999999999804,
+            "fuel": 0
+          },
+          "resourcesAfter": {
+            "mp": 4.399999999998045,
+            "fuel": 0
+          },
+          "purchasePrice": {
+            "mp": 180,
+            "fuel": 0
+          },
+          "spend": {
+            "mp": 180,
+            "fuel": 0
+          }
+        }
+      ],
+      "acceptedDeductionsWhileQueued": [],
+      "batchCost": 160,
+      "batch": [
+        {
+          "tick": 176,
+          "unit": "conscript",
+          "price": {
+            "mp": 80,
+            "fuel": 0
+          },
+          "accepted": false
+        },
+        {
+          "tick": 182,
+          "unit": "conscript",
+          "price": {
+            "mp": 80,
+            "fuel": 0
+          },
+          "accepted": false
+        }
+      ],
+      "classification": "stale-observation-after-accepted-deduction"
+    },
+    {
+      "treatment": "candidate",
+      "level": "normal",
+      "seed": 11,
+      "slot": 1,
+      "faction": "Germany",
+      "refusedTick": 300,
+      "queuedTick": 297,
+      "cycle": 7,
+      "command": {
+        "t": "buy",
+        "unit": "mg"
+      },
+      "price": {
+        "mp": 150,
+        "fuel": 0
+      },
+      "rejectionReason": "mp",
+      "enqueue": {
+        "actualMP": 9.399999999996634,
+        "actualFuel": 0,
+        "observationTick": 296,
+        "observedMP": 209,
+        "observedFuel": 0
+      },
+      "click": {
+        "mp": 9.999999999996632,
+        "fuel": 0
+      },
+      "acceptedDeductionsSinceObserved": [
+        {
+          "tick": 296,
+          "command": {
+            "t": "buy",
+            "unit": "at"
+          },
+          "accepted": true,
+          "rejectionReason": null,
+          "locations": [],
+          "sourceLocations": [],
+          "region": null,
+          "resourcesBefore": {
+            "mp": 209.19999999999663,
+            "fuel": 0
+          },
+          "resourcesAfter": {
+            "mp": 9.199999999996635,
+            "fuel": 0
+          },
+          "purchasePrice": {
+            "mp": 200,
+            "fuel": 0
+          },
+          "spend": {
+            "mp": 200,
+            "fuel": 0
+          }
+        }
+      ],
+      "acceptedDeductionsWhileQueued": [],
+      "batchCost": 150,
+      "batch": [
+        {
+          "tick": 300,
+          "unit": "mg",
+          "price": {
+            "mp": 150,
+            "fuel": 0
+          },
+          "accepted": false
+        }
+      ],
+      "classification": "stale-observation-after-accepted-deduction"
+    },
+    {
+      "treatment": "candidate",
+      "level": "normal",
+      "seed": 12,
+      "slot": 2,
+      "faction": "USSR",
+      "refusedTick": 280,
+      "queuedTick": 277,
+      "cycle": 9,
+      "command": {
+        "t": "buy",
+        "unit": "mg"
+      },
+      "price": {
+        "mp": 150,
+        "fuel": 0
+      },
+      "rejectionReason": "mp",
+      "enqueue": {
+        "actualMP": 5.399999999996862,
+        "actualFuel": 0,
+        "observationTick": 276,
+        "observedMP": 205,
+        "observedFuel": 0
+      },
+      "click": {
+        "mp": 5.999999999996863,
+        "fuel": 0
+      },
+      "acceptedDeductionsSinceObserved": [
+        {
+          "tick": 276,
+          "command": {
+            "t": "buy",
+            "unit": "at"
+          },
+          "accepted": true,
+          "rejectionReason": null,
+          "locations": [],
+          "sourceLocations": [],
+          "region": null,
+          "resourcesBefore": {
+            "mp": 205.19999999999686,
+            "fuel": 0
+          },
+          "resourcesAfter": {
+            "mp": 5.199999999996862,
+            "fuel": 0
+          },
+          "purchasePrice": {
+            "mp": 200,
+            "fuel": 0
+          },
+          "spend": {
+            "mp": 200,
+            "fuel": 0
+          }
+        }
+      ],
+      "acceptedDeductionsWhileQueued": [],
+      "batchCost": 150,
+      "batch": [
+        {
+          "tick": 280,
+          "unit": "mg",
+          "price": {
+            "mp": 150,
+            "fuel": 0
+          },
+          "accepted": false
+        }
+      ],
+      "classification": "stale-observation-after-accepted-deduction"
+    },
+    {
+      "treatment": "candidate",
+      "level": "normal",
+      "seed": 13,
+      "slot": 0,
+      "faction": "USA",
+      "refusedTick": 326,
+      "queuedTick": 323,
+      "cycle": 7,
+      "command": {
+        "t": "buy",
+        "unit": "mg"
+      },
+      "price": {
+        "mp": 150,
+        "fuel": 0
+      },
+      "rejectionReason": "mp",
+      "enqueue": {
+        "actualMP": 14.599999999996339,
+        "actualFuel": 0,
+        "observationTick": 322,
+        "observedMP": 214,
+        "observedFuel": 0
+      },
+      "click": {
+        "mp": 15.199999999996336,
+        "fuel": 0
+      },
+      "acceptedDeductionsSinceObserved": [
+        {
+          "tick": 322,
+          "command": {
+            "t": "buy",
+            "unit": "at"
+          },
+          "accepted": true,
+          "rejectionReason": null,
+          "locations": [],
+          "sourceLocations": [],
+          "region": null,
+          "resourcesBefore": {
+            "mp": 214.39999999999634,
+            "fuel": 0
+          },
+          "resourcesAfter": {
+            "mp": 14.39999999999634,
+            "fuel": 0
+          },
+          "purchasePrice": {
+            "mp": 200,
+            "fuel": 0
+          },
+          "spend": {
+            "mp": 200,
+            "fuel": 0
+          }
+        }
+      ],
+      "acceptedDeductionsWhileQueued": [],
+      "batchCost": 150,
+      "batch": [
+        {
+          "tick": 326,
+          "unit": "mg",
+          "price": {
+            "mp": 150,
+            "fuel": 0
+          },
+          "accepted": false
+        }
+      ],
+      "classification": "stale-observation-after-accepted-deduction"
+    },
+    {
+      "treatment": "candidate",
+      "level": "normal",
+      "seed": 16,
+      "slot": 1,
+      "faction": "Germany",
+      "refusedTick": 170,
+      "queuedTick": 167,
+      "cycle": 4,
+      "command": {
+        "t": "buy",
+        "unit": "mg"
+      },
+      "price": {
+        "mp": 150,
+        "fuel": 0
+      },
+      "rejectionReason": "mp",
+      "enqueue": {
+        "actualMP": 3.399999999998113,
+        "actualFuel": 0,
+        "observationTick": 166,
+        "observedMP": 183,
+        "observedFuel": 0
+      },
+      "click": {
+        "mp": 3.9999999999981135,
+        "fuel": 0
+      },
+      "acceptedDeductionsSinceObserved": [
+        {
+          "tick": 166,
+          "command": {
+            "t": "buy",
+            "unit": "mortar"
+          },
+          "accepted": true,
+          "rejectionReason": null,
+          "locations": [],
+          "sourceLocations": [],
+          "region": null,
+          "resourcesBefore": {
+            "mp": 183.1999999999981,
+            "fuel": 0
+          },
+          "resourcesAfter": {
+            "mp": 3.199999999998113,
+            "fuel": 0
+          },
+          "purchasePrice": {
+            "mp": 180,
+            "fuel": 0
+          },
+          "spend": {
+            "mp": 180,
+            "fuel": 0
+          }
+        }
+      ],
+      "acceptedDeductionsWhileQueued": [],
+      "batchCost": 150,
+      "batch": [
+        {
+          "tick": 170,
+          "unit": "mg",
+          "price": {
+            "mp": 150,
+            "fuel": 0
+          },
+          "accepted": false
+        }
+      ],
+      "classification": "stale-observation-after-accepted-deduction"
+    },
+    {
+      "treatment": "candidate",
+      "level": "normal",
+      "seed": 17,
+      "slot": 0,
+      "faction": "USA",
+      "refusedTick": 172,
+      "queuedTick": 169,
+      "cycle": 4,
+      "command": {
+        "t": "buy",
+        "unit": "rifle"
+      },
+      "price": {
+        "mp": 100,
+        "fuel": 0
+      },
+      "rejectionReason": "mp",
+      "enqueue": {
+        "actualMP": 3.7999999999980902,
+        "actualFuel": 0,
+        "observationTick": 168,
+        "observedMP": 183,
+        "observedFuel": 0
+      },
+      "click": {
+        "mp": 4.399999999998091,
+        "fuel": 0
+      },
+      "acceptedDeductionsSinceObserved": [
+        {
+          "tick": 168,
+          "command": {
+            "t": "buy",
+            "unit": "mortar"
+          },
+          "accepted": true,
+          "rejectionReason": null,
+          "locations": [],
+          "sourceLocations": [],
+          "region": null,
+          "resourcesBefore": {
+            "mp": 183.5999999999981,
+            "fuel": 0
+          },
+          "resourcesAfter": {
+            "mp": 3.59999999999809,
+            "fuel": 0
+          },
+          "purchasePrice": {
+            "mp": 180,
+            "fuel": 0
+          },
+          "spend": {
+            "mp": 180,
+            "fuel": 0
+          }
+        }
+      ],
+      "acceptedDeductionsWhileQueued": [],
+      "batchCost": 100,
+      "batch": [
+        {
+          "tick": 172,
+          "unit": "rifle",
+          "price": {
+            "mp": 100,
+            "fuel": 0
+          },
+          "accepted": false
+        }
+      ],
+      "classification": "stale-observation-after-accepted-deduction"
+    },
+    {
+      "treatment": "candidate",
+      "level": "normal",
+      "seed": 17,
+      "slot": 1,
+      "faction": "Germany",
+      "refusedTick": 274,
+      "queuedTick": 271,
+      "cycle": 11,
+      "command": {
+        "t": "buy",
+        "unit": "mg"
+      },
+      "price": {
+        "mp": 150,
+        "fuel": 0
+      },
+      "rejectionReason": "mp",
+      "enqueue": {
+        "actualMP": 4.199999999996931,
+        "actualFuel": 0,
+        "observationTick": 270,
+        "observedMP": 203,
+        "observedFuel": 0
+      },
+      "click": {
+        "mp": 4.799999999996931,
+        "fuel": 0
+      },
+      "acceptedDeductionsSinceObserved": [
+        {
+          "tick": 270,
+          "command": {
+            "t": "buy",
+            "unit": "at"
+          },
+          "accepted": true,
+          "rejectionReason": null,
+          "locations": [],
+          "sourceLocations": [],
+          "region": null,
+          "resourcesBefore": {
+            "mp": 203.99999999999693,
+            "fuel": 0
+          },
+          "resourcesAfter": {
+            "mp": 3.9999999999969305,
+            "fuel": 0
+          },
+          "purchasePrice": {
+            "mp": 200,
+            "fuel": 0
+          },
+          "spend": {
+            "mp": 200,
+            "fuel": 0
+          }
+        }
+      ],
+      "acceptedDeductionsWhileQueued": [],
+      "batchCost": 150,
+      "batch": [
+        {
+          "tick": 274,
+          "unit": "mg",
+          "price": {
+            "mp": 150,
+            "fuel": 0
+          },
+          "accepted": false
+        }
+      ],
+      "classification": "stale-observation-after-accepted-deduction"
+    },
+    {
+      "treatment": "candidate",
+      "level": "hard",
+      "seed": 2,
+      "slot": 0,
+      "faction": "USA",
+      "refusedTick": 266,
+      "queuedTick": 263,
+      "cycle": 14,
+      "command": {
+        "t": "buy",
+        "unit": "rifle"
+      },
+      "price": {
+        "mp": 100,
+        "fuel": 0
+      },
+      "rejectionReason": "mp",
+      "enqueue": {
+        "actualMP": 2.5999999999970216,
+        "actualFuel": 0,
+        "observationTick": 262,
+        "observedMP": 202,
+        "observedFuel": 0
+      },
+      "click": {
+        "mp": 3.199999999997022,
+        "fuel": 0
+      },
+      "acceptedDeductionsSinceObserved": [
+        {
+          "tick": 262,
+          "command": {
+            "t": "buy",
+            "unit": "at"
+          },
+          "accepted": true,
+          "rejectionReason": null,
+          "locations": [],
+          "sourceLocations": [],
+          "region": null,
+          "resourcesBefore": {
+            "mp": 202.39999999999702,
+            "fuel": 0
+          },
+          "resourcesAfter": {
+            "mp": 2.3999999999970214,
+            "fuel": 0
+          },
+          "purchasePrice": {
+            "mp": 200,
+            "fuel": 0
+          },
+          "spend": {
+            "mp": 200,
+            "fuel": 0
+          }
+        }
+      ],
+      "acceptedDeductionsWhileQueued": [],
+      "batchCost": 200,
+      "batch": [
+        {
+          "tick": 266,
+          "unit": "rifle",
+          "price": {
+            "mp": 100,
+            "fuel": 0
+          },
+          "accepted": false
+        },
+        {
+          "tick": 271,
+          "unit": "rifle",
+          "price": {
+            "mp": 100,
+            "fuel": 0
+          },
+          "accepted": false
+        }
+      ],
+      "classification": "stale-observation-after-accepted-deduction"
+    },
+    {
+      "treatment": "candidate",
+      "level": "hard",
+      "seed": 2,
+      "slot": 0,
+      "faction": "USA",
+      "refusedTick": 271,
+      "queuedTick": 263,
+      "cycle": 14,
+      "command": {
+        "t": "buy",
+        "unit": "rifle"
+      },
+      "price": {
+        "mp": 100,
+        "fuel": 0
+      },
+      "rejectionReason": "mp",
+      "enqueue": {
+        "actualMP": 2.5999999999970216,
+        "actualFuel": 0,
+        "observationTick": 262,
+        "observedMP": 202,
+        "observedFuel": 0
+      },
+      "click": {
+        "mp": 4.199999999997023,
+        "fuel": 0
+      },
+      "acceptedDeductionsSinceObserved": [
+        {
+          "tick": 262,
+          "command": {
+            "t": "buy",
+            "unit": "at"
+          },
+          "accepted": true,
+          "rejectionReason": null,
+          "locations": [],
+          "sourceLocations": [],
+          "region": null,
+          "resourcesBefore": {
+            "mp": 202.39999999999702,
+            "fuel": 0
+          },
+          "resourcesAfter": {
+            "mp": 2.3999999999970214,
+            "fuel": 0
+          },
+          "purchasePrice": {
+            "mp": 200,
+            "fuel": 0
+          },
+          "spend": {
+            "mp": 200,
+            "fuel": 0
+          }
+        }
+      ],
+      "acceptedDeductionsWhileQueued": [],
+      "batchCost": 200,
+      "batch": [
+        {
+          "tick": 266,
+          "unit": "rifle",
+          "price": {
+            "mp": 100,
+            "fuel": 0
+          },
+          "accepted": false
+        },
+        {
+          "tick": 271,
+          "unit": "rifle",
+          "price": {
+            "mp": 100,
+            "fuel": 0
+          },
+          "accepted": false
+        }
+      ],
+      "classification": "stale-observation-after-accepted-deduction"
+    },
+    {
+      "treatment": "candidate",
+      "level": "hard",
+      "seed": 4,
+      "slot": 0,
+      "faction": "USA",
+      "refusedTick": 164,
+      "queuedTick": 161,
+      "cycle": 7,
+      "command": {
+        "t": "buy",
+        "unit": "mg"
+      },
+      "price": {
+        "mp": 150,
+        "fuel": 0
+      },
+      "rejectionReason": "mp",
+      "enqueue": {
+        "actualMP": 2.199999999998181,
+        "actualFuel": 0,
+        "observationTick": 160,
+        "observedMP": 181,
+        "observedFuel": 0
+      },
+      "click": {
+        "mp": 2.7999999999981817,
+        "fuel": 0
+      },
+      "acceptedDeductionsSinceObserved": [
+        {
+          "tick": 160,
+          "command": {
+            "t": "buy",
+            "unit": "mortar"
+          },
+          "accepted": true,
+          "rejectionReason": null,
+          "locations": [],
+          "sourceLocations": [],
+          "region": null,
+          "resourcesBefore": {
+            "mp": 181.99999999999818,
+            "fuel": 0
+          },
+          "resourcesAfter": {
+            "mp": 1.999999999998181,
+            "fuel": 0
+          },
+          "purchasePrice": {
+            "mp": 180,
+            "fuel": 0
+          },
+          "spend": {
+            "mp": 180,
+            "fuel": 0
+          }
+        }
+      ],
+      "acceptedDeductionsWhileQueued": [],
+      "batchCost": 150,
+      "batch": [
+        {
+          "tick": 164,
+          "unit": "mg",
+          "price": {
+            "mp": 150,
+            "fuel": 0
+          },
+          "accepted": false
+        }
+      ],
+      "classification": "stale-observation-after-accepted-deduction"
+    },
+    {
+      "treatment": "candidate",
+      "level": "hard",
+      "seed": 7,
+      "slot": 0,
+      "faction": "USA",
+      "refusedTick": 166,
+      "queuedTick": 163,
+      "cycle": 9,
+      "command": {
+        "t": "buy",
+        "unit": "mg"
+      },
+      "price": {
+        "mp": 150,
+        "fuel": 0
+      },
+      "rejectionReason": "mp",
+      "enqueue": {
+        "actualMP": 2.5999999999981585,
+        "actualFuel": 0,
+        "observationTick": 162,
+        "observedMP": 182,
+        "observedFuel": 0
+      },
+      "click": {
+        "mp": 3.199999999998159,
+        "fuel": 0
+      },
+      "acceptedDeductionsSinceObserved": [
+        {
+          "tick": 162,
+          "command": {
+            "t": "buy",
+            "unit": "mortar"
+          },
+          "accepted": true,
+          "rejectionReason": null,
+          "locations": [],
+          "sourceLocations": [],
+          "region": null,
+          "resourcesBefore": {
+            "mp": 182.39999999999816,
+            "fuel": 0
+          },
+          "resourcesAfter": {
+            "mp": 2.3999999999981583,
+            "fuel": 0
+          },
+          "purchasePrice": {
+            "mp": 180,
+            "fuel": 0
+          },
+          "spend": {
+            "mp": 180,
+            "fuel": 0
+          }
+        }
+      ],
+      "acceptedDeductionsWhileQueued": [],
+      "batchCost": 150,
+      "batch": [
+        {
+          "tick": 166,
+          "unit": "mg",
+          "price": {
+            "mp": 150,
+            "fuel": 0
+          },
+          "accepted": false
+        }
+      ],
+      "classification": "stale-observation-after-accepted-deduction"
+    },
+    {
+      "treatment": "candidate",
+      "level": "hard",
+      "seed": 7,
+      "slot": 1,
+      "faction": "Germany",
+      "refusedTick": 792,
+      "queuedTick": 784,
+      "cycle": 50,
+      "command": {
+        "t": "buy",
+        "unit": "rifle"
+      },
+      "price": {
+        "mp": 100,
+        "fuel": 0
+      },
+      "rejectionReason": "mp",
+      "enqueue": {
+        "actualMP": 107.07629166666617,
+        "actualFuel": 0,
+        "observationTick": 784,
+        "observedMP": 107,
+        "observedFuel": 0
+      },
+      "click": {
+        "mp": 99.2236249999995,
+        "fuel": 0
+      },
+      "acceptedDeductionsSinceObserved": [],
+      "acceptedDeductionsWhileQueued": [],
+      "batchCost": 100,
+      "batch": [
+        {
+          "tick": 792,
+          "unit": "rifle",
+          "price": {
+            "mp": 100,
+            "fuel": 0
+          },
+          "accepted": false
+        }
+      ],
+      "classification": "other"
+    },
+    {
+      "treatment": "candidate",
+      "level": "hard",
+      "seed": 9,
+      "slot": 2,
+      "faction": "USSR",
+      "refusedTick": 294,
+      "queuedTick": 291,
+      "cycle": 15,
+      "command": {
+        "t": "buy",
+        "unit": "conscript"
+      },
+      "price": {
+        "mp": 80,
+        "fuel": 0
+      },
+      "rejectionReason": "mp",
+      "enqueue": {
+        "actualMP": 8.199999999996702,
+        "actualFuel": 0,
+        "observationTick": 290,
+        "observedMP": 207,
+        "observedFuel": 0
+      },
+      "click": {
+        "mp": 8.7999999999967,
+        "fuel": 0
+      },
+      "acceptedDeductionsSinceObserved": [
+        {
+          "tick": 290,
+          "command": {
+            "t": "buy",
+            "unit": "at"
+          },
+          "accepted": true,
+          "rejectionReason": null,
+          "locations": [],
+          "sourceLocations": [],
+          "region": null,
+          "resourcesBefore": {
+            "mp": 207.9999999999967,
+            "fuel": 0
+          },
+          "resourcesAfter": {
+            "mp": 7.999999999996703,
+            "fuel": 0
+          },
+          "purchasePrice": {
+            "mp": 200,
+            "fuel": 0
+          },
+          "spend": {
+            "mp": 200,
+            "fuel": 0
+          }
+        }
+      ],
+      "acceptedDeductionsWhileQueued": [],
+      "batchCost": 160,
+      "batch": [
+        {
+          "tick": 294,
+          "unit": "conscript",
+          "price": {
+            "mp": 80,
+            "fuel": 0
+          },
+          "accepted": false
+        },
+        {
+          "tick": 299,
+          "unit": "conscript",
+          "price": {
+            "mp": 80,
+            "fuel": 0
+          },
+          "accepted": false
+        }
+      ],
+      "classification": "stale-observation-after-accepted-deduction"
+    },
+    {
+      "treatment": "candidate",
+      "level": "hard",
+      "seed": 9,
+      "slot": 2,
+      "faction": "USSR",
+      "refusedTick": 299,
+      "queuedTick": 291,
+      "cycle": 15,
+      "command": {
+        "t": "buy",
+        "unit": "conscript"
+      },
+      "price": {
+        "mp": 80,
+        "fuel": 0
+      },
+      "rejectionReason": "mp",
+      "enqueue": {
+        "actualMP": 8.199999999996702,
+        "actualFuel": 0,
+        "observationTick": 290,
+        "observedMP": 207,
+        "observedFuel": 0
+      },
+      "click": {
+        "mp": 9.799999999996697,
+        "fuel": 0
+      },
+      "acceptedDeductionsSinceObserved": [
+        {
+          "tick": 290,
+          "command": {
+            "t": "buy",
+            "unit": "at"
+          },
+          "accepted": true,
+          "rejectionReason": null,
+          "locations": [],
+          "sourceLocations": [],
+          "region": null,
+          "resourcesBefore": {
+            "mp": 207.9999999999967,
+            "fuel": 0
+          },
+          "resourcesAfter": {
+            "mp": 7.999999999996703,
+            "fuel": 0
+          },
+          "purchasePrice": {
+            "mp": 200,
+            "fuel": 0
+          },
+          "spend": {
+            "mp": 200,
+            "fuel": 0
+          }
+        }
+      ],
+      "acceptedDeductionsWhileQueued": [],
+      "batchCost": 160,
+      "batch": [
+        {
+          "tick": 294,
+          "unit": "conscript",
+          "price": {
+            "mp": 80,
+            "fuel": 0
+          },
+          "accepted": false
+        },
+        {
+          "tick": 299,
+          "unit": "conscript",
+          "price": {
+            "mp": 80,
+            "fuel": 0
+          },
+          "accepted": false
+        }
+      ],
+      "classification": "stale-observation-after-accepted-deduction"
+    },
+    {
+      "treatment": "candidate",
+      "level": "hard",
+      "seed": 10,
+      "slot": 1,
+      "faction": "Germany",
+      "refusedTick": 164,
+      "queuedTick": 161,
+      "cycle": 8,
+      "command": {
+        "t": "buy",
+        "unit": "mg"
+      },
+      "price": {
+        "mp": 150,
+        "fuel": 0
+      },
+      "rejectionReason": "mp",
+      "enqueue": {
+        "actualMP": 2.199999999998181,
+        "actualFuel": 0,
+        "observationTick": 160,
+        "observedMP": 181,
+        "observedFuel": 0
+      },
+      "click": {
+        "mp": 2.7999999999981817,
+        "fuel": 0
+      },
+      "acceptedDeductionsSinceObserved": [
+        {
+          "tick": 160,
+          "command": {
+            "t": "buy",
+            "unit": "mortar"
+          },
+          "accepted": true,
+          "rejectionReason": null,
+          "locations": [],
+          "sourceLocations": [],
+          "region": null,
+          "resourcesBefore": {
+            "mp": 181.99999999999818,
+            "fuel": 0
+          },
+          "resourcesAfter": {
+            "mp": 1.999999999998181,
+            "fuel": 0
+          },
+          "purchasePrice": {
+            "mp": 180,
+            "fuel": 0
+          },
+          "spend": {
+            "mp": 180,
+            "fuel": 0
+          }
+        }
+      ],
+      "acceptedDeductionsWhileQueued": [],
+      "batchCost": 150,
+      "batch": [
+        {
+          "tick": 164,
+          "unit": "mg",
+          "price": {
+            "mp": 150,
+            "fuel": 0
+          },
+          "accepted": false
+        }
+      ],
+      "classification": "stale-observation-after-accepted-deduction"
+    },
+    {
+      "treatment": "candidate",
+      "level": "hard",
+      "seed": 12,
+      "slot": 0,
+      "faction": "USA",
+      "refusedTick": 282,
+      "queuedTick": 279,
+      "cycle": 17,
+      "command": {
+        "t": "buy",
+        "unit": "rifle"
+      },
+      "price": {
+        "mp": 100,
+        "fuel": 0
+      },
+      "rejectionReason": "mp",
+      "enqueue": {
+        "actualMP": 5.79999999999684,
+        "actualFuel": 0,
+        "observationTick": 278,
+        "observedMP": 205,
+        "observedFuel": 0
+      },
+      "click": {
+        "mp": 6.39999999999684,
+        "fuel": 0
+      },
+      "acceptedDeductionsSinceObserved": [
+        {
+          "tick": 278,
+          "command": {
+            "t": "buy",
+            "unit": "at"
+          },
+          "accepted": true,
+          "rejectionReason": null,
+          "locations": [],
+          "sourceLocations": [],
+          "region": null,
+          "resourcesBefore": {
+            "mp": 205.59999999999684,
+            "fuel": 0
+          },
+          "resourcesAfter": {
+            "mp": 5.5999999999968395,
+            "fuel": 0
+          },
+          "purchasePrice": {
+            "mp": 200,
+            "fuel": 0
+          },
+          "spend": {
+            "mp": 200,
+            "fuel": 0
+          }
+        }
+      ],
+      "acceptedDeductionsWhileQueued": [],
+      "batchCost": 200,
+      "batch": [
+        {
+          "tick": 282,
+          "unit": "rifle",
+          "price": {
+            "mp": 100,
+            "fuel": 0
+          },
+          "accepted": false
+        },
+        {
+          "tick": 287,
+          "unit": "rifle",
+          "price": {
+            "mp": 100,
+            "fuel": 0
+          },
+          "accepted": false
+        }
+      ],
+      "classification": "stale-observation-after-accepted-deduction"
+    },
+    {
+      "treatment": "candidate",
+      "level": "hard",
+      "seed": 12,
+      "slot": 0,
+      "faction": "USA",
+      "refusedTick": 287,
+      "queuedTick": 279,
+      "cycle": 17,
+      "command": {
+        "t": "buy",
+        "unit": "rifle"
+      },
+      "price": {
+        "mp": 100,
+        "fuel": 0
+      },
+      "rejectionReason": "mp",
+      "enqueue": {
+        "actualMP": 5.79999999999684,
+        "actualFuel": 0,
+        "observationTick": 278,
+        "observedMP": 205,
+        "observedFuel": 0
+      },
+      "click": {
+        "mp": 7.399999999996841,
+        "fuel": 0
+      },
+      "acceptedDeductionsSinceObserved": [
+        {
+          "tick": 278,
+          "command": {
+            "t": "buy",
+            "unit": "at"
+          },
+          "accepted": true,
+          "rejectionReason": null,
+          "locations": [],
+          "sourceLocations": [],
+          "region": null,
+          "resourcesBefore": {
+            "mp": 205.59999999999684,
+            "fuel": 0
+          },
+          "resourcesAfter": {
+            "mp": 5.5999999999968395,
+            "fuel": 0
+          },
+          "purchasePrice": {
+            "mp": 200,
+            "fuel": 0
+          },
+          "spend": {
+            "mp": 200,
+            "fuel": 0
+          }
+        }
+      ],
+      "acceptedDeductionsWhileQueued": [],
+      "batchCost": 200,
+      "batch": [
+        {
+          "tick": 282,
+          "unit": "rifle",
+          "price": {
+            "mp": 100,
+            "fuel": 0
+          },
+          "accepted": false
+        },
+        {
+          "tick": 287,
+          "unit": "rifle",
+          "price": {
+            "mp": 100,
+            "fuel": 0
+          },
+          "accepted": false
+        }
+      ],
+      "classification": "stale-observation-after-accepted-deduction"
+    },
+    {
+      "treatment": "candidate",
+      "level": "hard",
+      "seed": 14,
+      "slot": 1,
+      "faction": "Germany",
+      "refusedTick": 172,
+      "queuedTick": 169,
+      "cycle": 9,
+      "command": {
+        "t": "buy",
+        "unit": "rifle"
+      },
+      "price": {
+        "mp": 100,
+        "fuel": 0
+      },
+      "rejectionReason": "mp",
+      "enqueue": {
+        "actualMP": 3.7999999999980902,
+        "actualFuel": 0,
+        "observationTick": 168,
+        "observedMP": 183,
+        "observedFuel": 0
+      },
+      "click": {
+        "mp": 4.399999999998091,
+        "fuel": 0
+      },
+      "acceptedDeductionsSinceObserved": [
+        {
+          "tick": 168,
+          "command": {
+            "t": "buy",
+            "unit": "mortar"
+          },
+          "accepted": true,
+          "rejectionReason": null,
+          "locations": [],
+          "sourceLocations": [],
+          "region": null,
+          "resourcesBefore": {
+            "mp": 183.5999999999981,
+            "fuel": 0
+          },
+          "resourcesAfter": {
+            "mp": 3.59999999999809,
+            "fuel": 0
+          },
+          "purchasePrice": {
+            "mp": 180,
+            "fuel": 0
+          },
+          "spend": {
+            "mp": 180,
+            "fuel": 0
+          }
+        }
+      ],
+      "acceptedDeductionsWhileQueued": [],
+      "batchCost": 100,
+      "batch": [
+        {
+          "tick": 172,
+          "unit": "rifle",
+          "price": {
+            "mp": 100,
+            "fuel": 0
+          },
+          "accepted": false
+        }
+      ],
+      "classification": "stale-observation-after-accepted-deduction"
+    },
+    {
+      "treatment": "candidate",
+      "level": "hard",
+      "seed": 15,
+      "slot": 1,
+      "faction": "Germany",
+      "refusedTick": 548,
+      "queuedTick": 545,
+      "cycle": 37,
+      "command": {
+        "t": "buy",
+        "unit": "rifle"
+      },
+      "price": {
+        "mp": 100,
+        "fuel": 0
+      },
+      "rejectionReason": "mp",
+      "enqueue": {
+        "actualMP": 14.499999999999119,
+        "actualFuel": 0,
+        "observationTick": 544,
+        "observedMP": 164,
+        "observedFuel": 0
+      },
+      "click": {
+        "mp": 15.249999999999119,
+        "fuel": 0
+      },
+      "acceptedDeductionsSinceObserved": [
+        {
+          "tick": 544,
+          "command": {
+            "t": "buy",
+            "unit": "mg"
+          },
+          "accepted": true,
+          "rejectionReason": null,
+          "locations": [],
+          "sourceLocations": [],
+          "region": null,
+          "resourcesBefore": {
+            "mp": 164.24999999999912,
+            "fuel": 0
+          },
+          "resourcesAfter": {
+            "mp": 14.249999999999119,
+            "fuel": 0
+          },
+          "purchasePrice": {
+            "mp": 150,
+            "fuel": 0
+          },
+          "spend": {
+            "mp": 150,
+            "fuel": 0
+          }
+        }
+      ],
+      "acceptedDeductionsWhileQueued": [],
+      "batchCost": 100,
+      "batch": [
+        {
+          "tick": 548,
+          "unit": "rifle",
+          "price": {
+            "mp": 100,
+            "fuel": 0
+          },
+          "accepted": false
+        }
+      ],
+      "classification": "stale-observation-after-accepted-deduction"
+    },
+    {
+      "treatment": "candidate",
+      "level": "hard",
+      "seed": 16,
+      "slot": 1,
+      "faction": "Germany",
+      "refusedTick": 166,
+      "queuedTick": 163,
+      "cycle": 4,
+      "command": {
+        "t": "buy",
+        "unit": "mg"
+      },
+      "price": {
+        "mp": 150,
+        "fuel": 0
+      },
+      "rejectionReason": "mp",
+      "enqueue": {
+        "actualMP": 2.5999999999981585,
+        "actualFuel": 0,
+        "observationTick": 162,
+        "observedMP": 182,
+        "observedFuel": 0
+      },
+      "click": {
+        "mp": 3.199999999998159,
+        "fuel": 0
+      },
+      "acceptedDeductionsSinceObserved": [
+        {
+          "tick": 162,
+          "command": {
+            "t": "buy",
+            "unit": "mortar"
+          },
+          "accepted": true,
+          "rejectionReason": null,
+          "locations": [],
+          "sourceLocations": [],
+          "region": null,
+          "resourcesBefore": {
+            "mp": 182.39999999999816,
+            "fuel": 0
+          },
+          "resourcesAfter": {
+            "mp": 2.3999999999981583,
+            "fuel": 0
+          },
+          "purchasePrice": {
+            "mp": 180,
+            "fuel": 0
+          },
+          "spend": {
+            "mp": 180,
+            "fuel": 0
+          }
+        }
+      ],
+      "acceptedDeductionsWhileQueued": [],
+      "batchCost": 150,
+      "batch": [
+        {
+          "tick": 166,
+          "unit": "mg",
+          "price": {
+            "mp": 150,
+            "fuel": 0
+          },
+          "accepted": false
+        }
+      ],
+      "classification": "stale-observation-after-accepted-deduction"
+    },
+    {
+      "treatment": "candidate",
+      "level": "hard",
+      "seed": 17,
+      "slot": 1,
+      "faction": "Germany",
+      "refusedTick": 270,
+      "queuedTick": 267,
+      "cycle": 15,
+      "command": {
+        "t": "buy",
+        "unit": "mg"
+      },
+      "price": {
+        "mp": 150,
+        "fuel": 0
+      },
+      "rejectionReason": "mp",
+      "enqueue": {
+        "actualMP": 3.399999999996976,
+        "actualFuel": 0,
+        "observationTick": 266,
+        "observedMP": 203,
+        "observedFuel": 0
+      },
+      "click": {
+        "mp": 3.9999999999969766,
+        "fuel": 0
+      },
+      "acceptedDeductionsSinceObserved": [
+        {
+          "tick": 266,
+          "command": {
+            "t": "buy",
+            "unit": "at"
+          },
+          "accepted": true,
+          "rejectionReason": null,
+          "locations": [],
+          "sourceLocations": [],
+          "region": null,
+          "resourcesBefore": {
+            "mp": 203.19999999999698,
+            "fuel": 0
+          },
+          "resourcesAfter": {
+            "mp": 3.199999999996976,
+            "fuel": 0
+          },
+          "purchasePrice": {
+            "mp": 200,
+            "fuel": 0
+          },
+          "spend": {
+            "mp": 200,
+            "fuel": 0
+          }
+        }
+      ],
+      "acceptedDeductionsWhileQueued": [],
+      "batchCost": 150,
+      "batch": [
+        {
+          "tick": 270,
+          "unit": "mg",
+          "price": {
+            "mp": 150,
+            "fuel": 0
+          },
+          "accepted": false
+        }
+      ],
+      "classification": "stale-observation-after-accepted-deduction"
+    },
+    {
+      "treatment": "candidate",
+      "level": "hard",
+      "seed": 19,
+      "slot": 0,
+      "faction": "USA",
+      "refusedTick": 762,
+      "queuedTick": 759,
+      "cycle": 57,
+      "command": {
+        "t": "buy",
+        "unit": "rifle"
+      },
+      "price": {
+        "mp": 100,
+        "fuel": 0
+      },
+      "rejectionReason": "mp",
+      "enqueue": {
+        "actualMP": 6.456041666664629,
+        "actualFuel": 0,
+        "observationTick": 758,
+        "observedMP": 156,
+        "observedFuel": 0
+      },
+      "click": {
+        "mp": 7.65579166666463,
+        "fuel": 0
+      },
+      "acceptedDeductionsSinceObserved": [
+        {
+          "tick": 758,
+          "command": {
+            "t": "buy",
+            "unit": "mg"
+          },
+          "accepted": true,
+          "rejectionReason": null,
+          "locations": [],
+          "sourceLocations": [],
+          "region": null,
+          "resourcesBefore": {
+            "mp": 156.05612499999796,
+            "fuel": 0
+          },
+          "resourcesAfter": {
+            "mp": 6.056124999997962,
+            "fuel": 0
+          },
+          "purchasePrice": {
+            "mp": 150,
+            "fuel": 0
+          },
+          "spend": {
+            "mp": 150,
+            "fuel": 0
+          }
+        }
+      ],
+      "acceptedDeductionsWhileQueued": [],
+      "batchCost": 100,
+      "batch": [
+        {
+          "tick": 762,
+          "unit": "rifle",
+          "price": {
+            "mp": 100,
+            "fuel": 0
+          },
+          "accepted": false
+        }
+      ],
+      "classification": "stale-observation-after-accepted-deduction"
+    },
+    {
+      "treatment": "candidate",
+      "level": "hard",
+      "seed": 20,
+      "slot": 2,
+      "faction": "USSR",
+      "refusedTick": 198,
+      "queuedTick": 195,
+      "cycle": 10,
+      "command": {
+        "t": "buy",
+        "unit": "conscript"
+      },
+      "price": {
+        "mp": 80,
+        "fuel": 0
+      },
+      "rejectionReason": "mp",
+      "enqueue": {
+        "actualMP": 8.999999999997794,
+        "actualFuel": 0,
+        "observationTick": 194,
+        "observedMP": 188,
+        "observedFuel": 0
+      },
+      "click": {
+        "mp": 9.599999999997792,
+        "fuel": 0
+      },
+      "acceptedDeductionsSinceObserved": [
+        {
+          "tick": 194,
+          "command": {
+            "t": "buy",
+            "unit": "mortar"
+          },
+          "accepted": true,
+          "rejectionReason": null,
+          "locations": [],
+          "sourceLocations": [],
+          "region": null,
+          "resourcesBefore": {
+            "mp": 188.7999999999978,
+            "fuel": 0
+          },
+          "resourcesAfter": {
+            "mp": 8.799999999997794,
+            "fuel": 0
+          },
+          "purchasePrice": {
+            "mp": 180,
+            "fuel": 0
+          },
+          "spend": {
+            "mp": 180,
+            "fuel": 0
+          }
+        }
+      ],
+      "acceptedDeductionsWhileQueued": [],
+      "batchCost": 160,
+      "batch": [
+        {
+          "tick": 198,
+          "unit": "conscript",
+          "price": {
+            "mp": 80,
+            "fuel": 0
+          },
+          "accepted": false
+        },
+        {
+          "tick": 203,
+          "unit": "conscript",
+          "price": {
+            "mp": 80,
+            "fuel": 0
+          },
+          "accepted": false
+        }
+      ],
+      "classification": "stale-observation-after-accepted-deduction"
+    },
+    {
+      "treatment": "candidate",
+      "level": "hard",
+      "seed": 20,
+      "slot": 2,
+      "faction": "USSR",
+      "refusedTick": 203,
+      "queuedTick": 195,
+      "cycle": 10,
+      "command": {
+        "t": "buy",
+        "unit": "conscript"
+      },
+      "price": {
+        "mp": 80,
+        "fuel": 0
+      },
+      "rejectionReason": "mp",
+      "enqueue": {
+        "actualMP": 8.999999999997794,
+        "actualFuel": 0,
+        "observationTick": 194,
+        "observedMP": 188,
+        "observedFuel": 0
+      },
+      "click": {
+        "mp": 10.599999999997788,
+        "fuel": 0
+      },
+      "acceptedDeductionsSinceObserved": [
+        {
+          "tick": 194,
+          "command": {
+            "t": "buy",
+            "unit": "mortar"
+          },
+          "accepted": true,
+          "rejectionReason": null,
+          "locations": [],
+          "sourceLocations": [],
+          "region": null,
+          "resourcesBefore": {
+            "mp": 188.7999999999978,
+            "fuel": 0
+          },
+          "resourcesAfter": {
+            "mp": 8.799999999997794,
+            "fuel": 0
+          },
+          "purchasePrice": {
+            "mp": 180,
+            "fuel": 0
+          },
+          "spend": {
+            "mp": 180,
+            "fuel": 0
+          }
+        }
+      ],
+      "acceptedDeductionsWhileQueued": [],
+      "batchCost": 160,
+      "batch": [
+        {
+          "tick": 198,
+          "unit": "conscript",
+          "price": {
+            "mp": 80,
+            "fuel": 0
+          },
+          "accepted": false
+        },
+        {
+          "tick": 203,
+          "unit": "conscript",
+          "price": {
+            "mp": 80,
+            "fuel": 0
+          },
+          "accepted": false
+        }
+      ],
+      "classification": "stale-observation-after-accepted-deduction"
+    }
+  ],
+  "matches": [
+    {
+      "treatment": "base",
+      "level": "easy",
+      "seed": 8,
+      "throughTick": 806,
+      "allNativeInputsExact": true,
+      "allCommandsResourcesAcceptanceExact": true
+    },
+    {
+      "treatment": "base",
+      "level": "normal",
+      "seed": 3,
+      "throughTick": 744,
+      "allNativeInputsExact": true,
+      "allCommandsResourcesAcceptanceExact": true
+    },
+    {
+      "treatment": "base",
+      "level": "normal",
+      "seed": 17,
+      "throughTick": 746,
+      "allNativeInputsExact": true,
+      "allCommandsResourcesAcceptanceExact": true
+    },
+    {
+      "treatment": "base",
+      "level": "hard",
+      "seed": 15,
+      "throughTick": 548,
+      "allNativeInputsExact": true,
+      "allCommandsResourcesAcceptanceExact": true
+    },
+    {
+      "treatment": "base",
+      "level": "hard",
+      "seed": 19,
+      "throughTick": 762,
+      "allNativeInputsExact": true,
+      "allCommandsResourcesAcceptanceExact": true
+    },
+    {
+      "treatment": "candidate",
+      "level": "easy",
+      "seed": 3,
+      "throughTick": 283,
+      "allNativeInputsExact": true,
+      "allCommandsResourcesAcceptanceExact": true
+    },
+    {
+      "treatment": "candidate",
+      "level": "easy",
+      "seed": 4,
+      "throughTick": 251,
+      "allNativeInputsExact": true,
+      "allCommandsResourcesAcceptanceExact": true
+    },
+    {
+      "treatment": "candidate",
+      "level": "easy",
+      "seed": 8,
+      "throughTick": 806,
+      "allNativeInputsExact": true,
+      "allCommandsResourcesAcceptanceExact": true
+    },
+    {
+      "treatment": "candidate",
+      "level": "easy",
+      "seed": 10,
+      "throughTick": 199,
+      "allNativeInputsExact": true,
+      "allCommandsResourcesAcceptanceExact": true
+    },
+    {
+      "treatment": "candidate",
+      "level": "easy",
+      "seed": 11,
+      "throughTick": 289,
+      "allNativeInputsExact": true,
+      "allCommandsResourcesAcceptanceExact": true
+    },
+    {
+      "treatment": "candidate",
+      "level": "easy",
+      "seed": 12,
+      "throughTick": 339,
+      "allNativeInputsExact": true,
+      "allCommandsResourcesAcceptanceExact": true
+    },
+    {
+      "treatment": "candidate",
+      "level": "easy",
+      "seed": 16,
+      "throughTick": 255,
+      "allNativeInputsExact": true,
+      "allCommandsResourcesAcceptanceExact": true
+    },
+    {
+      "treatment": "candidate",
+      "level": "easy",
+      "seed": 17,
+      "throughTick": 267,
+      "allNativeInputsExact": true,
+      "allCommandsResourcesAcceptanceExact": true
+    },
+    {
+      "treatment": "candidate",
+      "level": "easy",
+      "seed": 20,
+      "throughTick": 313,
+      "allNativeInputsExact": true,
+      "allCommandsResourcesAcceptanceExact": true
+    },
+    {
+      "treatment": "candidate",
+      "level": "normal",
+      "seed": 3,
+      "throughTick": 190,
+      "allNativeInputsExact": true,
+      "allCommandsResourcesAcceptanceExact": true
+    },
+    {
+      "treatment": "candidate",
+      "level": "normal",
+      "seed": 7,
+      "throughTick": 180,
+      "allNativeInputsExact": true,
+      "allCommandsResourcesAcceptanceExact": true
+    },
+    {
+      "treatment": "candidate",
+      "level": "normal",
+      "seed": 9,
+      "throughTick": 311,
+      "allNativeInputsExact": true,
+      "allCommandsResourcesAcceptanceExact": true
+    },
+    {
+      "treatment": "candidate",
+      "level": "normal",
+      "seed": 10,
+      "throughTick": 182,
+      "allNativeInputsExact": true,
+      "allCommandsResourcesAcceptanceExact": true
+    },
+    {
+      "treatment": "candidate",
+      "level": "normal",
+      "seed": 11,
+      "throughTick": 300,
+      "allNativeInputsExact": true,
+      "allCommandsResourcesAcceptanceExact": true
+    },
+    {
+      "treatment": "candidate",
+      "level": "normal",
+      "seed": 12,
+      "throughTick": 280,
+      "allNativeInputsExact": true,
+      "allCommandsResourcesAcceptanceExact": true
+    },
+    {
+      "treatment": "candidate",
+      "level": "normal",
+      "seed": 13,
+      "throughTick": 326,
+      "allNativeInputsExact": true,
+      "allCommandsResourcesAcceptanceExact": true
+    },
+    {
+      "treatment": "candidate",
+      "level": "normal",
+      "seed": 16,
+      "throughTick": 170,
+      "allNativeInputsExact": true,
+      "allCommandsResourcesAcceptanceExact": true
+    },
+    {
+      "treatment": "candidate",
+      "level": "normal",
+      "seed": 17,
+      "throughTick": 274,
+      "allNativeInputsExact": true,
+      "allCommandsResourcesAcceptanceExact": true
+    },
+    {
+      "treatment": "candidate",
+      "level": "hard",
+      "seed": 2,
+      "throughTick": 271,
+      "allNativeInputsExact": true,
+      "allCommandsResourcesAcceptanceExact": true
+    },
+    {
+      "treatment": "candidate",
+      "level": "hard",
+      "seed": 4,
+      "throughTick": 164,
+      "allNativeInputsExact": true,
+      "allCommandsResourcesAcceptanceExact": true
+    },
+    {
+      "treatment": "candidate",
+      "level": "hard",
+      "seed": 7,
+      "throughTick": 792,
+      "allNativeInputsExact": true,
+      "allCommandsResourcesAcceptanceExact": true
+    },
+    {
+      "treatment": "candidate",
+      "level": "hard",
+      "seed": 9,
+      "throughTick": 299,
+      "allNativeInputsExact": true,
+      "allCommandsResourcesAcceptanceExact": true
+    },
+    {
+      "treatment": "candidate",
+      "level": "hard",
+      "seed": 10,
+      "throughTick": 164,
+      "allNativeInputsExact": true,
+      "allCommandsResourcesAcceptanceExact": true
+    },
+    {
+      "treatment": "candidate",
+      "level": "hard",
+      "seed": 12,
+      "throughTick": 287,
+      "allNativeInputsExact": true,
+      "allCommandsResourcesAcceptanceExact": true
+    },
+    {
+      "treatment": "candidate",
+      "level": "hard",
+      "seed": 14,
+      "throughTick": 172,
+      "allNativeInputsExact": true,
+      "allCommandsResourcesAcceptanceExact": true
+    },
+    {
+      "treatment": "candidate",
+      "level": "hard",
+      "seed": 15,
+      "throughTick": 548,
+      "allNativeInputsExact": true,
+      "allCommandsResourcesAcceptanceExact": true
+    },
+    {
+      "treatment": "candidate",
+      "level": "hard",
+      "seed": 16,
+      "throughTick": 166,
+      "allNativeInputsExact": true,
+      "allCommandsResourcesAcceptanceExact": true
+    },
+    {
+      "treatment": "candidate",
+      "level": "hard",
+      "seed": 17,
+      "throughTick": 270,
+      "allNativeInputsExact": true,
+      "allCommandsResourcesAcceptanceExact": true
+    },
+    {
+      "treatment": "candidate",
+      "level": "hard",
+      "seed": 19,
+      "throughTick": 762,
+      "allNativeInputsExact": true,
+      "allCommandsResourcesAcceptanceExact": true
+    },
+    {
+      "treatment": "candidate",
+      "level": "hard",
+      "seed": 20,
+      "throughTick": 203,
+      "allNativeInputsExact": true,
+      "allCommandsResourcesAcceptanceExact": true
+    }
+  ],
+  "counts": {
+    "base": {
+      "other": 1,
+      "stale-observation-after-accepted-deduction": 4
+    },
+    "candidate": {
+      "stale-observation-after-accepted-deduction": 38,
+      "other": 2
+    }
+  }
+}

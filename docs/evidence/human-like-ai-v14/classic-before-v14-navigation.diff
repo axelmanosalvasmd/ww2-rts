@@ -1,0 +1,58 @@
+--- corrected-before/shared/navigation.js
++++ historical-v14/shared/navigation.js
+@@ -101,6 +101,9 @@
+       }
+       regions[id].x = sumX / count; regions[id].y = sumY / count;
+     }
++    // A chunk with one region has no internal crossing, even with obstacles.
++    // Keep the original boundary order so route ties stay unchanged.
++    if (ids.length <= 1) openChunks.add(chunk);
+   }
+   function add(from, to) {
+     const a = labels[from], b = labels[to];
+@@ -156,7 +159,7 @@
+ 
+ function updateChunks(graph, changedCells, block, chunkSize) {
+   const { w: W, h: H, flags, height, labels, queue, regions, chunks, freeRegions } = graph;
+-  const cw = Math.ceil(W / chunkSize), ch = Math.ceil(H / chunkSize), dirty = new Set();
++  const cw = Math.ceil(W / chunkSize), ch = Math.ceil(H / chunkSize), dirty = new Set(), openDirty = new Set();
+   const chunkAt = c => Math.floor(Math.floor(c / W) / chunkSize) * cw + Math.floor(c % W / chunkSize);
+   for (const c of changedCells) {
+     if (!Number.isInteger(c) || c < 0 || c >= labels.length) continue;
+@@ -181,8 +184,25 @@
+   for (const chunk of dirty) {
+     const [cx, cy, xmax, ymax] = bounds(chunk), ids = [];
+     chunks.set(chunk, ids);
++    let open = true, low = Infinity, high = -Infinity;
+     for (let y = cy; y < ymax; y++) for (let x = cx; x < xmax; x++) {
+       const c = y * W + x; labels[c] = flags[c] & block ? -1 : 0;
++      if (open) {
++        if (labels[c] < 0) open = false;
++        else {
++          const elevation = level(c);
++          if (elevation < low) low = elevation;
++          if (elevation > high) high = elevation;
++          if (high - low > 1) open = false;
++        }
++      }
++    }
++    if (open) {
++      const id = freeRegions.length ? freeRegions.pop() : regions.length;
++      regions[id] = { edges: new Map(), incoming: new Set(), x: (cx + xmax - 1) / 2, y: (cy + ymax - 1) / 2 };
++      ids.push(id); openDirty.add(chunk);
++      for (let y = cy; y < ymax; y++) labels.fill(id, y * W + cx, y * W + xmax);
++      continue;
+     }
+     for (let y = cy; y < ymax; y++) for (let x = cx; x < xmax; x++) {
+       const seed = y * W + x;
+@@ -215,8 +235,9 @@
+     edge.crossings.push(from, to);
+   }
+   for (const chunk of dirty) {
+-    const [cx, cy, xmax, ymax] = bounds(chunk);
++    const [cx, cy, xmax, ymax] = bounds(chunk), chunkOpen = openDirty.has(chunk);
+     for (let y = cy; y < ymax; y++) for (let x = cx; x < xmax; x++) {
++      if (chunkOpen && x > cx && x < xmax - 1 && y > cy && y < ymax - 1) continue;
+       const c = y * W + x;
+       if (labels[c] < 0) continue;
+       for (let k = 0; k < allDirections.length; k++) {

@@ -1,0 +1,400 @@
+{
+  "schema": "ww2-native-evidence-copy-v1",
+  "originals": [
+    {
+      "originalPath": "/tmp/human-ai-v21-conquest60-diagnostic.json",
+      "member": "receipts/human-ai-v21-conquest60-diagnostic.json",
+      "bytes": 2042753,
+      "sha256": "15627b747360b6bfa551e14ef4e521448562342ee970c232560870df12466409"
+    },
+    {
+      "originalPath": "/tmp/human-ai-v21-conquest60-source-readout.json",
+      "member": "receipts/human-ai-v21-conquest60-source-readout.json",
+      "bytes": 5777,
+      "sha256": "9625cbf79da044aed3b7fbf0d3262a21fda80c6c9237a7cf5e42a672eac7e9e3"
+    },
+    {
+      "originalPath": "/tmp/human-ai-v21-conquest60-diagnostic.mjs",
+      "member": "receipts/human-ai-v21-conquest60-diagnostic.mjs",
+      "bytes": 8676,
+      "sha256": "1c7cc70e443d0fd3a4d5cb00b533d81999eca0db49f31a1e709e29e4888e7c33"
+    },
+    {
+      "originalPath": "/tmp/human-ai-v21-campaign-predeclared.json",
+      "member": "receipts/human-ai-v21-campaign-predeclared.json",
+      "bytes": 16410,
+      "sha256": "8209a4810ea23f3ab13b39eeaf702ab5099a9efdfd336d29044fc239c06f47b8"
+    },
+    {
+      "originalPath": "/tmp/ai-v21-final-full-before.json",
+      "member": "receipts/ai-v21-final-full-before.json",
+      "bytes": 424113,
+      "sha256": "d92ce340c6d33f5cd439890a854b3ffdec64a7d5e8ca4ab1f31259b52d69dce1"
+    },
+    {
+      "originalPath": "/tmp/human-ai-final-v21/conquest-raw-manifest.json",
+      "member": "receipts/conquest-raw-manifest.json",
+      "bytes": 125463,
+      "sha256": "a3b2916b484f30ea9905340035c7fdd190805f98969354324eb2b2796e0d61ed"
+    },
+    {
+      "originalPath": "/tmp/human-ai-final-v21/progress-conquest.json",
+      "member": "receipts/progress-conquest.json",
+      "bytes": 228,
+      "sha256": "4e144b44c2936956b99ccec09403605ad6af4afe63e3fc2e3168df9e8b640859"
+    },
+    {
+      "originalPath": "/tmp/human-ai-v21-final-full-source/tools/ai-humanity.mjs",
+      "member": "frozen-source/tools/ai-humanity.mjs",
+      "bytes": 95489,
+      "sha256": "187293809db16f7d571b03c5824aeef54914406b66e9128e328123907546b76a"
+    },
+    {
+      "originalPath": "/tmp/human-ai-v21-final-full-source/tools/km-median-boundary.mjs",
+      "member": "frozen-source/tools/km-median-boundary.mjs",
+      "bytes": 1037,
+      "sha256": "e92de6b62be628796cf1390a0b4333b87be32a2083f3d2193cf2dd3ac3755469"
+    },
+    {
+      "originalPath": "/tmp/human-ai-v21-final-full-source/tools/ai-public-alert-response.mjs",
+      "member": "frozen-source/tools/ai-public-alert-response.mjs",
+      "bytes": 15189,
+      "sha256": "7974a9d20da09b9df2a3b8cb296e385d2ac2f94374be24396ac6df275c3cb829"
+    },
+    {
+      "originalPath": "/tmp/human-ai-v21-final-full-source/client/alerts.js",
+      "member": "frozen-source/client/alerts.js",
+      "bytes": 8935,
+      "sha256": "d3b69d54bafe2ae45bea10c7678823e17937ad3e6bd5a686ada2e3ac8fa2e23f"
+    },
+    {
+      "originalPath": "/tmp/human-ai-v21-final-full-source/tools/ai-manual-response-policy.mjs",
+      "member": "frozen-source/tools/ai-manual-response-policy.mjs",
+      "bytes": 26551,
+      "sha256": "a5044b77c2b35d25d12d05d8d61135c956e59ee84451f15a3a8f5c0c05470373"
+    },
+    {
+      "originalPath": "/tmp/human-ai-v21-final-full-source/tools/ai-manual-response-capture.mjs",
+      "member": "frozen-source/tools/ai-manual-response-capture.mjs",
+      "bytes": 6600,
+      "sha256": "9ea0b3163788366234c4ff43cdb22f5127158a0a32bcc7e8ec27f978ca3102fc"
+    },
+    {
+      "originalPath": "/tmp/human-ai-v21-final-full-source/tools/ai-manual-response-policy-v3.mjs",
+      "member": "frozen-source/tools/ai-manual-response-policy-v3.mjs",
+      "bytes": 29858,
+      "sha256": "c45e589d661b4980a79181ca987b503054ebb3e7e554f1bc272dd3eab50a6928"
+    },
+    {
+      "originalPath": "/tmp/human-ai-v21-final-full-source/tools/ai-manual-response-capture-v3.mjs",
+      "member": "frozen-source/tools/ai-manual-response-capture-v3.mjs",
+      "bytes": 6778,
+      "sha256": "19e1a93ae79b04f3eb768263052d48b344b086831b261ae40e7da0b004ea8775"
+    },
+    {
+      "originalPath": "/tmp/human-ai-v21-final-full-source/tools/json-stream.mjs",
+      "member": "frozen-source/tools/json-stream.mjs",
+      "bytes": 9588,
+      "sha256": "34f01a09d4996f356a3dafc61084aae27a4bf18cd8e6b63b2fda9e95c5168798"
+    },
+    {
+      "originalPath": "/tmp/human-ai-v21-final-full-source/shared/ai-attention.js",
+      "member": "frozen-source/shared/ai-attention.js",
+      "bytes": 27980,
+      "sha256": "07c48dbdcc92f326eeb52222518f274dcf05a4d746dfd474126d932ed05ca7ba"
+    },
+    {
+      "originalPath": "/tmp/human-ai-v21-final-full-source/shared/ai-commander.js",
+      "member": "frozen-source/shared/ai-commander.js",
+      "bytes": 30709,
+      "sha256": "19112a1e4c94da72d62564d940497d38cf7e93e3086c9bde3db9c29d088703df"
+    },
+    {
+      "originalPath": "/tmp/human-ai-v21-final-full-source/shared/ai-hands.js",
+      "member": "frozen-source/shared/ai-hands.js",
+      "bytes": 63608,
+      "sha256": "8bd373c3afb8261bf8ca2a53f24512522b91f0ddc6568eaa61dbf7039684b9a3"
+    },
+    {
+      "originalPath": "/tmp/human-ai-v21-final-full-source/shared/ai-mind.js",
+      "member": "frozen-source/shared/ai-mind.js",
+      "bytes": 19553,
+      "sha256": "18bb411cb1d057ce8cffe0b042c21f64b71238ae157b584242df206d708e6b92"
+    },
+    {
+      "originalPath": "/tmp/human-ai-v21-final-full-source/shared/ai-perception.js",
+      "member": "frozen-source/shared/ai-perception.js",
+      "bytes": 34765,
+      "sha256": "50e611a932728940c5047a61bf4fd7554c696f93880d7907a952d8b39fdcf3fd"
+    },
+    {
+      "originalPath": "/tmp/human-ai-v21-final-full-source/shared/ai-persona.js",
+      "member": "frozen-source/shared/ai-persona.js",
+      "bytes": 3586,
+      "sha256": "34de5882046129d2000e5502e354123786f3ad7b7133f31e93863dcc36ba66cf"
+    },
+    {
+      "originalPath": "/tmp/human-ai-v21-final-full-source/shared/ai-priority.js",
+      "member": "frozen-source/shared/ai-priority.js",
+      "bytes": 5884,
+      "sha256": "6b5d5a8a22968209fe03c8235648a859b36919b9eafd44cd390a8252ab6b3542"
+    },
+    {
+      "originalPath": "/tmp/human-ai-v21-final-full-source/shared/ai-rng.js",
+      "member": "frozen-source/shared/ai-rng.js",
+      "bytes": 641,
+      "sha256": "2d2f95266eda45ec4fa4862cb01079fc8464a98d8c88fa97ca89b54a5d6f8b90"
+    },
+    {
+      "originalPath": "/tmp/human-ai-v21-final-full-source/shared/ai-view.js",
+      "member": "frozen-source/shared/ai-view.js",
+      "bytes": 13935,
+      "sha256": "4466958fc4b8e7a5d2f2bcb8dc3814e27c817a7480b0c765aa6ee2a98cbc87f7"
+    },
+    {
+      "originalPath": "/tmp/human-ai-v21-final-full-source/shared/ai.js",
+      "member": "frozen-source/shared/ai.js",
+      "bytes": 91781,
+      "sha256": "c99be94a933f5c122d8ba7f32750f1a4bff66bf2875c8f3ec8e86322eb3d7e43"
+    },
+    {
+      "originalPath": "/tmp/human-ai-v21-final-full-source/shared/alert-events.js",
+      "member": "frozen-source/shared/alert-events.js",
+      "bytes": 8219,
+      "sha256": "df5f0ae98145034e6893ce0b70c2df8938a2d786cc8de37a1fbbc1a9c8b634b0"
+    },
+    {
+      "originalPath": "/tmp/human-ai-v21-final-full-source/shared/command-feedback.js",
+      "member": "frozen-source/shared/command-feedback.js",
+      "bytes": 303,
+      "sha256": "e851bb8f7e48291bd75f09be66fdeecbe7dca68dcc82c839c5c033083ce77a07"
+    },
+    {
+      "originalPath": "/tmp/human-ai-v21-final-full-source/shared/debris-motion.js",
+      "member": "frozen-source/shared/debris-motion.js",
+      "bytes": 4384,
+      "sha256": "d6a0f330f958ec6d78cfcc7f95b209aa5c099369576bf15dfd1c84770287b3b4"
+    },
+    {
+      "originalPath": "/tmp/human-ai-v21-final-full-source/shared/formation.js",
+      "member": "frozen-source/shared/formation.js",
+      "bytes": 4865,
+      "sha256": "265fa63c8c72588f6c8f67057921fd4daa88f96e9d823faa2e41ba10a7dba005"
+    },
+    {
+      "originalPath": "/tmp/human-ai-v21-final-full-source/shared/grid.js",
+      "member": "frozen-source/shared/grid.js",
+      "bytes": 2873,
+      "sha256": "30b0a5d67d99e54548d189374684e6b28863ecb7bf92de5221359e5c24fc5afc"
+    },
+    {
+      "originalPath": "/tmp/human-ai-v21-final-full-source/shared/human-input.js",
+      "member": "frozen-source/shared/human-input.js",
+      "bytes": 7966,
+      "sha256": "dec728db485690620e527f912fa2a0b491f545c5bbdaafc4dc25fd1e425763ff"
+    },
+    {
+      "originalPath": "/tmp/human-ai-v21-final-full-source/shared/local-traffic.js",
+      "member": "frozen-source/shared/local-traffic.js",
+      "bytes": 7408,
+      "sha256": "abad3f6ba310783c3620cec8d599df90dac38bb74eed6509be7d19a8af1490f6"
+    },
+    {
+      "originalPath": "/tmp/human-ai-v21-final-full-source/shared/navigation.js",
+      "member": "frozen-source/shared/navigation.js",
+      "bytes": 19838,
+      "sha256": "c277c12f86c9990e281ae28a703dc374126aa1c737d9dc94a300f8d99c898472"
+    },
+    {
+      "originalPath": "/tmp/human-ai-v21-final-full-source/shared/projectiles.js",
+      "member": "frozen-source/shared/projectiles.js",
+      "bytes": 7769,
+      "sha256": "ded50f3bcd60cf79238d5dba48236d54e33b2b8032f704813118d1419708ccd7"
+    },
+    {
+      "originalPath": "/tmp/human-ai-v21-final-full-source/shared/scenarios.js",
+      "member": "frozen-source/shared/scenarios.js",
+      "bytes": 16044,
+      "sha256": "93f6cda90224a805cc97f42418b2dc11c49e3ea80654b66e0036de55f9b9ba97"
+    },
+    {
+      "originalPath": "/tmp/human-ai-v21-final-full-source/shared/sim.js",
+      "member": "frozen-source/shared/sim.js",
+      "bytes": 355291,
+      "sha256": "5e5f4c2d43d048be36d94f0cbcc68fb974c812fc8ab7e071cddb0a59079d89fa"
+    },
+    {
+      "originalPath": "/tmp/human-ai-v21-final-full-source/shared/story.js",
+      "member": "frozen-source/shared/story.js",
+      "bytes": 3738,
+      "sha256": "fa33e53e61a7d636959dd1d1916d7b5c3359db72b523dc730b16ceab525d170f"
+    },
+    {
+      "originalPath": "/tmp/human-ai-v21-final-full-source/shared/structures.js",
+      "member": "frozen-source/shared/structures.js",
+      "bytes": 4029,
+      "sha256": "933b100a9a4c19a0285f5b137cd29b46e44271776f031045a537009e0176e5a2"
+    },
+    {
+      "originalPath": "/tmp/human-ai-v21-final-full-source/shared/tutorial.js",
+      "member": "frozen-source/shared/tutorial.js",
+      "bytes": 6342,
+      "sha256": "3aaa5e6affd936dae0ae4741d5173eee5d006132a1705d4b553097d3d8fabf42"
+    },
+    {
+      "originalPath": "/tmp/human-ai-v21-final-full-source/shared/vehicle-motion.js",
+      "member": "frozen-source/shared/vehicle-motion.js",
+      "bytes": 12185,
+      "sha256": "05bd1e985a91b3268065a0a84ec4b9aee2c1079aafc4054c38a70677dfb1493b"
+    },
+    {
+      "originalPath": "/tmp/human-ai-v21-final-full-source/shared/weather.js",
+      "member": "frozen-source/shared/weather.js",
+      "bytes": 7228,
+      "sha256": "faad682d6e40fdc6629533f684e1caeec5c9ae49e26e9922651773727c0bc1e5"
+    },
+    {
+      "originalPath": "/tmp/human-ai-v21-final-full-source/shared/world-conquest.js",
+      "member": "frozen-source/shared/world-conquest.js",
+      "bytes": 7203,
+      "sha256": "1c251e6d340586d7fb367d4f47938d5898f5239824dac46f054880a3d897aeef"
+    },
+    {
+      "originalPath": "/tmp/human-ai-v21-final-full-source/shared/world-landforms.js",
+      "member": "frozen-source/shared/world-landforms.js",
+      "bytes": 6645,
+      "sha256": "ecb6916db6785484f8bb813f7745c8c48ccea370f084fea290ff736edc968e34"
+    },
+    {
+      "originalPath": "/tmp/human-ai-v21-final-full-source/shared/world-layers.js",
+      "member": "frozen-source/shared/world-layers.js",
+      "bytes": 6770,
+      "sha256": "f51f34b99946192107ada9a7077d787761c1a9cb6b1e316d7b7e243dd273bb22"
+    },
+    {
+      "originalPath": "/tmp/human-ai-v21-final-full-source/shared/world-roads.js",
+      "member": "frozen-source/shared/world-roads.js",
+      "bytes": 6491,
+      "sha256": "5fb243b63fa9e2c082135b5b093ee753e8a92c197a076d78067e53f08f1885db"
+    },
+    {
+      "originalPath": "/tmp/human-ai-v21-final-full-source/shared/world-territories.js",
+      "member": "frozen-source/shared/world-territories.js",
+      "bytes": 4110,
+      "sha256": "bb33a449d7f2c4d657dbceab8dbd0171eb8ccaa7494cedf9e18707822d8f717f"
+    },
+    {
+      "originalPath": "/tmp/human-ai-v21-final-full-source/client/keys.js",
+      "member": "frozen-source/client/keys.js",
+      "bytes": 7361,
+      "sha256": "867e3105b7e4665f8a313c2ab46e23fc3df9407f2163fd6862bb537a01ecd276"
+    },
+    {
+      "originalPath": "/tmp/human-ai-v21-final-full-source/tools/ai-screen-v1-oracle.js",
+      "member": "frozen-source/tools/ai-screen-v1-oracle.js",
+      "bytes": 28180,
+      "sha256": "6b3894b551f3bf9151372b048b2efc77ffc86a6a173d0871278b27417358b398"
+    },
+    {
+      "originalPath": "/tmp/human-ai-v21-final-full-source/docs/human-like-ai-spec.md",
+      "member": "frozen-source/docs/human-like-ai-spec.md",
+      "bytes": 45100,
+      "sha256": "9175d4ae35777c1c299b153b38e5ab52fc63b0b4dbd2b96cc28c6eafb5070538"
+    },
+    {
+      "originalPath": "/tmp/human-ai-v21-final-full-source/docs/human-like-ai-measurement-protocol.md",
+      "member": "frozen-source/docs/human-like-ai-measurement-protocol.md",
+      "bytes": 20534,
+      "sha256": "0c9781f77eaec55044b3a3ba97dbc264d04fd9f75e3390ff4aa76690c412c0c0"
+    },
+    {
+      "originalPath": "/tmp/human-ai-v21-final-full-source/docs/human-like-ai-manual-response-v3.md",
+      "member": "frozen-source/docs/human-like-ai-manual-response-v3.md",
+      "bytes": 4767,
+      "sha256": "90125e56bd138fd9acdab0d7858db12010dfb77fd0e97af4820ff5b8333c3b40"
+    },
+    {
+      "originalPath": "/tmp/human-ai-v21-final-full-source/docs/ai-public-alert-response-v1.md",
+      "member": "frozen-source/docs/ai-public-alert-response-v1.md",
+      "bytes": 4782,
+      "sha256": "98767849733e84552261e6231a86e4f90dbb66eb3ef023ed17d9b09dbd2a2db0"
+    },
+    {
+      "originalPath": "/tmp/human-ai-v21-final-full-source/tools/hash-json-native.mjs",
+      "member": "frozen-source/tools/hash-json-native.mjs",
+      "bytes": 3875,
+      "sha256": "84d9f9c2273071831d86fe88e4244bda6013c762412ef837a5dc4c90a08e41c5"
+    },
+    {
+      "originalPath": "/tmp/human-ai-v21-final-full-source/tools/ai-screen-v1-oracle-provenance.json",
+      "member": "frozen-source/tools/ai-screen-v1-oracle-provenance.json",
+      "bytes": 576,
+      "sha256": "7d6de7111625c96649ab2d80e3d2cb7cb4510a3dc6ec407dfc85ba3e0a797400"
+    },
+    {
+      "originalPath": "/tmp/human-ai-v21-final-full-source/package.json",
+      "member": "frozen-source/package.json",
+      "bytes": 211,
+      "sha256": "38b34423b2e37b851381576f5dd67d9103d951ab7c7ddcf5cacb4112507b34db"
+    },
+    {
+      "originalPath": "/tmp/human-ai-v21-final-full-source/maps/default.json",
+      "member": "frozen-source/maps/default.json",
+      "bytes": 14367,
+      "sha256": "e9362e35e16a6982d15c2e45129f213b0af3d526376c18b9c89379aa7bcce04d"
+    },
+    {
+      "originalPath": "/tmp/human-ai-v21-final-full-source/docs/ai-humanity-before.json",
+      "member": "frozen-source/docs/ai-humanity-before.json",
+      "bytes": 1521236,
+      "sha256": "c1e618e887f3a40c2918c0d7a356baaed397f0446a4f42282b40ce3876156dac"
+    },
+    {
+      "originalPath": "/tmp/human-ai-v21-campaign-preparation/run-campaign.mjs",
+      "member": "campaign-verifiers/run-campaign.mjs",
+      "bytes": 22950,
+      "sha256": "5a010c4818e9f712f0b86416a73244b6ac5edd30b914fbb80b90a2cfa8ac4fab"
+    },
+    {
+      "originalPath": "/tmp/human-ai-v21-campaign-preparation/worker-host.mjs",
+      "member": "campaign-verifiers/worker-host.mjs",
+      "bytes": 2338,
+      "sha256": "3849bb5e17d35795c94cbba19f2d2e7623910c32bf68cf8cbead9d27462b8340"
+    },
+    {
+      "originalPath": "/tmp/human-ai-v21-campaign-preparation/archive-check.mjs",
+      "member": "campaign-verifiers/archive-check.mjs",
+      "bytes": 3917,
+      "sha256": "d4473f49847197bba800cc936feeda4cd1601d856fd42168cab11956f9baa215"
+    },
+    {
+      "originalPath": "/tmp/human-ai-v21-campaign-preparation/audit-table.mjs",
+      "member": "campaign-verifiers/audit-table.mjs",
+      "bytes": 7145,
+      "sha256": "e589f6231c3e077cbec4a843b88be0f7f79d78cf97ecff62a39805ee4b61b77f"
+    },
+    {
+      "originalPath": "/tmp/human-ai-v21-campaign-preparation/alert-result-audit.mjs",
+      "member": "campaign-verifiers/alert-result-audit.mjs",
+      "bytes": 3796,
+      "sha256": "bc0fefd752e801c7eb31d465f2aeb2eae1ea3f48e2a5bb681ddc93dad5a41cc5"
+    },
+    {
+      "originalPath": "/tmp/human-ai-v21-campaign-preparation/prepare-protocol.mjs",
+      "member": "campaign-verifiers/prepare-protocol.mjs",
+      "bytes": 4602,
+      "sha256": "12347012290e5344e559e4d77e6b9994e3bf086f2098d854ac2d6b51f9a084fa"
+    }
+  ],
+  "copiedOriginalBytes": 5311325,
+  "copyAssertions": {
+    "matches": 60,
+    "seats": 180,
+    "requestedSeconds": 180,
+    "rawGraphFilesRead": 0,
+    "frozenRuntimeBindingsVerified": 47,
+    "protocolVerifierBindingsVerified": 6,
+    "historicalQualificationRetained": true
+  },
+  "packagingExecution": "Copying, compression and byte-integrity checks only. No simulation, test, scoring run, staging or commit."
+}

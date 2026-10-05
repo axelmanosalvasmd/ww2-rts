@@ -1,0 +1,43 @@
+--- a/shared/sim.js
++++ b/shared/sim.js
+@@ -1214,6 +1214,8 @@
+ }
+ 
+ const observedPaths = new WeakMap();
++// Internal views have complete typed terrain and maintain every navigation version.
++const nativeObservedPathViews = new WeakSet();
+ function observedPathView(g, slot) {
+   let recipients = observedPaths.get(g); if (!recipients) observedPaths.set(g, recipients = new Map());
+   let state = recipients.get(slot); if (state?.initial !== g.initialTerrain) state = null;
+@@ -1224,6 +1226,8 @@
+     const view = { ...g, navigationObserved: true, chars, ground, objects, mineLayer, height, flags, wear, materials: new Map(), baseMaterials: new Map(), structuralCells: new Map(), structures: new Map(), cellMetadata: new Map(), cellHp: new Float32Array(N), trenchFront: Float32Array.from(g.initialTerrain.trenchFront ?? Array(N).fill(NaN)), wrecks: [], worldNearWalls: new Uint8Array(N), mineSeen: new Map(),
+       pathStats: pathStatsFor(g), navigationKnowledge: slot, navigationKnowledgeVersion: 0, obstructionVersion: 0,
+       infantryRegionVersion: 0, vehicleRegionVersion: 0, navalRegionVersion: 0, terrainVersion: 0, navigationChanges: [], initialTerrain: { chars, height } };
++    if (Number.isInteger(g.w) && Number.isInteger(g.h) && g.w > 0 && g.h > 0
++      && view.flags.length === N && view.height.length === N) nativeObservedPathViews.add(view);
+     for (let c = 0; c < N; c++) view.cellHp[c] = maxHp(view, c);
+     state = { view, rows: new Map(), version: 0, initial: g.initialTerrain }; recipients.set(slot, state);
+     updateObservedWalls(view, flags.keys(), true);
+@@ -2165,7 +2169,11 @@
+     return path;
+   }
+   const groundProfile = UNITS[from.type];
+-  if (isGroundVehicle(groundProfile) && !g.vehicleFootprintKnown) return findPath(vehicleNavigationView(g, groundProfile, blockOf(groundProfile)), from, to);
++  if (isGroundVehicle(groundProfile) && !g.vehicleFootprintKnown) {
++    const view = vehicleNavigationView(g, groundProfile, blockOf(groundProfile));
++    if (nativeObservedPathViews.has(g)) nativeObservedPathViews.add(view);
++    return findPath(view, from, to);
++  }
+   pathFailures.delete(from); // a fresh immediate command resets earlier retry failures
+   // vehicles can't cross tank traps; infantry go around wire when there's a way (straight lines don't cross it either)
+   const def = UNITS[from.type], naval = !!def?.naval, veh = def && !def.infantry && !naval, block = blockOf(def), pull = naval ? block : veh ? block | MUD | WOOD : MOVE | WIRE;
+@@ -2202,7 +2210,8 @@
+   const throughPost = (a, b) => posts.some(p => dist(a, p) >= postR + 1.5 && dist(b, p) >= postR + 1.5 && segHits(a, b, p, postR + 1.5));
+   const stats = pathStatsFor(g); stats.calls++;
+   if (!leg.connected) { stats.failed++; stats.regionRejected++; return []; }
+-  if (!g.worldKnown && goal !== start && !(g.flags[start] & block)) {
++  // A connected coarse route is contained in full-map connectivity on these internal views.
++  if (!g.worldKnown && !nativeObservedPathViews.has(g) && goal !== start && !(g.flags[start] & block)) {
+     const labels = regionsFor(g, block);
+     if (labels[goal] < 0 || labels[start] !== labels[goal]) { stats.failed++; stats.regionRejected++; return []; }
+   }

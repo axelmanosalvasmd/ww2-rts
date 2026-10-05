@@ -15,7 +15,12 @@ concurrency:
 jobs:
   game-tests:
     runs-on: ubuntu-latest
-    timeout-minutes: 30
+    timeout-minutes: 60
+    defaults:
+      run:
+        shell: bash
+    env:
+      GAME_TEST_PROOF: ${{ github.workspace }}/game-test-proof
     steps:
       - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
         with:
@@ -24,6 +29,49 @@ jobs:
         with:
           node-version: '24'
           cache: npm
-      - run: npm ci --ignore-scripts --no-audit --no-fund
-      - run: node test.js
-      - run: node test-world.js
+      - name: Record test source and runtime
+        id: proof
+        run: |
+          mkdir -p "$GAME_TEST_PROOF"
+          {
+            printf 'checked_out_head=%s\n' "$(git rev-parse HEAD)"
+            node --version
+            npm --version
+            uname -a
+            nproc
+            free -h
+          } > "$GAME_TEST_PROOF/runtime.txt"
+          git ls-files -z | while IFS= read -r -d '' source; do
+            if [[ -L "$source" ]]; then
+              printf 'symlink %s %s\n' "$(readlink "$source" | sha256sum | cut -d ' ' -f1)" "$source"
+            else
+              sha256sum "$source"
+            fi
+          done > "$GAME_TEST_PROOF/source-before.sha256"
+      - name: Install dependencies
+        run: npm ci --ignore-scripts --no-audit --no-fund
+      - name: Run full game regression suite
+        timeout-minutes: 55
+        run: node test.js 2>&1 | tee "$GAME_TEST_PROOF/test.log"
+      - name: Run world rendering checks
+        run: node test-world.js 2>&1 | tee "$GAME_TEST_PROOF/test-world.log"
+      - name: Verify tested source stayed unchanged
+        if: ${{ always() && steps.proof.outcome == 'success' }}
+        run: |
+          git ls-files -z | while IFS= read -r -d '' source; do
+            if [[ -L "$source" ]]; then
+              printf 'symlink %s %s\n' "$(readlink "$source" | sha256sum | cut -d ' ' -f1)" "$source"
+            else
+              sha256sum "$source"
+            fi
+          done > "$GAME_TEST_PROOF/source-after.sha256"
+          diff -u "$GAME_TEST_PROOF/source-before.sha256" "$GAME_TEST_PROOF/source-after.sha256" | tee "$GAME_TEST_PROOF/source.diff"
+      - name: Save regression proof
+        if: ${{ always() }}
+        timeout-minutes: 3
+        uses: actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a # v7.0.1
+        with:
+          name: game-regression-${{ github.run_id }}-${{ github.run_attempt }}
+          path: ${{ env.GAME_TEST_PROOF }}
+          if-no-files-found: error
+          retention-days: 14

@@ -1,0 +1,79 @@
+{
+  "fastForward": {
+    "content": [
+      {
+        "type": "text",
+        "text": "{\"toolIcon\":{\"_tag\":\"website\",\"pageUrl\":\"http://100.92.252.116:3106/tools/ai-lab.html\"},\"value\":{\"elapsedMs\":133,\"events\":6,\"inputs\":26,\"orders\":6,\"status\":\"Tick 1400 (70.00 simulated seconds). 26 completed inputs, 6 native orders. Session limit: 600 simulated seconds.\",\"tick\":1400}}"
+      }
+    ],
+    "structuredContent": {
+      "toolIcon": {
+        "_tag": "website",
+        "pageUrl": "http://100.92.252.116:3106/tools/ai-lab.html"
+      },
+      "value": {
+        "elapsedMs": 133,
+        "events": 6,
+        "inputs": 26,
+        "orders": 6,
+        "status": "Tick 1400 (70.00 simulated seconds). 26 completed inputs, 6 native orders. Session limit: 600 simulated seconds.",
+        "tick": 1400
+      }
+    },
+    "isError": false
+  },
+  "editReset": {
+    "content": [
+      {
+        "type": "text",
+        "text": "{\"toolIcon\":{\"_tag\":\"website\",\"pageUrl\":\"http://100.92.252.116:3106/tools/ai-lab.html\"},\"value\":{\"inputs\":0,\"orders\":0,\"status\":\"Paused at tick 0. Authored edits reset all prior inputs and orders.\",\"tick\":0,\"unit\":{\"autoRetreat\":false,\"cooldown\":0,\"holdFire\":true,\"holdPos\":false,\"hp\":100,\"id\":7,\"owner\":0,\"type\":\"rifle\",\"x\":74,\"z\":79}}}"
+      }
+    ],
+    "structuredContent": {
+      "toolIcon": {
+        "_tag": "website",
+        "pageUrl": "http://100.92.252.116:3106/tools/ai-lab.html"
+      },
+      "value": {
+        "inputs": 0,
+        "orders": 0,
+        "status": "Paused at tick 0. Authored edits reset all prior inputs and orders.",
+        "tick": 0,
+        "unit": {
+          "autoRetreat": false,
+          "cooldown": 0,
+          "holdFire": true,
+          "holdPos": false,
+          "hp": 100,
+          "id": 7,
+          "owner": 0,
+          "type": "rifle",
+          "x": 74,
+          "z": 79
+        }
+      }
+    },
+    "isError": false
+  },
+  "snapshotStatus": "Ready screenshot inspected before actions. Desktop disconnected before final snapshot and recording transfer.",
+  "rootTest": {
+    "status": "fulfilled",
+    "value": {
+      "chunk_id": "8ac91b",
+      "wall_time_seconds": 2.726522873,
+      "exit_code": 0,
+      "original_token_count": 62,
+      "output": "AI lab: http://127.0.0.1:36635/tools/ai-lab.html\nSimulation root: /home/judiazm/.t3/worktrees/ww2-rts/ai-human-commander\nAI lab: deterministic native scenes, privacy, physical causality, edits/reset, cue delivery and static server PASS (2777.8ms)\n"
+    }
+  },
+  "rootCli": {
+    "status": "fulfilled",
+    "value": {
+      "chunk_id": "133b8c",
+      "wall_time_seconds": 0.517672288,
+      "exit_code": 0,
+      "original_token_count": 28,
+      "output": "guard: 19 real inputs, 6 native commands, 2 public events. 593.7ms\nReport: /tmp/ai-lab-root-guard/report.html\n"
+    }
+  }
+}

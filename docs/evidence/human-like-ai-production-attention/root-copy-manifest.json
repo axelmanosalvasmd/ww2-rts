@@ -1,0 +1,243 @@
+{
+  "copiedAtUnix": 1791148682.014643,
+  "entries": [
+    {
+      "source": "/tmp/ai-lab-hard-throughput/instrumented-lab-runner.mjs",
+      "member": "instrumented-lab-runner.mjs",
+      "bytes": 13025,
+      "sha256": "5c1905eaa12977ed439e2dbf2073f66eadf51b4e928a674f30d3c4ae74428c46"
+    },
+    {
+      "source": "/tmp/ai-lab-hard-throughput/control-initial-empty-home-candidate.json",
+      "member": "control-initial-empty-home-candidate.json",
+      "bytes": 559380,
+      "sha256": "9c5648fd80b89f27dbd4e1ff7b9be9cd64e080132d69f93abbdd49e750ab568d"
+    },
+    {
+      "source": "/tmp/ai-lab-hard-throughput/controls.log",
+      "member": "controls.log",
+      "bytes": 124,
+      "sha256": "318ebd93072950060181d72b0a0ed68157365bf764da07b85201eab42d336341"
+    },
+    {
+      "source": "/tmp/ai-lab-hard-throughput/isolation.mjs",
+      "member": "isolation.mjs",
+      "bytes": 1717,
+      "sha256": "fb8c4be586c43b07a6d540c9d3a4164b747791ad1f698492ac46caf50802708c"
+    },
+    {
+      "source": "/tmp/ai-lab-hard-throughput/controls-home-improved.log",
+      "member": "controls-home-improved.log",
+      "bytes": 124,
+      "sha256": "318ebd93072950060181d72b0a0ed68157365bf764da07b85201eab42d336341"
+    },
+    {
+      "source": "/tmp/ai-lab-hard-throughput/attention-affordability.patch",
+      "member": "attention-affordability.patch",
+      "bytes": 2011,
+      "sha256": "d0eebae27eb45559eec259c519356a696670d2e032f37d695bd54a6a723a515f"
+    },
+    {
+      "source": "/tmp/ai-lab-hard-throughput/original-lab-runner.mjs",
+      "member": "original-lab-runner.mjs",
+      "bytes": 12594,
+      "sha256": "01020a610e714ca538ca12b81c03652d77bba31d7a99ea696aec786b97c34ea2"
+    },
+    {
+      "source": "/tmp/ai-lab-hard-throughput/isolation-json-boundary-failure.log",
+      "member": "isolation-json-boundary-failure.log",
+      "bytes": 146832,
+      "sha256": "7d20cf527067d0c62e7140cb76a68c26a313e831e0ad4841923b60782bfb2235"
+    },
+    {
+      "source": "/tmp/ai-lab-hard-throughput/portable-test.log",
+      "member": "portable-test.log",
+      "bytes": 197,
+      "sha256": "0410f27d9b842fa7072c47c00810023440538ab6e6cccbfeffe29ab94a8ab960"
+    },
+    {
+      "source": "/tmp/ai-lab-hard-throughput/controls-summary.json",
+      "member": "controls-summary.json",
+      "bytes": 9326,
+      "sha256": "38efffda893d75dc0e49fda4eab4e2f99ce40096c0620c52d9e1a53bc0758ef4"
+    },
+    {
+      "source": "/tmp/ai-lab-hard-throughput/control-home-squad-deployment-candidate.json",
+      "member": "control-home-squad-deployment-candidate.json",
+      "bytes": 516343,
+      "sha256": "589dbc5b7ad20a57db7f28c5cc528469e01eb696fec053a197874335c88a8cc4"
+    },
+    {
+      "source": "/tmp/ai-lab-hard-throughput/control-initial-empty-home-baseline.json",
+      "member": "control-initial-empty-home-baseline.json",
+      "bytes": 545514,
+      "sha256": "55287b9ea7a52de24be194579db1f0ab4a263983463d4c62f6216a2d97cea587"
+    },
+    {
+      "source": "/tmp/ai-lab-hard-throughput/control-affordable-production-baseline.json",
+      "member": "control-affordable-production-baseline.json",
+      "bytes": 652037,
+      "sha256": "8f4632742bdb6f8733b8e188965049b3abc2b99577a4b35822ab222769472736"
+    },
+    {
+      "source": "/tmp/ai-lab-hard-throughput/candidate-run.log",
+      "member": "candidate-run.log",
+      "bytes": 12708,
+      "sha256": "2ef148204620a5a609a1d9cd80f6903437b86ca00c5e356f9a14a295ce29da8f"
+    },
+    {
+      "source": "/tmp/ai-lab-hard-throughput/run.mjs",
+      "member": "run.mjs",
+      "bytes": 3532,
+      "sha256": "d542f467a580a7e35d0ace3defadd9f6bc5ab3916d175c26f8138cf3e70a7f34"
+    },
+    {
+      "source": "/tmp/ai-lab-hard-throughput/test-engine-ai-production-attention.js",
+      "member": "test-engine-ai-production-attention.js",
+      "bytes": 5311,
+      "sha256": "1d4bea468044defbb6b1a4550747e7b2f78926136e86001d1653e9787baae169"
+    },
+    {
+      "source": "/tmp/ai-lab-hard-throughput/two-front-budget.json",
+      "member": "two-front-budget.json",
+      "bytes": 2811702,
+      "sha256": "14205f87a76187586c85e8aceaa7a589d37afade1ddf049da32e01cb0a5312da"
+    },
+    {
+      "source": "/tmp/ai-lab-hard-throughput/run-candidate.mjs",
+      "member": "run-candidate.mjs",
+      "bytes": 3555,
+      "sha256": "932ff4a05ae3669b6fe554c273ac2c0115efa0dfef1f27fdfd01d96116f6c315"
+    },
+    {
+      "source": "/tmp/ai-lab-hard-throughput/candidate-low-budget-guard.json",
+      "member": "candidate-low-budget-guard.json",
+      "bytes": 2245373,
+      "sha256": "a7088e3f8a018a12b50f066ffcbf0705ac881f20197bd6ccc5917dfc18a18ec0"
+    },
+    {
+      "source": "/tmp/ai-lab-hard-throughput/source-manifest.json",
+      "member": "source-manifest.json",
+      "bytes": 36840,
+      "sha256": "57ac4d43f00a801a7a9b969d681296570b15fda4e2cbf878d548c5f7c2ab51e4"
+    },
+    {
+      "source": "/tmp/ai-lab-hard-throughput/isolation.log",
+      "member": "isolation.log",
+      "bytes": 202,
+      "sha256": "38ba88ded23c473c9319a5c4133d004e9567b5dbe2092fe471cae88cacc2b1dd"
+    },
+    {
+      "source": "/tmp/ai-lab-hard-throughput/run.log",
+      "member": "run.log",
+      "bytes": 12826,
+      "sha256": "09b352796c3504fa86acff67c09d9a0260ad0fc95e7b4c6fb4ced5c0a1e9fe9d"
+    },
+    {
+      "source": "/tmp/ai-lab-hard-throughput/low-budget-guard.json",
+      "member": "low-budget-guard.json",
+      "bytes": 2247791,
+      "sha256": "9407a454b79fc60c59bb3872e0fdd29400ca9ce4bec9f9d44c9c67cdcc94fbaf"
+    },
+    {
+      "source": "/tmp/ai-lab-hard-throughput/control-home-squad-deployment-baseline.json",
+      "member": "control-home-squad-deployment-baseline.json",
+      "bytes": 516343,
+      "sha256": "589dbc5b7ad20a57db7f28c5cc528469e01eb696fec053a197874335c88a8cc4"
+    },
+    {
+      "source": "/tmp/ai-lab-hard-throughput/controls.mjs",
+      "member": "controls.mjs",
+      "bytes": 3085,
+      "sha256": "da924b668c3354601142f453d9f338bd613a4ec202428a4b5e34acae2e008775"
+    },
+    {
+      "source": "/tmp/ai-lab-hard-throughput/idle-budget.json",
+      "member": "idle-budget.json",
+      "bytes": 2446939,
+      "sha256": "eb2a14e10da1b4b552aa2d5d4d1633061bed490d5381c0fcf3af0c141b06348b"
+    },
+    {
+      "source": "/tmp/ai-lab-hard-throughput/candidate-summary.json",
+      "member": "candidate-summary.json",
+      "bytes": 12707,
+      "sha256": "694af50a06221c7feefa7e8e2dd0a232e06959724433b4e763e8e6f36ae264f7"
+    },
+    {
+      "source": "/tmp/ai-lab-hard-throughput/candidate-two-front-budget.json",
+      "member": "candidate-two-front-budget.json",
+      "bytes": 2809568,
+      "sha256": "43769474dd17b0ec926f7ae607e17c3fc4cafcdfdc3cba6dc01b30b835e2ad76"
+    },
+    {
+      "source": "/tmp/ai-lab-hard-throughput/REPORT.md",
+      "member": "REPORT.md",
+      "bytes": 6317,
+      "sha256": "7e0d0ae5818bf5fe379a370e5cd301985529fb03b31938c4a16c1cc7773070b3"
+    },
+    {
+      "source": "/tmp/ai-lab-hard-throughput/integration.patch",
+      "member": "integration.patch",
+      "bytes": 7457,
+      "sha256": "ad54e4543c6a79670801be11be7fb5dd96c1937bc51bfb8c4c11440dfb74c700"
+    },
+    {
+      "source": "/tmp/ai-lab-hard-throughput/late-hurt-budget.json",
+      "member": "late-hurt-budget.json",
+      "bytes": 2801145,
+      "sha256": "3d81d281f68f4229a2051f5ad341be427e152f70f23bd2243ff8e04fb571d667"
+    },
+    {
+      "source": "/tmp/ai-lab-hard-throughput/candidate-idle-budget.json",
+      "member": "candidate-idle-budget.json",
+      "bytes": 2446939,
+      "sha256": "eb2a14e10da1b4b552aa2d5d4d1633061bed490d5381c0fcf3af0c141b06348b"
+    },
+    {
+      "source": "/tmp/ai-lab-hard-throughput/summary.json",
+      "member": "summary.json",
+      "bytes": 12825,
+      "sha256": "ca2dd5fa0a7469df0d660f7f210a9f49bd3f7b6688d72c4e8029f5a5e319a695"
+    },
+    {
+      "source": "/tmp/ai-lab-hard-throughput/control-affordable-production-candidate.json",
+      "member": "control-affordable-production-candidate.json",
+      "bytes": 652037,
+      "sha256": "8f4632742bdb6f8733b8e188965049b3abc2b99577a4b35822ab222769472736"
+    },
+    {
+      "source": "/tmp/ai-lab-hard-throughput/candidate-late-hurt-budget.json",
+      "member": "candidate-late-hurt-budget.json",
+      "bytes": 2844893,
+      "sha256": "e677c7ab7deb506b5edbc89ba10a46abe0fc1954b46e85d5cf37c3ce2b990859"
+    },
+    {
+      "source": "/tmp/ai-lab-hard-throughput/scenes/two-front-budget.json",
+      "member": "scenes/two-front-budget.json",
+      "bytes": 1110,
+      "sha256": "f4b4c8a6ea3554e98a66fa3db4ff5ba4f710e3f96cfa8b2dde924dd20c2ee411"
+    },
+    {
+      "source": "/tmp/ai-lab-hard-throughput/scenes/low-budget-guard.json",
+      "member": "scenes/low-budget-guard.json",
+      "bytes": 992,
+      "sha256": "9b5726c47ba6134c6ab992a45ccd609ff4154b5fad61bf0f17d11921c6816094"
+    },
+    {
+      "source": "/tmp/ai-lab-hard-throughput/scenes/idle-budget.json",
+      "member": "scenes/idle-budget.json",
+      "bytes": 837,
+      "sha256": "bc527bf11f4b7fef4992b7a5c84206cf311849bf5571e5e24ff84baac74b440f"
+    },
+    {
+      "source": "/tmp/ai-lab-hard-throughput/scenes/late-hurt-budget.json",
+      "member": "scenes/late-hurt-budget.json",
+      "bytes": 1218,
+      "sha256": "27b02928182a486798b625d4e158d9465de58ce6dfca5dfba10715251f65d146"
+    }
+  ],
+  "archiveSHA256": "122d4b25c57dad849e34a77cc51228960fc198164a9a4fdce1c83b823d6eccad",
+  "allMembersByteIdentical": true,
+  "historicalScratchManifestSHA256": "c4c306817c1fd5d13d53d124eb61d9fea5fbd755e0351fae483176da9dcfafb3",
+  "gameplayBandsChanged": false
+}

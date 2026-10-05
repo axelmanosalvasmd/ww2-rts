@@ -1,0 +1,29 @@
+{
+  "shared/ai.js": {
+    "before": "1e601a848c53b1d31493d3fff18648ead11721d5c4a389a50ea1a14aa691a2e0",
+    "after": "a9801e383b35856ff82ad52ba71b319cbf28b42329d7d0f2db4f7ba04ffa0754"
+  },
+  "shared/ai-commander.js": {
+    "before": "27ea7d5b6a05c29e01c1ee1aa630d2d9e486242f364273e7ab1d863b5ae87617",
+    "after": "27ea7d5b6a05c29e01c1ee1aa630d2d9e486242f364273e7ab1d863b5ae87617"
+  },
+  "shared/ai-perception.js": {
+    "before": "75b5f4877b5c4509a762028c880b45691a7c9e8d1923a7815e026f2174d33c9c",
+    "after": "75b5f4877b5c4509a762028c880b45691a7c9e8d1923a7815e026f2174d33c9c"
+  },
+  "shared/ai-priority.js": {
+    "before": "6b5d5a8a22968209fe03c8235648a859b36919b9eafd44cd390a8252ab6b3542",
+    "after": "6b5d5a8a22968209fe03c8235648a859b36919b9eafd44cd390a8252ab6b3542"
+  },
+  "shared/ai-hands.js": {
+    "before": "69eb15070dbf3e3839f4a264bc24d5010033f6d745bc1cf53ba285fc362323d6",
+    "after": "69eb15070dbf3e3839f4a264bc24d5010033f6d745bc1cf53ba285fc362323d6"
+  },
+  "shared/sim.js": {
+    "before": "5bedd607250c8171ed053e6200a643ce7f57a55c2549e0b515d80fcdffac832b",
+    "after": "5bedd607250c8171ed053e6200a643ce7f57a55c2549e0b515d80fcdffac832b"
+  },
+  "test-engine-ai-attended-danger.js": {
+    "after": "f09952d8a6c3aee851bc85fb17692c6963531c3074d6ecb0ac48f9cd3f4174d5"
+  }
+}

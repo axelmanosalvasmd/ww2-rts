@@ -1,0 +1,12 @@
+{
+  "pid": 1403969,
+  "argv": [
+    "python3",
+    "/tmp/human-ai-final-performance-protocol-v15.py",
+    "--run-after-root-freeze"
+  ],
+  "startedAtUnix": 1791125377.6599846,
+  "log": "/tmp/human-ai-v15-performance-supervisor.log",
+  "detachedSession": true,
+  "qualification": "Earlier shell background launch produced no process and no benchmark row or output. No measured row has been repeated."
+}

@@ -1,0 +1,132 @@
+{
+  "copies": [
+    {
+      "source": "/tmp/human-final-proof-v15/README.md",
+      "file": "README.md",
+      "bytes": 7407,
+      "sha256": "bdd886d11b54a51639e888da9971fc81342bb4338ce56c121c4cdab66a51e165"
+    },
+    {
+      "source": "/tmp/human-final-proof-v15/source-before.json",
+      "file": "source-before.json",
+      "bytes": 10057,
+      "sha256": "c43e2558368490737ea9e27b76deaf4a9e736a3db7dba745aeef3412f7f92cd3"
+    },
+    {
+      "source": "/tmp/human-final-proof-v15/source-after.json",
+      "file": "source-after.json",
+      "bytes": 10057,
+      "sha256": "c43e2558368490737ea9e27b76deaf4a9e736a3db7dba745aeef3412f7f92cd3"
+    },
+    {
+      "source": "/tmp/human-final-proof-v15/native-flow-observations.json",
+      "file": "native-flow-observations.json",
+      "bytes": 1084,
+      "sha256": "5d31835268dc7d4a30bf718b9771b16c9b4fcad6a3641e4b82ecb72a2de4025a"
+    },
+    {
+      "source": "/tmp/human-final-proof-v15/native-preview-unavailable.txt",
+      "file": "native-preview-unavailable.txt",
+      "bytes": 665,
+      "sha256": "a2bde423b0e163a8ac72c36dab5ff5258d0932c1837fc515cb400ff40388328a"
+    },
+    {
+      "source": "/tmp/human-final-proof-v15/observed-summary.json",
+      "file": "observed-summary.json",
+      "bytes": 1085,
+      "sha256": "26673baa78b45f314d2ea0ebe8d813bdc44dc972c170ed8e42addf11c748fd18"
+    },
+    {
+      "source": "/tmp/human-final-proof-v15/linux-evidence.json",
+      "file": "linux-evidence.json",
+      "bytes": 216604,
+      "sha256": "ac4eeba3cdc58909236ebec812dbfd00a494433edb23da3dab50161a2b528972"
+    },
+    {
+      "source": "/tmp/human-final-proof-v15/linux-evidence.raw.json",
+      "file": "linux-evidence.raw.json",
+      "bytes": 449096,
+      "sha256": "c1720572aa0e1588edceca6e48fe88d98a3581c7503dab9a2d99f24429938866"
+    },
+    {
+      "source": "/tmp/human-final-proof-v15/linux-console.txt",
+      "file": "linux-console.txt",
+      "bytes": 55,
+      "sha256": "d0e5634bb0c1271965327ad2ac18107af18fa7da6d2c9ce13e03eeda6cb603db"
+    },
+    {
+      "source": "/tmp/human-final-proof-v15/opening-35s.mp4",
+      "file": "opening-35s.mp4",
+      "bytes": 16033703,
+      "sha256": "9aa7d7cf91f844afae06e892a5fa040a63fd1aecc863d4fbaaa5b778dc3e1ba7"
+    },
+    {
+      "source": "/tmp/human-final-proof-v15/opening-original.mp4",
+      "file": "opening-original.mp4",
+      "bytes": 24539529,
+      "sha256": "3a383f35c8e7d1612deb32975cfe7dd7b59f79e18aa8bd31d6aaf0607ce41cee"
+    },
+    {
+      "source": "/tmp/human-final-proof-v15/opening-contact-sheet.png",
+      "file": "opening-contact-sheet.png",
+      "bytes": 1148505,
+      "sha256": "42550862ae6bbd5da80ac488292a3b09532bd45d4fe21cc3efaa1c46a621f847"
+    },
+    {
+      "source": "/tmp/human-final-proof-v15/opening-frame-6s.png",
+      "file": "opening-frame-6s.png",
+      "bytes": 2960261,
+      "sha256": "cd5e484b16f7444f1ee0fcd8d353824393cfcae67540d6eef7416065fa590375"
+    },
+    {
+      "source": "/tmp/human-final-proof-v15/opening-after.png",
+      "file": "opening-after.png",
+      "bytes": 1711260,
+      "sha256": "b986cd6a6ab28726e7bff84ef0877d326226f019a24683c7ed8b4f4875c97d5b"
+    },
+    {
+      "source": "/tmp/human-final-proof-v15/battle-attempt-frame-14s.png",
+      "file": "battle-attempt-frame-14s.png",
+      "bytes": 2674937,
+      "sha256": "5b4438073c323f40645996374463b2d7fadf3642110867481f537791ec274557"
+    },
+    {
+      "source": "/tmp/human-final-proof-v15/linux-lobby.png",
+      "file": "linux-lobby.png",
+      "bytes": 900398,
+      "sha256": "87ed61d8a0f1f28934a6560ebc1a8a700f72cf03ea2878541ef5d329be9d90cd"
+    },
+    {
+      "source": "/tmp/human-final-proof-v15/linux-battle-live.png",
+      "file": "linux-battle-live.png",
+      "bytes": 1751977,
+      "sha256": "932df4a834f540cbb4f2c4df8967f208f6a2a2da399cb1a92e71c30e12604ccb"
+    },
+    {
+      "source": "/tmp/human-final-proof-v15/linux-battle-40s.mp4",
+      "file": "linux-battle-40s.mp4",
+      "bytes": 11592143,
+      "sha256": "24111ab1c4bd96b79f544e62d8bc415663bf991d70dbd2f3447f9ae5d23b0d92"
+    },
+    {
+      "source": "/tmp/human-final-proof-v15/linux-battle-contact-sheet.png",
+      "file": "linux-battle-contact-sheet.png",
+      "bytes": 1294522,
+      "sha256": "ffcb6ffe2b2383e2c8a858d532b3e2577464592867a8e78d81fbc02b663309dd"
+    },
+    {
+      "source": "/tmp/human-final-proof-v15/linux-battle-frame-20s.png",
+      "file": "linux-battle-frame-20s.png",
+      "bytes": 2537157,
+      "sha256": "c12c958dd6475b9da0652aeb03c9d827db37891cd167dc39912949e58806057e"
+    },
+    {
+      "source": "/tmp/human-final-proof-v15/linux-battle-frame-38s.png",
+      "file": "linux-battle-frame-38s.png",
+      "bytes": 2527060,
+      "sha256": "c0786dc8b47e8383951f09fa0cbaeb13c1bcac8662df7ca874ca9f1e1083a02f"
+    }
+  ],
+  "bytes": 70367562,
+  "exactByteCopies": true
+}

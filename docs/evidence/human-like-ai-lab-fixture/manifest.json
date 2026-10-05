@@ -1,0 +1,59 @@
+{
+  "schema": "ai-lab-fixture-evidence-v1",
+  "createdUTC": "2026-10-04T22:21:31.113076+00:00",
+  "scope": "test-only fixture migration; distinct native/proposal/adopted checkpoints retained",
+  "files": {
+    "README.md": {
+      "bytes": 1662,
+      "sha256": "d9b13490ed8bcf5e8d1472d14a34d14306f7d723217ae300695ed6ad916bc0d2"
+    },
+    "REVIEW.md": {
+      "bytes": 2208,
+      "sha256": "ddcfec2eaf7dabec7c1e5ab09f8ec227730a83b5e48d98f596a8ad0640205c98"
+    },
+    "ROOT-receipt.json": {
+      "bytes": 1229,
+      "sha256": "c5bbef8a6d886c7293cc616e2b749e30dc58ed9b65f8b671171b6a149a232c3a"
+    },
+    "ROOT-test.log": {
+      "bytes": 247,
+      "sha256": "ca9a0d58e2fe8944cd8d4b45aededde6cbb5dc356be7b76052cf26357aed21e4"
+    },
+    "fixture.patch": {
+      "bytes": 5877,
+      "sha256": "d54280b98b061e28cb643e2832a6a6479ab77aed2ed5c4fef1a4b4e6c3a7b1c8"
+    },
+    "hashes.json": {
+      "bytes": 1088,
+      "sha256": "1db523ab4150df7fb31ece4843198e8ce83cf97517840006d1432f2319aefde3"
+    },
+    "native-source-hashes.json": {
+      "bytes": 552,
+      "sha256": "a87ec48a5ecda9b31b39285b9f1ea712e06eeb066ba1e3e5ce82ae850a1731de"
+    },
+    "native.json": {
+      "bytes": 101597,
+      "sha256": "cb340f2f931eff2d6bcad8a7146f7c1ceca2e1a7981b91f0436f76c77ca44536"
+    },
+    "probe.mjs": {
+      "bytes": 945,
+      "sha256": "3b20b22bafb114018b847573b4754d0021ddc58840e154c1e6450354ca519c2b"
+    },
+    "suggested-prose.md": {
+      "bytes": 1305,
+      "sha256": "07f8c1d36d03f30651617ec9412202e6af102ad035090dba78134f1c43071c59"
+    },
+    "test-ai-lab.base.js": {
+      "bytes": 8863,
+      "sha256": "0a66b1b69804d87ef58d0f1ee03cc0d8d437c24785ae1d43d71c06a5c298fd52"
+    },
+    "test-ai-lab.js": {
+      "bytes": 10005,
+      "sha256": "73faed730317f8010a504f6e363692931708ff3d78d197cfc61c152bc879368f"
+    },
+    "test.log": {
+      "bytes": 247,
+      "sha256": "62f8006cd147e673376b14d96bebad03bd7574a6c85976921da0fe70b4ee2632"
+    }
+  }
+}

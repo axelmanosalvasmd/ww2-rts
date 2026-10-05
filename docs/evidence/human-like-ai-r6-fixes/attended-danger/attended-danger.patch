@@ -1,0 +1,65 @@
+--- a/shared/ai.js
++++ b/shared/ai.js
+@@ -780,6 +780,53 @@
+       }
+     return best;
+   };
++  // A local attended squad can be losing a bad fight even after its march has stopped.
++  // Current screen health and a visible armed vehicle suffice; suppressed hits need their actual damage cue.
++  const screenThreats = opts.human && opts.concern?.kind === 'combat' ? enemies.filter(enemy => view.screenIds?.has(enemy.id) && !enemy.air
++    && !UNITS[enemy.type].structure && UNITS[enemy.type].w?.inf > 0) : [];
++  const attendedDangerDestination = u => {
++    const def = UNITS[u.type], fraction = u.hp / (def.models * def.hpPer);
++    if (!opts.human || opts.concern?.kind !== 'combat' || !view.screenIds.has(u.id)
++      || !def.infantry || !armedContactActor(u) || ANTI_ARMOR.has(u.type) || u.garrison >= 0 || u.retreating
++      || u.nade || u.dig || u.build || u.entrench || u.enter >= 0 || u.fireAt >= 0) return null;
++    const damage = view.events?.find(event => event.kind === 'screen-damage' && event.onScreen
++      && event.unitId === u.id && (opts.concern.eventId ? event.id === opts.concern.eventId : opts.concern.unitId === u.id));
++    if (opts.concern.unitId !== u.id && !damage) return null;
++    const suppressedHit = damage && view.tick - damage.tick <= 80 && damage.observedDanger?.lossShare >= .25
++      && damage.observedDanger.suppressionBand !== 'normal' && u.supp > 0 && !damage.observedDanger.autoRetreatCovered;
++    const threats = screenThreats.filter(enemy => {
++      const weapon = UNITS[enemy.type].w, range = d(u, enemy);
++      return range <= weapon.range && range >= (weapon.minRange ?? 0) && los(view, u, enemy);
++    });
++    const armored = threats.some(enemy => !UNITS[enemy.type].infantry);
++    if (!(armored && fraction <= .5) && !suppressedHit) return null;
++    if (!threats.length) return null;
++    const target = view.units.get(u.targetId);
++    // A useful current infantry fight or a grenade already being thrown is a held tactic, not an empty response.
++    if (fraction > .5 && target && view.screenIds.has(target.id) && UNITS[target.type].infantry
++      && (!u.holdFire || u.attackId) && d(u, target) <= def.w.range) return null;
++    if (mine.some(friend => friend.nade && threats.some(enemy => d(friend.nade, enemy) <= (UNITS[friend.type].ab.radius ?? 0)))) return null;
++    const clear = at => screenThreats.every(enemy => {
++      const weapon = UNITS[enemy.type].w, range = d(at, enemy);
++      return range >= weapon.range + 4 || weapon.minRange && range <= weapon.minRange - 4;
++    });
++    const cover = at => !(view.flags[Math.floor(u.z / CELL) * view.w + Math.floor(u.x / CELL)] & COVER)
++      && !!(view.flags[Math.floor(at.z / CELL) * view.w + Math.floor(at.x / CELL)] & COVER)
++      && screenThreats.every(enemy => d(at, enemy) >= d(u, enemy));
++    const goal = u.amove ?? u.path.at(-1);
++    if (goal && (clear(goal) || cover(goal))) return null;
++    let best = null, score = Infinity;
++    for (let y = Math.max(0, Math.floor((u.z - 24) / CELL)); y < Math.min(view.h, (u.z + 24) / CELL); y++)
++      for (let x = Math.max(0, Math.floor((u.x - 24) / CELL)); x < Math.min(view.w, (u.x + 24) / CELL); x++) {
++        const cell = y * view.w + x, at = { x: (x + .5) * CELL, z: (y + .5) * CELL }, travel = d(u, at);
++        if (travel < 4 || travel > 24 || view.flags[cell] & MOVE || !view.sees(at)) continue;
++        const escaped = clear(at);
++        if (!escaped && !cover(at)) continue;
++        const value = travel + (escaped ? 0 : 24);
++        if (value < score) { score = value; best = at; }
++      }
++    return best;
++  };
+   for (const u of mine) {
+     if (u.air) continue; // planes are flown above
+     if (busy.has(u.id)) continue;
+@@ -806,7 +853,7 @@
+     // save hurt units instead of letting them die: retreat, get reinforced, come back
+     if (!horde && !home && hurt(u)) { retreat.push(u.id); continue; }
+     if (!horde && home && frac < 1 && (me.mp >= 20 || hurt(u))) continue; // wait for reinforcements
+-    const safer = dangerDestination(u);
++    const safer = dangerDestination(u) ?? attendedDangerDestination(u);
+     if (safer) {
+       dangerMoves.add(u.id); busy.add(u.id);
+       for (let i = assault_.length - 1; i >= 0; i--) if (assault_[i][0] === u.id) assault_.splice(i, 1);

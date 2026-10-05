@@ -1,0 +1,79 @@
+{
+  "bare": {
+    "before": {
+      "inputs": 13,
+      "coverReceipts": [
+        {
+          "tick": 61,
+          "accepted": false,
+          "rejection": "noCover"
+        },
+        {
+          "tick": 371,
+          "accepted": false,
+          "rejection": "noCover"
+        },
+        {
+          "tick": 702,
+          "accepted": false,
+          "rejection": "noCover"
+        }
+      ],
+      "commands": 5
+    },
+    "after": {
+      "inputs": 9,
+      "coverReceipts": [],
+      "commands": 2
+    }
+  },
+  "trench": {
+    "before": {
+      "inputs": 14,
+      "coverReceipts": [
+        {
+          "tick": 61,
+          "accepted": true,
+          "rejection": null
+        }
+      ],
+      "commands": 3
+    },
+    "after": {
+      "inputs": 14,
+      "coverReceipts": [
+        {
+          "tick": 61,
+          "accepted": true,
+          "rejection": null
+        }
+      ],
+      "commands": 3
+    }
+  },
+  "wall": {
+    "before": {
+      "inputs": 15,
+      "coverReceipts": [],
+      "commands": 3
+    },
+    "after": {
+      "inputs": 15,
+      "coverReceipts": [],
+      "commands": 3
+    }
+  },
+  "hidden": {
+    "identicalInputs": true,
+    "identicalCommands": true
+  },
+  "watched": {
+    "coverReceipts": [
+      {
+        "tick": 61,
+        "accepted": true,
+        "rejection": null
+      }
+    ]
+  }
+}

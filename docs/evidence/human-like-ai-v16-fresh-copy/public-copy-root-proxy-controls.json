@@ -1,0 +1,64 @@
+{
+  "exact": true,
+  "cases": [
+    {
+      "case": 0,
+      "error": null,
+      "trace": []
+    },
+    {
+      "case": 1,
+      "error": null,
+      "trace": []
+    },
+    {
+      "case": 2,
+      "error": null,
+      "trace": []
+    },
+    {
+      "case": 3,
+      "error": null,
+      "trace": []
+    },
+    {
+      "case": 4,
+      "error": null,
+      "trace": [
+        "getter"
+      ]
+    },
+    {
+      "case": 5,
+      "error": null,
+      "trace": [
+        "prototype",
+        "keys",
+        "descriptor:n",
+        "descriptor:nested",
+        "descriptor:n",
+        "descriptor:nested"
+      ]
+    },
+    {
+      "case": 6,
+      "error": "DataCloneError",
+      "trace": [
+        "prototype",
+        "keys",
+        "descriptor:n",
+        "descriptor:n"
+      ]
+    },
+    {
+      "case": 7,
+      "error": "DataCloneError",
+      "trace": []
+    },
+    {
+      "case": 8,
+      "error": "DataCloneError",
+      "trace": []
+    }
+  ]
+}

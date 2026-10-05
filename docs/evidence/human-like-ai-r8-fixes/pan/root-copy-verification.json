@@ -1,0 +1,123 @@
+{
+  "verifiedAtUTC": "2026-10-05T00:24:37Z",
+  "archiveSHA256": "aec73ee8ddfd888cc103ee3c4ef393eb89fef431bf60391639ccfd4e84694016",
+  "members": 20,
+  "payloadBytes": 1885608,
+  "allOriginalBytesAndHashesMatch": true,
+  "files": [
+    {
+      "member": "REVIEW.md",
+      "original": "/tmp/ai-r8-diagonal-pan/REVIEW.md",
+      "bytes": 6861,
+      "sha256": "4dd19272c1ededb320a6f226b144c05053d152f83d78eed98ba9f3ca80902126"
+    },
+    {
+      "member": "baseline-checks.json",
+      "original": "/tmp/ai-r8-diagonal-pan/baseline-checks.json",
+      "bytes": 199,
+      "sha256": "d39ca9fdcc4c6c75b24592303b63106a4f14f0a0f9b6525ec1bd640f8bf1399e"
+    },
+    {
+      "member": "baseline-test-engine-ai-public-alert.js.log",
+      "original": "/tmp/ai-r8-diagonal-pan/baseline-test-engine-ai-public-alert.js.log",
+      "bytes": 3433,
+      "sha256": "6ee6055c0fe14573fd2f6aff53ec6ca236c8f578de7665242120dc6a360c7b77"
+    },
+    {
+      "member": "baseline-test-engine-ai-response.js.log",
+      "original": "/tmp/ai-r8-diagonal-pan/baseline-test-engine-ai-response.js.log",
+      "bytes": 576,
+      "sha256": "166fe6cacdb9a9b72c84ed79f1fe2165529e99f8a913b195c91cd5797a2faa87"
+    },
+    {
+      "member": "checks.json",
+      "original": "/tmp/ai-r8-diagonal-pan/checks.json",
+      "bytes": 824,
+      "sha256": "daa6750e59fde9f6150aa67ea43267f3977a779b0307062b88e05524e47bb639"
+    },
+    {
+      "member": "checks.py",
+      "original": "/tmp/ai-r8-diagonal-pan/checks.py",
+      "bytes": 813,
+      "sha256": "4a6d1501d68982315d1913082b452c45b3fb86cdb9ebe8d16ce5279a040fcb6d"
+    },
+    {
+      "member": "compare.mjs",
+      "original": "/tmp/ai-r8-diagonal-pan/compare.mjs",
+      "bytes": 1035,
+      "sha256": "947dcbafaa08feee85fc460f5ffd444765523e01c1c5ff2390c3e765dddb18cc"
+    },
+    {
+      "member": "comparison-native.json",
+      "original": "/tmp/ai-r8-diagonal-pan/comparison-native.json",
+      "bytes": 1694616,
+      "sha256": "98f1eafb9194af94586e2dedf9c7313b3721e4c8f89d650aa3572fe8fd8f4e32"
+    },
+    {
+      "member": "diagonal-pan.patch",
+      "original": "/tmp/ai-r8-diagonal-pan/diagonal-pan.patch",
+      "bytes": 33323,
+      "sha256": "cb6a2e503e6ca0e838a3aea49b86daaf420ff15bebaf8376fc53d9f5747fbcef"
+    },
+    {
+      "member": "source-hashes.json",
+      "original": "/tmp/ai-r8-diagonal-pan/source-hashes.json",
+      "bytes": 2557,
+      "sha256": "38b59356220d0cdb67a0234cf2c5c7f9b365cedb2fc6210419bb943cfe4ba11d"
+    },
+    {
+      "member": "source/shared/ai-hands.js",
+      "original": "/tmp/ai-r8-diagonal-pan/source/shared/ai-hands.js",
+      "bytes": 67889,
+      "sha256": "277cf75623b9432612db94e0356cfe098695214625605ac130e6984789211c4b"
+    },
+    {
+      "member": "source/test-engine-ai-diagonal-pan.js",
+      "original": "/tmp/ai-r8-diagonal-pan/source/test-engine-ai-diagonal-pan.js",
+      "bytes": 9086,
+      "sha256": "8bbc5c6e447d7dfa6433e81d64443c513f6aa2f9bc006910d14f050d748882a3"
+    },
+    {
+      "member": "source/test-engine-ai-public-alert.js",
+      "original": "/tmp/ai-r8-diagonal-pan/source/test-engine-ai-public-alert.js",
+      "bytes": 15585,
+      "sha256": "4655cc6f966bc815bc18f2d26dfc9dc10fce55875ff2e374bd3ca71292248b13"
+    },
+    {
+      "member": "source/test-engine-ai-response.js",
+      "original": "/tmp/ai-r8-diagonal-pan/source/test-engine-ai-response.js",
+      "bytes": 26033,
+      "sha256": "cacd3cfc34b5dd7af185c2b89cf7c7dbfa26965202c0938a4a6b6be7ce62907e"
+    },
+    {
+      "member": "source/tools/ai-public-alert-response.mjs",
+      "original": "/tmp/ai-r8-diagonal-pan/source/tools/ai-public-alert-response.mjs",
+      "bytes": 18485,
+      "sha256": "6d83c1a6a226de399fb386b612cbc54037aabc39bb155ffbaf74251518a30f08"
+    },
+    {
+      "member": "test-engine-ai-diagonal-pan.js.log",
+      "original": "/tmp/ai-r8-diagonal-pan/test-engine-ai-diagonal-pan.js.log",
+      "bytes": 166,
+      "sha256": "301ad4b9afa0b4803aebe6958daec3b5dc6aa54b7e78c61ca977ad05f21ff0dd"
+    },
+    {
+      "member": "test-engine-ai-hands.js.log",
+      "original": "/tmp/ai-r8-diagonal-pan/test-engine-ai-hands.js.log",
+      "bytes": 108,
+      "sha256": "9cd01eb1d7cbf22bbf205c6e2556491c73fddd8cf15d6658a496aad4605e51de"
+    },
+    {
+      "member": "test-engine-ai-public-alert.js.log",
+      "original": "/tmp/ai-r8-diagonal-pan/test-engine-ai-public-alert.js.log",
+      "bytes": 3444,
+      "sha256": "dfd459fe62002f4c155d99934c3df89af85d57fee5c833e3072f9606d3cfe375"
+    },
+    {
+      "member": "test-engine-ai-response.js.log",
+      "original": "/tmp/ai-r8-diagonal-pan/test-engine-ai-response.js.log",
+      "bytes": 575,
+      "sha256": "b29af6e56be6cc67c5eade3d02cdc14749c928f9036f43172bbe8ba053ace087"
+    }
+  ]
+}

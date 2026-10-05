@@ -1,0 +1,21 @@
+node:internal/modules/run_main:107
+    triggerUncaughtException(
+    ^
+
+AssertionError [ERR_ASSERTION]: the latest public screen supplies a valid preceding damage baseline
++ actual - expected
+
++ 'unknown'
+- 'required'
+
+    at check (file:///tmp/manual-v2-camera-baseline-repro/test-engine-ai-manual-response-policy.js:84:53)
+    at file:///tmp/manual-v2-camera-baseline-repro/test-engine-ai-manual-response-policy.js:406:3 {
+  generatedMessage: false,
+  code: 'ERR_ASSERTION',
+  actual: 'unknown',
+  expected: 'required',
+  operator: 'strictEqual',
+  diff: 'simple'
+}
+
+Node.js v24.21.0

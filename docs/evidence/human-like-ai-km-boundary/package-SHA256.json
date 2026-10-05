@@ -1,0 +1,74 @@
+{
+  "README.md": {
+    "bytes": 889,
+    "sha256": "91cdaf159ecdcdc25d22bd0b40c375d444534c3be844e7d399290091ca46096f"
+  },
+  "baseline/tools/ai-humanity.mjs": {
+    "bytes": 95252,
+    "sha256": "fac34526a548c8fec5b11e8bd10f07e28b84f6aa09b13206296c4d40a589af4c"
+  },
+  "baseline/tools/ai-public-alert-response.mjs": {
+    "bytes": 15049,
+    "sha256": "f548de11aef467e7655c0beaa66d22ad1de1c9d1f252f1048ca81e06b3a87c4a"
+  },
+  "candidate/docs/evidence/human-like-ai-km-boundary/README.md": {
+    "bytes": 858,
+    "sha256": "c99b643b9898e6cfb509c30516c3cb1a13817e4932544d0792be8fb4f0e209ef"
+  },
+  "candidate/docs/evidence/human-like-ai-km-boundary/native-timestamps.json": {
+    "bytes": 51802,
+    "sha256": "8a47d7ec79ba1f9f188341d70b1b803fdfd4185c7bb985ebe5f343bc7cfac3fc"
+  },
+  "candidate/test-ai-km-boundary.mjs": {
+    "bytes": 5406,
+    "sha256": "4793d744eb23ca2daf40a2044c9fcde2591608b2bbe611e3bbb3e8a21ce9629a"
+  },
+  "candidate/tools/ai-humanity.mjs": {
+    "bytes": 95489,
+    "sha256": "187293809db16f7d571b03c5824aeef54914406b66e9128e328123907546b76a"
+  },
+  "candidate/tools/ai-public-alert-response.mjs": {
+    "bytes": 15189,
+    "sha256": "7974a9d20da09b9df2a3b8cb296e385d2ac2f94374be24396ac6df275c3cb829"
+  },
+  "candidate/tools/km-median-boundary.mjs": {
+    "bytes": 1037,
+    "sha256": "e92de6b62be628796cf1390a0b4333b87be32a2083f3d2193cf2dd3ac3755469"
+  },
+  "original-proof/diagnostic-timing-unchanged.json": {
+    "bytes": 12213,
+    "sha256": "bbf6a4cdb5daa07451cf831cd3f62fdba3650abd8a252edfc09db16f467828bb"
+  },
+  "original-proof/human-ai-km-exact-half-declaration.json": {
+    "bytes": 1895,
+    "sha256": "9c69b663b10a7a460d5ac53c938ab7d7016572027af3cd248e9a36f2bee36c8c"
+  },
+  "original-proof/human-ai-km-exact-half-native-final.log": {
+    "bytes": 25,
+    "sha256": "c877716885d4d870eb5cbfdd971a9faf2dcf8f20d33d1b98f8f3722260303b7d"
+  },
+  "original-proof/human-ai-km-exact-half-proof.json": {
+    "bytes": 45695,
+    "sha256": "c8879e0f48a31938f87d755947d93701c2301700303faba7de50d09fa14ce4ea"
+  },
+  "original-proof/human-ai-km-exact-half-review.md": {
+    "bytes": 2813,
+    "sha256": "e4ad0a5a2652d5cb8b98b27025e56d4f41bc45fa0dd0cdb2ced0a6cf0f8b7e6e"
+  },
+  "original-proof/human-ai-km-exact-half.patch": {
+    "bytes": 4951,
+    "sha256": "8f8f3cc25f3f7bb08c2aacfc4fe0a86fdaf633973d3800fe854a22403b4e1bde"
+  },
+  "original-proof/human-ai-km-portable-native.log": {
+    "bytes": 110,
+    "sha256": "3147852da26740c2b9ea18354808463bc0d465bdf28ef3d611fec1891520ab96"
+  },
+  "original-proof/original-87-check-script.mjs": {
+    "bytes": 5288,
+    "sha256": "fecbbaac260143307d78374acb71174731f6380c79b158776720733ce2a154d2"
+  },
+  "protocol.json": {
+    "bytes": 1243,
+    "sha256": "7af542938f54ced9cc0a100a9d0d33f871673172412b7c1922b7dec6decf1edd"
+  }
+}

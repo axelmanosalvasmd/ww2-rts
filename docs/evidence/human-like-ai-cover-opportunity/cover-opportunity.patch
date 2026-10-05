@@ -1,0 +1,115 @@
+--- a/shared/ai.js
++++ b/shared/ai.js
+@@ -1,7 +1,8 @@
+ // Seat commander. Advances timed inputs every tick from a detached per-seat observation.
+ // During an attended visit it chooses a situation, wait, hold, or attack, and keeps that
+ // operation while the reason for it still holds. Issuing inputs use ordinary command().
+-import { UNITS, CELL, CFG, COVER, MOVE, TRENCH, FORTS, command, spoiled, SUPPORT, abCost, canBuild, allied, supCost, siteNear, priceOf, popUse, alive, los, placementCheck } from './sim.js';
++import { UNITS, CELL, CFG, COVER, MOVE, SIGHT, TRENCH, FORTS, command, spoiled, SUPPORT, abCost, canBuild, allied, supCost, siteNear, priceOf, popUse, alive, los, placementCheck } from './sim.js';
++import { onScreen } from './ai-perception.js';
+ import { viewFor } from './ai-view.js';
+ import { beginMind, knownSince, pointReady, lesson, pointExtra, dropEmptyGround, liveSightings, operationHolds, planAssault, clearAssault, ARMOR, ANTI_ARMOR } from './ai-mind.js';
+ import { gridFor, rebuildGrid } from './grid.js';
+@@ -38,6 +39,20 @@
+       if (x >= 0 && y >= 0 && x < view.w && y < view.h && test(y * view.w + x)) n++;
+   return n;
+ }
++// The key chooses its own reachable destination. Pay for it only when watched terrain offers
++// a possible shelter; a wall can protect a nearby open cell as well as a cover cell itself.
++function watchedCoverNear(view, unit) {
++  if (!view.camera) return true;
++  const radius = CFG.coverSeek + CELL * 2;
++  return cellsNear(view, unit, radius, c => {
++    const at = { x: (c % view.w + .5) * CELL, z: (Math.floor(c / view.w) + .5) * CELL };
++    if (!onScreen(at, view.camera, view)) return false;
++    const distance = d(unit, at), flags = view.flags[c];
++    return distance <= CFG.coverSeek && !!(flags & COVER)
++      || distance <= radius && !!(flags & SIGHT);
++  }) > 0;
++}
++
+ const trenchesNear = (view, p, r) => cellsNear(view, p, r, c => view.flags[c] & TRENCH);
+ 
+ // how many of my side's mines lie within r of p (the view's terrain shows only the mines my side laid)
+@@ -971,7 +986,7 @@
+         if (free && needs.trench) { const at = toward(6); submit({ t: 'entrench', ids: [u.id], pattern: me.mp >= 600 ? 'strongpoint' : 'arc', x: p.x, z: p.z, x2: at.x, z2: at.z }); continue; }
+         if (free && needs.wire && submit({ t: 'entrench', ids: [u.id], pattern: 'line', fort: 'wire', ...across(R + 5, 7) }) === undefined) continue;
+         if (free && needs.traps && submit({ t: 'entrench', ids: [u.id], pattern: 'line', fort: 'traps', ...across(R + 10, 8) }) === undefined) continue;
+-        if (!u.dig && !u.entrench && !inCover(view, u)) submit({ t: 'cover', ids: [u.id] }); // stand in the trench, not beside it
++        if (!u.dig && !u.entrench && !inCover(view, u) && (!opts.human || watchedCoverNear(view, u))) submit({ t: 'cover', ids: [u.id] }); // stand in the trench, not beside it
+         continue;
+       }
+     }
+--- /dev/null
++++ b/test-engine-ai-cover-opportunity.js
+@@ -0,0 +1,70 @@
++import assert from 'node:assert/strict';
++import { cp, readFile, writeFile, mkdtemp, rm } from 'node:fs/promises';
++import { tmpdir } from 'node:os';
++import { resolve } from 'node:path';
++import { pathToFileURL } from 'node:url';
++import { createAIcase } from './tools/ai-lab-runner.mjs';
++const source = import.meta.dirname, scratch = await mkdtemp(resolve(tmpdir(), 'ai-cover-control-'));
++try {
++  await cp(resolve(source, 'shared'), resolve(scratch, 'shared'), { recursive: true });
++  await cp(resolve(source, 'client/keys.js'), resolve(scratch, 'client/keys.js'), { recursive: true });
++  await writeFile(resolve(scratch, 'package.json'), '{"type":"module"}');
++  const path = resolve(scratch, 'shared/ai.js'), text = await readFile(path, 'utf8');
++  const guard = ' && (!opts.human || watchedCoverNear(view, u))';
++  assert.equal(text.split(guard).length, 2, 'disable exactly the reviewed cover opportunity guard for the native control');
++  await writeFile(path, text.replace(guard, ''));
++  const engines = await Promise.all([source, scratch].map(async root => {
++    const load = name => import(pathToFileURL(resolve(root, `shared/${name}.js`)).href);
++    const [sim, ai, perception, hands, view] = await Promise.all(['sim', 'ai', 'ai-perception', 'ai-hands', 'ai-view'].map(load));
++    return { sim, ai, perception, hands, view };
++  }));
++  const scene = (kind = 'bare') => {
++    const rows = Array.from({ length: 96 }, () => Array(96).fill('.'));
++    if (kind === 'trench') rows[39][41] = 'T';
++    if (kind === 'wall') rows[40][41] = 'K';
++    return { rows: rows.map(row => row.join('')), units: [{ owner: 0, type: 'mg', x: 78, z: 79, holdFire: true },
++      { owner: 1, type: 'mg', x: kind === 'wall' ? 103 : 168, z: kind === 'wall' ? 79 : 168, holdFire: true }],
++      points: [{ x: 80, z: 80, owner: 0 }], camera: { x: 80, z: 79, yaw: 0 }, resources: [{ mp: 0, fuel: 0, mun: 0 }, { mp: 0, fuel: 0, mun: 0 }] };
++  };
++  const run = (engine, authored, seconds = 45) => createAIcase(engine, { scenario: 'guard', level: 'hard', seed: 42, seconds }, authored).advance(seconds * 20);
++  const before = run(engines[1], scene()), after = run(engines[0], scene());
++  const proofs = { bare: { before, after } };
++  assert(before.commands.filter(row => row.command.t === 'cover' && row.rejection === 'noCover').length >= 2, 'native objective holder repeatedly pays and refuses cover on bare ground');
++  assert(!after.commands.some(row => row.command.t === 'cover'), 'known bare ground causes no cover attempt or input padding');
++  assert(after.inputs.length < before.inputs.length);
++  for (const kind of ['trench', 'wall']) {
++    const old = run(engines[1], scene(kind)), current = run(engines[0], scene(kind));
++    proofs[kind] = { before: old, after: current };
++    assert.deepEqual(current.inputs, old.inputs, `${kind}: retain the complete paid physical timeline`);
++    assert.deepEqual(current.commands, old.commands, `${kind}: retain authoritative command receipts`);
++    if (kind === 'trench') assert(current.commands.some(row => row.command.t === 'cover' && row.accepted), 'real nearby trench remains usable');
++    for (const receipt of current.commands.filter(row => row.command.t === 'cover')) {
++      const input = current.inputs.find(row => row.tick === receipt.tick && row.command?.t === 'cover');
++      assert(input?.motorTicks > 0 && input.tick >= input.inputStartedTick + input.motorTicks, 'cover receipt follows its full real paid key');
++    }
++    if (kind === 'trench') assert(current.frames.some(frame => frame.units.some(unit => unit.owner === 0 && unit.cover > 0)), 'the unit actually gains trench cover in native engine state');
++  }
++  // This authored mutation is fog-visible from the squad but outside its camera. The original map
++  // remains bare, so this specifically tests the camera tier rather than changing public map knowledge.
++  const hiddenScene = scene(); hiddenScene.units[0].x = 116; hiddenScene.points[0] = { x: 116, z: 80, owner: 0 };
++  let deliveredDynamicTrench = false;
++  const hidden = engine => ({ ...engine, view: { ...engine.view, viewFor(...args) {
++    const observation = engine.view.viewFor(...args);
++    if (observation.chars[39 * observation.w + 61] === 'T') deliveredDynamicTrench = true;
++    return observation;
++  } }, sim: { ...engine.sim, createGame(...args) {
++    const game = engine.sim.createGame(...args); assert(engine.sim.mutateWorldCell(game, 39 * game.w + 61, { object: 'T' }), 'authored dynamic trench is a real engine mutation'); return game;
++  } } });
++  const plain = run(engines[0], hiddenScene, 12), unseen = run(hidden(engines[0]), hiddenScene, 12);
++  assert(deliveredDynamicTrench, 'the real fog-visible terrain update is delivered, so this probes the camera boundary');
++  assert(!engines[0].perception.onScreen({ x: 123, z: 79 }, hiddenScene.camera), 'changed cover lies outside the actual camera');
++  assert(unseen.frames[0].units.some(unit => unit.owner === 0), 'the actor itself is physically on screen');
++  assert.deepEqual(unseen.inputs, plain.inputs, 'unwatched dynamic cover cannot change actual paid inputs');
++  assert.deepEqual(unseen.commands, plain.commands, 'unwatched dynamic cover cannot change native orders');
++  const watchedScene = structuredClone(hiddenScene); watchedScene.camera.x = 116;
++  const watched = run(hidden(engines[0]), watchedScene, 12);
++  assert(watched.commands.some(row => row.command.t === 'cover' && row.accepted), 'moving the authored camera onto the same changed terrain exposes a real usable opportunity');
++  proofs.hidden = { scene: hiddenScene, plain, unseen }; proofs.watched = { scene: watchedScene, watched };
++  if (process.env.AI_COVER_PROOF) await writeFile(process.env.AI_COVER_PROOF, JSON.stringify(proofs));
++  console.log(`Cover opportunity: native bare refusal loop ${before.commands.filter(row => row.rejection === 'noCover').length}->0, legal trench and combat-wall control, hidden terrain and full physical timelines PASS`);
++} finally { await rm(scratch, { recursive: true, force: true }); }

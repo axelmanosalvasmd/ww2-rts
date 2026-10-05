@@ -1,0 +1,31 @@
+--- a/shared/ai.js
++++ b/shared/ai.js
+@@ -730,10 +730,18 @@
+   // that fell back to a Barracks away from the HQ used to head out again half empty)
+   const bases = classic ? [...view.units.values()].filter(b => UNITS[b.type].produces && b.built >= 1 && b.hp > 0 && allied(view, b.owner, slot)) : null;
+   const atBase = (u) => (bases ? bases.some(b => d(u, b) <= CFG.reinforceRadius) : d(u, me.spawn) <= CFG.reinforceRadius);
++  const grenadeTarget = u => {
++    const ability = UNITS[u.type].ab;
++    return enemiesNear(u, ability.range + 4).find(enemy => watched(enemy) && UNITS[enemy.type].infantry
++      && d(u, enemy) <= ability.range + 4 && (enemy.type !== 'rifle' || inCover(view, enemy)));
++  };
++  const stationaryGrenade = u => UNITS[u.type].ab.id === 'grenade' && abCost(view, UNITS[u.type].ab) <= me.mun
++    && (u.cd <= 0 || u.cdKnown === false && typeof opts.requestInspection === 'function') && !!grenadeTarget(u);
+   // An objective reservation blocks new marches, while an actually idle guard can address its attended local contact.
+   const attendedDefender = u => opts.human && attendedContact?.observedDanger?.idleOwnUnits?.includes(u.id)
+     && sit?.threatId === attendedContact.targetId && d(u, sit.at) <= 45
+-    && u.garrison < 0 && u.cover !== 2 && !u.holdPos && !u.nade && !u.build && !u.orders.length && !u.amove;
++    && u.garrison < 0 && u.cover !== 2 && !u.holdPos && !u.nade && !u.build && !u.orders.length && !u.amove
++    && !stationaryGrenade(u);
+   const idleCombat = (u, localDefense = false) => armedContactActor(u) && !u.air && !u.retreating && !busy.has(u.id)
+     && (!movementReserved.has(u.id) || localDefense && attendedDefender(u)) && !UNITS[u.type].medic && !u.path.length && !u.attackId && !u.targetId && !u.dig && !u.entrench && u.enter < 0 && u.fireAt < 0;
+   const baseReady = opts.human ? mine.filter(u => idleCombat(u) && !u.nade && !u.build && u.garrison < 0 && worth(u) >= UNITS[u.type].cost * 0.65) : mine;
+@@ -850,7 +858,7 @@
+     if (u.cd <= 0 || (opts.human && u.cdKnown === false && typeof opts.requestInspection === 'function')) {
+       if (def.ab.id === 'grenade') {
+         // lob it at a dug-in MG or AT gun, or any squad sitting in cover
+-        const t = enemiesNear(u, def.ab.range + 4).find(e => watched(e) && UNITS[e.type].infantry && d(u, e) <= def.ab.range + 4 && (e.type !== 'rifle' || inCover(view, e)));
++        const t = grenadeTarget(u);
+         if (t) cast({ t: 'ability', ids: [u.id], x: t.x, z: t.z });
+       } else if (def.ab.id === 'suppress' && target && watched(target)) cast({ t: 'ability', ids: [u.id] });
+       else if (def.ab.id === 'ap' && target?.type === 'tank' && watched(target)) cast({ t: 'ability', ids: [u.id] });

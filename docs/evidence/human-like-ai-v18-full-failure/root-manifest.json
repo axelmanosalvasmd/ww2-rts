@@ -1,0 +1,78 @@
+{
+  "at": "2026-10-04T19:56:55.793890+00:00",
+  "qualification": "Native fullrun failure: crowded-crossing tank did not reach destination within unchanged40s. All1848source/archive files and36checks valid. Cause under investigation; no passing full-suite claim.",
+  "files": [
+    {
+      "source": "/tmp/human-ai-v18-final-full-finalize.py",
+      "file": "human-ai-v18-final-full-finalize.py",
+      "bytes": 25518,
+      "sha256": "98eb0975481be2cdcd39da12617944794f5cdd3461c668df909b7d3a369c5e9f"
+    },
+    {
+      "source": "/tmp/human-ai-v18-final-full-preregistration-draft.json",
+      "file": "human-ai-v18-final-full-preregistration-draft.json",
+      "bytes": 15656,
+      "sha256": "6a009668516a0fde95ed3a2d320820e4851cc4f4fdf418b903fb2f0280be0106"
+    },
+    {
+      "source": "/tmp/human-ai-v18-final-full-predeclared.json",
+      "file": "human-ai-v18-final-full-predeclared.json",
+      "bytes": 24861,
+      "sha256": "5b9fcf77cb14ca54a49ddac50f44c86f80d240e4a9355d8a16f411f1300e7fb3"
+    },
+    {
+      "source": "/tmp/ai-v18-final-full-before.json",
+      "file": "ai-v18-final-full-before.json",
+      "bytes": 385071,
+      "sha256": "cb9f0743183a9012e13054bd4827ffad46f4be921031aa3b421367d6191c3fa7"
+    },
+    {
+      "source": "/tmp/ai-v18-final-full-after.json",
+      "file": "ai-v18-final-full-after.json",
+      "bytes": 384313,
+      "sha256": "00f3277b792b2eb1edb44f61aa6629f94dc13912c21d535c766898e486442ba7"
+    },
+    {
+      "source": "/tmp/human-ai-v18-final-full-test.log",
+      "file": "human-ai-v18-final-full-test.log",
+      "bytes": 9001,
+      "sha256": "e6ca57371238dfc905da642a8c3227b5f1a6a064136be692433e234040d7de3e"
+    },
+    {
+      "source": "/tmp/human-ai-v18-final-full-test.exit",
+      "file": "human-ai-v18-final-full-test.exit",
+      "bytes": 12,
+      "sha256": "0aac2256ca135e9e2ce682d26e680d8ec767e0c2897215d636113386fbc768af"
+    },
+    {
+      "source": "/tmp/human-ai-v18-final-full-verification.json",
+      "file": "human-ai-v18-final-full-verification.json",
+      "bytes": 7578,
+      "sha256": "80db0cd1da5db6d92abb22d8f0eed20f4d31b6431035c63f085c58607f9c17f5"
+    },
+    {
+      "source": "/tmp/human-ai-v18-final-full-launch.json",
+      "file": "human-ai-v18-final-full-launch.json",
+      "bytes": 962,
+      "sha256": "ccbebd8fdf253331222115fbadf25f206cc32644dc5b82e644a6c09818412896"
+    },
+    {
+      "source": "/tmp/human-ai-v18-final-full-completion.json",
+      "file": "human-ai-v18-final-full-completion.json",
+      "bytes": 93,
+      "sha256": "1148a6f9664515eac8868d0a273b9c1e7335c02e2414226dc59c394495ed020e"
+    },
+    {
+      "source": "/tmp/human-ai-v18-final-full-checks.jsonl",
+      "file": "human-ai-v18-final-full-checks.jsonl",
+      "bytes": 16876,
+      "sha256": "6a2c51dc9423cef1426380c96e413276bbd5280847b491b72adf745e6ae9533d"
+    },
+    {
+      "source": "/tmp/human-ai-v18-final-full-background-launch.json",
+      "file": "human-ai-v18-final-full-background-launch.json",
+      "bytes": 449,
+      "sha256": "ab71bdac282eabfd0a3c42b80b9031166ff512eef348df7445d1c01c36d4b8f0"
+    }
+  ]
+}

@@ -1,0 +1,36 @@
+--- a/shared/ai.js
++++ b/shared/ai.js
+@@ -478,7 +478,16 @@
+   // Classic: no building for it, or no Fuel for a vehicle: infantry instead
+   if (!trains(buy) || !canBuild(buy, me.faction) || priceOf(view, buy).fuel > (me.fuel ?? 0)) buy = trains('conscript') && canBuild('conscript', me.faction) ? 'conscript' : 'rifle';
+   if (world && (!count('engineer') || !ownB.some(b => b.type === 'hq'))) submit({ t: 'recover' });
+-  if (classic && count('engineer') < (view.nodes.some((_, i) => !view.claimedNodes.has(i)) ? 2 : 1)) buy = 'engineer';
++  const engineerTarget = classic ? (view.nodes.some((_, i) => !view.claimedNodes.has(i)) ? 2 : 1) : 0;
++  // Full queue types are shown only for one actual selected production building.
++  const hud = observation.selectedHUD;
++  const selectedProducer = classic && opts.human && hud?.slot === slot && hud.observedTick === observation.tick
++    && hud.ids.length === 1 ? observation.units.get(hud.ids[0]) : null;
++  const knownQueuedEngineers = selectedProducer?.owner === slot && selectedProducer.built >= 1
++    && UNITS[selectedProducer.type].building && observation.screenIds.has(selectedProducer.id)
++    ? (selectedProducer.queue ?? []).filter(type => type === 'engineer').length : 0;
++  let engineerShortage = Math.max(0, engineerTarget - count('engineer') - knownQueuedEngineers);
++  if (classic && engineerShortage > 0) buy = 'engineer';
+   if (opts.human && !seenTanks && !sit?.counter) buy = openingBuy(mem.human, view, slot, buy, trains);
+   const saveFirstPreference = opts.human && saveOpeningPreference(mem.human, view, slot, buy, trains, { armySize,
+     tacticalCounter: seenTanks || enemyPlanes || seenGarrison || seenDugIn || learnedBuy || sit?.counter
+@@ -515,6 +524,7 @@
+       if (production) production.reason = reserve ? 'building-reserve' : 'unaffordable';
+       break;
+     }
++    if (opts.human && classic && candidate === 'engineer' && engineerShortage <= 0) break;
+     if (opts.human && (knownPopulation + popUse(candidate) > knownCap
+       || count(candidate) >= (UNITS[candidate].max ?? Infinity))) {
+       if (production) production.reason = knownPopulation + popUse(candidate) > knownCap ? 'pop' : 'max';
+@@ -526,6 +536,7 @@
+       production.reason = result === undefined ? 'proposed' : result;
+     }
+     if (result !== undefined) break;
++    if (opts.human && classic && candidate === 'engineer') engineerShortage--;
+     knownPopulation += popUse(candidate);
+   }
+   if (production) mem.human.production = production;

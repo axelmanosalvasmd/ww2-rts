@@ -1,0 +1,99 @@
+{
+  "checkedAtUTC": "2026-10-04T11:37:45.124211+00:00",
+  "nodePid": 1178676,
+  "nodeStartTicks": "10407892",
+  "argv": "node /tmp/human-ai-selected-hud-v14-balance-source/tools/ai-balance.mjs --root /tmp/human-ai-selected-hud-v14-balance-source --ai /tmp/human-ai-selected-hud-v14-balance-source/shared/ai.js --mode classic --map default --matches 30 --seed 1 --workers 4 --factions 3 --army standard --checkpoint /tmp/human-ai-selected-hud-v14-balance/classic-checkpoint.json ",
+  "workerCount": 4,
+  "threadsAffinity": {
+    "1178676": [
+      0,
+      2,
+      8,
+      10
+    ],
+    "1178677": [
+      0,
+      2,
+      8,
+      10
+    ],
+    "1178678": [
+      0,
+      2,
+      8,
+      10
+    ],
+    "1178679": [
+      0,
+      2,
+      8,
+      10
+    ],
+    "1178680": [
+      0,
+      2,
+      8,
+      10
+    ],
+    "1178681": [
+      0,
+      2,
+      8,
+      10
+    ],
+    "1178682": [
+      0,
+      2,
+      8,
+      10
+    ],
+    "1178683": [
+      0,
+      2,
+      8,
+      10
+    ],
+    "1178684": [
+      0,
+      2,
+      8,
+      10
+    ],
+    "1178685": [
+      0,
+      2,
+      8,
+      10
+    ],
+    "1178686": [
+      0,
+      2,
+      8,
+      10
+    ],
+    "1178687": [
+      0,
+      2,
+      8,
+      10
+    ],
+    "1178688": [
+      0,
+      2,
+      8,
+      10
+    ],
+    "1178689": [
+      0,
+      2,
+      8,
+      10
+    ],
+    "1178690": [
+      0,
+      2,
+      8,
+      10
+    ]
+  }
+}

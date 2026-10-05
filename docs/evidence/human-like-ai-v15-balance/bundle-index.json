@@ -1,0 +1,22 @@
+{
+  "report": "/tmp/human-ai-v15-historical-balance-audit/report.json",
+  "checks": {
+    "allFiveFinalLogsCheckpointsAndReportsAgree": true,
+    "all150OriginalRowsRetained": true,
+    "all150FinishedWithoutTimeout": true,
+    "sourceArchive763FilesVerified": true,
+    "sharedRunnerSourcesCoherentAcrossAllJobs": true,
+    "legacyImportOnlyProvenanceVerified": true,
+    "baselineResultLogIdentityVerified": true,
+    "supervisorFinishedNaturally": true,
+    "allRequiredHistoricalGameplayGatesPass": true,
+    "currentReleaseQualification": false
+  },
+  "bundle": "/tmp/human-ai-v15-historical-balance-proof.tar.gz",
+  "bundleBytes": 576825,
+  "bundleSHA256": "55c50b15f99dd34707da2e035c814798af3509091a74bfd36557fee6b49327ff",
+  "reportSHA256": "e98058f7549b0adf0347fb9d97cf664918f1f1fdeab471c5ca64a894f3b332f0",
+  "runtimeDependencyFiles": 35,
+  "bundleFilesVerifiedAgainstOriginalArtifacts": 76,
+  "verifiedAtUTC": "2026-10-04T17:07:47.197299+00:00"
+}

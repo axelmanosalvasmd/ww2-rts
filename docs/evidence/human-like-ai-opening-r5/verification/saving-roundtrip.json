@@ -1,0 +1,55 @@
+{
+  "status": "PASS",
+  "treatments": {
+    "base": {
+      "matches": 60,
+      "seats": 180,
+      "inputs": 5239,
+      "commands": 1989,
+      "events": 3351,
+      "frames": 2824,
+      "unchangedReadonlySourceFiles": 42,
+      "rawSHA": {
+        "sha256": "5d901f52be7b3f4060e820db28419a8f4b78405f5f8dfa0b131cd8809e72321a",
+        "bytes": 41499017
+      },
+      "gzipSHA": {
+        "sha256": "0675afa224139a41c67d71232b7a7eac38bfdacbaeed5d79a37ab15bf307ff99",
+        "bytes": 2012458
+      },
+      "checks": [
+        "exact gzip roundtrip bytes",
+        "all seat metrics recomputed with unchanged native reducers",
+        "pooled aggregate matches",
+        "all compact timeline and private-stream digests",
+        "both policies and dual scoring preserved",
+        "original oracle injected from match start"
+      ]
+    },
+    "candidate": {
+      "matches": 60,
+      "seats": 180,
+      "inputs": 4929,
+      "commands": 1846,
+      "events": 3046,
+      "frames": 2588,
+      "unchangedReadonlySourceFiles": 42,
+      "rawSHA": {
+        "sha256": "ad6099ee68ec87c02aeceb9ba369b3e5d748da0324c2721b756489b62fa2009b",
+        "bytes": 38259168
+      },
+      "gzipSHA": {
+        "sha256": "405d3c9bd9f2ef19eb3e617282e04177bd64e511892f086b0477c0185510c24c",
+        "bytes": 1905997
+      },
+      "checks": [
+        "exact gzip roundtrip bytes",
+        "all seat metrics recomputed with unchanged native reducers",
+        "pooled aggregate matches",
+        "all compact timeline and private-stream digests",
+        "both policies and dual scoring preserved",
+        "original oracle injected from match start"
+      ]
+    }
+  }
+}

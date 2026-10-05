@@ -1,0 +1,74 @@
+{
+  "status": "scratch-reviewed-before-any-adoption",
+  "productionChanges": false,
+  "liveV16Changes": false,
+  "runtimeArchiveChanges": false,
+  "originalExistingAssertionsRetained": true,
+  "storageTest": "PASS",
+  "historicalData": "V15 Classic+World all levels seed1, 6matches/42comparisons PASS",
+  "prospectiveExternalVerifierOnly": true,
+  "rootBaselineFiles": [
+    {
+      "path": "/home/judiazm/.t3/worktrees/ww2-rts/ai-human-commander/tools/ai-humanity.mjs",
+      "bytes": 91936,
+      "sha256": "4f695ecb3d2f7f19597150bae3ebd8a4fe721a1c8e90d92e0542898b1a47bdd0"
+    },
+    {
+      "path": "/home/judiazm/.t3/worktrees/ww2-rts/ai-human-commander/test-ai-humanity-storage.js",
+      "bytes": 13464,
+      "sha256": "d9ad641d811415753ab4b5995c1d7a346785d51d6a422e9040c4eaa169f18829"
+    }
+  ],
+  "files": [
+    {
+      "path": "/tmp/v16-hash-repo-candidate/tools/hash-json-native.mjs",
+      "bytes": 3875,
+      "sha256": "84d9f9c2273071831d86fe88e4244bda6013c762412ef837a5dc4c90a08e41c5"
+    },
+    {
+      "path": "/tmp/v16-hash-repo-candidate/tools/ai-humanity.mjs",
+      "bytes": 92122,
+      "sha256": "7c80a300e54bf42b2bc495f0efcfd25321738e4c82b5fdad98112ea787e1a05e"
+    },
+    {
+      "path": "/tmp/v16-hash-repo-candidate/test-ai-humanity-storage.js",
+      "bytes": 18846,
+      "sha256": "b50d2668f43161b5ce79feb6b165724e89f7ec221ff0a0754a58b0369c62753b"
+    },
+    {
+      "path": "/tmp/v16-hash-repo-candidate/integration.patch",
+      "bytes": 15124,
+      "sha256": "9ad56f00a4899963402b4aa14321866e6e6c6d258391f067785929b95e5a004b"
+    },
+    {
+      "path": "/tmp/v16-hash-repo-candidate/future-verifier.patch",
+      "bytes": 7155,
+      "sha256": "3006ea3d2779c747c31087b62efe4442c898a1eecfffabbcaa79373fa59b43e4"
+    },
+    {
+      "path": "/tmp/v16-hash-repo-candidate/ADOPTION.md",
+      "bytes": 5422,
+      "sha256": "133f3000a2db75483c8ff3249447117127f4fc45c2a86245f14219a00b90b58b"
+    },
+    {
+      "path": "/tmp/v16-hash-repo-candidate/storage-test.log",
+      "bytes": 265,
+      "sha256": "ade7effe309dd182561684f584cdb1ee630047c6155b89d21c38034cd92a35ba"
+    },
+    {
+      "path": "/tmp/v16-hash-repo-candidate/historical-controls.mjs",
+      "bytes": 2337,
+      "sha256": "063d7fdfc099f4cb5330ec6782a1206df2b57b284b36874fde63dfa7e6720a04"
+    },
+    {
+      "path": "/tmp/v16-hash-repo-candidate/historical-controls.json",
+      "bytes": 9834,
+      "sha256": "542400701bceb36c592f5f3fc493d3aa9be5bd5dfaaffd29eec4f672c856f239"
+    },
+    {
+      "path": "/tmp/v16-hash-repo-candidate/historical-controls.log",
+      "bytes": 103,
+      "sha256": "c05555c64d224820c2e815e4b1000baa32b30303a105f18ac4585fbcf7cddfea"
+    }
+  ]
+}

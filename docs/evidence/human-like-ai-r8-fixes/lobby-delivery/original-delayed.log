@@ -1,0 +1,23 @@
+ww2-rts on http://127.0.0.1:0
+{"control":"delayed native spectator receive","server":"lobby","received":"play"}
+node:internal/modules/run_main:107
+    triggerUncaughtException(
+    ^
+
+AssertionError [ERR_ASSERTION]: the spectator is back in the lobby with everyone
+
+'play' !== 'lobby'
+
+    at file:///tmp/human-ai-v21-room-lifecycle/original-delayed.mjs:301:14
+    at async check (file:///tmp/human-ai-v21-room-lifecycle/original-delayed.mjs:122:70)
+    at async roomLifecycleChecks (file:///tmp/human-ai-v21-room-lifecycle/original-delayed.mjs:278:5)
+    at async file:///tmp/human-ai-v21-room-lifecycle/original-delayed.mjs:328:7 {
+  generatedMessage: false,
+  code: 'ERR_ASSERTION',
+  actual: 'play',
+  expected: 'lobby',
+  operator: 'strictEqual',
+  diff: 'simple'
+}
+
+Node.js v24.21.0

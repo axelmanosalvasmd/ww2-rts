@@ -1,0 +1,403 @@
+{
+  "baseline": "/tmp/human-ai-perf-v16-frozen",
+  "candidate": "/tmp/v16-region-redundancy-candidate",
+  "fixtures": 12,
+  "exactRoutesCountersHeightHolesAndNativeCommands": "PASS",
+  "rows": [
+    {
+      "kind": "public",
+      "w": 3,
+      "h": 1,
+      "start": 0,
+      "goal": 1,
+      "heightType": null,
+      "heightKeys": null,
+      "height": null,
+      "flags": [
+        0,
+        0,
+        1
+      ],
+      "points": [
+        [
+          3,
+          1
+        ]
+      ],
+      "stats": {
+        "calls": 1,
+        "deferred": 0,
+        "failed": 0,
+        "dropped": 0,
+        "expansions": 1,
+        "regionRejected": 0
+      }
+    },
+    {
+      "kind": "public",
+      "w": 3,
+      "h": 1,
+      "start": 0,
+      "goal": 2,
+      "heightType": null,
+      "heightKeys": null,
+      "height": null,
+      "flags": [
+        0,
+        0,
+        0
+      ],
+      "points": [],
+      "stats": {
+        "calls": 2,
+        "deferred": 0,
+        "failed": 1,
+        "dropped": 0,
+        "expansions": 1,
+        "regionRejected": 1
+      }
+    },
+    {
+      "kind": "public",
+      "w": 3,
+      "h": 1,
+      "start": 0,
+      "goal": 2,
+      "heightType": null,
+      "heightKeys": null,
+      "height": null,
+      "flags": [
+        0,
+        0,
+        0
+      ],
+      "points": [
+        [
+          3,
+          1
+        ],
+        [
+          5,
+          1
+        ]
+      ],
+      "stats": {
+        "calls": 3,
+        "deferred": 0,
+        "failed": 1,
+        "dropped": 0,
+        "expansions": 3,
+        "regionRejected": 1
+      }
+    },
+    {
+      "kind": "public",
+      "w": 2,
+      "h": 2,
+      "start": 0,
+      "goal": 3,
+      "heightType": "Array",
+      "heightKeys": [
+        "1",
+        "2",
+        "3"
+      ],
+      "height": [
+        null,
+        -1,
+        -1,
+        1
+      ],
+      "flags": [
+        0,
+        0,
+        0,
+        0
+      ],
+      "points": [],
+      "stats": {
+        "calls": 1,
+        "deferred": 0,
+        "failed": 1,
+        "dropped": 0,
+        "expansions": 0,
+        "regionRejected": 1
+      }
+    },
+    {
+      "kind": "public",
+      "w": 2,
+      "h": 2,
+      "start": 0,
+      "goal": 3,
+      "heightType": "Int8Array",
+      "heightKeys": [
+        "0",
+        "1",
+        "2",
+        "3"
+      ],
+      "height": [
+        0,
+        -1,
+        -1,
+        1
+      ],
+      "flags": [
+        0,
+        0,
+        0,
+        0
+      ],
+      "points": [
+        [
+          3,
+          3
+        ]
+      ],
+      "stats": {
+        "calls": 2,
+        "deferred": 0,
+        "failed": 1,
+        "dropped": 0,
+        "expansions": 1,
+        "regionRejected": 1
+      }
+    },
+    {
+      "kind": "public",
+      "w": 2,
+      "h": 2,
+      "start": 0,
+      "goal": 3,
+      "heightType": "Int8Array",
+      "heightKeys": [
+        "0",
+        "1",
+        "2",
+        "3"
+      ],
+      "height": [
+        0,
+        0,
+        0,
+        0
+      ],
+      "flags": [
+        0,
+        0,
+        0,
+        0
+      ],
+      "points": [
+        [
+          3,
+          3
+        ]
+      ],
+      "stats": {
+        "calls": 1,
+        "deferred": 0,
+        "failed": 0,
+        "dropped": 0,
+        "expansions": 1,
+        "regionRejected": 0
+      }
+    },
+    {
+      "kind": "public",
+      "w": 2,
+      "h": 2,
+      "start": 0,
+      "goal": 3,
+      "heightType": "Int8Array",
+      "heightKeys": [
+        "0",
+        "1",
+        "2",
+        "3"
+      ],
+      "height": [
+        0,
+        -1,
+        -1,
+        1
+      ],
+      "flags": [
+        0,
+        0,
+        0,
+        0
+      ],
+      "points": [
+        [
+          3,
+          3
+        ]
+      ],
+      "stats": {
+        "calls": 1,
+        "deferred": 0,
+        "failed": 0,
+        "dropped": 0,
+        "expansions": 1,
+        "regionRejected": 0
+      }
+    },
+    {
+      "kind": "public",
+      "w": 2,
+      "h": 2,
+      "start": 3,
+      "goal": 0,
+      "heightType": "Int8Array",
+      "heightKeys": [
+        "0",
+        "1",
+        "2",
+        "3"
+      ],
+      "height": [
+        0,
+        -1,
+        -1,
+        1
+      ],
+      "flags": [
+        0,
+        0,
+        0,
+        0
+      ],
+      "points": [],
+      "stats": {
+        "calls": 2,
+        "deferred": 0,
+        "failed": 1,
+        "dropped": 0,
+        "expansions": 1,
+        "regionRejected": 1
+      }
+    },
+    {
+      "kind": "public",
+      "w": 2,
+      "h": 2,
+      "start": 0,
+      "goal": 3,
+      "heightType": "Int8Array",
+      "heightKeys": [
+        "0",
+        "1",
+        "2",
+        "3"
+      ],
+      "height": [
+        1,
+        2,
+        2,
+        0
+      ],
+      "flags": [
+        0,
+        0,
+        0,
+        0
+      ],
+      "points": [
+        [
+          3,
+          3
+        ]
+      ],
+      "stats": {
+        "calls": 1,
+        "deferred": 0,
+        "failed": 0,
+        "dropped": 0,
+        "expansions": 1,
+        "regionRejected": 0
+      }
+    },
+    {
+      "kind": "public",
+      "w": 2,
+      "h": 2,
+      "start": 3,
+      "goal": 0,
+      "heightType": "Int8Array",
+      "heightKeys": [
+        "0",
+        "1",
+        "2",
+        "3"
+      ],
+      "height": [
+        1,
+        2,
+        2,
+        0
+      ],
+      "flags": [
+        0,
+        0,
+        0,
+        0
+      ],
+      "points": [],
+      "stats": {
+        "calls": 2,
+        "deferred": 0,
+        "failed": 1,
+        "dropped": 0,
+        "expansions": 1,
+        "regionRejected": 1
+      }
+    },
+    {
+      "kind": "native command",
+      "type": "rifle",
+      "points": [
+        [
+          43,
+          33
+        ]
+      ],
+      "stats": {
+        "calls": 1,
+        "deferred": 0,
+        "failed": 0,
+        "dropped": 0,
+        "expansions": 3,
+        "regionRejected": 0
+      },
+      "worldGoal": {
+        "x": 43,
+        "z": 33
+      }
+    },
+    {
+      "kind": "native command",
+      "type": "tank",
+      "points": [
+        [
+          43,
+          33
+        ]
+      ],
+      "stats": {
+        "calls": 1,
+        "deferred": 0,
+        "failed": 0,
+        "dropped": 0,
+        "expansions": 3,
+        "regionRejected": 0
+      },
+      "worldGoal": {
+        "x": 43,
+        "z": 33
+      }
+    }
+  ],
+  "SHA256": "390e691d018cef89abe3934edf37a3e2eae5c90c155f9226accb768a77ccb18d"
+}

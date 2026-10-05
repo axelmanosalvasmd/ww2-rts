@@ -1,0 +1,28 @@
+--- /tmp/human-ai-opening-paired-base-source/shared/ai-persona.js	2026-10-04 12:57:27.878195160 +0000
++++ /tmp/human-ai-opening-paired-candidate-source/shared/ai-persona.js	2026-10-04 13:03:22.290066438 +0000
+@@ -1,6 +1,6 @@
+ // Match preferences and imperfect estimates use the seat's private, seeded stream.
+ import { random, choose } from './ai-rng.js';
+-import { UNITS, canBuild } from './sim.js';
++import { UNITS, canBuild, priceOf, TICK } from './sim.js';
+ 
+ export const PERSONAS = Object.freeze({
+   aggressive: { opening: ['rifle', 'mg', 'rifle'], economy: 'barracks', pressure: 0.9 },
+@@ -27,6 +27,17 @@
+   return canBuild(preferred, me.faction) ? preferred : fallback;
+ }
+ 
++// A viable starting force can save briefly for its chosen first ordinary purchase.
++export function saveOpeningPreference(state, view, slot, candidate, trains, { armySize = 0, tacticalCounter = true } = {}) {
++  const me = view.players[slot], elapsed = (view.tick - state.startedTick) * TICK;
++  if (state.buys !== 0 || !Number.isFinite(elapsed) || elapsed < 0 || elapsed > 20
++    || view.mode && view.mode.kind !== 'conquest' || !Number.isFinite(armySize) || armySize < 3 || tacticalCounter) return false;
++  const preferred = openingBuy(state, view, slot, null, trains);
++  if (!preferred || candidate !== preferred || !canBuild(candidate, me.faction) || !trains(candidate)) return false;
++  const price = priceOf(view, candidate);
++  return price.fuel === 0 && price.mp <= priceOf(view, 'at').mp;
++}
++
+ export function estimateSightings(view, rng, skill, state = {}) {
+   const uncertainty = { easy: 0.4, normal: 0.22, hard: 0.1 }[skill] ?? 0.22;
+   const errors = state.estimateErrors ??= new Map(), live = new Set(view.sightings.map(s => s.id));

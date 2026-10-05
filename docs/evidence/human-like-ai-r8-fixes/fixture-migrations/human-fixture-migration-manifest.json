@@ -1,0 +1,91 @@
+{
+  "schema": "ww2-r8-native-evidence-copy-v1",
+  "originals": [
+    {
+      "originalPath": "/tmp/human-ai-r8-human-fixture/REVIEW.md",
+      "member": "REVIEW.md",
+      "bytes": 2105,
+      "sha256": "6b05c9543fd1f08a579eed628238ddfb135a39d567d165a84df41b1f9ab9f132"
+    },
+    {
+      "originalPath": "/tmp/human-ai-r8-human-fixture/baseline-probe.mjs",
+      "member": "baseline-probe.mjs",
+      "bytes": 11196,
+      "sha256": "2aa0b3340299e235c3f756c2f7b588fe19c489b52c397f079f0f78683285c4df"
+    },
+    {
+      "originalPath": "/tmp/human-ai-r8-human-fixture/baseline-raw.json",
+      "member": "baseline-raw.json",
+      "bytes": 84203,
+      "sha256": "a820737342acabe2407d3e6da2607f093079da8a5c55cc283ba644f428b38eeb"
+    },
+    {
+      "originalPath": "/tmp/human-ai-r8-human-fixture/baseline.log",
+      "member": "baseline.log",
+      "bytes": 698,
+      "sha256": "3d9b0ed0d429cd34a930c5bcb5d34bcb1ce593bb91a986c5d21844c91403659a"
+    },
+    {
+      "originalPath": "/tmp/human-ai-r8-human-fixture/candidate-probe.mjs",
+      "member": "candidate-probe.mjs",
+      "bytes": 11715,
+      "sha256": "74908fb580347f0b125261ae063ffbf03aa1ac4ae1328211602b50f9d711ce94"
+    },
+    {
+      "originalPath": "/tmp/human-ai-r8-human-fixture/candidate-raw.json",
+      "member": "candidate-raw.json",
+      "bytes": 86748,
+      "sha256": "008731d4d2b4cc58cc599265ea8918769723d3c46717ddc06184a30929950bde"
+    },
+    {
+      "originalPath": "/tmp/human-ai-r8-human-fixture/candidate.log",
+      "member": "candidate.log",
+      "bytes": 0,
+      "sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+    },
+    {
+      "originalPath": "/tmp/human-ai-r8-human-fixture/handover-probe.mjs",
+      "member": "handover-probe.mjs",
+      "bytes": 12077,
+      "sha256": "71bc582f196606a3cf2c9eed14ece82d1290da4acf96d028328c24d9d65d4344"
+    },
+    {
+      "originalPath": "/tmp/human-ai-r8-human-fixture/handover-raw.json",
+      "member": "handover-raw.json",
+      "bytes": 39753,
+      "sha256": "04e6aa2bd8fde355f0229dc990aebdd8c2e167cc5258655946b45a2d33193b6e"
+    },
+    {
+      "originalPath": "/tmp/human-ai-r8-human-fixture/handover.log",
+      "member": "handover.log",
+      "bytes": 0,
+      "sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+    },
+    {
+      "originalPath": "/tmp/human-ai-r8-human-fixture/source-hashes.json",
+      "member": "source-hashes.json",
+      "bytes": 735,
+      "sha256": "7348c0d82206ebfef4b66c8fbe6ade260adf3dbe4f960726a8670d42d4466dce"
+    },
+    {
+      "originalPath": "/tmp/human-ai-r8-human-fixture/test-engine-ai-human.js",
+      "member": "test-engine-ai-human.js",
+      "bytes": 14598,
+      "sha256": "f3d74de9c48bb9916480ea7e48206833e7f57e3570225998be54111d2dd93df9"
+    },
+    {
+      "originalPath": "/tmp/human-ai-r8-human-fixture.patch",
+      "member": "fixture.patch",
+      "bytes": 4010,
+      "sha256": "a8f3029f26acb705507441ab4ba22cc978cc52c12ebe669dbe647e173654ef8a"
+    },
+    {
+      "originalPath": "/tmp/r8-package-human-original/test-engine-ai-human.js",
+      "member": "original-fixture.js",
+      "bytes": 13745,
+      "sha256": "5ab11ac992f19ffd326062cb5f447e7781da773d25102a182ad7433e090feb8b"
+    }
+  ],
+  "copiedOriginalBytes": 281583,
+  "packagingExecution": "Byte copying and checks only. No simulations or tests executed."
+}

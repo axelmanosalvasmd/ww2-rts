@@ -1,0 +1,20 @@
+{
+  "state": "completeEvidenceReadyForReview",
+  "results": [
+    {
+      "label": "base",
+      "checkpoint": "929d88cdc61bc383ac1e1affdee096942c04100684ab1a94f79489bbedc7b22e",
+      "matches": 60,
+      "seats": 180,
+      "elapsedSeconds": 91.620490785
+    },
+    {
+      "label": "candidate",
+      "checkpoint": "4a8a9959543354ee5c8c04b1a9e06e58b3197cebb63b2cfbfd9e1288ab0122af",
+      "matches": 60,
+      "seats": 180,
+      "elapsedSeconds": 86.549000512
+    }
+  ],
+  "acceptance": "Opening diagnostic only45seconds,all outcomes retained;no180second/performance acceptance."
+}

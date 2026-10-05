@@ -1,0 +1,11 @@
+{
+  "status": "PASS",
+  "independentRootByteVerification": true,
+  "archive": "ai-v19-point-fog-package.tar.gz",
+  "bytes": 1194733,
+  "sha256": "f7e65702e22ff26d94933ee01b94867ab56ec24843ea6cf97392c61d23eb844a",
+  "members": 169,
+  "payloadSource": "/tmp/ai-v19-point-fog-package",
+  "archivePrefix": "ai-v19-point-fog-package/",
+  "qualified": "Diagnostic and exact-byte evidence, not acceptance gate closure."
+}

@@ -1,0 +1,51 @@
+{
+  "label": "v15",
+  "status": "frozen, no tests launched",
+  "preparedAtUnix": 1791119313.1498249,
+  "root": "/home/judiazm/.t3/worktrees/ww2-rts/ai-human-commander",
+  "command": [
+    "taskset",
+    "-c",
+    "4",
+    "node",
+    "test.js"
+  ],
+  "supervisorCPU": 0,
+  "outerTimeout": null,
+  "focusedChildTimeoutMS": 180000,
+  "timeoutPolicy": "Keep test.js focused-child timeout unchanged. No outer wall-time kill. Do not change child timeout without observed meaningful test durations and a new prospective registration.",
+  "coverage": "Every existing tracked and nonignored untracked file returned by git ls-files --cached --others --exclude-standard, including docs/evidence/human-like-ai-v14 and tools/json-stream.mjs. Archive copies file bytes; node_modules is linked and is not part of this git file manifest.",
+  "freezePolicy": "Take only after root explicitly confirms all source and documentation edits are finished. Exclusive output paths and immutable full archive. Never adopt V14 results as V15 proof.",
+  "supervision": "Background supervisor polls child completion, production file manifest and HEAD every five seconds. Records every observed source change without a wall-time kill. Current and archived bytes are compared before and after; source changes invalidate proof even if the test exits successfully.",
+  "retention": "Single complete node test.js run. All output and failure status retained. No automatic repeat, no overwrites. V14 artifacts untouched.",
+  "historicalManifests": {
+    "/tmp/ai-v14-full-before.json": "ebf0fd36650dbc8731a9baacc4524b31baea396c8310fc906fbc44327b293f12",
+    "/tmp/ai-v14-full-after.json": "f0725e919f854310a43c9bc5cd1bafbb2632b983a906c18f2ba953219e204716",
+    "/tmp/human-ai-v14-full-verification.json": "75e924c109d1aa8bd18590244a924e76121c935db57ad81c0ba4104637de142c"
+  },
+  "scriptSHA256": "59dff26bb9862cc36bce2815209a9c47c05c8daa12d051dc016c6a851dbd82be",
+  "freezeCommand": [
+    "python3",
+    "/tmp/human-ai-v15-full-finalize.py",
+    "--freeze-after-root-approval"
+  ],
+  "runCommand": [
+    "python3",
+    "/tmp/human-ai-v15-full-finalize.py",
+    "--run-after-root-freeze"
+  ],
+  "finalizeCommand": [
+    "python3",
+    "/tmp/human-ai-v15-full-finalize.py",
+    "--finalize"
+  ],
+  "frozenAtUnix": 1791125250.8716702,
+  "beforeManifest": "/tmp/ai-v15-full-before.json",
+  "beforeManifestSHA256": "f2a118140ee11e43e7cec9d91ee0e8e69bab35a436abb4a6046f661f95e7519a",
+  "files": 763,
+  "bytes": 75419365,
+  "head": "8a2343bf535170dfc14822c82ca15cfeedfb7bef",
+  "fileManifestDigest": "e2c442455fce4b87ca304f88402213430a79753c47ad1ae507cc1502b1dd715d",
+  "archive": "/tmp/human-ai-v15-full-source",
+  "draftSHA256": "e192c5550c027517d7841f890033fab1a772b0246400d0cb2a3e9370c9c5523d"
+}

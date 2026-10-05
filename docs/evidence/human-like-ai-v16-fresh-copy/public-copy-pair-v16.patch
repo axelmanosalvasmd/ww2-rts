@@ -1,0 +1,75 @@
+--- a/shared/ai-perception.js
++++ b/shared/ai-perception.js
+@@ -84,6 +84,61 @@
+   catch { return structuredClone(value); }
+ }
+ const clone = detachedCopy;
++
++function pairedData(value, seen) {
++  if (value === null) return [value, value];
++  const type = typeof value;
++  if (type === 'function' || type === 'symbol') throw unsupportedCopy;
++  if (type !== 'object') return [value, value];
++  if (seen.has(value)) return seen.get(value);
++  const prototype = Object.getPrototypeOf(value); let pair;
++  if (prototype === Map.prototype) {
++    pair = [new Map(), new Map()]; seen.set(value, pair);
++    for (const [key, item] of Map.prototype.entries.call(value)) {
++      const keys = pairedData(key, seen), items = pairedData(item, seen);
++      pair[0].set(keys[0], items[0]); pair[1].set(keys[1], items[1]);
++    }
++    return pair;
++  }
++  if (prototype === Set.prototype) {
++    pair = [new Set(), new Set()]; seen.set(value, pair);
++    for (const item of Set.prototype.values.call(value)) {
++      const items = pairedData(item, seen); pair[0].add(items[0]); pair[1].add(items[1]);
++    }
++    return pair;
++  }
++  if (Array.isArray(value) && prototype === Array.prototype) pair = [new Array(value.length), new Array(value.length)];
++  else if (prototype === Object.prototype || prototype === null) pair = [{}, {}];
++  else throw unsupportedCopy;
++  seen.set(value, pair);
++  for (const key of Object.keys(value)) {
++    const descriptor = Object.getOwnPropertyDescriptor(value, key);
++    if (!descriptor || !Object.hasOwn(descriptor, 'value')) throw unsupportedCopy;
++    const item = descriptor.value, kind = typeof item;
++    if (kind === 'function' || kind === 'symbol') throw unsupportedCopy;
++    const items = item !== null && kind === 'object' ? pairedData(item, seen) : [item, item];
++    if (key === '__proto__') for (let i = 0; i < 2; i++) Object.defineProperty(pair[i], key, { value: items[i], writable: true, enumerable: true, configurable: true });
++    else { pair[0][key] = items[0]; pair[1][key] = items[1]; }
++  }
++  return pair;
++}
++// This root was just created by object spread. Nested delivered graphs still need descriptor validation.
++function screenCopies(value, metadata) {
++  try {
++    const roots = [{}, {}], seen = new Map([[value, roots]]);
++    for (const key of Object.keys(value)) {
++      const item = value[key], kind = typeof item;
++      if (kind === 'function' || kind === 'symbol') throw unsupportedCopy;
++      const items = item !== null && kind === 'object' ? pairedData(item, seen) : [item, item];
++      if (key === '__proto__') for (let i = 0; i < 2; i++) Object.defineProperty(roots[i], key, { value: items[i], writable: true, enumerable: true, configurable: true });
++      else { roots[0][key] = items[0]; roots[1][key] = items[1]; }
++    }
++    return roots.map(root => ({ ...root, ...metadata }));
++  } catch {
++    const screen = { ...structuredClone(value), ...metadata }; return [screen, copyFresh(screen)];
++  }
++}
++
+ // The client also frames the spawn within its measured HUD band. This shared pose anchors at the spawn.
+ export function startCamera(observation, slot) {
+   const spawn = observation.players[slot]?.spawn ?? { x: observation.w * CELL / 2, z: observation.h * CELL / 2 };
+@@ -295,8 +350,8 @@
+     const firstStillAt = stationary && Math.hypot(stationary.x - u.x, stationary.z - u.z) <= 0.1 + 1e-9 ? stationary.since : now;
+     state.screenStill.set(u.id, { x: u.x, z: u.z, since: firstStillAt });
+     screenSeenAt.set(u.id, eventTick);
+-    const seen = { ...clone(u), firstStillAt, lastSeen: now, lastScreenTick: eventTick, screenSeen: true, confidence: 1 };
+-    screen.set(u.id, seen); screenIds.add(u.id); state.screenMemory.set(u.id, copyFresh(seen));
++    const [seen, remembered] = screenCopies(u, { firstStillAt, lastSeen: now, lastScreenTick: eventTick, screenSeen: true, confidence: 1 });
++    screen.set(u.id, seen); screenIds.add(u.id); state.screenMemory.set(u.id, remembered);
+   }
+   for (const id of state.screenStill.keys()) if (!screenIds.has(id)) state.screenStill.delete(id);
+   // Keep debounce clocks through empty-ground memory invalidation, without retaining hidden unit details.

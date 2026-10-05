@@ -1,0 +1,8 @@
+{
+  "commit": "8a2343bf535170dfc14822c82ca15cfeedfb7bef",
+  "source": "shared/ai-perception.js",
+  "originalSHA256": "ecbdc6f82a732188e0aeea122a861870130f4ad797dc8037f8f1c39639d6b583",
+  "frozenSHA256": "6b3894b551f3bf9151372b048b2efc77ffc86a6a173d0871278b27417358b398",
+  "changes": "Only the simulation and alert-events import paths are rewritten to ../shared/. The original screen-v1 detector and population policy are unchanged.",
+  "purpose": "Private offline measurement oracle. The collector injects it explicitly; server, client and normal runtime never import it."
+}

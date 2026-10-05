@@ -1,0 +1,23 @@
+{
+  "archiveSHA256": "ca29a94c87a648cce9e81b96fce56bc456b3836c954a2d79be9c5d20f9314ddb",
+  "payloadFilesByteVerified": [
+    "README.md",
+    "REVIEW.md",
+    "ROOT-receipt.json",
+    "ROOT-test.log",
+    "fixture.patch",
+    "hashes.json",
+    "native-source-hashes.json",
+    "native.json",
+    "probe.mjs",
+    "suggested-prose.md",
+    "test-ai-lab.base.js",
+    "test-ai-lab.js",
+    "test.log"
+  ],
+  "testSHA256": "73faed730317f8010a504f6e363692931708ff3d78d197cfc61c152bc879368f",
+  "rootNativeTestLogSHA256": "ca9a0d58e2fe8944cd8d4b45aededde6cbb5dc356be7b76052cf26357aed21e4",
+  "rootNativeExit": 0,
+  "rootNativeMilliseconds": 2837.7,
+  "currentAI": "bc677b3d7b2771941e6242f9c598084f04710dad944bdc54db24ef93ac354457"
+}

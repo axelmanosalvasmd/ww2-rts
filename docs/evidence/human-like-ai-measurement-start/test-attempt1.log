@@ -1,0 +1,17 @@
+file:///tmp/human-ai-oracle-tick0-proposal/test-adapter.mjs:13
+const serialize = value => JSON.stringify(value, (_, item) => item instanceof Map ? [...item] : item instanceof Set ? [...item] : typeof item === 'function' ? '[function]' : item);
+                                ^
+
+TypeError: Converting circular structure to JSON
+    --> starting at object with constructor 'Object'
+    |     property 'memory' -> object with constructor 'Array'
+    |     index 0 -> object with constructor 'Array'
+    |     ...
+    |     property 'path' -> object with constructor 'Object'
+    --- property 'world' closes the circle
+    at JSON.stringify (<anonymous>)
+    at serialize (file:///tmp/human-ai-oracle-tick0-proposal/test-adapter.mjs:13:33)
+    at witness (file:///tmp/human-ai-oracle-tick0-proposal/test-adapter.mjs:47:45)
+    at file:///tmp/human-ai-oracle-tick0-proposal/test-adapter.mjs:55:15
+
+Node.js v24.21.0

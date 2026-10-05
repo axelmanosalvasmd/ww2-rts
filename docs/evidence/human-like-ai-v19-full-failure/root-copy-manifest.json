@@ -1,0 +1,57 @@
+{
+  "status": "PASS retained failure evidence",
+  "members": {
+    "human-ai-v19-final-full-finalize.py": {
+      "bytes": 26086,
+      "sha256": "4810f8e650dfd074563604ff84b9917d510b854e3520ea217ac0eb24df6b949a"
+    },
+    "human-ai-v19-final-full-preregistration-draft.json": {
+      "bytes": 17292,
+      "sha256": "ee2e4926aab5e8a08ebf56af58593ed6b4016da34ba08be079ee4a7d8f86ebaa"
+    },
+    "ai-v19-final-full-before.json": {
+      "bytes": 408589,
+      "sha256": "7073d681cc5f583cb0c0827e72014aef633cefb8d26ef1a2d8f9cf7f3606d1d4"
+    },
+    "ai-v19-final-full-after.json": {
+      "bytes": 407831,
+      "sha256": "fb7714c8756fb9f51b47f9e93860b57aa2699c45a6db94b91eb3846b9ec9c03e"
+    },
+    "human-ai-v19-final-full-predeclared.json": {
+      "bytes": 27361,
+      "sha256": "b011bc3cd0916944cdee7ed90f5f2b8ae26285de9dd850e9dfba9e231688b529"
+    },
+    "human-ai-v19-final-full-test.log": {
+      "bytes": 37453,
+      "sha256": "45786b3882c31bcf7f084ffa13864511cf20a4534acff657e6d74e3d5210ed67"
+    },
+    "human-ai-v19-final-full-test.exit": {
+      "bytes": 12,
+      "sha256": "0aac2256ca135e9e2ce682d26e680d8ec767e0c2897215d636113386fbc768af"
+    },
+    "human-ai-v19-final-full-verification.json": {
+      "bytes": 8343,
+      "sha256": "37c7538c2d09b2bd8695d3cd0376bbac65bb9d9662c7bb45c1c0a5ab3938fc24"
+    },
+    "human-ai-v19-final-full-launch.json": {
+      "bytes": 962,
+      "sha256": "d6b62f2aab3d1b872edcdb6c170b47ba2b03f4d116492958022bb6db8702661a"
+    },
+    "human-ai-v19-final-full-completion.json": {
+      "bytes": 94,
+      "sha256": "6c433af85f43f23e7849354bbdf0b3d014c2b0a23c7d69e04c2ab3e562f10f26"
+    },
+    "human-ai-v19-final-full-checks.jsonl": {
+      "bytes": 50160,
+      "sha256": "262de7a3fdf3c16b39c83c1c384e642a9805fc90d75af1f0f1c15517b1533017"
+    },
+    "human-ai-v19-final-full-background-launch.json": {
+      "bytes": 448,
+      "sha256": "3345683e94c8d392acd599b14f3dc54d4920b6d7127ec6e0d01294567991608e"
+    }
+  },
+  "actualFailure": "test-ai-lab.js:15 assumes bare-ground default guard produces a native refusal. Reviewed cover gameplay guard now prevents those known pointless requests. Native refusal recording still needs a separate genuine rejected paid-input scene. Assertion is retained until its scene is corrected.",
+  "sourceIntegrityChecks": 107,
+  "sourceFiles": 1964,
+  "qualification": "Full suite failed. This evidence certifies source integrity and preserves failure, not overall acceptance."
+}

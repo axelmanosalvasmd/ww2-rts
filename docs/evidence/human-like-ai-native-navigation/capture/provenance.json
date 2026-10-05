@@ -1,0 +1,35 @@
+{
+  "originalFrozenFilesChecked": 206,
+  "captureChanged": {
+    "shared/navigation.js": {
+      "before": "c277c12f86c9990e281ae28a703dc374126aa1c737d9dc94a300f8d99c898472",
+      "after": "8162f9926e7babb8e0280d6c2a2fe8799b0458d9d27b010b458a41918853828e"
+    },
+    "tools/bench-engine.mjs": {
+      "before": "4e84f2b7f86009b9ee47585bc6fc592b50defc2cea0cc1d9cc484ed85d0568be",
+      "after": "94de3ba569eeef378d2a4010fd355ebe83c383e6cb5ce14711793b6d449277b5"
+    }
+  },
+  "originalDiagnostic": "/tmp/ai-v16-frame-attribution.json",
+  "captureReport": "/tmp/ai-v16-graph-capture.json",
+  "deterministicOutputChecks": {
+    "fixture": true,
+    "ticks": true,
+    "initialUnits": true,
+    "finalUnits": true,
+    "finalStateSHA256": true,
+    "snapshotBytes": true,
+    "payloadSample": true,
+    "events": true,
+    "stateCounts": true,
+    "peakStateCounts": true,
+    "paths": true
+  },
+  "finalStateSHA256": "76cae55d7b7b2dd83161c378bea1c54dc2c57759b41ccd1e3a2a9a7875e65c6d",
+  "fixtureFile": {
+    "path": "/tmp/ai-v16-graph-fixtures.bin",
+    "bytes": 1489807,
+    "sha256": "95060f3c71c682bcd75a7c2a870a1bb6b4461e292af692da41c3bc34f8733443"
+  },
+  "note": "Capture was already produced by fog_exact_perf before this diagnosis. Its new timing fields are unused. Current worker did not run a new capture benchmark."
+}

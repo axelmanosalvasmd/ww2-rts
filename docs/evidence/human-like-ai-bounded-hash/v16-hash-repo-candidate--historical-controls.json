@@ -1,0 +1,321 @@
+{
+  "status": "PASS",
+  "qualifier": "Historical V15 objects only. No current V16 World proof and no rescoring.",
+  "matches": 6,
+  "wholeAndStreamDigestComparisons": 42,
+  "originalRawGzipManifestAndSourceFilesUnchanged": true,
+  "results": [
+    {
+      "mode": "classic",
+      "level": "easy",
+      "seed": 1,
+      "rawFile": "/tmp/human-ai-final-v15/raw-matches/classic/classic-easy-1.json",
+      "raw": {
+        "sha256": "0789e06663ae7aac03c4a2ebe4de1a2a49a035366353ecfc95c21290356f11ab",
+        "bytes": 3431182
+      },
+      "gzip": {
+        "sha256": "4454f0338fde94943bd3def4dbf39848d2e36cc5484e027e53c1c2bd906f4acd",
+        "bytes": 110839
+      },
+      "checks": [
+        {
+          "slot": 0,
+          "kind": "log",
+          "sha256": "00d546dd9e4c9fdd5b75644cb30c06e2b2f79cf318a1ad174597233add27ccef",
+          "bytes": 621961
+        },
+        {
+          "slot": 0,
+          "kind": "perceptionMeasurements",
+          "sha256": "12bf5b6966ce437bee9b7d7a494d597b865375fa7287539666a4799c6f886b07",
+          "bytes": 548734
+        },
+        {
+          "slot": 1,
+          "kind": "log",
+          "sha256": "6f1252997e8b55ef768fc320587c90f3bf9880c9296ad68dc8bcdeb756245539",
+          "bytes": 1755351
+        },
+        {
+          "slot": 1,
+          "kind": "perceptionMeasurements",
+          "sha256": "5e067bd8864b08bcdaafe02d1fab12844cd458120fa9cf5d5997caa8e713136b",
+          "bytes": 1646691
+        },
+        {
+          "slot": 2,
+          "kind": "log",
+          "sha256": "d8794edac814ef1b8db70b2e0873c5b27a8768cdf24f63b1cc0b9ef05de1627d",
+          "bytes": 765780
+        },
+        {
+          "slot": 2,
+          "kind": "perceptionMeasurements",
+          "sha256": "130af833038b879ecad6f07fc75f07028593404dbb09c13517c3b96942da1500",
+          "bytes": 685008
+        }
+      ]
+    },
+    {
+      "mode": "classic",
+      "level": "normal",
+      "seed": 1,
+      "rawFile": "/tmp/human-ai-final-v15/raw-matches/classic/classic-normal-1.json",
+      "raw": {
+        "sha256": "4de6a3429fbc0c4da71ea618c258c7803e99544e32d15520ceee5f96c2e4601a",
+        "bytes": 2958266
+      },
+      "gzip": {
+        "sha256": "30b883ec7c8b9a5ceebc04609179c7d2d71e536b7ed2c4b81b2249d33c7e3413",
+        "bytes": 99501
+      },
+      "checks": [
+        {
+          "slot": 0,
+          "kind": "log",
+          "sha256": "e7e90ef383bae3280c3caff77e048a1af9c5e9e290e476074d8d1f83f95a3a9e",
+          "bytes": 524892
+        },
+        {
+          "slot": 0,
+          "kind": "perceptionMeasurements",
+          "sha256": "7fab90167c9f0692032d3e7fd387c6df2758cf87bdca7bc8f93edc461f696c85",
+          "bytes": 415324
+        },
+        {
+          "slot": 1,
+          "kind": "log",
+          "sha256": "1ba017765ae5afabd34281c0adfd1b5d66ef7997f536bd9a0c5830c252ea961c",
+          "bytes": 1082246
+        },
+        {
+          "slot": 1,
+          "kind": "perceptionMeasurements",
+          "sha256": "8cd6a28a0a35557fcf7f29d6dfebf3c4ac0e4076829d0b4fc6ec1208c1849c21",
+          "bytes": 956381
+        },
+        {
+          "slot": 2,
+          "kind": "log",
+          "sha256": "ebbeb5dcda9f293859bef4762d6f91b68b2fc8b80e3d25ee7396e4e9387d6d52",
+          "bytes": 1060776
+        },
+        {
+          "slot": 2,
+          "kind": "perceptionMeasurements",
+          "sha256": "9a994944ce8cc29409de3c9e96d783e9ff29f6ad84fe73d266e0f945b59a0a75",
+          "bytes": 921207
+        }
+      ]
+    },
+    {
+      "mode": "classic",
+      "level": "hard",
+      "seed": 1,
+      "rawFile": "/tmp/human-ai-final-v15/raw-matches/classic/classic-hard-1.json",
+      "raw": {
+        "sha256": "5e439eaa008fec2eeca1e1fa134e3a13d0843a1ba36231fa2704dc3530b2c246",
+        "bytes": 3703472
+      },
+      "gzip": {
+        "sha256": "b95325c9f192466401f38291f50b101a25ad72fc0083bb9c1204b63dd7bd8998",
+        "bytes": 124941
+      },
+      "checks": [
+        {
+          "slot": 0,
+          "kind": "log",
+          "sha256": "9aadee81f9c3564579b8d17fadcd6b116924f820690586dc82bd9c38b3fa3192",
+          "bytes": 1175459
+        },
+        {
+          "slot": 0,
+          "kind": "perceptionMeasurements",
+          "sha256": "e10ecd62f4d2fc060736b6d272da340a1d2860246c8cedd600e8c0cd99f91351",
+          "bytes": 1022746
+        },
+        {
+          "slot": 1,
+          "kind": "log",
+          "sha256": "4a4902193ae6d8bd7bdf105862e68f672545c8be8d33cf259911887610a5669a",
+          "bytes": 1240669
+        },
+        {
+          "slot": 1,
+          "kind": "perceptionMeasurements",
+          "sha256": "d556262ad351b28c5090c0c2baab47ba3084bf7d80d4a66da96892950e73d49e",
+          "bytes": 1095926
+        },
+        {
+          "slot": 2,
+          "kind": "log",
+          "sha256": "99dae3bb5a7647875b123532f47fb756dc750a253e47795469577c90472f3b2e",
+          "bytes": 992819
+        },
+        {
+          "slot": 2,
+          "kind": "perceptionMeasurements",
+          "sha256": "8e5fff72749088e107a803af11ea8bd714734aa90a4d64414e3164c95882ecae",
+          "bytes": 853918
+        }
+      ]
+    },
+    {
+      "mode": "world",
+      "level": "easy",
+      "seed": 1,
+      "rawFile": "/tmp/human-ai-final-v15/raw-matches/world/world-easy-1.json",
+      "raw": {
+        "sha256": "0d75a803387286332afd6530f29a43c6f538893a178ddbffc4ff1cdb44d550c0",
+        "bytes": 673841
+      },
+      "gzip": {
+        "sha256": "0a18df51ceb827b3b9a34a59d06926311ebb45e7cc69fe8500723939fd4d4291",
+        "bytes": 50045
+      },
+      "checks": [
+        {
+          "slot": 0,
+          "kind": "log",
+          "sha256": "e51b1a87303552b613f2c238dcddfb7fee7e66e73faccef6cb3f402f9aa63715",
+          "bytes": 130062
+        },
+        {
+          "slot": 0,
+          "kind": "perceptionMeasurements",
+          "sha256": "2bbec62267ad4adc3b22acc1c28627fef2cc68302b7f60ec8d89836c3f22fd75",
+          "bytes": 49039
+        },
+        {
+          "slot": 1,
+          "kind": "log",
+          "sha256": "eeaece8e209a0d3e0fc8222e4acfa7ad934988eceeb5dc5a2fd8a722583c39c8",
+          "bytes": 141409
+        },
+        {
+          "slot": 1,
+          "kind": "perceptionMeasurements",
+          "sha256": "c64fb366242c38d1a3af80ef464a90e8412e74b4ca60be398021f1b6497f5f26",
+          "bytes": 55594
+        },
+        {
+          "slot": 2,
+          "kind": "log",
+          "sha256": "89e740904bd6bde8896125615e19bcc76522ff0d70534fa36dc0c3fe9c0ddd28",
+          "bytes": 124385
+        },
+        {
+          "slot": 2,
+          "kind": "perceptionMeasurements",
+          "sha256": "b61572c268ec0c364030e640643446b8c1bdaa5218417cb80a18795e07bb585e",
+          "bytes": 58230
+        }
+      ]
+    },
+    {
+      "mode": "world",
+      "level": "normal",
+      "seed": 1,
+      "rawFile": "/tmp/human-ai-final-v15/raw-matches/world/world-normal-1.json",
+      "raw": {
+        "sha256": "8df31c5d6fe4313db98a670b9dc6009413ac97012c1385ef4970ba7dd9c4c60e",
+        "bytes": 737840
+      },
+      "gzip": {
+        "sha256": "5bb507adb37e24d1f2be5fb3cbf7cfb383aeb31d81c2446c140bd00f0374ad62",
+        "bytes": 61999
+      },
+      "checks": [
+        {
+          "slot": 0,
+          "kind": "log",
+          "sha256": "23361fa2ec02dd76167b37cdbf7d977d68344cb3488b3ace45c4c4618bec73b4",
+          "bytes": 137362
+        },
+        {
+          "slot": 0,
+          "kind": "perceptionMeasurements",
+          "sha256": "e5cfcf88af8a3f0b32b6ad8f9bb105d6c8414eb00b64fba7d58a4b6a55b870a5",
+          "bytes": 13066
+        },
+        {
+          "slot": 1,
+          "kind": "log",
+          "sha256": "d126baa3a2ea1f896035bd3d86c69b076d89acfc7d3e14469a8212180274ad67",
+          "bytes": 133974
+        },
+        {
+          "slot": 1,
+          "kind": "perceptionMeasurements",
+          "sha256": "f06a6cdeaca821a5105f534a1cd20586ebf87f9bee0bae05c06f630d4b47f911",
+          "bytes": 13252
+        },
+        {
+          "slot": 2,
+          "kind": "log",
+          "sha256": "3339701e093a5666ccd6c236bfd0e0f00126887cde6447eecc5aa7ed70869cb2",
+          "bytes": 231087
+        },
+        {
+          "slot": 2,
+          "kind": "perceptionMeasurements",
+          "sha256": "fcdd709d60f2642e8b3ecde313d73c61eba08813798303c3775cb385a81c8436",
+          "bytes": 134726
+        }
+      ]
+    },
+    {
+      "mode": "world",
+      "level": "hard",
+      "seed": 1,
+      "rawFile": "/tmp/human-ai-final-v15/raw-matches/world/world-hard-1.json",
+      "raw": {
+        "sha256": "b935dbd8664d4ac1d1dd7ac44b860538ba8db4a78c3cf9bbb8afc79295e13f26",
+        "bytes": 1021952
+      },
+      "gzip": {
+        "sha256": "90e3d407f4306c1988000c9dff84b030068bf6f86656ae71ffe726de119461f8",
+        "bytes": 79721
+      },
+      "checks": [
+        {
+          "slot": 0,
+          "kind": "log",
+          "sha256": "795439f5efb745bfae957ecfc4fb8a5ee2a71b5c369091b4e9e866fa86f53906",
+          "bytes": 323545
+        },
+        {
+          "slot": 0,
+          "kind": "perceptionMeasurements",
+          "sha256": "0698dcf782400ef30cecacc4dd9270a186b44814a51c858b20a3af1920389c92",
+          "bytes": 150670
+        },
+        {
+          "slot": 1,
+          "kind": "log",
+          "sha256": "e934a9af07505369f72d4fba4e1782fed68cd944a25f0325cb8e556d02be0bdc",
+          "bytes": 203038
+        },
+        {
+          "slot": 1,
+          "kind": "perceptionMeasurements",
+          "sha256": "50d75751efa50beb19d336864350c5560d82825134ae52290226ec131c78640d",
+          "bytes": 70570
+        },
+        {
+          "slot": 2,
+          "kind": "log",
+          "sha256": "c09f1e5cf0bc0c4fb3cc9f2067259f20868caadf48b541dfcef9d8824b3c2f1a",
+          "bytes": 218631
+        },
+        {
+          "slot": 2,
+          "kind": "perceptionMeasurements",
+          "sha256": "3a30cc38b22dcb51140fb7723d10d3787fbe22174cc5cbc5c88b867e3e7a0e56",
+          "bytes": 86610
+        }
+      ]
+    }
+  ]
+}

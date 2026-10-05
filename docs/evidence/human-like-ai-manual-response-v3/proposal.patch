@@ -1,0 +1,621 @@
+--- /dev/null
++++ b/tools/ai-manual-response-policy-v3.mjs
+@@ -0,0 +1,383 @@
++import { isDeepStrictEqual } from 'node:util';
++
++export const MANUAL_RESPONSE_POLICY = 'screen-manual-v3';
++export const MANUAL_RESPONSE_STREAM = 'ww2-public-manual-response-v3';
++export function createManualResponsePolicy({ CELL, CFG, UNITS, SUPPORT, COVER, los, bindings = [] }) {
++const retreatBinding = bindings.find(binding=>binding.id === 'retreat');
++const near = (a, b, radius) => !!a && !!b && Math.hypot(a.x - b.x, a.z - b.z) <= radius;
++const distance = (a, b) => Math.hypot(a.x - b.x, a.z - b.z);
++const idsOf = cmd => cmd.orders?.map(row => row[0]) ?? cmd.ids ?? [];
++const descriptor = event => structuredClone(event);
++const keyOf = event => `${event.id}/${event.tick}`;
++const weapon = unit => UNITS[unit?.type]?.w;
++const alive = unit => unit && unit.hp > 0 && !(unit.flags & (512 | 262144));
++const enemy = (scene, unit) => alive(unit) && unit.team !== scene.team;
++const combat = unit => alive(unit) && !!weapon(unit) && !UNITS[unit.type].structure && !UNITS[unit.type].air
++  && !UNITS[unit.type].medic && unit.type !== 'engineer';
++const stationaryReady = (scene, unit) => unit.moving ? weapon(unit)?.moveFire !== undefined
++  : Number.isFinite(unit.firstStillTick) && scene.observationTick - unit.firstStillTick >= (weapon(unit)?.setup ?? 0) * 20;
++const effective = (unit, target) => {
++  const w = weapon(unit), def = UNITS[target?.type];
++  if (!w || !def) return false;
++  // Small arms can chip a vehicle without being a useful automatic answer to armor.
++  return def.infantry ? w.inf > 0 || w.supp > 0 : w.veh > 0 && w.veh > w.inf;
++};
++const firingAllowed = (unit, target) => !unit.holdFire || unit.attackId === target.id;
++const clear = (scene, a, b) => scene.sightlines.find(row => row.from === a.id && row.to === b.id)?.clear === true;
++const canEngage = (scene, a, b) => !!weapon(a) && enemy({ ...scene, team: a.team }, b)
++  && near(a, b, weapon(a).range) && (!weapon(a).salvo || distance(a, b) >= (weapon(a).minRange ?? 0)) && (weapon(a).salvo || clear(scene, a, b));
++const publicRisk = unit => unit.healthShare < .35 || UNITS[unit.type].models > 1
++  && Math.ceil(unit.hp / UNITS[unit.type].hpPer) <= 1 || unit.pinned && unit.healthShare < .6;
++const provablyOutsideRisk = unit => unit.healthLower >= .35
++  && (UNITS[unit.type].models <= 1 || Math.ceil(unit.healthLower * unit.full / UNITS[unit.type].hpPer) > 1)
++  && !(unit.pinned && unit.healthLower < .6);
++
++function publicClear(view, a, b) {
++  if (!view.chars || !view.flags || !Array.isArray(view.smokes)) return null;
++  // Unknown World cells cannot establish an automatic firing opportunity.
++  const n = Math.ceil(distance(a, b) / (CELL / 2));
++  for (let i = 0; i <= n; i++) {
++    const t = n ? i / n : 0, x = a.x + (b.x - a.x) * t, z = a.z + (b.z - a.z) * t;
++    const cell = Math.floor(z / CELL) * view.w + Math.floor(x / CELL);
++    if (view.chars[cell] === '?' || view.chars[cell] === undefined) return null;
++  }
++  return los({ w: view.w, h: view.h, flags: view.flags, height: view.height, smokes: view.smokes }, a, b);
++}
++
++// Accept only the masked human scene, not a raw snapshot or authoritative game.
++function capturePublicScene(view, slot, recordedTick = view.tick) {
++  if (!(view.screenIds instanceof Set) || !(view.units instanceof Map) || !Number.isSafeInteger(view.tick))
++    throw new Error('A current public screen and its observation tick are required');
++  if (!Number.isSafeInteger(recordedTick) || recordedTick < view.tick) throw new Error('Invalid public recording clock');
++  const rows = [...view.screenIds].map(id => view.units.get(id)).filter(Boolean);
++  const units = rows.map(unit => {
++    const def = UNITS[unit.type], full = def.models * def.hpPer, share = unit.hp / full;
++    if (!['world-bar','selected-hud'].includes(unit.hpSource) || unit.hpObservedTick !== view.tick)
++      throw new Error('Fresh public health provenance is required');
++    const exact = unit.hpSource === 'selected-hud' && unit.exactHPKnown === true;
++    return { id: unit.id, type: unit.type, owner: unit.owner, team: view.players[unit.owner]?.team,
++      x: unit.x, z: unit.z, hp: unit.hp, full, healthShare: share,
++      healthLower: Math.max(0, exact ? (unit.hp - 1) / full : share - .025),
++      healthUpper: Math.min(1, exact ? unit.hp / full : share + .025),
++      hpSource: unit.hpSource, flags: unit.flags, pinned: unit.suppressionBand === 'pinned',
++      suppressed: unit.suppressionBand === 'suppressed', targetId: unit.targetId, attackId: unit.attackId,
++      retreating: unit.retreating, garrison: unit.garrison, cover: unit.cover, holdFire: unit.holdFire,
++      holdPos: unit.holdPos, autoRetreat: unit.autoRetreat, moving: !!unit.path.length,
++      pathEnd: unit.path.at(-1) ? { x: unit.path.at(-1).x, z: unit.path.at(-1).z } : null,
++      firstStillTick: Number.isFinite(unit.firstStillAt) ? unit.firstStillAt * 20 : null,
++      idle: !unit.retreating && !unit.path.length && !unit.orders.length && !unit.amove && !unit.attackId
++        && !unit.targetId && !unit.dig && !unit.build && !unit.entrench && unit.enter < 0 && unit.fireAt < 0 && !unit.nade,
++      cdKnown: unit.cdKnown === true, cd: unit.cdKnown === true ? unit.cd : null };
++  });
++  const possibleHomes = view.mode?.kind === 'world' ? null : [view.players[slot].spawn,
++    ...(view.mode?.kind === 'classic' ? (view.minimap ?? []).filter(dot => dot.owner === slot
++      && UNITS[view.units.get(dot.id)?.type]?.produces) : [])].filter(Boolean).map(at => ({ x: at.x, z: at.z }));
++  return { schema: 'ww2-public-screen-proof-v1', observationTick: view.tick, recordedTick, slot, team: view.players[slot].team,
++    ownSpawn:{x:view.players[slot].spawn.x,z:view.players[slot].spawn.z},
++    mode: view.mode?.kind ?? 'conquest', scriptedSlot: view.mode?.slot ?? null, units, possibleHomes,
++    coverSites: view.chars.flatMap((ch, cell) => ch !== '?' && view.flags[cell] & COVER ? [{ x:(cell % view.w + .5)*CELL, z:(Math.floor(cell/view.w)+.5)*CELL }] : []),
++    fortifications: view.chars.flatMap((ch, cell) => ch === 'B' ? [{ x: (cell % view.w + .5) * CELL, z: (Math.floor(cell / view.w) + .5) * CELL }] : []),
++    objectives: (view.points ?? []).map(point => ({ x: point.x, z: point.z, contested: point.contested })),
++    sightlines: units.flatMap(a => units.filter(b => b.team !== a.team).map(b => ({ from: a.id, to: b.id, clear: publicClear(view, a, b) }))) };
++}
++
++function automaticRetreat(scene, unit) {
++  return unit.autoRetreat && scene.slot !== scene.scriptedSlot && UNITS[unit.type].speed > 0 && !UNITS[unit.type].air
++    && unit.healthUpper < CFG.autoRetreat && Array.isArray(scene.possibleHomes) && scene.possibleHomes.length > 0
++    && scene.possibleHomes.every(home => distance(home, unit) > CFG.reinforceRadius);
++}
++function automaticCombat(scene, unit, contact) {
++  if (!provablyOutsideRisk(unit) || !stationaryReady(scene, unit) || unit.retreating) return false;
++  const foes = scene.units.filter(other => enemy(scene, other));
++  if (UNITS[unit.type].infantry && foes.some(other => !UNITS[other.type].infantry && effective(other, unit)
++    && canEngage(scene, other, unit) && !effective(unit, other))) return false;
++  const target = scene.units.find(other => other.id === unit.targetId) ?? contact;
++  return enemy(scene, target) && effective(unit, target) && firingAllowed(unit, target)
++    && (!weapon(unit).area || unit.attackId === target.id) && canEngage(scene, unit, target);
++}
++function fortifiedHold(scene, unit) {
++  return provablyOutsideRisk(unit) && (unit.garrison >= 0 || unit.cover === 2)
++    && !scene.objectives.some(point => point.contested && near(point, unit, 24))
++    && !scene.units.some(other => enemy(scene, other) && effective(other, unit) && canEngage(scene, other, unit));
++}
++function paidProtection(scene, event, unit, flights, authority) {
++  // Only a confirmed, already-started issuing gesture can cover a later cue. A selection or queued plan cannot.
++  return flights.find(flight => authority?.nativeCreations?.some(cause => isDeepStrictEqual(cause,flight.cause))
++    && authority?.records?.some(record => isDeepStrictEqual(record,flight.causeRecord))
++    && authority?.physicalStarts?.some(start => start.id === flight.startReceiptId && start.operationId === flight.operationId
++      && start.queuedTick === flight.queuedTick && start.startedTick === flight.inputStartedTick
++      && start.fire === true && start.registeredAtTick === start.startedTick
++      && Number.isSafeInteger(start.lastActiveTick) && start.lastActiveTick >= event.tick
++      && (start.completedTick === null || Number.isSafeInteger(start.completedTick) && start.completedTick >= event.tick)
++      && start.kind === flight.kind && isDeepStrictEqual(start.input,flight.input)
++      && isDeepStrictEqual(start.actualSelectedIds,flight.actualSelectedIds)
++      && isDeepStrictEqual(start.command,flight.command)
++      && start.events.some(cause=>isDeepStrictEqual(cause,flight.cause)))
++    && (event.kind === 'screen-contact' && ['amove','attack'].includes(flight.command?.t)
++      && flight.command.queue !== true && ['place-click','rightclick'].includes(flight.kind)
++      && flight.source === 'physical-pointer-start' && flight.input?.button === (flight.command.t === 'amove' ? 0 : 2)
++      && idsOf(flight.command).includes(unit.id) && flight.actualSelectedIds?.includes(unit.id)
++      && [flight.inputStartedTick,flight.queuedTick,flight.declaredAtTick,flight.activeAtTick].every(Number.isSafeInteger)
++      && flight.activeAtTick === event.tick && flight.inputStartedTick < event.tick && flight.completedTick === null
++      && flight.cause?.tick < flight.inputStartedTick && flight.cause.tick <= flight.queuedTick
++      && flight.queuedTick <= flight.inputStartedTick && flight.declaredAtTick <= flight.inputStartedTick
++      && flight.causeRecord?.decision === 'required' && flight.causeRecord.manualUnits?.includes(unit.id)
++      && isDeepStrictEqual(flight.causeRecord.creation,descriptor(flight.cause))
++      && classifyManualCreation(flight.cause,flight.causeRecord.publicProof,flight.causeRecord.publicBaseline,[]).manualUnits.includes(unit.id)
++      && commandServesManualCreation(flight.command,{decision:'required',creation:event,manualUnits:[unit.id]},scene)
++      || flight.kind === 'retreat-key' && flight.command?.t === 'retreat'
++    && idsOf(flight.command).includes(unit.id) && flight.actualSelectedIds?.includes(unit.id)
++    && [flight.inputStartedTick,flight.queuedTick,flight.declaredAtTick,flight.activeAtTick].every(Number.isSafeInteger)
++    && flight.activeAtTick === event.tick && flight.inputStartedTick < event.tick
++    && flight.completedTick === null && flight.cause?.kind === 'screen-damage' && flight.cause.unitId === unit.id
++    && flight.cause.tick < flight.inputStartedTick && flight.cause.tick <= flight.queuedTick
++    && flight.queuedTick <= flight.inputStartedTick && flight.declaredAtTick <= flight.inputStartedTick
++    && flight.source === 'physical-key-start' && !!retreatBinding
++    && ['code','shift','ctrl','alt'].every(field=>flight.input?.[field] === retreatBinding[field])
++    && flight.causeRecord?.decision === 'required'
++    && flight.causeRecord.manualUnits?.includes(unit.id)
++    && isDeepStrictEqual(flight.causeRecord.creation, descriptor(flight.cause))
++    && classifyManualCreation(flight.cause,flight.causeRecord.publicProof,flight.causeRecord.publicBaseline,[]).manualUnits.includes(unit.id)
++    && Array.isArray(scene.possibleHomes) && scene.possibleHomes.length > 0
++    && scene.possibleHomes.every(home => !scene.units.some(foe => enemy(scene, foe) && weapon(foe)
++      && near(home, foe, weapon(foe).range)))));
++}
++
++function classifyManualCreation(event, scene, previous = null, flights = [], authority = null) {
++  const creation = descriptor(event);
++  const row = { policy: MANUAL_RESPONSE_POLICY, creation, decision: 'unknown', reason: 'missing-public-creation-proof',
++    creationUnits: [], manualUnits: [], coverage: [], publicProof: scene ? structuredClone(scene) : null,
++    publicBaseline: previous ? structuredClone(previous) : null, inFlightProof: structuredClone(flights) };
++  if (!scene || scene.schema !== 'ww2-public-screen-proof-v1' || event.observationTick !== scene.observationTick
++    || event.tick !== scene.recordedTick) return row;
++  if (event.source !== 'screen' || !event.onScreen || !['screen-contact','screen-damage'].includes(event.kind)) {
++    row.reason = 'outside-screen-policy'; return row;
++  }
++  const own = unit => alive(unit) && unit.owner === scene.slot && !UNITS[unit.type].structure && !UNITS[unit.type].air && !(unit.flags & 262144);
++  const target = scene.units.find(unit => unit.id === event.targetId);
++  const victim = scene.units.find(unit => unit.id === event.unitId);
++  let candidates;
++  if (event.kind === 'screen-contact') {
++    if (!enemy(scene, target)) return row;
++    candidates = scene.units.filter(unit => own(unit) && combat(unit) && unit.idle && near(unit, target, 45));
++  } else {
++    if (victim && (UNITS[victim.type].air || victim.flags & 262144)) { row.decision='monitoring';row.reason='outside-ground-damage-policy';return row; }
++    if (!own(victim)) return row;
++    const old = previous?.units?.find(unit => unit.id === victim.id);
++    if (!old || previous.observationTick >= scene.observationTick) { row.reason = 'missing-public-damage-baseline'; return row; }
++    const heavy = (old.hp - victim.hp) / victim.full >= .25 - 1e-9;
++    const risk = !publicRisk(old) && publicRisk(victim);
++    candidates = heavy || risk ? [victim] : [];
++  }
++  row.creationUnits = candidates.map(unit => unit.id);
++  for (const unit of candidates) {
++    let reason = null, protection = null;
++    if (unit.retreating) reason = 'already-retreating';
++    else if (automaticRetreat(scene, unit)) reason = 'automatic-retreat-provable';
++    else if ((protection = paidProtection(scene, event, unit, flights, authority))) reason = event.kind === 'screen-contact' && protection.source === 'physical-pointer-start' ? 'paid-response-in-flight' : 'paid-protection-in-flight';
++    else if (automaticCombat(scene, unit, target)) reason = 'automatic-useful-combat';
++    else if (event.kind === 'screen-contact' && fortifiedHold(scene, unit)) reason = 'fortified-monitoring-hold';
++    if (reason) row.coverage.push({ actorId: unit.id, reason, ...(protection && { inputStartedTick: protection.inputStartedTick,
++      command: structuredClone(protection.command), cause: descriptor(protection.cause) }) });
++    else row.manualUnits.push(unit.id);
++  }
++  row.decision = row.manualUnits.length ? 'required' : 'monitoring';
++  row.reason = row.manualUnits.length ? event.kind === 'screen-contact' ? 'idle-combat-contact' : 'public-heavy-or-risk-damage'
++    : candidates.length ? 'covered-at-creation' : 'no-manual-demand';
++  return row;
++}
++
++function threatening(scene, creation, unit) {
++  const contact = scene.units.find(other => other.id === creation.targetId);
++  return scene.units.filter(other => enemy(scene, other) && effective(other, unit) && canEngage(scene, other, unit)
++    && (creation.kind === 'screen-damage' ? near(other, unit, 48) : other.id === contact?.id || near(other, contact, 24)));
++}
++function commandServesManualCreation(cmd, record, scene) {
++  if (record.decision !== 'required' || !scene || scene.schema !== 'ww2-public-screen-proof-v1') return false;
++  const event = record.creation, eligible = record.manualUnits;
++  const own = idsOf(cmd).map(id => scene.units.find(unit => unit.id === id)).filter(unit => alive(unit) && unit.owner === scene.slot);
++  const affected = own.filter(unit => eligible.includes(unit.id));
++  const target = scene.units.find(unit => unit.id === cmd.target);
++  const foesFor = unit => threatening(scene, event, unit);
++  if (cmd.t === 'retreat') return affected.some(unit => event.kind === 'screen-damage' || foesFor(unit).length > 0);
++  if (cmd.t === 'attack') return affected.some(unit => enemy(scene, target) && effective(unit, target)
++    && canEngage(scene, unit, target) && (event.targetId === target.id || foesFor(unit).includes(target)));
++  if (['move','amove'].includes(cmd.t)) return (cmd.orders ?? []).some(([id,x,z]) => {
++    const unit = affected.find(unit => unit.id === id), at = { x,z };
++    if (!unit || !Number.isFinite(x) || !Number.isFinite(z)) return false;
++    const threats = foesFor(unit);
++    // The 2.5m bound is the engine's attack-move arrival tolerance, not a fitted response-time threshold.
++    const pullback = threats.some(foe => distance(at, foe) >= distance(unit, foe) + 2.5)
++      && threats.every(foe => distance(at, foe) >= distance(unit, foe))
++      && !scene.units.some(foe => enemy(scene, foe) && weapon(foe) && !near(unit, foe, weapon(foe).range)
++        && near(at, foe, weapon(foe).range));
++    if (pullback) return true;
++    const contact = scene.units.find(foe => foe.id === event.targetId);
++    return cmd.t === 'amove' && enemy(scene, contact) && effective(unit, contact) && near(at, contact, 24)
++      && distance(at, contact) < distance(unit, contact) && near(at, contact, weapon(unit).range);
++  });
++  if (cmd.t === 'cover') return affected.some(unit => UNITS[unit.type].infantry && !unit.retreating
++    && unit.cover !== 2 && unit.garrison < 0 && foesFor(unit).length > 0
++    && scene.coverSites.some(site => near(site,unit,CFG.behavior.coverSeek)));
++  if (cmd.t === 'garrison') return affected.some(unit => UNITS[unit.type].garrisons
++    && unit.garrison < 0 && foesFor(unit).length > 0
++    && (scene.fortifications ?? []).some(site => near(site, cmd, CELL / 2) && near(site, unit, 24)));
++  const at = Number.isFinite(cmd.x) && Number.isFinite(cmd.z) ? cmd : null;
++  const protectedUnits = scene.units.filter(unit => eligible.includes(unit.id));
++  if (cmd.t === 'ability') return own.some(unit => {
++    const ab = UNITS[unit.type].ab;
++    if (!ab) return false;
++    if (['suppress','ap'].includes(ab.id)) {
++      const current=scene.units.find(foe=>foe.id===unit.targetId);
++      return unit.hpSource==='selected-hud' && unit.cdKnown && unit.cd<=0 && !unit.retreating
++        && stationaryReady(scene,unit) && enemy(scene,current) && firingAllowed(unit,current) && canEngage(scene,unit,current)
++        && protectedUnits.some(victim=>foesFor(victim).includes(current))
++        && (ab.id==='suppress' ? UNITS[current.type].infantry && !current.retreating && weapon(unit).supp>0 && !(unit.flags&2)
++          : !weapon(unit).shellTerrain && !weapon(unit).blast && !weapon(unit).area && !weapon(unit).salvo
++            && !UNITS[current.type].infantry && !UNITS[current.type].structure && (!ab.naval || UNITS[current.type].naval)
++            && effective(unit,current) && !(unit.flags&4));
++    }
++    if (!at || !unit.cdKnown || unit.cd > 0 || !near(unit, at, ab.range ?? 0)) return false;
++    if (ab.id === 'grenade' || ab.id === 'satchel') return protectedUnits.some(victim => foesFor(victim)
++      .some(foe => near(foe, at, ab.radius ?? 0))) && !scene.units.some(friend => friend.team === scene.team && near(friend, at, ab.radius ?? 0));
++    return false;
++  });
++  if (cmd.t === 'support' && at && cmd.kind === 'smoke') return protectedUnits.some(unit => near(at, unit, 24)
++    && (event.kind === 'screen-damage' || foesFor(unit).length > 0)
++    && near(at, unit, SUPPORT.smoke.cloud));
++  if (cmd.t==='support' && at && ['dive','artillery','bombing','strafe'].includes(cmd.kind)) {
++    const sp=SUPPORT[cmd.kind], spawn=scene.ownSpawn;
++    if (!sp || !Number.isFinite(cmd.dir) && !spawn) return false;
++    const dir=Number.isFinite(cmd.dir)?cmd.dir:Math.atan2(at.z-spawn.z,at.x-spawn.x);
++    const inside=(point,hazard=false)=>{
++      if(cmd.kind==='dive')return near(at,point,sp.blast);
++      const dx=point.x-at.x,dz=point.z-at.z,along=Math.abs(dx*Math.cos(dir)+dz*Math.sin(dir)),side=Math.abs(-dx*Math.sin(dir)+dz*Math.cos(dir));
++      const width=cmd.kind==='bombing'?3:sp.width, margin=hazard?(sp.blast??0):0;
++      return along<=sp.len/2+margin && side<=width/2+margin;
++    };
++    return !scene.units.some(friend=>alive(friend)&&friend.team===scene.team&&inside(friend,true))
++      && protectedUnits.some(victim=>foesFor(victim).some(foe=>!UNITS[foe.type].air
++        && (UNITS[foe.type].infantry ? sp.inf>0 || sp.supp>0 : sp.veh>sp.inf) && inside(foe)));
++  }
++  return false;
++}
++
++function defensiveEffect(receipt, record, stream, log) {
++  const frame = stream.publicFrames?.find(row=>row.id === receipt.publicAfterFrameId);
++  const first = stream.publicFrames?.find(row=>row.scene.observationTick > receipt.publicScene.observationTick && row.tick > receipt.tick);
++  if (!frame || frame !== first || !isDeepStrictEqual(frame.scene,receipt.publicAfter)
++    || (log.commands ?? []).some((row,index)=>index > receipt.commandIndex && row.tick <= frame.tick
++      && idsOf(row.command).some(id=>idsOf(receipt.command).includes(id)))) return false;
++  const before=receipt.publicScene, after=receipt.publicAfter;
++  if (!after || after.schema !== 'ww2-public-screen-proof-v1' || after.recordedTick < receipt.tick
++    || after.slot !== before.slot || after.observationTick < before.observationTick) return false;
++  return idsOf(receipt.command).filter(id=>record.manualUnits.includes(id)).some(id=>{
++    const a=before.units.find(unit=>unit.id===id), b=after.units.find(unit=>unit.id===id);
++    if (!a || !b || b.owner!==a.owner) return false;
++    if (receipt.command.t==='garrison') return b.garrison>=0 && a.garrison<0
++      || b.pathEnd && before.fortifications.some(site=>near(site,b.pathEnd,CELL/2));
++    return b.cover===2 && a.cover!==2 || b.cover===1 && ![1,2].includes(a.cover)
++      || b.pathEnd && before.coverSites.some(site=>near(site,b.pathEnd,CELL/2));
++  });
++}
++function scoreManualResponses(log, seconds, kaplanMeier) {
++  const stream = log.manualMeasurements;
++  if (stream?.schema !== MANUAL_RESPONSE_STREAM || stream.policy !== MANUAL_RESPONSE_POLICY)
++    return { policy: MANUAL_RESPONSE_POLICY, evaluable: false, reason: 'missing-prospective-public-stream' };
++  const supplied = stream.creations ?? [], records = [];
++  const nativeCreations=log.events ?? [];
++  for (const row of supplied) records.push(classifyManualCreation(row.creation,row.publicProof,row.publicBaseline,row.inFlightProof,
++    {nativeCreations,records,physicalStarts:stream.physicalStarts ?? []}));
++  const inconsistent = supplied.filter((row,index) => !isDeepStrictEqual(row,records[index])
++    || !nativeCreations.some(event=>isDeepStrictEqual(event,row.creation))
++    || supplied.filter(other=>keyOf(other.creation)===keyOf(row.creation)).length!==1).length;
++  const nativeScreen = (log.events ?? []).filter(event => event.source === 'screen' && ['screen-contact','screen-damage'].includes(event.kind));
++  const missing = nativeScreen.filter(event => !records.some(row => isDeepStrictEqual(row.creation,event)));
++  for (const event of missing) records.push(classifyManualCreation(event,null));
++  const population = new Map(records.map(row => [keyOf(row.creation), row]));
++  const end = Math.round(seconds * 20), answers = new Map();
++  const audit = { missingCreationProofs: missing.length, inconsistentClassifications: inconsistent, declared: 0, valid: 0, futureOrStale: 0, descriptorMismatch: 0, unknownCreation: 0, unrelatedCommand: 0,
++    missingOperationProof: 0, invalidNativeReceipt: 0, belowReactionFloor: 0 };
++  for (const operation of stream.operations ?? []) {
++    for (const link of operation.events ?? []) {
++      audit.declared++;
++      const record = population.get(keyOf(link));
++      if (!record || record.policy !== MANUAL_RESPONSE_POLICY) { audit.unknownCreation++; continue; }
++      if (!isDeepStrictEqual(link, record.creation)) { audit.descriptorMismatch++; continue; }
++      if (![operation.queuedTick,operation.inputStartedTick].every(Number.isSafeInteger)
++        || link.tick > operation.queuedTick || link.tick > operation.inputStartedTick
++        || operation.queuedTick > operation.inputStartedTick || operation.queuedTick - link.tick > 240) {
++        audit.futureOrStale++; continue;
++      }
++      if (operation.publicScene?.recordedTick !== operation.queuedTick
++        || operation.publicScene?.observationTick > operation.queuedTick
++        || !commandServesManualCreation(operation.command, record, operation.publicScene)) { audit.unrelatedCommand++; continue; }
++      const responses = [];
++      for (const receipt of stream.inputReceipts ?? []) {
++        if (receipt.operationId !== operation.id) continue;
++        const input=log.inputs?.[receipt.inputIndex], start=(stream.physicalStarts ?? []).find(row=>row.id === receipt.startReceiptId);
++        const valid=input && start && Number.isSafeInteger(receipt.inputIndex)
++          && [input.tick,input.inputStartedTick,input.queuedTick,start.startedTick,start.queuedTick,receipt.tick].every(Number.isSafeInteger)
++          && start.operationId === operation.id && receipt.tick === input.tick
++          && input.queuedTick === operation.queuedTick && start.queuedTick === operation.queuedTick
++          && input.inputStartedTick === start.startedTick && input.inputStartedTick >= operation.inputStartedTick
++          && input.tick >= input.inputStartedTick && input.tick <= end
++          && start.kind === input.kind && isDeepStrictEqual(start.input ?? null,input.input ?? null)
++          && isDeepStrictEqual(start.command,operation.command) && isDeepStrictEqual(start.events,operation.events)
++          && isDeepStrictEqual(receipt.nativeDescriptor,input) && isDeepStrictEqual(receipt.recipe,operation.command)
++          && receipt.inputIndex === (stream.inputReceipts ?? []).find(row=>row.inputIndex === receipt.inputIndex)?.inputIndex
++          && (stream.inputReceipts ?? []).filter(row=>row.inputIndex === receipt.inputIndex).length === 1;
++        if (!valid) { audit.invalidNativeReceipt++; continue; }
++        responses.push({input,receipt,start});
++      }
++      let first = responses.find(({input,start}) => {
++        if (input.countsAPM === false || input.kind === 'beat' || input.actor === 'human' && input.kind === 'command'
++          || input.kind?.startsWith('camera-')) return false;
++        if (input.command) return start.fire === true && input.command.t === operation.command.t;
++        const selection = ['select-click','select-add-click','select-box','group-recall'].includes(input.kind);
++        return (selection || start.input && !input.kind?.startsWith('camera-'))
++          && isDeepStrictEqual(start.intendedIds,idsOf(operation.command));
++      })?.input;
++      if (!first) audit.missingOperationProof++;
++      if (first && first.tick - link.tick < 4) { audit.belowReactionFloor++; first = null; }
++      const answer = answers.get(keyOf(link)) ?? { firstActionTick: null, acceptedCommandTick: null };
++      if (first) answer.firstActionTick = Math.min(answer.firstActionTick ?? Infinity, first.tick);
++      for (const {input,receipt:inputReceipt,start} of responses) {
++        const commandIndex = log.commands?.findIndex(row => row.tick === input.tick && isDeepStrictEqual(row.command, input.command));
++        const nativeReceipt = commandIndex >= 0 ? log.commands[commandIndex] : null;
++        const proof = (stream.receipts ?? []).find(row => row.commandIndex === commandIndex && row.inputIndex === inputReceipt.inputIndex
++          && row.operationId === operation.id && row.startReceiptId === start.id);
++        const receipt = nativeReceipt && proof ? { ...nativeReceipt, ...proof, commandIndex } : null;
++        if (start.fire === true && input.command?.t === operation.command.t && receipt?.accepted === true && input.tick - link.tick >= 4 && input.tick <= end
++          && receipt.publicScene?.recordedTick === receipt.tick
++          && (receipt.command.t === 'support' || idsOf(receipt.command).some(id => input.ids?.includes(id)))
++          && commandServesManualCreation(receipt.command, record, receipt.publicScene)
++          && (!['cover','garrison'].includes(receipt.command.t) || defensiveEffect(receipt, record, stream, log)))
++          answer.acceptedCommandTick = Math.min(answer.acceptedCommandTick ?? Infinity, input.tick);
++      }
++      answers.set(keyOf(link), answer); audit.valid++;
++    }
++  }
++  const required = records.filter(row => row.policy === MANUAL_RESPONSE_POLICY && row.decision === 'required'),
++    unknown = records.filter(row => row.policy !== MANUAL_RESPONSE_POLICY || row.decision === 'unknown');
++  const endpoint = field => {
++    const samples = required.map(record => ({ seconds: ((answers.get(keyOf(record.creation))?.[field] ?? end) - record.creation.tick) / 20,
++      observed: answers.get(keyOf(record.creation))?.[field] != null }));
++    return { required: required.length, answered: samples.filter(sample => sample.observed).length,
++      censored: samples.filter(sample => !sample.observed).length, survival: kaplanMeier(samples) };
++  };
++  return { policy: MANUAL_RESPONSE_POLICY, evaluable: stream.startedTick === 0 && !unknown.length && !inconsistent && Array.isArray(log.events) && required.length > 0
++      && log.physicalInputsRecorded === true && stream.operationLinksRecorded === true,
++    creationEvents: records.length, requiredEvents: required.length, unknownEvents: unknown.length,
++    monitoringEvents: records.filter(row => row.decision === 'monitoring').length,
++    reasons: Object.fromEntries([...new Set(records.map(row=>row.reason))].map(reason=>[reason,records.filter(row=>row.reason===reason).length])),
++    exclusions: records.flatMap(row => row.coverage), firstCompletedAction: endpoint('firstActionTick'),
++    acceptedCommand: endpoint('acceptedCommandTick'), audit,
++    physicalEndpointKnown: log.physicalInputsRecorded === true && stream.operationLinksRecorded === true,
++    physicalInputCount: (log.inputs ?? []).filter(input => input.countsAPM !== false && input.kind !== 'beat'
++      && !(input.actor === 'human' && input.kind === 'command')).length,
++    rows: records.map(record => ({ ...record, answer: answers.get(keyOf(record.creation)) ?? null })) };
++}
++
++return { capturePublicScene, classifyManualCreation, commandServesManualCreation, scoreManualResponses };
++}
+--- /dev/null
++++ b/tools/ai-manual-response-capture-v3.mjs
+@@ -0,0 +1,95 @@
++import { isDeepStrictEqual } from 'node:util';
++import { MANUAL_RESPONSE_POLICY, MANUAL_RESPONSE_STREAM, createManualResponsePolicy } from './ai-manual-response-policy-v3.mjs';
++
++// The grader owns this state. No proof or classification is written into commander memory.
++export function createManualCapture({slot,log,memory,rules,perceive,observer,onProof}) {
++  const policy=createManualResponsePolicy(rules), jobs=new WeakMap(), actions=new WeakMap();
++  const stream=log.manualMeasurements={schema:MANUAL_RESPONSE_STREAM,policy:MANUAL_RESPONSE_POLICY,startedTick:0,
++    operationLinksRecorded:true,creations:[],operations:[],physicalStarts:[],inputReceipts:[],receipts:[],publicFrames:[]};
++  const detachedState={camera:{},hands:{selected:[]}}, pending=[];
++  let previous=null, nextId=0;
++  const next=prefix=>`${prefix}:${slot}:${nextId++}`;
++  const sceneAt=tick=>memory.human?.view ? policy.capturePublicScene(memory.human.view,slot,tick) : null;
++  const operationFor=(job,tick)=>{
++    if (!job?.command || !Number.isSafeInteger(job.queuedTick)) return null;
++    if (jobs.has(job)) return jobs.get(job);
++    // A job first seen after its enqueue clock has no prospective attribution proof.
++    if (job.queuedTick!==tick) return null;
++    const scene=sceneAt(tick); if(!scene) return null;
++    const command=structuredClone(job.command);
++    const operation={id:next('operation'),queuedTick:job.queuedTick,inputStartedTick:null,command,
++      publicScene:scene,events:stream.creations.filter(row=>row.decision==='required' && row.creation.tick<=job.queuedTick
++        && job.queuedTick-row.creation.tick<=240 && policy.commandServesManualCreation(command,row,scene))
++        .map(row=>structuredClone(row.creation))};
++    jobs.set(job,operation);stream.operations.push(operation);return operation;
++  };
++  const startFor=(hands,tick)=>{
++    const active=hands?.active, action=active?.actions?.[active.index];
++    if (!active || active.reacting || !Number.isSafeInteger(action?.startedTick)) return null;
++    if(actions.has(action)) {const start=actions.get(action);start.lastActiveTick=tick;return start;}
++    const operation=operationFor(active.job,tick);if(!operation)return null;
++    const receipt={id:next('motor'),operationId:operation.id,registeredAtTick:tick,queuedTick:operation.queuedTick,
++      startedTick:action.startedTick,lastActiveTick:tick,completedTick:null,kind:action.kind,input:structuredClone(action.input ?? null),fire:action.fire===true,
++      intendedIds:structuredClone(active.job.ids ?? []),actualSelectedIds:[...hands.selected],command:structuredClone(operation.command),events:structuredClone(operation.events)};
++    actions.set(action,receipt);stream.physicalStarts.push(receipt);
++    operation.inputStartedTick=Math.min(operation.inputStartedTick ?? Infinity,receipt.startedTick);return receipt;
++  };
++  const flightsAt=(tick)=>{
++    const hands=memory.human?.hands, active=hands?.active, start=startFor(hands,tick);
++    if (!start || start.registeredAtTick!==start.startedTick || !(['retreat-key','place-click','rightclick'].includes(start.kind)) || !start.fire) return [];
++    return start.events.filter(event=>start.kind==='retreat-key'?event.kind==='screen-damage':['screen-contact','screen-damage'].includes(event.kind)).map(cause=>({source:start.kind==='retreat-key'?'physical-key-start':'physical-pointer-start',
++      startReceiptId:start.id,operationId:start.operationId,input:structuredClone(start.input),kind:start.kind,
++      command:structuredClone(start.command),actualSelectedIds:structuredClone(start.actualSelectedIds),queuedTick:start.queuedTick,
++      inputStartedTick:start.startedTick,declaredAtTick:start.registeredAtTick,activeAtTick:tick,completedTick:null,
++      cause:structuredClone(cause),causeRecord:structuredClone(stream.creations.find(row=>isDeepStrictEqual(row.creation,cause)))}));
++  };
++  const flushCreations=()=>{
++    const native=memory.human?.events ?? [];
++    for(const packet of pending.splice(0)) {
++      const frame={id:next('frame'),tick:packet.tick,scene:packet.scene};stream.publicFrames.push(frame);
++      for(const hint of packet.events) {
++        const event=native.find(event=>event.id===hint.id && event.tick===hint.tick);
++        if(!event || event.source!=='screen' || stream.creations.some(row=>row.creation.id===event.id))continue;
++        const authority={nativeCreations:native,records:stream.creations,physicalStarts:stream.physicalStarts};
++        stream.creations.push(policy.classifyManualCreation(structuredClone(event),packet.scene,previous,packet.flights,authority));
++      }
++      for(const receipt of stream.receipts) if(receipt.publicAfterFrameId==null && packet.tick>receipt.tick
++        && packet.scene.observationTick>receipt.publicScene.observationTick) {
++        receipt.publicAfterFrameId=frame.id;receipt.publicAfter=structuredClone(packet.scene);
++      }
++      if(!previous || packet.scene.observationTick>=previous.observationTick) previous=structuredClone(packet.scene);
++    }
++  };
++  const perceptionMeasurements={
++    measureRaw(observation,seat,state,tick) {
++      detachedState.camera=structuredClone(state.camera);detachedState.hands.selected=[...state.hands.selected];
++      const publicView=perceive(observation,seat,detachedState,tick);
++      const scene=policy.capturePublicScene(publicView,slot,tick);
++      const proof=structuredClone(scene);onProof?.(proof);
++      pending.push({tick,scene:proof,events:[],flights:flightsAt(tick)});
++      return observer.measureRaw(observation,seat,state,tick);
++    },
++    onMeasurements(payload) {
++      const packet=pending.at(-1);if(packet)packet.events=payload.observed?.newEvents ?? [];
++      observer.onMeasurements(payload);
++    }
++  };
++  function afterThink(tick) {
++    flushCreations();const hands=memory.human?.hands;
++    for(const job of [hands?.active?.job,...(hands?.queue ?? [])])operationFor(job,tick);
++    startFor(hands,tick);
++  }
++  function input(input,index) {
++    flushCreations();const hands=memory.human?.hands,start=startFor(hands,input.tick);
++    if(!start)return;start.completedTick=input.tick;
++    const operation=jobs.get(hands.active.job);
++    stream.inputReceipts.push({inputIndex:index,operationId:operation.id,startReceiptId:start.id,tick:input.tick,
++      recipe:structuredClone(operation.command),nativeDescriptor:structuredClone(input)});
++    if(input.command) {
++      const commandIndex=log.commands.findLastIndex(row=>row.tick===input.tick && isDeepStrictEqual(row.command,input.command));
++      if(commandIndex>=0)stream.receipts.push({commandIndex,inputIndex:index,operationId:operation.id,startReceiptId:start.id,
++        tick:input.tick,publicScene:sceneAt(input.tick),publicAfter:null,publicAfterFrameId:null});
++    }
++  }
++  return {perceptionMeasurements,afterThink,input,stream,policy};
++}
+--- a/tools/ai-humanity.mjs
++++ b/tools/ai-humanity.mjs
+@@ -2,8 +2,10 @@
+ import assert from 'node:assert/strict';
+ import {createManualResponsePolicy,MANUAL_RESPONSE_POLICY} from './ai-manual-response-policy.mjs';
+ import {createManualCapture} from './ai-manual-response-capture.mjs';
++import {createManualResponsePolicy as createManualV3Policy,MANUAL_RESPONSE_POLICY as MANUAL_V3_POLICY} from './ai-manual-response-policy-v3.mjs';
++import {createManualCapture as createManualV3Capture} from './ai-manual-response-capture-v3.mjs';
+ export {createManualResponsePolicy,MANUAL_RESPONSE_POLICY,MANUAL_RESPONSE_STREAM} from './ai-manual-response-policy.mjs';
+-export function manualResponseMetrics(log,seconds,rules) {return createManualResponsePolicy(rules).scoreManualResponses(log,seconds,kaplanMeier);}
++export function manualResponseMetrics(log,seconds,rules) {return (log.manualMeasurements?.policy===MANUAL_V3_POLICY?createManualV3Policy:createManualResponsePolicy)(rules).scoreManualResponses(log,seconds,kaplanMeier);}
+ import { readFile, writeFile, readdir, stat, mkdir, mkdtemp, rm } from 'node:fs/promises';
+ import { tmpdir } from 'node:os';
+ import { writeJSON, hashJSON, rawJSONFile, readReport, stageGzip, temporaryOutput } from './json-stream.mjs';
+@@ -459,7 +461,7 @@
+ }
+ export async function sourceCheckpoint(legacy) {
+   const shared = (await readdir(resolve(root, 'shared'))).filter(name => name.endsWith('.js')).sort().map(name => `shared/${name}`);
+-  const files = ['tools/ai-humanity.mjs', 'tools/ai-manual-response-policy.mjs', 'tools/ai-manual-response-capture.mjs', 'tools/json-stream.mjs', ...shared, ...(legacy ? ['tools/legacy-ai/ai.js', 'tools/legacy-ai/ai-view.js', 'tools/legacy-ai/ai-mind.js'] : ['client/keys.js', 'tools/ai-screen-v1-oracle.js'])];
++  const files = ['tools/ai-humanity.mjs', 'tools/ai-manual-response-policy.mjs', 'tools/ai-manual-response-capture.mjs', 'tools/ai-manual-response-policy-v3.mjs', 'tools/ai-manual-response-capture-v3.mjs', 'tools/json-stream.mjs', ...shared, ...(legacy ? ['tools/legacy-ai/ai.js', 'tools/legacy-ai/ai-view.js', 'tools/legacy-ai/ai-mind.js'] : ['client/keys.js', 'tools/ai-screen-v1-oracle.js'])];
+   const hashes = Object.fromEntries(await Promise.all(files.map(async file => [file, createHash('sha256').update(await readFile(resolve(root, file))).digest('hex')])));
+   return { recordedAt: new Date().toISOString(), sha256: digest(hashes), files: hashes, method: 'File hashes captured in each worker immediately before its first commander import. The worker reuses those imported modules for its subsequent matches.' };
+ }
+@@ -540,7 +542,7 @@
+   const ai = await import(options.legacy ? './legacy-ai/ai.js' : '../shared/ai.js');
+   const oracle = ai.humanCommander ? await import('./ai-screen-v1-oracle.js') : null;
+   const viewModule = oracle ? await import('../shared/ai-view.js') : null;
+-  const manualEnabled=options.manualPolicy===MANUAL_RESPONSE_POLICY;
++  const manualEnabled=[MANUAL_RESPONSE_POLICY,MANUAL_V3_POLICY].includes(options.manualPolicy);
+   if(options.manualPolicy && !manualEnabled || manualEnabled && !ai.humanCommander) throw Error('Unsupported manual policy or controller');
+   const publicModule=manualEnabled ? await import('../shared/ai-perception.js') : null;
+   const handsModule=manualEnabled ? await import('../shared/ai-hands.js') : null;
+@@ -563,7 +565,7 @@
+       privateTickZeroObservation(g, slot, initialCache, viewModule.viewFor, oracle), slot, recordMeasurements(slot), oracle)) : null;
+ 
+     const manualMemories=manualEnabled ? g.players.map(()=>({})) : null;
+-    const manualCaptures=manualEnabled ? g.players.map((_,slot)=>createManualCapture({slot,log:logs[slot],memory:manualMemories[slot],
++    const manualCaptures=manualEnabled ? g.players.map((_,slot)=>(options.manualPolicy===MANUAL_V3_POLICY?createManualV3Capture:createManualCapture)({slot,log:logs[slot],memory:manualMemories[slot],
+       rules:{...sim,bindings:keyModule.bindings},perceive:publicModule.perceive,observer:privateObservers[slot],onProof:options.manualProofTransform})) : null;
+     const views = g.players.map((_, slot) => { if (ai.humanCommander && ai.startCommander) { ai.startCommander(g, slot, { w: g.w, h: g.h, spawn: g.players[slot].spawn, level: task.level, seed: task.seed },manualMemories ? {memory:manualMemories[slot]} : {}); return null; } return ai.observe?.(g, slot, initialCache); });
+     const cameraSpan = options.screenSpan ?? DEFAULT_SCREEN_SPAN;
+@@ -724,7 +726,7 @@
+       const pooled=endpoint=>kaplanMeier(measured.flatMap(score=>score[endpoint].survival.curve.flatMap(row=>[
+         ...Array.from({length:row.observed},()=>({seconds:row.seconds,observed:true})),
+         ...Array.from({length:row.censored},()=>({seconds:row.seconds,observed:false}))])));
+-      groups[`${mode}/${level}`].manualResponsePolicy={policy:MANUAL_RESPONSE_POLICY,totalSeats:seats.length,recordedSeats:measured.length,
++      groups[`${mode}/${level}`].manualResponsePolicy={policy:measured.every(score=>score.policy===measured[0].policy)?measured[0].policy:'mixed',totalSeats:seats.length,recordedSeats:measured.length,
+         evaluableSeats:measured.filter(score=>score.evaluable).length,
+         ...Object.fromEntries(['creationEvents','requiredEvents','monitoringEvents','unknownEvents'].map(key=>[key,measured.reduce((n,score)=>n+score[key],0)])),
+         firstCompletedAction:{answered:measured.reduce((n,score)=>n+score.firstCompletedAction.answered,0),censored:measured.reduce((n,score)=>n+score.firstCompletedAction.censored,0),survival:pooled('firstCompletedAction')},
+@@ -836,10 +838,10 @@
+   for (let i = 2; i < process.argv.length; i++) {
+     const key = process.argv[i].slice(2);
+     if (['legacy', 'logs'].includes(key)) { options[key] = true; continue; }
+-    if (!['mode', 'level', 'seeds', 'seconds', 'workers', 'map', 'out', 'compare', 'human-log', 'fit', 'screen-span', 'merge', 'package', 'archive', 'manual-policy'].includes(key) || !process.argv[i + 1]) throw Error('Usage: node tools/ai-humanity.mjs [--seeds N|1,3,8-10] [--mode conquest|classic|world|all] [--level easy|normal|hard|all] [--legacy] [--manual-policy screen-manual-v2] [--seconds N] [--workers N] [--out FILE] [--compare FILE] [--human-log FILE] [--fit FILE] [--logs] [--screen-span METRES] [--package FULL_REPORT --archive FILE.json.gz --out COMPACT_REPORT]');
++    if (!['mode', 'level', 'seeds', 'seconds', 'workers', 'map', 'out', 'compare', 'human-log', 'fit', 'screen-span', 'merge', 'package', 'archive', 'manual-policy'].includes(key) || !process.argv[i + 1]) throw Error('Usage: node tools/ai-humanity.mjs [--seeds N|1,3,8-10] [--mode conquest|classic|world|all] [--level easy|normal|hard|all] [--legacy] [--manual-policy screen-manual-v2|screen-manual-v3] [--seconds N] [--workers N] [--out FILE] [--compare FILE] [--human-log FILE] [--fit FILE] [--logs] [--screen-span METRES] [--package FULL_REPORT --archive FILE.json.gz --out COMPACT_REPORT]');
+     options[key] = process.argv[++i];
+   }
+-  if(options['manual-policy']) {if(options['manual-policy']!==MANUAL_RESPONSE_POLICY || options.legacy) throw Error('--manual-policy requires screen-manual-v2 and current commander'); options.manualPolicy=MANUAL_RESPONSE_POLICY;options.logs=true;}
++  if(options['manual-policy']) {if(![MANUAL_RESPONSE_POLICY,MANUAL_V3_POLICY].includes(options['manual-policy']) || options.legacy) throw Error('--manual-policy requires screen-manual-v2 or screen-manual-v3 and current commander'); options.manualPolicy=options['manual-policy'];options.logs=true;}
+   options.seconds = Number(options.seconds); options.workers = Number(options.workers); options.screenSpan = Number(options['screen-span'] ?? options.screenSpan);
+   if (!Number.isFinite(options.seconds) || options.seconds < 1 || !Number.isSafeInteger(options.workers) || options.workers < 1 || !Number.isFinite(options.screenSpan) || options.screenSpan <= 0) throw Error('Seconds, workers and screen span must be positive.');
+   if (options.package) {
+--- /dev/null
++++ b/test-engine-ai-manual-response-v3.js
+@@ -0,0 +1,39 @@
++import assert from 'node:assert/strict';
++import {serialize} from 'node:v8';
++import {writeFileSync} from 'node:fs';
++import {createGame,command,step,CELL,CFG,UNITS,SUPPORT,COVER,los} from './shared/sim.js';
++import {viewFor} from './shared/ai-view.js';
++import {perceive,onScreen} from './shared/ai-perception.js';
++import {createHands,enqueueDecision,advanceHands} from './shared/ai-hands.js';
++import {bindings} from './client/keys.js';
++import {createManualCapture} from './tools/ai-manual-response-capture-v3.mjs';
++import {createManualResponsePolicy} from './tools/ai-manual-response-policy-v3.mjs';
++import {kaplanMeier} from './tools/ai-humanity.mjs';
++const rules={CELL,CFG,UNITS,SUPPORT,COVER,los,bindings},policy=createManualResponsePolicy(rules),proof=[];
++const prior=Math.random;let rng=23;Math.random=()=>((rng=Math.imul(rng,1664525)+1013904223>>>0)/4294967296);
++function fixture(type='rifle',enemyType='tank',onProof){
++ const rows=Array(80).fill('.'.repeat(80));const g=createGame({w:80,h:80,rows,spawns:[{x:10,y:40},{x:70,y:40}],points:[]},['own','enemy'],false,[0,1],[0,1],{weather:false});g.units.clear();g.players.forEach(p=>Object.assign(p,{mp:10000,mun:1000}));assert.equal(command(g,0,{t:'buy',unit:type}),undefined);assert.equal(command(g,1,{t:'buy',unit:enemyType}),undefined);const own=[...g.units.values()].find(u=>u.owner===0),foe=[...g.units.values()].find(u=>u.owner===1);Object.assign(own,{x:80,z:80,holdFire:true,auto:false,autoRetreat:false});Object.assign(foe,{x:110,z:80,holdFire:true,auto:false});g.tick=96;for(let i=0;i<4;i++)step(g);
++ const state={camera:{x:85,z:80,yaw:0,distance:60}},memory={human:state},log={events:[],inputs:[],commands:[],physicalInputsRecorded:true};let capture;const hands=createHands({slot:0,seed:27,level:'hard',camera:state.camera,startedTick:100,log:i=>{log.inputs.push(structuredClone(i));capture.input(log.inputs.at(-1),log.inputs.length-1);}});hands.openingUntil=0;hands.openingDone=true;state.hands=hands;
++ capture=createManualCapture({slot:0,log,memory,rules,perceive,onProof,observer:{measureRaw:()=>null,onMeasurements:()=>{}}});
++ function deliver(){state.view=perceive(viewFor(g,0,{}),0,state,g.tick,capture.perceptionMeasurements);for(const e of state.events)if(!log.events.some(r=>r.id===e.id))log.events.push(structuredClone(e));capture.afterThink(g.tick);return state.view;}
++ function motor(){advanceHands(hands,g.tick,state.view,c=>{const r=command(g,0,c);log.commands.push({tick:g.tick,command:structuredClone(c),accepted:r===undefined,rejection:r??null});return r;});capture.afterThink(g.tick);}
++ function run(n){for(let i=0;i<n;i++){step(g);deliver();motor();}}
++ return{g,own,foe,state,hands,log,capture,deliver,motor,run};
++}
++try{
++ for(const kind of ['dive','artillery','bombing','strafe']){
++  const f=fixture('rifle',kind==='strafe'?'mg':'tank');const v=f.deliver(),record=f.capture.stream.creations.find(r=>r.creation.targetId===f.foe.id);assert.equal(record.decision,'required');const cmd={t:'support',kind,x:110,z:80,dir:Math.PI/2};assert.equal(policy.commandServesManualCreation(cmd,record,record.publicProof),true,kind+' actual public threat footprint');assert.ok(enqueueDecision(f.hands,cmd,v,{}));f.capture.afterThink(100);f.run(55);const score=policy.scoreManualResponses(f.log,f.g.tick/20,kaplanMeier);if(score.acceptedCommand.answered!==1)console.error(JSON.stringify({kind,audit:score.audit,commands:f.log.commands}));assert.equal(score.acceptedCommand.answered,1,kind+' native accepted endpoint');assert.ok(score.firstCompletedAction.answered>=1);assert.ok(f.log.commands.some(c=>c.accepted));const friend=structuredClone(record.publicProof);friend.units.push({...friend.units.find(u=>u.id===f.own.id),id:999,x:110,z:80});assert.equal(policy.commandServesManualCreation(cmd,record,friend),false,kind+' public friend hazard');assert.equal(policy.commandServesManualCreation({...cmd,x:145},record,record.publicProof),false,'wrong footprint');assert.equal(policy.commandServesManualCreation({...cmd,kind:'recon'},record,record.publicProof),false,'recon is not damaging support');assert.equal(policy.commandServesManualCreation({t:'ability',ids:[f.own.id]},record,record.publicProof),false,'unsupported unaimed grenade receives no credit');const denied=structuredClone(f.log);denied.commands.forEach(c=>c.accepted=false);assert.equal(policy.scoreManualResponses(denied,f.g.tick/20,kaplanMeier).acceptedCommand.answered,0,'rejected native receipt cannot credit acceptance');proof.push({kind,inputs:f.log.inputs,commands:f.log.commands,score});
++ }
++ for(const [type,enemyType]of [['mg','rifle'],['at','tank']]){
++  const f=fixture(type,enemyType);assert.equal(command(f.g,0,{t:'buy',unit:'rifle'}),undefined);const victim=[...f.g.units.values()].filter(u=>u.owner===0).at(-1);Object.assign(victim,{x:82,z:80,holdFire:true,auto:false,autoRetreat:false});f.own.holdFire=false;f.own.targetId=f.foe.id;f.own.firstStillAt=0;f.hands.selected=[f.own.id];const v=f.deliver();const record=f.capture.stream.creations.find(r=>r.creation.targetId===f.foe.id);const cmd={t:'ability',ids:[f.own.id]};assert.equal(record.decision,'required');f.run(42);const current=policy.capturePublicScene(f.state.view,0,f.g.tick);assert.equal(policy.commandServesManualCreation(cmd,record,current),true,type+' currently observed legal target readiness');assert.ok(enqueueDecision(f.hands,cmd,f.state.view,{}));f.capture.afterThink(f.g.tick);f.run(25);const score=policy.scoreManualResponses(f.log,f.g.tick/20,kaplanMeier);assert.ok(score.acceptedCommand.answered>=1,type+' paid native ability endpoint');const bad=structuredClone(current);bad.units.find(u=>u.id===f.own.id).cdKnown=false;assert.equal(policy.commandServesManualCreation(cmd,record,bad),false,'unknown readiness');assert.equal(policy.commandServesManualCreation({...cmd,ids:[999]},record,current),false,'wrong actor');proof.push({ability:type,inputs:f.log.inputs,commands:f.log.commands,score});
++ }
++ const rejected=fixture();const rv=rejected.deliver();assert.ok(enqueueDecision(rejected.hands,{t:'support',kind:'dive',x:110,z:80},rv,{}));rejected.capture.afterThink(100);rejected.g.players[0].mp=rejected.g.players[0].mun=0;rejected.run(45);assert.ok(rejected.log.commands.some(c=>!c.accepted),'the actual authority rejects an unfunded strike');assert.equal(policy.scoreManualResponses(rejected.log,rejected.g.tick/20,kaplanMeier).acceptedCommand.answered,0);proof.push({actuallyRejected:rejected.log});
++ const f=fixture('rifle','mg');f.state.camera.x=75;f.own.holdFire=false;assert.equal(command(f.g,0,{t:'buy',unit:'medic'}),undefined);const observer=[...f.g.units.values()].filter(u=>u.owner===0).at(-1);Object.assign(observer,{x:110,z:80,holdFire:true,auto:false});assert.equal(command(f.g,1,{t:'buy',unit:'rifle'}),undefined);const second=[...f.g.units.values()].filter(u=>u.owner===1).at(-1);let border=110;while(onScreen({x:border,z:80},f.state.camera))border+=.1;Object.assign(second,{x:border+.05,z:80,holdFire:true,auto:false});assert.ok(border-80<45);const v=f.deliver();const earlier=f.capture.stream.creations.find(r=>r.creation.targetId===f.foe.id);assert.equal(earlier.decision,'required');assert.ok(enqueueDecision(f.hands,{t:'amove',orders:[[f.own.id,110,80]]},v,{}));f.capture.afterThink(100);let moved=false;for(let i=0;i<75&&!f.log.commands.length;i++){step(f.g);f.deliver();const action=f.hands.active?.actions[f.hands.active.index];if(!moved&&action?.kind==='place-click'&&Number.isInteger(action.startedTick)){assert.equal(command(f.g,1,{t:'move',orders:[[second.id,border-3,80]]}),undefined);moved=true;}f.motor();}
++ const newer=f.capture.stream.creations.find(r=>r.creation.targetId===second.id);assert.ok(newer,'a native moving enemy creates a new public screen contact during pointer motion');assert.equal(newer.decision,'monitoring');assert.equal(newer.coverage[0].reason,'paid-response-in-flight');const score=policy.scoreManualResponses(f.log,f.g.tick/20,kaplanMeier);assert.equal(score.rows.find(r=>r.creation.id===newer.creation.id).answer,null,'the later event receives no zero-time answer');
++ const authority={nativeCreations:f.log.events,records:f.capture.stream.creations.filter(r=>r.creation.tick<newer.creation.tick),physicalStarts:f.capture.stream.physicalStarts};for(const bad of ['queued','completed','selection','no-cause','wrong-geometry','observer-clock']){const flights=structuredClone(newer.inFlightProof),a=structuredClone(authority);if(bad==='queued')flights[0].inputStartedTick=newer.creation.tick+1;if(bad==='completed')a.physicalStarts.find(s=>s.id===flights[0].startReceiptId).completedTick=newer.creation.tick-1;if(bad==='selection')flights[0].actualSelectedIds=[];if(bad==='no-cause')a.nativeCreations=[];if(bad==='wrong-geometry')flights[0].command.orders[0][1]=150;if(bad==='observer-clock')flights[0].activeAtTick--;assert.equal(policy.classifyManualCreation(newer.creation,newer.publicProof,newer.publicBaseline,flights,a).decision,'required',bad+' cannot cover the new contact');}
++ const sceneRequired=structuredClone(newer.publicProof);sceneRequired.units.find(u=>u.id===f.own.id).x=80;assert.equal(policy.classifyManualCreation(newer.creation,sceneRequired,newer.publicBaseline,[],null).decision,'required','a passive out-of-range contact without a physically started response remains required');
++ const before=JSON.stringify(f.log);policy.scoreManualResponses(f.log,f.g.tick/20,kaplanMeier);assert.equal(JSON.stringify(f.log),before,'grading preserves every native and original stream byte');const privateLabels=structuredClone(newer.creation);Object.assign(privateLabels,{responseRequired:true,responseUnits:[999],responsePolicy:'nonsense'});assert.equal(policy.classifyManualCreation(privateLabels,newer.publicProof,newer.publicBaseline,newer.inFlightProof,authority).decision,newer.decision,'private runtime labels cannot change public creation policy');
++ proof.push({inFlight:f.log,score});
++ const native=[];for(const mutate of [false,true]){rng=23;const n=fixture('rifle','tank',mutate?scene=>{scene.units.forEach(u=>u.hp=1);scene.privateLabels={responseRequired:false};}:undefined);const view=n.deliver();assert.ok(enqueueDecision(n.hands,{t:'support',kind:'dive',x:110,z:80},view,{}));n.capture.afterThink(100);n.run(35);native.push({game:serialize(n.g).toString('base64'),inputs:n.log.inputs,commands:n.log.commands,rng});}assert.deepEqual(native[0],native[1],'mutated tool-only observer proofs cannot alter native game graphs, clocks, RNG or physical inputs');
++ if(process.env.MANUAL_V3_PROOF)writeFileSync(process.env.MANUAL_V3_PROOF,JSON.stringify(proof));console.log('Manualv3 native support/ability purpose and physically started contact coverage controls PASS.');
++}finally{Math.random=prior;}
+--- a/test.js
++++ b/test.js
+@@ -49,7 +49,8 @@
+     'test-ai-terrain-delivery.js', 'test-engine-ai-workload.js', 'test-engine-ai-selected-hud.js', 'test-engine-ai-inspection.js', 'test-engine-ai-priority.js', 'test-engine-ai-inspection-priority.js', 'test-engine-ai-observed-events.js', 'test-engine-ai-measurement-streams.js', 'test-engine-ai-tactical-reaction.js', 'test-engine-ai-attention-yield.js', 'test-engine-ai-attention-area.js', 'test-engine-ai-behavior-cues.js', 'test-engine-ai-bridge-repair.js', 'test-engine-ai-decision-capture.js', 'test-engine-ai-causal-orders.js', 'test-engine-ai-pointer-tracking.js', 'test-engine-ai-group-reuse.js', 'test-engine-ai-minimap-parity.js', 'test-ai-humanity-storage.js', 'test-engine-spectators.js', 'test-engine-scenario-start.js', 'test-server-start-order.js', 'test-engine-breaches.mjs', 'test-engine-authoring.js', 'test-engine-vehicle-pose.mjs', 'test-engine-ai-privacy.js', 'test-engine-localization.mjs',
+     'test-engine-ai-public-start.js', 'test-engine-ai-opening-saving.js', 'test-engine-ai-purchase-receipts.js', 'test-engine-ai-producer-substitution.js', 'test-engine-ai-engineer-shortage.js', 'test-engine-ai-formation-selection.js', 'test-engine-ai-measurement-start.js',
+     'test-engine-ai-local-engineer.js', 'test-engine-ai-accepted-destinations.js', 'test-engine-ai-attended-danger.js', 'test-engine-ai-attended-guard.js', 'test-engine-ai-guard-ability-choice.js',
+-    'test-engine-ai-garrison-framing.js', 'test-engine-ai-hesitation.js', 'test-engine-ai-unseen-hit.js', 'test-engine-ai-manual-response-policy.js', 'test-engine-ai-manual-response-isolation.js',
++    'test-engine-ai-garrison-framing.js', 'test-engine-ai-hesitation.js', 'test-engine-ai-unseen-hit.js', 'test-engine-ai-manual-response-policy.js',
++    'test-engine-ai-manual-response-v3.js', 'test-engine-ai-manual-response-isolation.js',
+     'test-engine-debris.js', 'test-engine-traffic-privacy.js', 'test-engine-horde-queue.js']) {
+     execFileSync(process.execPath, [file], { cwd: import.meta.dirname, stdio: 'inherit', timeout: 180000 });
+   }
+--- /dev/null
++++ b/docs/human-like-ai-manual-response-v3.md
+@@ -0,0 +1,17 @@
++# Prospective manual-response v3 proposal
++
++This is a prospective correction of two source-backed measurement gaps from review R7. It is not adopted campaign evidence. The explicit policy is `screen-manual-v3`; its detached stream is `ww2-public-manual-response-v3`. The existing v2 helper and capture files remain byte-identical. The collector selects the version explicitly and reduces historical v2 streams with v2. No V16 raw event, metric or result is rescored. The original oracle and observed streams remain unchanged.
++
++Creation rules remain unchanged: contact candidates are idle controllable ground combat actors within 45m; damage uses the existing displayed 25% loss or retreat-risk crossing. Automatic combat, provable automatic retreat and fortified holds retain their original conditions. A passive out-of-range contact without separately proved in-flight coverage remains required.
++
++The purpose table adds damaging support only over a visible enemy legally threatening an affected actor. Dive uses its 5m point blast. Artillery uses its 24m by 10m scatter strip, with 4m blast expansion for visible-friend exclusion. Bombing uses its 40m line and actual 3m lateral scatter, expanded by 7m blast for friend exclusion. Strafe uses its 36m by 8m native strip. Direction uses the actual command angle or the public own spawn fallback. Every visible friend in the conservative hazard region rejects credit. Infantry requires positive infantry damage or suppression; armor requires vehicle damage greater than infantry damage. Thus weak strafing of armor remains unsupported. Accepted-command credit still requires actual authoritative acceptance and public click-time purpose.
++
++Suppress requires an actual ready selected-HUD actor, stationary/setup legality, current visible infantry target, useful suppression and a legal firing line serving the affected actor. AP requires the same readiness and a useful current non-infantry, non-structure target, including any native naval restriction. Already active suppression or loaded AP cannot create credit. This proposal conservatively admits only direct AP weapons without salvo, area, blast or terrain-impact effects. Other AP variants remain deferred because their public friend-hazard proof was not completed within this scope. Native direct projectiles exclude allied actors; the proposal does not infer future damage.
++
++A new contact can be monitoring when an actual issuing attack/attack-move pointer motor was already physically active at creation. Its registered-at-start native receipt must prove the actual operation, pointer chord, selected actor, earlier immutable public cue and active interval. The earlier cue must independently recompute as required for that actor. The unchanged public purpose predicate must also cover the new contact. Selection actions, queued-only plans, future starts, completed motors, unrelated geometry, absent selected actors and missing earlier public causes cannot qualify. Queued movement commands and minimap issuing gestures are excluded from this narrow proposal. No future acceptance, later death or disappearance establishes creation eligibility. The later contact gets no zero-time answer or latency sample.
++
++All numeric limits remain unchanged: screen Easy 0.9–1.4s, Normal 0.5–0.8s and Hard 0.3–0.45s; off-screen 3–6/1.5–3/0.8–1.6s; physical APM 20–35/40–70/80–120; peak 60/120/200; first order 4–8/3–6/2–4s; reaction floor 0.2s. Every required unanswered row remains end-censored, every unknown remains unknown and original full populations are retained.
++
++Focused native proof passes all four damaging support forms, direct AP and suppress with real physical inputs and accepted native commands. Friend hazards, wrong footprints, unsupported recon/abilities, missing readiness, wrong actors and a genuinely refused unfunded support command remain uncredited for acceptance. A second enemy moves into the actual screen during a pointer motor starting at110 and ending at118; the contact at112 is monitoring with no answer. Queued, completed, wrong-selection, absent-cause, wrong-geometry and clock controls remain required. Mutating detached observer proofs preserves the complete native game graph, RNG, commands and physical inputs. The existing 162 creation/policy assertions also passed against the v3 prototype; v2 remains unchanged.
++
++All work stays under `/tmp/ai-manual-v3-proposal`. There was no campaign, acceptance rerun, V16 rescore or V18 draft change. Root owns adoption, final registration, documentation, source freeze and future validation. The gameplay, APM, off-screen population and other open gates remain open.

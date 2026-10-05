@@ -1,0 +1,66 @@
+{
+  "baseline": "/tmp/human-ai-perf-v16-frozen",
+  "equivalence": "Exact input logs, commands, and full enumerable game+commander memory graph including aliases/cycles and function source text",
+  "cases": [
+    {
+      "level": "easy",
+      "seed": 183,
+      "ticks": 2400,
+      "startedTick": 0,
+      "handoff": false,
+      "inputs": 57,
+      "commands": 20,
+      "stateSHA256": "7184d4060876f08ec17a29bd784b9ababb2bfdfc4a43bdffe16a21f65bc4c092"
+    },
+    {
+      "level": "normal",
+      "seed": 183,
+      "ticks": 2400,
+      "startedTick": 0,
+      "handoff": false,
+      "inputs": 98,
+      "commands": 31,
+      "stateSHA256": "e114c377765e2dbf406133831efc10297bccdeb0f519e620b7736981ca33e2c0"
+    },
+    {
+      "level": "hard",
+      "seed": 183,
+      "ticks": 2400,
+      "startedTick": 0,
+      "handoff": false,
+      "inputs": 105,
+      "commands": 37,
+      "stateSHA256": "1ff51eb91bf53d1bc9973b47f12a5b4a693bcda11b30f8e5ca3a5c3be5dbe615"
+    },
+    {
+      "level": "normal",
+      "seed": 907,
+      "ticks": 900,
+      "startedTick": 0,
+      "handoff": false,
+      "inputs": 43,
+      "commands": 17,
+      "stateSHA256": "7431a9c184fa73a76973b124282cca9c3364adb97fb01c9bc94f245943dc6ae5"
+    },
+    {
+      "level": "normal",
+      "seed": 908,
+      "ticks": 900,
+      "startedTick": 0,
+      "handoff": false,
+      "inputs": 70,
+      "commands": 28,
+      "stateSHA256": "875396a71e0ea7abc1636214a9259110a801461a1a5dad668268069af8e1d73c"
+    },
+    {
+      "level": "hard",
+      "seed": 911,
+      "ticks": 600,
+      "startedTick": 600,
+      "handoff": true,
+      "inputs": 40,
+      "commands": 19,
+      "stateSHA256": "af5faf44436e11af0829405f1d4242bfcdf5d36938117380185245f1c31b4c4d"
+    }
+  ]
+}

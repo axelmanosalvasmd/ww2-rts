@@ -1,0 +1,11 @@
+{
+  "status": "PASS",
+  "independentRootByteVerification": true,
+  "archive": "armor-pressure-native-evidence.tar.gz",
+  "bytes": 151159,
+  "sha256": "1e1a8872ca62a2431821f69dea0808c2a8369ba8b2c096f083b76db65bf95bf8",
+  "members": 29,
+  "payloadSource": "/tmp/ai-lab-armor-preset-evidence/payload",
+  "archivePrefix": "",
+  "qualified": "Diagnostic and exact-byte evidence, not acceptance gate closure."
+}

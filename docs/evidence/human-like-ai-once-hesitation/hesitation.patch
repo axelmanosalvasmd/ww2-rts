@@ -1,0 +1,37 @@
+--- a/shared/ai-commander.js
++++ b/shared/ai-commander.js
+@@ -462,13 +462,20 @@
+     state.planned = false;
+     return;
+   }
+-  let queued = 0;
++  let queued = 0, hesitationUntil = 0;
+   for (const merged of mergeMovements(intents, view, dangerMoves)) {
+     const cmd = arrivedMovement(merged, view, state, concern, dangerMoves);
+     if (!cmd) continue;
+     if (queued >= ({ easy: 2, normal: 4, hard: 6 }[level] ?? 4)) break;
+-    // Hesitation belongs to risky advances, rather than cancelling an order already issued.
+-    if (cmd.t === 'amove' && concern.kind === 'combat' && random(hands.rng) < ({ easy: 0.25, normal: 0.12, hard: 0.04 }[level] ?? 0.12)) continue;
++    // Decide once per attended visit. Replanning preserves the same real pause.
++    if (cmd.t === 'amove' && concern.kind === 'combat') {
++      const episode = JSON.stringify([concern.id, concern.eventId ?? null, concern.eventTick ?? null, concern.since]);
++      if (state.advanceHesitation?.episode !== episode) {
++        const hesitate = random(hands.rng) < ({ easy: 0.25, normal: 0.12, hard: 0.04 }[level] ?? 0.12);
++        state.advanceHesitation = { episode, until: tick + (hesitate ? ({ easy: 30, normal: 16, hard: 8 }[level] ?? 16) : 0) };
++      }
++      if (tick < state.advanceHesitation.until) { hesitationUntil = state.advanceHesitation.until; continue; }
++    }
+     const jobContext = responseContext(cmd, context, view, state, slot, tick);
+     // These are deliberate links to already perceived episodes. One local group order can address several
+     // contacts, while each episode keeps its own creation time and complete population descriptor.
+@@ -495,8 +502,8 @@
+   state.planned = true;
+   // Empty cycles still take time. An idle squad can wait unnoticed while another concern wins attention.
+   if (!queued) {
+-    state.noWorkUntil = tick + (level === 'easy' ? 30 : level === 'hard' ? 8 : 16);
+-    if (deferEmptyCombat(view, slot, state, concern, tick, level)) {
++    state.noWorkUntil = hesitationUntil || tick + (level === 'easy' ? 30 : level === 'hard' ? 8 : 16);
++    if (!hesitationUntil && deferEmptyCombat(view, slot, state, concern, tick, level)) {
+       state.concern.until = tick;
+       if (state.attention) state.attention.until = tick;
+     }

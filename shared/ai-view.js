@@ -1,5 +1,5 @@
 // The AI plans from the same rows a human receives. Only command() can change the game.
-import { CELL, TERRAIN, UNITS, snapshotFor, terrainFor, teamSees } from './sim.js';
+import { CELL, TERRAIN, UNITS, snapshotFor, terrainFor, teamSees, useProjectionPointFog } from './sim.js';
 
 const distance = (a, b) => Math.hypot(a.x - b.x, a.z - b.z);
 const copy = (value) => value === undefined ? undefined : structuredClone(value);
@@ -122,7 +122,9 @@ function terrainPending(g, slot, memory) {
   return state.pending;
 }
 
-export function viewFor(g, slot, memory = {}, cache) {
+export function viewFor(g, slot, memory = {}, cache) { return buildView(g, slot, memory, cache, false); }
+export function commanderViewFor(g, slot, memory = {}, cache) { return buildView(g, slot, memory, cache, true); }
+function buildView(g, slot, memory, cache, pointFog) {
   const seat = g.players[slot];
   const world = g.mode?.kind === 'world';
   if (!world && !g.initialTerrain) throw new Error('AI view requires the starting terrain');
@@ -156,6 +158,7 @@ export function viewFor(g, slot, memory = {}, cache) {
   const fog = borrowCanonical ? new Map(privateFog).set(seat.team, canonicalFog) : privateFog;
   const projection = { ...g, players, omitFogMask: true,
     fog, fogSources: memory.fogSources ??= new Map(), fogTerrain: memory.fogTerrain };
+  if (pointFog && !world) useProjectionPointFog(projection, memory, g);
   const seed = first ? terrainFor(projection, slot, true) : [];
   const snap = snapshotFor(projection, slot, g.shots, [], cache);
   if (borrowCanonical) for (const [team, entry] of fog)

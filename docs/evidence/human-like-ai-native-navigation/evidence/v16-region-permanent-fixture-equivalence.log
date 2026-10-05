@@ -1,0 +1,1 @@
+PASS 12 exact public/native fixture outputs; both fallback controls independently reject unrestricted bypass

@@ -1,0 +1,40 @@
+{
+  "status": "PASS",
+  "independentRootByteVerification": true,
+  "files": {
+    "README.md": {
+      "bytes": 1227,
+      "sha256": "1abcf098eb07ec344399f4c0fc6c4bc89c3faa15f950e9ea72b88ef67b6804cb"
+    },
+    "checkpoint.json": {
+      "bytes": 1036,
+      "sha256": "7460711d6cc6a14068cd9e92df94e0b7aa6d20bfad045650ec457d7204aef7be"
+    },
+    "excluded-registrations.json": {
+      "bytes": 3147,
+      "sha256": "06e8c291987ad8a2ccee1d40aa058ebd05986361022665612030d320cd732781"
+    },
+    "native.log": {
+      "bytes": 4079,
+      "sha256": "1bff40ee5fa3b5a03f170f3ff86839de57bfd81e1149adf407974d8cef40b5b2"
+    },
+    "result.json": {
+      "bytes": 439,
+      "sha256": "24714bf10bf0d18eaad13837b079f867492436d9f1fc4009936a9894df88e2c9"
+    },
+    "source-hashes.json": {
+      "bytes": 232319,
+      "sha256": "a72f9bd7386bb5e943318e97530a6e2b2accab3dcc5bf48f7cb12495de1466c5"
+    },
+    "test.original.js": {
+      "bytes": 593015,
+      "sha256": "2a290f52fa436283c76d3ab7b0c0bbc2b4d69b3a7a3027ecaada05c01fc63cb4"
+    },
+    "transformation.patch": {
+      "bytes": 3480,
+      "sha256": "30bc53d168669f2df78fea7010ca7c26f9274e3590ab3bcd69a43be2412833cf"
+    }
+  },
+  "archiveSHA256": "24ddca4bf0c9b18debf67d1d982cd02f52fe1d298ca67e17937be713cf6f68b4",
+  "qualification": "Original main body only, initial90 children excluded. Not fullsuite or final newpointfog certification."
+}

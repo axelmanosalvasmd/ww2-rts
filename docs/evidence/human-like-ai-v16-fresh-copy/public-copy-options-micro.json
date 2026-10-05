@@ -1,0 +1,133 @@
+{
+  "diagnosticOnly": true,
+  "roots": 75,
+  "warmupPairs": 3,
+  "measuredPairs": 12,
+  "sweeps": 40,
+  "baselineMedianMS": 15.064528999999993,
+  "rootMedianMS": 12.912697499999979,
+  "candidateMedianMS": 11.343724500000008,
+  "pairs": [
+    {
+      "order": [
+        "baseline",
+        "root",
+        "pair"
+      ],
+      "baselineMS": 16.189255000000003,
+      "rootMS": 14.802468000000005,
+      "pairMS": 11.633112000000011
+    },
+    {
+      "order": [
+        "pair",
+        "root",
+        "baseline"
+      ],
+      "pairMS": 11.646694000000025,
+      "rootMS": 13.39894000000001,
+      "baselineMS": 15.995496000000003
+    },
+    {
+      "order": [
+        "baseline",
+        "root",
+        "pair"
+      ],
+      "baselineMS": 15.940530000000024,
+      "rootMS": 13.225648000000035,
+      "pairMS": 11.718664999999987
+    },
+    {
+      "order": [
+        "pair",
+        "root",
+        "baseline"
+      ],
+      "pairMS": 11.738364000000047,
+      "rootMS": 13.098848999999973,
+      "baselineMS": 15.493026999999984
+    },
+    {
+      "order": [
+        "baseline",
+        "root",
+        "pair"
+      ],
+      "baselineMS": 15.311633000000029,
+      "rootMS": 13.202289000000007,
+      "pairMS": 11.545604000000026
+    },
+    {
+      "order": [
+        "pair",
+        "root",
+        "baseline"
+      ],
+      "pairMS": 11.548367999999982,
+      "rootMS": 13.004200999999966,
+      "baselineMS": 16.16026199999999
+    },
+    {
+      "order": [
+        "baseline",
+        "root",
+        "pair"
+      ],
+      "baselineMS": 14.734324000000015,
+      "rootMS": 12.590788000000032,
+      "pairMS": 11.110335999999961
+    },
+    {
+      "order": [
+        "pair",
+        "root",
+        "baseline"
+      ],
+      "pairMS": 11.14184499999999,
+      "rootMS": 12.755853000000002,
+      "baselineMS": 14.817424999999957
+    },
+    {
+      "order": [
+        "baseline",
+        "root",
+        "pair"
+      ],
+      "baselineMS": 14.74621000000002,
+      "rootMS": 12.821193999999991,
+      "pairMS": 11.02401199999997
+    },
+    {
+      "order": [
+        "pair",
+        "root",
+        "baseline"
+      ],
+      "pairMS": 10.759656999999947,
+      "rootMS": 12.314414000000056,
+      "baselineMS": 14.189767000000074
+    },
+    {
+      "order": [
+        "baseline",
+        "root",
+        "pair"
+      ],
+      "baselineMS": 14.295603000000028,
+      "rootMS": 12.216617000000042,
+      "pairMS": 10.615019000000075
+    },
+    {
+      "order": [
+        "pair",
+        "root",
+        "baseline"
+      ],
+      "pairMS": 10.553567000000044,
+      "rootMS": 12.184273000000076,
+      "baselineMS": 14.217106999999942
+    }
+  ],
+  "savingPercent": 24.69910941125333
+}

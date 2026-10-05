@@ -1,0 +1,51 @@
+{
+  "checks": [
+    {
+      "name": "open",
+      "targetVisible": true,
+      "version": 1
+    },
+    {
+      "name": "smoke",
+      "targetVisible": false,
+      "version": 2
+    },
+    {
+      "name": "clearSmoke",
+      "targetVisible": true,
+      "version": 3
+    },
+    {
+      "name": "hill",
+      "targetVisible": false,
+      "version": 4
+    },
+    {
+      "name": "lowerHill",
+      "targetVisible": true,
+      "version": 5
+    },
+    {
+      "name": "sightWall",
+      "targetVisible": false,
+      "version": 6
+    },
+    {
+      "name": "clearWall",
+      "targetVisible": true,
+      "version": 7
+    },
+    {
+      "name": "motion",
+      "targetVisible": true,
+      "version": 8
+    },
+    {
+      "name": "nullHeight",
+      "targetVisible": true,
+      "version": 9
+    }
+  ],
+  "readOnlyPrivateProjection": true,
+  "exactFogAndPrivateCacheHistory": true
+}

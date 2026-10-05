@@ -1,0 +1,13 @@
+{
+  "status": "PASS",
+  "archive": "cover-opportunity-migration.tar.gz",
+  "archiveBytes": 491320,
+  "archiveSHA256": "ecb7146579dd85b7d6bf764f40bda800e7e98133b4f5f40d997a39a911329ed8",
+  "members": 52,
+  "payloadBytes": 10039220,
+  "originalCopiedBytes": 10021855,
+  "allRoundtripBytesMatch": true,
+  "allOriginalBytesUnchanged": true,
+  "manifestSHA256": "9b73cb8642f8ede0d5db309a22e5bfc7a9fc7cd567de7db7955f28336673d4ee",
+  "manifestBytes": 12726
+}

@@ -1,0 +1,482 @@
+[
+  {
+    "mode": "conquest",
+    "level": "easy",
+    "seed": 1,
+    "path": "/tmp/human-ai-opening-paired/candidate/raw-matches/conquest-easy-1.json",
+    "sha256": "e9400e180d7e7922be1cba742eb0df2264ae7ccb951c4f91ab7ef9d5ec15dd3b",
+    "bytes": 668857
+  },
+  {
+    "mode": "conquest",
+    "level": "easy",
+    "seed": 2,
+    "path": "/tmp/human-ai-opening-paired/candidate/raw-matches/conquest-easy-2.json",
+    "sha256": "26b22169e9f3ad3bcf00d80072907c10ead771b30f426cf10501d01c3314dabc",
+    "bytes": 518284
+  },
+  {
+    "mode": "conquest",
+    "level": "easy",
+    "seed": 3,
+    "path": "/tmp/human-ai-opening-paired/candidate/raw-matches/conquest-easy-3.json",
+    "sha256": "e72edd6857f2725c0861002352fb41df2a6be9315cdcaffeb0657f868d9e2b8b",
+    "bytes": 497361
+  },
+  {
+    "mode": "conquest",
+    "level": "easy",
+    "seed": 4,
+    "path": "/tmp/human-ai-opening-paired/candidate/raw-matches/conquest-easy-4.json",
+    "sha256": "b2725db2d759b59e67f6540128d4560e15b48d5e7e32acc3f11e065bc2462cd4",
+    "bytes": 564178
+  },
+  {
+    "mode": "conquest",
+    "level": "easy",
+    "seed": 5,
+    "path": "/tmp/human-ai-opening-paired/candidate/raw-matches/conquest-easy-5.json",
+    "sha256": "f5fb84b4ac4cbd03fab01e35fa1bbded6f96d29648ff579ac15bc73a0dd69ea0",
+    "bytes": 579253
+  },
+  {
+    "mode": "conquest",
+    "level": "easy",
+    "seed": 6,
+    "path": "/tmp/human-ai-opening-paired/candidate/raw-matches/conquest-easy-6.json",
+    "sha256": "be17c8f0bbc21167dfee4002df575ecd396c81fd1b5b3e870eb956ac8f4ce528",
+    "bytes": 499003
+  },
+  {
+    "mode": "conquest",
+    "level": "easy",
+    "seed": 7,
+    "path": "/tmp/human-ai-opening-paired/candidate/raw-matches/conquest-easy-7.json",
+    "sha256": "e8aaf1588b0832992b7691b92e9176a3699ae39e403d6f8aac64f0c461a6494c",
+    "bytes": 574750
+  },
+  {
+    "mode": "conquest",
+    "level": "easy",
+    "seed": 8,
+    "path": "/tmp/human-ai-opening-paired/candidate/raw-matches/conquest-easy-8.json",
+    "sha256": "03a7aceeef8e66eb3c695e966f6575cd0854027e6819f7d32bd413e833153d18",
+    "bytes": 582369
+  },
+  {
+    "mode": "conquest",
+    "level": "easy",
+    "seed": 9,
+    "path": "/tmp/human-ai-opening-paired/candidate/raw-matches/conquest-easy-9.json",
+    "sha256": "caec543f5091954149d3e56a9eb5f7821196e2cdd9ada491154ac7370d097cf3",
+    "bytes": 513432
+  },
+  {
+    "mode": "conquest",
+    "level": "easy",
+    "seed": 10,
+    "path": "/tmp/human-ai-opening-paired/candidate/raw-matches/conquest-easy-10.json",
+    "sha256": "2549c65fb9d747342f5b13b1bbbcfeb444cbd882566aade7740f23f00ae2d083",
+    "bytes": 509393
+  },
+  {
+    "mode": "conquest",
+    "level": "easy",
+    "seed": 11,
+    "path": "/tmp/human-ai-opening-paired/candidate/raw-matches/conquest-easy-11.json",
+    "sha256": "68c52a98943aeb74c859a1f4f281daa654c8603d88a723033535ee23f7e52b2c",
+    "bytes": 577029
+  },
+  {
+    "mode": "conquest",
+    "level": "easy",
+    "seed": 12,
+    "path": "/tmp/human-ai-opening-paired/candidate/raw-matches/conquest-easy-12.json",
+    "sha256": "7afe31d73ada4db26a0c348d30c5603ed8592ce91349b4f33fd554f823a44ee9",
+    "bytes": 505772
+  },
+  {
+    "mode": "conquest",
+    "level": "easy",
+    "seed": 13,
+    "path": "/tmp/human-ai-opening-paired/candidate/raw-matches/conquest-easy-13.json",
+    "sha256": "c0b2ea853398ed97ba7d61ad18fd554712b1a01821b7016d8b63269324be085e",
+    "bytes": 532884
+  },
+  {
+    "mode": "conquest",
+    "level": "easy",
+    "seed": 14,
+    "path": "/tmp/human-ai-opening-paired/candidate/raw-matches/conquest-easy-14.json",
+    "sha256": "cc6104d9a0e9fba75c0a646284f848c6651cef43bc1061ac961e7236ba80e8e2",
+    "bytes": 388830
+  },
+  {
+    "mode": "conquest",
+    "level": "easy",
+    "seed": 15,
+    "path": "/tmp/human-ai-opening-paired/candidate/raw-matches/conquest-easy-15.json",
+    "sha256": "7faa38159223db55ba5ff2c6c3405a68a96a3f5cca47f1b091c51494683e9626",
+    "bytes": 554855
+  },
+  {
+    "mode": "conquest",
+    "level": "easy",
+    "seed": 16,
+    "path": "/tmp/human-ai-opening-paired/candidate/raw-matches/conquest-easy-16.json",
+    "sha256": "08e7da34de9f87acacbad21d99475a421e1743d6c580d632d4d8c8286ed01569",
+    "bytes": 450495
+  },
+  {
+    "mode": "conquest",
+    "level": "easy",
+    "seed": 17,
+    "path": "/tmp/human-ai-opening-paired/candidate/raw-matches/conquest-easy-17.json",
+    "sha256": "bc1a56955b7fd22624ec5b37c456b2d62dc9f0b61d99db125c21983f227a6d4b",
+    "bytes": 449063
+  },
+  {
+    "mode": "conquest",
+    "level": "easy",
+    "seed": 18,
+    "path": "/tmp/human-ai-opening-paired/candidate/raw-matches/conquest-easy-18.json",
+    "sha256": "e327ffd49c480b2986eb7ab09f356952a3d29efca4c296a84374c083ec9e10be",
+    "bytes": 678911
+  },
+  {
+    "mode": "conquest",
+    "level": "easy",
+    "seed": 19,
+    "path": "/tmp/human-ai-opening-paired/candidate/raw-matches/conquest-easy-19.json",
+    "sha256": "051195f130c57f81012cd16d7e7a3d7aff0b85f7a3ddf72b8202b8956f233f50",
+    "bytes": 565476
+  },
+  {
+    "mode": "conquest",
+    "level": "easy",
+    "seed": 20,
+    "path": "/tmp/human-ai-opening-paired/candidate/raw-matches/conquest-easy-20.json",
+    "sha256": "36ab6fe9748856b5c19171cc2696f999990c2a68e668b0446590e548913a89ef",
+    "bytes": 530861
+  },
+  {
+    "mode": "conquest",
+    "level": "normal",
+    "seed": 1,
+    "path": "/tmp/human-ai-opening-paired/candidate/raw-matches/conquest-normal-1.json",
+    "sha256": "48d967f452e522e99902bf56357b84ca63505088de6948bfff55500ddf08f15f",
+    "bytes": 975508
+  },
+  {
+    "mode": "conquest",
+    "level": "normal",
+    "seed": 2,
+    "path": "/tmp/human-ai-opening-paired/candidate/raw-matches/conquest-normal-2.json",
+    "sha256": "f0a55cf55eb71f5b47501d5f891c8bddc4a333472b5fbaba9ae360ecaed44276",
+    "bytes": 555670
+  },
+  {
+    "mode": "conquest",
+    "level": "normal",
+    "seed": 3,
+    "path": "/tmp/human-ai-opening-paired/candidate/raw-matches/conquest-normal-3.json",
+    "sha256": "ac0eebc655abe66c4811e2f29bdec9ebe44f2ba5451cf3f244ea72ac2302ba26",
+    "bytes": 498849
+  },
+  {
+    "mode": "conquest",
+    "level": "normal",
+    "seed": 4,
+    "path": "/tmp/human-ai-opening-paired/candidate/raw-matches/conquest-normal-4.json",
+    "sha256": "4c37b882e55fac56c62b3adb43ffaf3cf081f6578816546fceae2ef48af248f4",
+    "bytes": 699413
+  },
+  {
+    "mode": "conquest",
+    "level": "normal",
+    "seed": 5,
+    "path": "/tmp/human-ai-opening-paired/candidate/raw-matches/conquest-normal-5.json",
+    "sha256": "a9f9aab8f9eb35b8b5432e0c4cd42c31d4b0a7ba6725c37c9e540d07205bde4b",
+    "bytes": 795263
+  },
+  {
+    "mode": "conquest",
+    "level": "normal",
+    "seed": 6,
+    "path": "/tmp/human-ai-opening-paired/candidate/raw-matches/conquest-normal-6.json",
+    "sha256": "4676d401b9299421e3fcf265b07dde05d53e33cec456608aa7452b5dda5a6421",
+    "bytes": 575000
+  },
+  {
+    "mode": "conquest",
+    "level": "normal",
+    "seed": 7,
+    "path": "/tmp/human-ai-opening-paired/candidate/raw-matches/conquest-normal-7.json",
+    "sha256": "0e8304cb940a0e32d677173fb78456b22652b1c5762a705df3a4089e061248f1",
+    "bytes": 627347
+  },
+  {
+    "mode": "conquest",
+    "level": "normal",
+    "seed": 8,
+    "path": "/tmp/human-ai-opening-paired/candidate/raw-matches/conquest-normal-8.json",
+    "sha256": "d5bbe7ed35476500cb283dbefa3999ddabbbf2e97d7cadf2db5184004c0d357c",
+    "bytes": 624802
+  },
+  {
+    "mode": "conquest",
+    "level": "normal",
+    "seed": 9,
+    "path": "/tmp/human-ai-opening-paired/candidate/raw-matches/conquest-normal-9.json",
+    "sha256": "ad624b72b110436b4daf8547d73f617668f3310c8045f817fc0330254487b230",
+    "bytes": 677339
+  },
+  {
+    "mode": "conquest",
+    "level": "normal",
+    "seed": 10,
+    "path": "/tmp/human-ai-opening-paired/candidate/raw-matches/conquest-normal-10.json",
+    "sha256": "5df9dc97a87eba50c79cf0d9edd696f8744652a9f97e8ed7b5a8523d7c2c63b1",
+    "bytes": 632585
+  },
+  {
+    "mode": "conquest",
+    "level": "normal",
+    "seed": 11,
+    "path": "/tmp/human-ai-opening-paired/candidate/raw-matches/conquest-normal-11.json",
+    "sha256": "0fb53934616735c49f34a9c82f86992338124e64ce648c4088021cbdce88e9cb",
+    "bytes": 605092
+  },
+  {
+    "mode": "conquest",
+    "level": "normal",
+    "seed": 12,
+    "path": "/tmp/human-ai-opening-paired/candidate/raw-matches/conquest-normal-12.json",
+    "sha256": "51b636210d63684860916416ac7c3465c8271c3c7fb30381dd6bb590c152801b",
+    "bytes": 546054
+  },
+  {
+    "mode": "conquest",
+    "level": "normal",
+    "seed": 13,
+    "path": "/tmp/human-ai-opening-paired/candidate/raw-matches/conquest-normal-13.json",
+    "sha256": "f9b03712663016a9c518c47898188e382da85baa9de4a4a2669f9c5f25752e4f",
+    "bytes": 700616
+  },
+  {
+    "mode": "conquest",
+    "level": "normal",
+    "seed": 14,
+    "path": "/tmp/human-ai-opening-paired/candidate/raw-matches/conquest-normal-14.json",
+    "sha256": "df617f9edea18e88e0c050b5752d457d80e03ef13f88ee362eaad9822aed5f1e",
+    "bytes": 546916
+  },
+  {
+    "mode": "conquest",
+    "level": "normal",
+    "seed": 15,
+    "path": "/tmp/human-ai-opening-paired/candidate/raw-matches/conquest-normal-15.json",
+    "sha256": "56c5fdc24d0c3c53686b2f7b681dccd0b03344976af4766515b8ff43865c7330",
+    "bytes": 696028
+  },
+  {
+    "mode": "conquest",
+    "level": "normal",
+    "seed": 16,
+    "path": "/tmp/human-ai-opening-paired/candidate/raw-matches/conquest-normal-16.json",
+    "sha256": "7d6fa7d2caed6c914a759a0514a52109ef1a8c43df0bfd13d34a712c86cffed0",
+    "bytes": 540224
+  },
+  {
+    "mode": "conquest",
+    "level": "normal",
+    "seed": 17,
+    "path": "/tmp/human-ai-opening-paired/candidate/raw-matches/conquest-normal-17.json",
+    "sha256": "08814cf9f656c4008d87aa5fa932432a187f4a930a03190efc3002e66011b6b9",
+    "bytes": 605689
+  },
+  {
+    "mode": "conquest",
+    "level": "normal",
+    "seed": 18,
+    "path": "/tmp/human-ai-opening-paired/candidate/raw-matches/conquest-normal-18.json",
+    "sha256": "7b6655e41041921c9b3034a0e5f0e1b6cc5c201a9b8a473086fe934b68f62a0d",
+    "bytes": 759766
+  },
+  {
+    "mode": "conquest",
+    "level": "normal",
+    "seed": 19,
+    "path": "/tmp/human-ai-opening-paired/candidate/raw-matches/conquest-normal-19.json",
+    "sha256": "04943b63feb228fc564f8da4f1b91d3f615d24a078d22f605f046df2558928e7",
+    "bytes": 635498
+  },
+  {
+    "mode": "conquest",
+    "level": "normal",
+    "seed": 20,
+    "path": "/tmp/human-ai-opening-paired/candidate/raw-matches/conquest-normal-20.json",
+    "sha256": "79c21cfa1d80475ca977ad9bcb8e998fc22990235cf1b97be1dfecc5c29b035b",
+    "bytes": 584767
+  },
+  {
+    "mode": "conquest",
+    "level": "hard",
+    "seed": 1,
+    "path": "/tmp/human-ai-opening-paired/candidate/raw-matches/conquest-hard-1.json",
+    "sha256": "8fd0f1ee8ec58159da8e7307545bfa7856822308dabe3ff29a4be26f5c39ba8a",
+    "bytes": 971149
+  },
+  {
+    "mode": "conquest",
+    "level": "hard",
+    "seed": 2,
+    "path": "/tmp/human-ai-opening-paired/candidate/raw-matches/conquest-hard-2.json",
+    "sha256": "84614c3c43e9a6efc3cce36a520dba98b186a47bb0c13ccab0583ea159116549",
+    "bytes": 796787
+  },
+  {
+    "mode": "conquest",
+    "level": "hard",
+    "seed": 3,
+    "path": "/tmp/human-ai-opening-paired/candidate/raw-matches/conquest-hard-3.json",
+    "sha256": "e47a8be83ac84d07d0222f926ceca13c0d3ec704862944170854bf6043330a7b",
+    "bytes": 634931
+  },
+  {
+    "mode": "conquest",
+    "level": "hard",
+    "seed": 4,
+    "path": "/tmp/human-ai-opening-paired/candidate/raw-matches/conquest-hard-4.json",
+    "sha256": "a80fca00b3d1c5973407df83288f7c15264501dd6ed4ab4c766e84c1a3ebcfea",
+    "bytes": 863770
+  },
+  {
+    "mode": "conquest",
+    "level": "hard",
+    "seed": 5,
+    "path": "/tmp/human-ai-opening-paired/candidate/raw-matches/conquest-hard-5.json",
+    "sha256": "c6a1873abb9aacb8b37b88a248d7a882d9c3931d631d119a0f52e9603ce32d68",
+    "bytes": 674044
+  },
+  {
+    "mode": "conquest",
+    "level": "hard",
+    "seed": 6,
+    "path": "/tmp/human-ai-opening-paired/candidate/raw-matches/conquest-hard-6.json",
+    "sha256": "98e0bd38de5e2e78ad2c3770bb49c22da3dca8ba5d11888874bd1a8763301fac",
+    "bytes": 609557
+  },
+  {
+    "mode": "conquest",
+    "level": "hard",
+    "seed": 7,
+    "path": "/tmp/human-ai-opening-paired/candidate/raw-matches/conquest-hard-7.json",
+    "sha256": "2e1dcf583b36a07e5c4060121def79bed6f96ac4d05c73c277806c0167d1e632",
+    "bytes": 667690
+  },
+  {
+    "mode": "conquest",
+    "level": "hard",
+    "seed": 8,
+    "path": "/tmp/human-ai-opening-paired/candidate/raw-matches/conquest-hard-8.json",
+    "sha256": "48382729ed8dd218f9e0a551c6aecd642daacffcba7ff3f40b6812827e626677",
+    "bytes": 661654
+  },
+  {
+    "mode": "conquest",
+    "level": "hard",
+    "seed": 9,
+    "path": "/tmp/human-ai-opening-paired/candidate/raw-matches/conquest-hard-9.json",
+    "sha256": "f6d7fe74c491a102f0104b1b31f48c1da072697c637e9b43de6457f4b01d194f",
+    "bytes": 576764
+  },
+  {
+    "mode": "conquest",
+    "level": "hard",
+    "seed": 10,
+    "path": "/tmp/human-ai-opening-paired/candidate/raw-matches/conquest-hard-10.json",
+    "sha256": "23e64f51854fdc26941fa7685c5d4f2f36d195a9b2f889661bdbe368670dbff4",
+    "bytes": 641155
+  },
+  {
+    "mode": "conquest",
+    "level": "hard",
+    "seed": 11,
+    "path": "/tmp/human-ai-opening-paired/candidate/raw-matches/conquest-hard-11.json",
+    "sha256": "c1280f6ff9d639bc9671ddd69fd889dad1b5142cf442dc5b5e604b12ea9ea30b",
+    "bytes": 736249
+  },
+  {
+    "mode": "conquest",
+    "level": "hard",
+    "seed": 12,
+    "path": "/tmp/human-ai-opening-paired/candidate/raw-matches/conquest-hard-12.json",
+    "sha256": "575d312f96c4626d6c367d5439555d50ddec2a89a21541e0aefb78a160a35ab0",
+    "bytes": 616799
+  },
+  {
+    "mode": "conquest",
+    "level": "hard",
+    "seed": 13,
+    "path": "/tmp/human-ai-opening-paired/candidate/raw-matches/conquest-hard-13.json",
+    "sha256": "5f1b8240422786f805caac813844293ee3d196f6406420772b16e62ab785654e",
+    "bytes": 755520
+  },
+  {
+    "mode": "conquest",
+    "level": "hard",
+    "seed": 14,
+    "path": "/tmp/human-ai-opening-paired/candidate/raw-matches/conquest-hard-14.json",
+    "sha256": "462a19cb86a81938bcf25d44c1c8089dd279fba2c6fb98255538f7064b86a4e5",
+    "bytes": 663583
+  },
+  {
+    "mode": "conquest",
+    "level": "hard",
+    "seed": 15,
+    "path": "/tmp/human-ai-opening-paired/candidate/raw-matches/conquest-hard-15.json",
+    "sha256": "782c746698e0186bcee224310f1d3756c97a4915bb90a05954f4e99512839293",
+    "bytes": 669402
+  },
+  {
+    "mode": "conquest",
+    "level": "hard",
+    "seed": 16,
+    "path": "/tmp/human-ai-opening-paired/candidate/raw-matches/conquest-hard-16.json",
+    "sha256": "1e79299bf584efce44c3b024aed1c95149978df315242e2157bcd9e3d1b3bb8a",
+    "bytes": 603626
+  },
+  {
+    "mode": "conquest",
+    "level": "hard",
+    "seed": 17,
+    "path": "/tmp/human-ai-opening-paired/candidate/raw-matches/conquest-hard-17.json",
+    "sha256": "225c777f6816da69ea93ebe064921e9fe9a940e437257e3069ac9839372d9741",
+    "bytes": 626127
+  },
+  {
+    "mode": "conquest",
+    "level": "hard",
+    "seed": 18,
+    "path": "/tmp/human-ai-opening-paired/candidate/raw-matches/conquest-hard-18.json",
+    "sha256": "a671f76a99082fae8885ec345011b8acac7f2a4d8eff0991141e970f7e174aea",
+    "bytes": 782538
+  },
+  {
+    "mode": "conquest",
+    "level": "hard",
+    "seed": 19,
+    "path": "/tmp/human-ai-opening-paired/candidate/raw-matches/conquest-hard-19.json",
+    "sha256": "b57ff9f0aa232605eb2dc47c5be3195e9c702e3014fcca03575b3f69889f22c6",
+    "bytes": 800401
+  },
+  {
+    "mode": "conquest",
+    "level": "hard",
+    "seed": 20,
+    "path": "/tmp/human-ai-opening-paired/candidate/raw-matches/conquest-hard-20.json",
+    "sha256": "c657f987f25ba132799d4427d0cea6c25a3600dd0bcdb104a6ef97e2d06ac367",
+    "bytes": 671589
+  }
+]

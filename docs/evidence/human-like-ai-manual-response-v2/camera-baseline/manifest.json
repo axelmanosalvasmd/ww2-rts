@@ -1,0 +1,18 @@
+{
+  "status": "PASS_NATIVE_REPRO_AND_REGRESSION",
+  "prospectiveOnly": true,
+  "productionEdited": false,
+  "patchSHA256": "9913459eaa7ee74a5e22c3a6489a401250c44f36599098204a99e96ac5db10fc",
+  "originalRootFiles": {
+    "tools/ai-manual-response-capture.mjs": "a804ce50684ed96de5b98dc6dee4f2ab275d0a0dea84058fb515e7ba6cbba416",
+    "test-engine-ai-manual-response-policy.js": "c4f63b6ee31d602ce2aa43cefa42e458adf722cc9f223b74f51711eb041c581d"
+  },
+  "candidateFiles": {
+    "tools/ai-manual-response-capture.mjs": "9ea0b3163788366234c4ff43cdb22f5127158a0a32bcc7e8ec27f978ca3102fc",
+    "test-engine-ai-manual-response-policy.js": "37769179660b63e7bef016869db1ae82c999bded6d68747e69321aa5341244b0"
+  },
+  "failureLog": "unchanged-adapter-regression.log",
+  "passingLog": "latest-adapter-regression.log",
+  "nativeProof": "results.json",
+  "nativeRepro": "repro.mjs"
+}

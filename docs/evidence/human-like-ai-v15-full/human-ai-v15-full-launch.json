@@ -1,0 +1,18 @@
+{
+  "startedAtUnix": 1791125475.8352408,
+  "command": [
+    "taskset",
+    "-c",
+    "4",
+    "node",
+    "test.js"
+  ],
+  "cwd": "/home/judiazm/.t3/worktrees/ww2-rts/ai-human-commander",
+  "supervisorCPU": 0,
+  "outerTimeout": null,
+  "nodeVersion": "v24.21.0",
+  "observedSourceChanges": [],
+  "pid": 1406059,
+  "exitCode": 1,
+  "finishedAtUnix": 1791125669.875474
+}

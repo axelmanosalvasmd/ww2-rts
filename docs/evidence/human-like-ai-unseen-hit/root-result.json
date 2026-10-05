@@ -1,0 +1,38 @@
+{
+  "at": "2026-10-04T19:41:17.155584+00:00",
+  "sources": {
+    "shared/sim.js": "7bc57ac179b4982bdb94b469ce029e2e2178567fcb23fa1756476a17f791f018",
+    "shared/ai.js": "76f02609cb675070fb3f02476ed12158c8660e14aea5f242ce912b188f4d4d70",
+    "shared/ai-commander.js": "19112a1e4c94da72d62564d940497d38cf7e93e3086c9bde3db9c29d088703df",
+    "tools/ai-humanity.mjs": "7c80a300e54bf42b2bc495f0efcfd25321738e4c82b5fdad98112ea787e1a05e",
+    "tools/hash-json-native.mjs": "84d9f9c2273071831d86fe88e4244bda6013c762412ef837a5dc4c90a08e41c5",
+    "test-engine-ai-unseen-hit.js": "dc1dca1e324ccbb5e2c4475447c5e712ef6b820ea870fdda3ae95a7af7914b00",
+    "test.js": "0148db40e62fc3e405fa32d61deb1f0bc2d3ce1eac3b0c415fe64cc3d692ce4b"
+  },
+  "tests": [
+    {
+      "test": "test-engine-ai-unseen-hit.js",
+      "exit": 0,
+      "sha256": "11426f45b315b7411b125d8e2b678f3fca8d3f5fbbbf38e462ee3e0093600538",
+      "bytes": 84
+    },
+    {
+      "test": "test-engine-ai-tactical-reaction.js",
+      "exit": 0,
+      "sha256": "ed84f1135c8c1d8816978c5ba892f2bef0645c16e51e953bf5649da82622e32b",
+      "bytes": 99
+    },
+    {
+      "test": "test-engine-ai-attended-danger.js",
+      "exit": 0,
+      "sha256": "31ad665dd4be9733a97f39ea8d8376788e4013828d5eb6b918775c0968b4590d",
+      "bytes": 234
+    },
+    {
+      "test": "test-engine-ai-commitment.js",
+      "exit": 0,
+      "sha256": "39b5cd47f43d1d32591f3c1074ac5af77443d15885441ac8341e3cf4976f81bc",
+      "bytes": 422
+    }
+  ]
+}

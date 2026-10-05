@@ -1,0 +1,2 @@
+ai: 1000 ticks, p50/p95/p99 3.86/19.457/31.635 ms
+REPORT /tmp/human-ai-bench-v15-after-counts.json

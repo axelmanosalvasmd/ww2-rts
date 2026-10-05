@@ -1,0 +1,21 @@
+node:internal/modules/run_main:107
+    triggerUncaughtException(
+    ^
+
+AssertionError [ERR_ASSERTION]: Tool-only initial projection and oracle must leave authoritative game data unchanged
++ actual - expected
+
++ 'c60bfe325637bdc387d2615ea978f11d86b7e1dd7fa082502f2eb0cde4ddbc57'
+- '517cce141c1a6bb2523e03c7b77eafe4354858551295d1d8d9406bb372b5747b'
+
+    at witness (file:///tmp/human-ai-oracle-tick0-proposal/test-adapter.mjs:45:12)
+    at file:///tmp/human-ai-oracle-tick0-proposal/test-adapter.mjs:74:100 {
+  generatedMessage: false,
+  code: 'ERR_ASSERTION',
+  actual: 'c60bfe325637bdc387d2615ea978f11d86b7e1dd7fa082502f2eb0cde4ddbc57',
+  expected: '517cce141c1a6bb2523e03c7b77eafe4354858551295d1d8d9406bb372b5747b',
+  operator: 'strictEqual',
+  diff: 'simple'
+}
+
+Node.js v24.21.0

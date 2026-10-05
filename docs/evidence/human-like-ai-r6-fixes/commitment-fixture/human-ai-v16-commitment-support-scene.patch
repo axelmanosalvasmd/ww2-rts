@@ -1,0 +1,13 @@
+--- a/test-engine-ai-commitment.js
++++ b/test-engine-ai-commitment.js
+@@ -27,7 +27,9 @@
+ g.units.clear(); g.players[0].mp = 5000;
+ for (const unit of ['rifle', 'rifle', 'rifle', 'mg', 'mg']) assert.equal(command(g, 0, { t: 'buy', unit }), undefined);
+ const own = [...g.units.values()];
+-own.forEach((u, i) => Object.assign(u, { x: 45 + i * 2, z: 80, holdFire: true, auto: false }));
++// Keep the support pair visibly separate from the line so its real drag can acquire both teams.
++own.forEach((u, i) => Object.assign(u, { x: u.type === 'mg' ? 45 + (i - 3) * 8 : 45 + i * 2,
++  z: u.type === 'mg' ? 88 : 80, holdFire: true, auto: false }));
+ g.players[0].mp = 0; g.points[0].owner = 1;
+ const memory = {}, accepted = [], rejected = [], supportIds = new Set(own.filter(u => u.type === 'mg').map(u => u.id));
+ let delivered, plannedAt = null, initialIds = null, selected = false;

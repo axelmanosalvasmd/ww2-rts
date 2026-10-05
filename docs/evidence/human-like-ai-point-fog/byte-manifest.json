@@ -1,0 +1,845 @@
+{
+  "algorithm": "sha256",
+  "files": [
+    {
+      "path": "README.md",
+      "bytes": 2322,
+      "sha256": "964d7810730dde01e1ecbd03421c4a8f7b0289c1b5076eefa462f858abfea87d"
+    },
+    {
+      "path": "clean/shared/ai-view.js",
+      "bytes": 13935,
+      "sha256": "4466958fc4b8e7a5d2f2bcb8dc3814e27c817a7480b0c765aa6ee2a98cbc87f7"
+    },
+    {
+      "path": "clean/shared/ai.js",
+      "bytes": 91781,
+      "sha256": "c99be94a933f5c122d8ba7f32750f1a4bff66bf2875c8f3ec8e86322eb3d7e43"
+    },
+    {
+      "path": "clean/shared/sim.js",
+      "bytes": 355291,
+      "sha256": "5e5f4c2d43d048be36d94f0cbcc68fb974c812fc8ab7e071cddb0a59079d89fa"
+    },
+    {
+      "path": "evidence/ai-v19-point-fog-count-baseline-native.json",
+      "bytes": 762,
+      "sha256": "615363fc61d8c2cf9e501e40baaf18038783db3518463856c7e34b3f72f21fe2"
+    },
+    {
+      "path": "evidence/ai-v19-point-fog-count-baseline.json",
+      "bytes": 35,
+      "sha256": "62d47c2914aeb341a7d6b75547b5d60b02a599c8bacbeb46dac0ee3a2b28341b"
+    },
+    {
+      "path": "evidence/ai-v19-point-fog-count-candidate-native.json",
+      "bytes": 763,
+      "sha256": "f4e4721ee6cbd3e022394dc277f4a7cc0c92f6efda742576e5a5a0860dbe8a11"
+    },
+    {
+      "path": "evidence/ai-v19-point-fog-count-candidate.json",
+      "bytes": 74,
+      "sha256": "d0154ee5752abb4c31d8c772fe56a3d192099f164d43bf99e3d6774ec3b7f1f9"
+    },
+    {
+      "path": "evidence/ai-v19-point-fog-current-controls-3.log",
+      "bytes": 30,
+      "sha256": "98e2d431c71118b3c3a469e68c734ad338f0b2f4c8137056cd6c6f92560926fa"
+    },
+    {
+      "path": "evidence/ai-v19-point-fog-current-manifest.json",
+      "bytes": 629,
+      "sha256": "3d321bf69468b552680eb9a9769daa2d6a920c67cd436d734def72324085322e"
+    },
+    {
+      "path": "evidence/ai-v19-point-fog-current-native-baseline.json",
+      "bytes": 764,
+      "sha256": "8bce6de3b57723382eadfd3dcc3cb86384b1fc05ada74b2e6948bc45fcb14ae7"
+    },
+    {
+      "path": "evidence/ai-v19-point-fog-current-native-baseline.log",
+      "bytes": 0,
+      "sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+    },
+    {
+      "path": "evidence/ai-v19-point-fog-current-native-final.json",
+      "bytes": 755,
+      "sha256": "120ab079f0f1b45c1121e16c3b02571935745a28e6b4745ddb0109243e53e201"
+    },
+    {
+      "path": "evidence/ai-v19-point-fog-current-native-final.log",
+      "bytes": 0,
+      "sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+    },
+    {
+      "path": "evidence/ai-v19-point-fog-current-regression.log",
+      "bytes": 260,
+      "sha256": "423fecaa17616bf93cac319c9fedbe7b3b84d7ca2998a56cde67079bcec23476"
+    },
+    {
+      "path": "evidence/ai-v19-point-fog-current-review.md",
+      "bytes": 4729,
+      "sha256": "520df32630ab01142a4cff63d9f8ac28f80f0b87e3e65485595f659be2704ef1"
+    },
+    {
+      "path": "evidence/ai-v19-point-fog-current-timing-baseline-raw.json",
+      "bytes": 36890,
+      "sha256": "add58a9ad81f5471fe424ad58bccae652c28757a4598922a82a9be04ce471542"
+    },
+    {
+      "path": "evidence/ai-v19-point-fog-current-timing-baseline.json",
+      "bytes": 607,
+      "sha256": "d275755417aa9b2610387f9bb70fea73ab026c9722be8dd3870c8967dda58e34"
+    },
+    {
+      "path": "evidence/ai-v19-point-fog-current-timing-candidate-raw.json",
+      "bytes": 36893,
+      "sha256": "f3548948d01534fa55ea05d270f63d3299be437bc492b69b7896dca28eb3925a"
+    },
+    {
+      "path": "evidence/ai-v19-point-fog-current-timing-candidate.json",
+      "bytes": 598,
+      "sha256": "90cdb97433d58edea6b76f6fb89d26b885f1487a5d527b082b65651837ca1e5f"
+    },
+    {
+      "path": "evidence/ai-v19-point-fog-durable-test.log",
+      "bytes": 94,
+      "sha256": "42f792c9b1d86de17dfeea2b484218a099e2a67e1f1e2ac0b6a0c8f880010e40"
+    },
+    {
+      "path": "historical/index.json",
+      "bytes": 1324,
+      "sha256": "93e91be351e63a4dbd38bc5a379d804b76096dd44e8fae23d5b9cb18715873bd"
+    },
+    {
+      "path": "patch/point-fog.patch",
+      "bytes": 9552,
+      "sha256": "00b4a0398f43de0e41dc9aad709b8c48746de4316c4882420ab66c53ceef6073"
+    },
+    {
+      "path": "scripts/ai-v19-fog-demand-human-proof.mjs",
+      "bytes": 2457,
+      "sha256": "24c512cd3a3d6e0b64c3ea818c1dfaecc107a53ecd68715ae064e2ce9c059963"
+    },
+    {
+      "path": "scripts/ai-v19-point-fog-count.mjs",
+      "bytes": 2585,
+      "sha256": "0efef78fefb5b4305775f18b12b27ce4c5cc85dedf5d50cec97406a747c713a1"
+    },
+    {
+      "path": "scripts/ai-v19-structural-combined-timing.mjs",
+      "bytes": 2790,
+      "sha256": "4e474a39c167f73925d64030686621cbee03d0d2e62c89df562a2c5f02b5dd56"
+    },
+    {
+      "path": "sources/baseline/client/keys.js",
+      "bytes": 7361,
+      "sha256": "867e3105b7e4665f8a313c2ab46e23fc3df9407f2163fd6862bb537a01ecd276"
+    },
+    {
+      "path": "sources/baseline/maps/six-fronts.json",
+      "bytes": 47514,
+      "sha256": "247228c85e88e76879b4117fd07f143ff38820d93e8a8129175312b3bd376255"
+    },
+    {
+      "path": "sources/baseline/package.json",
+      "bytes": 211,
+      "sha256": "38b34423b2e37b851381576f5dd67d9103d951ab7c7ddcf5cacb4112507b34db"
+    },
+    {
+      "path": "sources/baseline/shared/ai-attention.js",
+      "bytes": 27980,
+      "sha256": "07c48dbdcc92f326eeb52222518f274dcf05a4d746dfd474126d932ed05ca7ba"
+    },
+    {
+      "path": "sources/baseline/shared/ai-commander.js",
+      "bytes": 30709,
+      "sha256": "19112a1e4c94da72d62564d940497d38cf7e93e3086c9bde3db9c29d088703df"
+    },
+    {
+      "path": "sources/baseline/shared/ai-hands.js",
+      "bytes": 63608,
+      "sha256": "8bd373c3afb8261bf8ca2a53f24512522b91f0ddc6568eaa61dbf7039684b9a3"
+    },
+    {
+      "path": "sources/baseline/shared/ai-mind.js",
+      "bytes": 19553,
+      "sha256": "18bb411cb1d057ce8cffe0b042c21f64b71238ae157b584242df206d708e6b92"
+    },
+    {
+      "path": "sources/baseline/shared/ai-perception.js",
+      "bytes": 34765,
+      "sha256": "50e611a932728940c5047a61bf4fd7554c696f93880d7907a952d8b39fdcf3fd"
+    },
+    {
+      "path": "sources/baseline/shared/ai-persona.js",
+      "bytes": 3586,
+      "sha256": "34de5882046129d2000e5502e354123786f3ad7b7133f31e93863dcc36ba66cf"
+    },
+    {
+      "path": "sources/baseline/shared/ai-priority.js",
+      "bytes": 5884,
+      "sha256": "6b5d5a8a22968209fe03c8235648a859b36919b9eafd44cd390a8252ab6b3542"
+    },
+    {
+      "path": "sources/baseline/shared/ai-rng.js",
+      "bytes": 641,
+      "sha256": "2d2f95266eda45ec4fa4862cb01079fc8464a98d8c88fa97ca89b54a5d6f8b90"
+    },
+    {
+      "path": "sources/baseline/shared/ai-view.js",
+      "bytes": 13620,
+      "sha256": "ca4c85c25ea800eb43f33977b3c02f3989a8eebc60142f88e52740b3d422ae59"
+    },
+    {
+      "path": "sources/baseline/shared/ai.js",
+      "bytes": 91866,
+      "sha256": "6bf64a04843d3f9d101a0124288ba0d8e8b4498cf84cbaddc59e933b506ca70f"
+    },
+    {
+      "path": "sources/baseline/shared/alert-events.js",
+      "bytes": 8219,
+      "sha256": "df5f0ae98145034e6893ce0b70c2df8938a2d786cc8de37a1fbbc1a9c8b634b0"
+    },
+    {
+      "path": "sources/baseline/shared/command-feedback.js",
+      "bytes": 303,
+      "sha256": "e851bb8f7e48291bd75f09be66fdeecbe7dca68dcc82c839c5c033083ce77a07"
+    },
+    {
+      "path": "sources/baseline/shared/debris-motion.js",
+      "bytes": 4384,
+      "sha256": "d6a0f330f958ec6d78cfcc7f95b209aa5c099369576bf15dfd1c84770287b3b4"
+    },
+    {
+      "path": "sources/baseline/shared/formation.js",
+      "bytes": 4865,
+      "sha256": "265fa63c8c72588f6c8f67057921fd4daa88f96e9d823faa2e41ba10a7dba005"
+    },
+    {
+      "path": "sources/baseline/shared/grid.js",
+      "bytes": 2873,
+      "sha256": "30b0a5d67d99e54548d189374684e6b28863ecb7bf92de5221359e5c24fc5afc"
+    },
+    {
+      "path": "sources/baseline/shared/human-input.js",
+      "bytes": 7966,
+      "sha256": "dec728db485690620e527f912fa2a0b491f545c5bbdaafc4dc25fd1e425763ff"
+    },
+    {
+      "path": "sources/baseline/shared/local-traffic.js",
+      "bytes": 7408,
+      "sha256": "abad3f6ba310783c3620cec8d599df90dac38bb74eed6509be7d19a8af1490f6"
+    },
+    {
+      "path": "sources/baseline/shared/navigation.js",
+      "bytes": 19838,
+      "sha256": "c277c12f86c9990e281ae28a703dc374126aa1c737d9dc94a300f8d99c898472"
+    },
+    {
+      "path": "sources/baseline/shared/projectiles.js",
+      "bytes": 7769,
+      "sha256": "ded50f3bcd60cf79238d5dba48236d54e33b2b8032f704813118d1419708ccd7"
+    },
+    {
+      "path": "sources/baseline/shared/scenarios.js",
+      "bytes": 16044,
+      "sha256": "93f6cda90224a805cc97f42418b2dc11c49e3ea80654b66e0036de55f9b9ba97"
+    },
+    {
+      "path": "sources/baseline/shared/sim.js",
+      "bytes": 350222,
+      "sha256": "7bc57ac179b4982bdb94b469ce029e2e2178567fcb23fa1756476a17f791f018"
+    },
+    {
+      "path": "sources/baseline/shared/story.js",
+      "bytes": 3738,
+      "sha256": "fa33e53e61a7d636959dd1d1916d7b5c3359db72b523dc730b16ceab525d170f"
+    },
+    {
+      "path": "sources/baseline/shared/structures.js",
+      "bytes": 4029,
+      "sha256": "933b100a9a4c19a0285f5b137cd29b46e44271776f031045a537009e0176e5a2"
+    },
+    {
+      "path": "sources/baseline/shared/tutorial.js",
+      "bytes": 6342,
+      "sha256": "3aaa5e6affd936dae0ae4741d5173eee5d006132a1705d4b553097d3d8fabf42"
+    },
+    {
+      "path": "sources/baseline/shared/vehicle-motion.js",
+      "bytes": 12185,
+      "sha256": "05bd1e985a91b3268065a0a84ec4b9aee2c1079aafc4054c38a70677dfb1493b"
+    },
+    {
+      "path": "sources/baseline/shared/weather.js",
+      "bytes": 7228,
+      "sha256": "faad682d6e40fdc6629533f684e1caeec5c9ae49e26e9922651773727c0bc1e5"
+    },
+    {
+      "path": "sources/baseline/shared/world-conquest.js",
+      "bytes": 7203,
+      "sha256": "1c251e6d340586d7fb367d4f47938d5898f5239824dac46f054880a3d897aeef"
+    },
+    {
+      "path": "sources/baseline/shared/world-landforms.js",
+      "bytes": 6645,
+      "sha256": "ecb6916db6785484f8bb813f7745c8c48ccea370f084fea290ff736edc968e34"
+    },
+    {
+      "path": "sources/baseline/shared/world-layers.js",
+      "bytes": 6770,
+      "sha256": "f51f34b99946192107ada9a7077d787761c1a9cb6b1e316d7b7e243dd273bb22"
+    },
+    {
+      "path": "sources/baseline/shared/world-roads.js",
+      "bytes": 6491,
+      "sha256": "5fb243b63fa9e2c082135b5b093ee753e8a92c197a076d78067e53f08f1885db"
+    },
+    {
+      "path": "sources/baseline/shared/world-territories.js",
+      "bytes": 4110,
+      "sha256": "bb33a449d7f2c4d657dbceab8dbd0171eb8ccaa7494cedf9e18707822d8f717f"
+    },
+    {
+      "path": "sources/candidate/client/keys.js",
+      "bytes": 7361,
+      "sha256": "867e3105b7e4665f8a313c2ab46e23fc3df9407f2163fd6862bb537a01ecd276"
+    },
+    {
+      "path": "sources/candidate/maps/six-fronts.json",
+      "bytes": 47514,
+      "sha256": "247228c85e88e76879b4117fd07f143ff38820d93e8a8129175312b3bd376255"
+    },
+    {
+      "path": "sources/candidate/package.json",
+      "bytes": 211,
+      "sha256": "38b34423b2e37b851381576f5dd67d9103d951ab7c7ddcf5cacb4112507b34db"
+    },
+    {
+      "path": "sources/candidate/shared/ai-attention.js",
+      "bytes": 27980,
+      "sha256": "07c48dbdcc92f326eeb52222518f274dcf05a4d746dfd474126d932ed05ca7ba"
+    },
+    {
+      "path": "sources/candidate/shared/ai-commander.js",
+      "bytes": 30709,
+      "sha256": "19112a1e4c94da72d62564d940497d38cf7e93e3086c9bde3db9c29d088703df"
+    },
+    {
+      "path": "sources/candidate/shared/ai-hands.js",
+      "bytes": 63608,
+      "sha256": "8bd373c3afb8261bf8ca2a53f24512522b91f0ddc6568eaa61dbf7039684b9a3"
+    },
+    {
+      "path": "sources/candidate/shared/ai-mind.js",
+      "bytes": 19553,
+      "sha256": "18bb411cb1d057ce8cffe0b042c21f64b71238ae157b584242df206d708e6b92"
+    },
+    {
+      "path": "sources/candidate/shared/ai-perception.js",
+      "bytes": 34765,
+      "sha256": "50e611a932728940c5047a61bf4fd7554c696f93880d7907a952d8b39fdcf3fd"
+    },
+    {
+      "path": "sources/candidate/shared/ai-persona.js",
+      "bytes": 3586,
+      "sha256": "34de5882046129d2000e5502e354123786f3ad7b7133f31e93863dcc36ba66cf"
+    },
+    {
+      "path": "sources/candidate/shared/ai-priority.js",
+      "bytes": 5884,
+      "sha256": "6b5d5a8a22968209fe03c8235648a859b36919b9eafd44cd390a8252ab6b3542"
+    },
+    {
+      "path": "sources/candidate/shared/ai-rng.js",
+      "bytes": 641,
+      "sha256": "2d2f95266eda45ec4fa4862cb01079fc8464a98d8c88fa97ca89b54a5d6f8b90"
+    },
+    {
+      "path": "sources/candidate/shared/ai-view.js",
+      "bytes": 13935,
+      "sha256": "4466958fc4b8e7a5d2f2bcb8dc3814e27c817a7480b0c765aa6ee2a98cbc87f7"
+    },
+    {
+      "path": "sources/candidate/shared/ai.js",
+      "bytes": 91922,
+      "sha256": "12abfc8f70af045299201fcea0176d6a4cd16b694a9f4032d37b52df631c33e4"
+    },
+    {
+      "path": "sources/candidate/shared/alert-events.js",
+      "bytes": 8219,
+      "sha256": "df5f0ae98145034e6893ce0b70c2df8938a2d786cc8de37a1fbbc1a9c8b634b0"
+    },
+    {
+      "path": "sources/candidate/shared/command-feedback.js",
+      "bytes": 303,
+      "sha256": "e851bb8f7e48291bd75f09be66fdeecbe7dca68dcc82c839c5c033083ce77a07"
+    },
+    {
+      "path": "sources/candidate/shared/debris-motion.js",
+      "bytes": 4384,
+      "sha256": "d6a0f330f958ec6d78cfcc7f95b209aa5c099369576bf15dfd1c84770287b3b4"
+    },
+    {
+      "path": "sources/candidate/shared/formation.js",
+      "bytes": 4865,
+      "sha256": "265fa63c8c72588f6c8f67057921fd4daa88f96e9d823faa2e41ba10a7dba005"
+    },
+    {
+      "path": "sources/candidate/shared/grid.js",
+      "bytes": 2873,
+      "sha256": "30b0a5d67d99e54548d189374684e6b28863ecb7bf92de5221359e5c24fc5afc"
+    },
+    {
+      "path": "sources/candidate/shared/human-input.js",
+      "bytes": 7966,
+      "sha256": "dec728db485690620e527f912fa2a0b491f545c5bbdaafc4dc25fd1e425763ff"
+    },
+    {
+      "path": "sources/candidate/shared/local-traffic.js",
+      "bytes": 7408,
+      "sha256": "abad3f6ba310783c3620cec8d599df90dac38bb74eed6509be7d19a8af1490f6"
+    },
+    {
+      "path": "sources/candidate/shared/navigation.js",
+      "bytes": 19838,
+      "sha256": "c277c12f86c9990e281ae28a703dc374126aa1c737d9dc94a300f8d99c898472"
+    },
+    {
+      "path": "sources/candidate/shared/projectiles.js",
+      "bytes": 7769,
+      "sha256": "ded50f3bcd60cf79238d5dba48236d54e33b2b8032f704813118d1419708ccd7"
+    },
+    {
+      "path": "sources/candidate/shared/scenarios.js",
+      "bytes": 16044,
+      "sha256": "93f6cda90224a805cc97f42418b2dc11c49e3ea80654b66e0036de55f9b9ba97"
+    },
+    {
+      "path": "sources/candidate/shared/sim.js",
+      "bytes": 355291,
+      "sha256": "5e5f4c2d43d048be36d94f0cbcc68fb974c812fc8ab7e071cddb0a59079d89fa"
+    },
+    {
+      "path": "sources/candidate/shared/story.js",
+      "bytes": 3738,
+      "sha256": "fa33e53e61a7d636959dd1d1916d7b5c3359db72b523dc730b16ceab525d170f"
+    },
+    {
+      "path": "sources/candidate/shared/structures.js",
+      "bytes": 4029,
+      "sha256": "933b100a9a4c19a0285f5b137cd29b46e44271776f031045a537009e0176e5a2"
+    },
+    {
+      "path": "sources/candidate/shared/tutorial.js",
+      "bytes": 6342,
+      "sha256": "3aaa5e6affd936dae0ae4741d5173eee5d006132a1705d4b553097d3d8fabf42"
+    },
+    {
+      "path": "sources/candidate/shared/vehicle-motion.js",
+      "bytes": 12185,
+      "sha256": "05bd1e985a91b3268065a0a84ec4b9aee2c1079aafc4054c38a70677dfb1493b"
+    },
+    {
+      "path": "sources/candidate/shared/weather.js",
+      "bytes": 7228,
+      "sha256": "faad682d6e40fdc6629533f684e1caeec5c9ae49e26e9922651773727c0bc1e5"
+    },
+    {
+      "path": "sources/candidate/shared/world-conquest.js",
+      "bytes": 7203,
+      "sha256": "1c251e6d340586d7fb367d4f47938d5898f5239824dac46f054880a3d897aeef"
+    },
+    {
+      "path": "sources/candidate/shared/world-landforms.js",
+      "bytes": 6645,
+      "sha256": "ecb6916db6785484f8bb813f7745c8c48ccea370f084fea290ff736edc968e34"
+    },
+    {
+      "path": "sources/candidate/shared/world-layers.js",
+      "bytes": 6770,
+      "sha256": "f51f34b99946192107ada9a7077d787761c1a9cb6b1e316d7b7e243dd273bb22"
+    },
+    {
+      "path": "sources/candidate/shared/world-roads.js",
+      "bytes": 6491,
+      "sha256": "5fb243b63fa9e2c082135b5b093ee753e8a92c197a076d78067e53f08f1885db"
+    },
+    {
+      "path": "sources/candidate/shared/world-territories.js",
+      "bytes": 4110,
+      "sha256": "bb33a449d7f2c4d657dbceab8dbd0171eb8ccaa7494cedf9e18707822d8f717f"
+    },
+    {
+      "path": "sources/candidate/test-engine-ai-effect-visibility.js",
+      "bytes": 7866,
+      "sha256": "c0ba9c60f376cd8efd7a47ab5dc6eae7bce8d3d1771b870b289d7578b3184c06"
+    },
+    {
+      "path": "sources/candidate/test-engine-ai-perception.js",
+      "bytes": 52297,
+      "sha256": "ef8d5c10a74fc677c82b181eeedd6e1ebe98660c99ed88bff9072f7080338a43"
+    },
+    {
+      "path": "sources/candidate/test-engine-ai-point-fog.js",
+      "bytes": 7961,
+      "sha256": "6638ae18a7932a237cfaf75175b2347eed73ed56c3a15d1d7180bb4c91ab44cc"
+    },
+    {
+      "path": "sources/candidate/test-engine-ai-selected-hud.js",
+      "bytes": 15171,
+      "sha256": "7161d64670d36b8d05d32239a0076886831725fb842a3885f49aa24e9bbd23b3"
+    },
+    {
+      "path": "sources/candidate/tools/ai-screen-v1-oracle.js",
+      "bytes": 28180,
+      "sha256": "6b3894b551f3bf9151372b048b2efc77ffc86a6a173d0871278b27417358b398"
+    },
+    {
+      "path": "sources/count-baseline/client/keys.js",
+      "bytes": 7361,
+      "sha256": "867e3105b7e4665f8a313c2ab46e23fc3df9407f2163fd6862bb537a01ecd276"
+    },
+    {
+      "path": "sources/count-baseline/maps/six-fronts.json",
+      "bytes": 47514,
+      "sha256": "247228c85e88e76879b4117fd07f143ff38820d93e8a8129175312b3bd376255"
+    },
+    {
+      "path": "sources/count-baseline/package.json",
+      "bytes": 211,
+      "sha256": "38b34423b2e37b851381576f5dd67d9103d951ab7c7ddcf5cacb4112507b34db"
+    },
+    {
+      "path": "sources/count-baseline/shared/ai-attention.js",
+      "bytes": 27980,
+      "sha256": "07c48dbdcc92f326eeb52222518f274dcf05a4d746dfd474126d932ed05ca7ba"
+    },
+    {
+      "path": "sources/count-baseline/shared/ai-commander.js",
+      "bytes": 30709,
+      "sha256": "19112a1e4c94da72d62564d940497d38cf7e93e3086c9bde3db9c29d088703df"
+    },
+    {
+      "path": "sources/count-baseline/shared/ai-hands.js",
+      "bytes": 63608,
+      "sha256": "8bd373c3afb8261bf8ca2a53f24512522b91f0ddc6568eaa61dbf7039684b9a3"
+    },
+    {
+      "path": "sources/count-baseline/shared/ai-mind.js",
+      "bytes": 19553,
+      "sha256": "18bb411cb1d057ce8cffe0b042c21f64b71238ae157b584242df206d708e6b92"
+    },
+    {
+      "path": "sources/count-baseline/shared/ai-perception.js",
+      "bytes": 34765,
+      "sha256": "50e611a932728940c5047a61bf4fd7554c696f93880d7907a952d8b39fdcf3fd"
+    },
+    {
+      "path": "sources/count-baseline/shared/ai-persona.js",
+      "bytes": 3586,
+      "sha256": "34de5882046129d2000e5502e354123786f3ad7b7133f31e93863dcc36ba66cf"
+    },
+    {
+      "path": "sources/count-baseline/shared/ai-priority.js",
+      "bytes": 5884,
+      "sha256": "6b5d5a8a22968209fe03c8235648a859b36919b9eafd44cd390a8252ab6b3542"
+    },
+    {
+      "path": "sources/count-baseline/shared/ai-rng.js",
+      "bytes": 641,
+      "sha256": "2d2f95266eda45ec4fa4862cb01079fc8464a98d8c88fa97ca89b54a5d6f8b90"
+    },
+    {
+      "path": "sources/count-baseline/shared/ai-view.js",
+      "bytes": 13620,
+      "sha256": "ca4c85c25ea800eb43f33977b3c02f3989a8eebc60142f88e52740b3d422ae59"
+    },
+    {
+      "path": "sources/count-baseline/shared/ai.js",
+      "bytes": 91866,
+      "sha256": "6bf64a04843d3f9d101a0124288ba0d8e8b4498cf84cbaddc59e933b506ca70f"
+    },
+    {
+      "path": "sources/count-baseline/shared/alert-events.js",
+      "bytes": 8219,
+      "sha256": "df5f0ae98145034e6893ce0b70c2df8938a2d786cc8de37a1fbbc1a9c8b634b0"
+    },
+    {
+      "path": "sources/count-baseline/shared/command-feedback.js",
+      "bytes": 303,
+      "sha256": "e851bb8f7e48291bd75f09be66fdeecbe7dca68dcc82c839c5c033083ce77a07"
+    },
+    {
+      "path": "sources/count-baseline/shared/debris-motion.js",
+      "bytes": 4384,
+      "sha256": "d6a0f330f958ec6d78cfcc7f95b209aa5c099369576bf15dfd1c84770287b3b4"
+    },
+    {
+      "path": "sources/count-baseline/shared/formation.js",
+      "bytes": 4865,
+      "sha256": "265fa63c8c72588f6c8f67057921fd4daa88f96e9d823faa2e41ba10a7dba005"
+    },
+    {
+      "path": "sources/count-baseline/shared/grid.js",
+      "bytes": 2873,
+      "sha256": "30b0a5d67d99e54548d189374684e6b28863ecb7bf92de5221359e5c24fc5afc"
+    },
+    {
+      "path": "sources/count-baseline/shared/human-input.js",
+      "bytes": 7966,
+      "sha256": "dec728db485690620e527f912fa2a0b491f545c5bbdaafc4dc25fd1e425763ff"
+    },
+    {
+      "path": "sources/count-baseline/shared/local-traffic.js",
+      "bytes": 7408,
+      "sha256": "abad3f6ba310783c3620cec8d599df90dac38bb74eed6509be7d19a8af1490f6"
+    },
+    {
+      "path": "sources/count-baseline/shared/navigation.js",
+      "bytes": 19838,
+      "sha256": "c277c12f86c9990e281ae28a703dc374126aa1c737d9dc94a300f8d99c898472"
+    },
+    {
+      "path": "sources/count-baseline/shared/projectiles.js",
+      "bytes": 7769,
+      "sha256": "ded50f3bcd60cf79238d5dba48236d54e33b2b8032f704813118d1419708ccd7"
+    },
+    {
+      "path": "sources/count-baseline/shared/scenarios.js",
+      "bytes": 16044,
+      "sha256": "93f6cda90224a805cc97f42418b2dc11c49e3ea80654b66e0036de55f9b9ba97"
+    },
+    {
+      "path": "sources/count-baseline/shared/sim.js",
+      "bytes": 350504,
+      "sha256": "1244100bdde0dc5abb07baa140b3d7972ab9ac12852e3453d4b51277ec068fcf"
+    },
+    {
+      "path": "sources/count-baseline/shared/story.js",
+      "bytes": 3738,
+      "sha256": "fa33e53e61a7d636959dd1d1916d7b5c3359db72b523dc730b16ceab525d170f"
+    },
+    {
+      "path": "sources/count-baseline/shared/structures.js",
+      "bytes": 4029,
+      "sha256": "933b100a9a4c19a0285f5b137cd29b46e44271776f031045a537009e0176e5a2"
+    },
+    {
+      "path": "sources/count-baseline/shared/tutorial.js",
+      "bytes": 6342,
+      "sha256": "3aaa5e6affd936dae0ae4741d5173eee5d006132a1705d4b553097d3d8fabf42"
+    },
+    {
+      "path": "sources/count-baseline/shared/vehicle-motion.js",
+      "bytes": 12185,
+      "sha256": "05bd1e985a91b3268065a0a84ec4b9aee2c1079aafc4054c38a70677dfb1493b"
+    },
+    {
+      "path": "sources/count-baseline/shared/weather.js",
+      "bytes": 7228,
+      "sha256": "faad682d6e40fdc6629533f684e1caeec5c9ae49e26e9922651773727c0bc1e5"
+    },
+    {
+      "path": "sources/count-baseline/shared/world-conquest.js",
+      "bytes": 7203,
+      "sha256": "1c251e6d340586d7fb367d4f47938d5898f5239824dac46f054880a3d897aeef"
+    },
+    {
+      "path": "sources/count-baseline/shared/world-landforms.js",
+      "bytes": 6645,
+      "sha256": "ecb6916db6785484f8bb813f7745c8c48ccea370f084fea290ff736edc968e34"
+    },
+    {
+      "path": "sources/count-baseline/shared/world-layers.js",
+      "bytes": 6770,
+      "sha256": "f51f34b99946192107ada9a7077d787761c1a9cb6b1e316d7b7e243dd273bb22"
+    },
+    {
+      "path": "sources/count-baseline/shared/world-roads.js",
+      "bytes": 6491,
+      "sha256": "5fb243b63fa9e2c082135b5b093ee753e8a92c197a076d78067e53f08f1885db"
+    },
+    {
+      "path": "sources/count-baseline/shared/world-territories.js",
+      "bytes": 4110,
+      "sha256": "bb33a449d7f2c4d657dbceab8dbd0171eb8ccaa7494cedf9e18707822d8f717f"
+    },
+    {
+      "path": "sources/count-candidate/client/keys.js",
+      "bytes": 7361,
+      "sha256": "867e3105b7e4665f8a313c2ab46e23fc3df9407f2163fd6862bb537a01ecd276"
+    },
+    {
+      "path": "sources/count-candidate/maps/six-fronts.json",
+      "bytes": 47514,
+      "sha256": "247228c85e88e76879b4117fd07f143ff38820d93e8a8129175312b3bd376255"
+    },
+    {
+      "path": "sources/count-candidate/package.json",
+      "bytes": 211,
+      "sha256": "38b34423b2e37b851381576f5dd67d9103d951ab7c7ddcf5cacb4112507b34db"
+    },
+    {
+      "path": "sources/count-candidate/shared/ai-attention.js",
+      "bytes": 27980,
+      "sha256": "07c48dbdcc92f326eeb52222518f274dcf05a4d746dfd474126d932ed05ca7ba"
+    },
+    {
+      "path": "sources/count-candidate/shared/ai-commander.js",
+      "bytes": 30709,
+      "sha256": "19112a1e4c94da72d62564d940497d38cf7e93e3086c9bde3db9c29d088703df"
+    },
+    {
+      "path": "sources/count-candidate/shared/ai-hands.js",
+      "bytes": 63608,
+      "sha256": "8bd373c3afb8261bf8ca2a53f24512522b91f0ddc6568eaa61dbf7039684b9a3"
+    },
+    {
+      "path": "sources/count-candidate/shared/ai-mind.js",
+      "bytes": 19553,
+      "sha256": "18bb411cb1d057ce8cffe0b042c21f64b71238ae157b584242df206d708e6b92"
+    },
+    {
+      "path": "sources/count-candidate/shared/ai-perception.js",
+      "bytes": 34765,
+      "sha256": "50e611a932728940c5047a61bf4fd7554c696f93880d7907a952d8b39fdcf3fd"
+    },
+    {
+      "path": "sources/count-candidate/shared/ai-persona.js",
+      "bytes": 3586,
+      "sha256": "34de5882046129d2000e5502e354123786f3ad7b7133f31e93863dcc36ba66cf"
+    },
+    {
+      "path": "sources/count-candidate/shared/ai-priority.js",
+      "bytes": 5884,
+      "sha256": "6b5d5a8a22968209fe03c8235648a859b36919b9eafd44cd390a8252ab6b3542"
+    },
+    {
+      "path": "sources/count-candidate/shared/ai-rng.js",
+      "bytes": 641,
+      "sha256": "2d2f95266eda45ec4fa4862cb01079fc8464a98d8c88fa97ca89b54a5d6f8b90"
+    },
+    {
+      "path": "sources/count-candidate/shared/ai-view.js",
+      "bytes": 13935,
+      "sha256": "4466958fc4b8e7a5d2f2bcb8dc3814e27c817a7480b0c765aa6ee2a98cbc87f7"
+    },
+    {
+      "path": "sources/count-candidate/shared/ai.js",
+      "bytes": 91922,
+      "sha256": "12abfc8f70af045299201fcea0176d6a4cd16b694a9f4032d37b52df631c33e4"
+    },
+    {
+      "path": "sources/count-candidate/shared/alert-events.js",
+      "bytes": 8219,
+      "sha256": "df5f0ae98145034e6893ce0b70c2df8938a2d786cc8de37a1fbbc1a9c8b634b0"
+    },
+    {
+      "path": "sources/count-candidate/shared/command-feedback.js",
+      "bytes": 303,
+      "sha256": "e851bb8f7e48291bd75f09be66fdeecbe7dca68dcc82c839c5c033083ce77a07"
+    },
+    {
+      "path": "sources/count-candidate/shared/debris-motion.js",
+      "bytes": 4384,
+      "sha256": "d6a0f330f958ec6d78cfcc7f95b209aa5c099369576bf15dfd1c84770287b3b4"
+    },
+    {
+      "path": "sources/count-candidate/shared/formation.js",
+      "bytes": 4865,
+      "sha256": "265fa63c8c72588f6c8f67057921fd4daa88f96e9d823faa2e41ba10a7dba005"
+    },
+    {
+      "path": "sources/count-candidate/shared/grid.js",
+      "bytes": 2873,
+      "sha256": "30b0a5d67d99e54548d189374684e6b28863ecb7bf92de5221359e5c24fc5afc"
+    },
+    {
+      "path": "sources/count-candidate/shared/human-input.js",
+      "bytes": 7966,
+      "sha256": "dec728db485690620e527f912fa2a0b491f545c5bbdaafc4dc25fd1e425763ff"
+    },
+    {
+      "path": "sources/count-candidate/shared/local-traffic.js",
+      "bytes": 7408,
+      "sha256": "abad3f6ba310783c3620cec8d599df90dac38bb74eed6509be7d19a8af1490f6"
+    },
+    {
+      "path": "sources/count-candidate/shared/navigation.js",
+      "bytes": 19838,
+      "sha256": "c277c12f86c9990e281ae28a703dc374126aa1c737d9dc94a300f8d99c898472"
+    },
+    {
+      "path": "sources/count-candidate/shared/projectiles.js",
+      "bytes": 7769,
+      "sha256": "ded50f3bcd60cf79238d5dba48236d54e33b2b8032f704813118d1419708ccd7"
+    },
+    {
+      "path": "sources/count-candidate/shared/scenarios.js",
+      "bytes": 16044,
+      "sha256": "93f6cda90224a805cc97f42418b2dc11c49e3ea80654b66e0036de55f9b9ba97"
+    },
+    {
+      "path": "sources/count-candidate/shared/sim.js",
+      "bytes": 355877,
+      "sha256": "e0d0fe6e3c4393246af10d56141688c254fae49cb7cb4c0fff3d8ae92377787c"
+    },
+    {
+      "path": "sources/count-candidate/shared/story.js",
+      "bytes": 3738,
+      "sha256": "fa33e53e61a7d636959dd1d1916d7b5c3359db72b523dc730b16ceab525d170f"
+    },
+    {
+      "path": "sources/count-candidate/shared/structures.js",
+      "bytes": 4029,
+      "sha256": "933b100a9a4c19a0285f5b137cd29b46e44271776f031045a537009e0176e5a2"
+    },
+    {
+      "path": "sources/count-candidate/shared/tutorial.js",
+      "bytes": 6342,
+      "sha256": "3aaa5e6affd936dae0ae4741d5173eee5d006132a1705d4b553097d3d8fabf42"
+    },
+    {
+      "path": "sources/count-candidate/shared/vehicle-motion.js",
+      "bytes": 12185,
+      "sha256": "05bd1e985a91b3268065a0a84ec4b9aee2c1079aafc4054c38a70677dfb1493b"
+    },
+    {
+      "path": "sources/count-candidate/shared/weather.js",
+      "bytes": 7228,
+      "sha256": "faad682d6e40fdc6629533f684e1caeec5c9ae49e26e9922651773727c0bc1e5"
+    },
+    {
+      "path": "sources/count-candidate/shared/world-conquest.js",
+      "bytes": 7203,
+      "sha256": "1c251e6d340586d7fb367d4f47938d5898f5239824dac46f054880a3d897aeef"
+    },
+    {
+      "path": "sources/count-candidate/shared/world-landforms.js",
+      "bytes": 6645,
+      "sha256": "ecb6916db6785484f8bb813f7745c8c48ccea370f084fea290ff736edc968e34"
+    },
+    {
+      "path": "sources/count-candidate/shared/world-layers.js",
+      "bytes": 6770,
+      "sha256": "f51f34b99946192107ada9a7077d787761c1a9cb6b1e316d7b7e243dd273bb22"
+    },
+    {
+      "path": "sources/count-candidate/shared/world-roads.js",
+      "bytes": 6491,
+      "sha256": "5fb243b63fa9e2c082135b5b093ee753e8a92c197a076d78067e53f08f1885db"
+    },
+    {
+      "path": "sources/count-candidate/shared/world-territories.js",
+      "bytes": 4110,
+      "sha256": "bb33a449d7f2c4d657dbceab8dbd0171eb8ccaa7494cedf9e18707822d8f717f"
+    },
+    {
+      "path": "tests/test-engine-ai-point-fog.js",
+      "bytes": 7961,
+      "sha256": "6638ae18a7932a237cfaf75175b2347eed73ed56c3a15d1d7180bb4c91ab44cc"
+    }
+  ]
+}

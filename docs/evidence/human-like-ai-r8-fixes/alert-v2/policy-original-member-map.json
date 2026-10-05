@@ -1,0 +1,523 @@
+{
+  "archive": "/tmp/human-ai-alert-v2-prospective-evidence.tar.gz",
+  "archiveSHA256": "5f57f713354170d75134eaf5b5734fcb99b3b5e94a86ab308e052f7b767ec82d",
+  "members": [
+    {
+      "member": "tools/ai-public-alert-response-v2.mjs",
+      "originalPath": "/tmp/human-ai-alert-v2-prospective/tools/ai-public-alert-response-v2.mjs",
+      "bytes": 24115,
+      "sha256": "e54b5bbf07f2e637cde592e2f6d079ef3a41f3ac4003dd3d68f70f706104c997"
+    },
+    {
+      "member": "test-engine-ai-public-alert-v2.js",
+      "originalPath": "/tmp/human-ai-alert-v2-prospective/test-engine-ai-public-alert-v2.js",
+      "bytes": 14718,
+      "sha256": "7fa24d55d97352c39d7f23fb2a97d2a9833c19332458ac8de0a08135c40cfcb6"
+    },
+    {
+      "member": "docs/public-danger-alert-v2-prospective-declaration.md",
+      "originalPath": "/tmp/human-ai-alert-v2-prospective/docs/public-danger-alert-v2-prospective-declaration.md",
+      "bytes": 8404,
+      "sha256": "902d8d92e30d0e44ab50c6b315293ff5ae2ba2aca1b938e797d92e548643ae15"
+    },
+    {
+      "member": "REVIEW.md",
+      "originalPath": "/tmp/human-ai-alert-v2-prospective/REVIEW.md",
+      "bytes": 3882,
+      "sha256": "96d57e35faa280797b00465a3f97530836674cc8944a8751a9b280979f30d824"
+    },
+    {
+      "member": "manifest.json",
+      "originalPath": "/tmp/human-ai-alert-v2-prospective/manifest.json",
+      "bytes": 15650,
+      "sha256": "19b24193ed2e73cfd0565bc1ad18d8796fb11102d2358cfbb0388de7f4f8108c"
+    },
+    {
+      "member": "public-danger-alert-v2.patch",
+      "originalPath": "/tmp/human-ai-alert-v2-prospective/public-danger-alert-v2.patch",
+      "bytes": 48370,
+      "sha256": "e05bf42d6cf4bd1de67da01875cc6ddbf071945839256e05c6337ac0e7f38107"
+    },
+    {
+      "member": "native-proof-fifth.json",
+      "originalPath": "/tmp/human-ai-alert-v2-prospective/native-proof-fifth.json",
+      "bytes": 116952,
+      "sha256": "7ca881ac9773226520a0ec84887e2d5d05c8d8809399166032a440e2029c6ab7"
+    },
+    {
+      "member": "native-proof-first.json",
+      "originalPath": "/tmp/human-ai-alert-v2-prospective/native-proof-first.json",
+      "bytes": 99322,
+      "sha256": "6aa90674a2747afcad178096d75bde82cd40b71746a29143fd8c63a22a172db5"
+    },
+    {
+      "member": "native-proof-fourth.json",
+      "originalPath": "/tmp/human-ai-alert-v2-prospective/native-proof-fourth.json",
+      "bytes": 116854,
+      "sha256": "ee4096d5399a9e7318a21a76e3c41938139b413d0451fd089a34a7c56829556b"
+    },
+    {
+      "member": "native-proof-r8-compat-final.json",
+      "originalPath": "/tmp/human-ai-alert-v2-prospective/native-proof-r8-compat-final.json",
+      "bytes": 165155,
+      "sha256": "4d6488d7c28ba5b779391ea308ee5aaa686d175ed838e6ad7a452c8c36ed262a"
+    },
+    {
+      "member": "native-proof-r8-compat.json",
+      "originalPath": "/tmp/human-ai-alert-v2-prospective/native-proof-r8-compat.json",
+      "bytes": 149776,
+      "sha256": "6104b44fee06ddb3e695f42f8c8e5d62d41ad0cf18e8689c2daabfd93f6197dd"
+    },
+    {
+      "member": "native-proof-second.json",
+      "originalPath": "/tmp/human-ai-alert-v2-prospective/native-proof-second.json",
+      "bytes": 107409,
+      "sha256": "eefa68c2c447ff837948b166687cd6d6f5f0964344fc1e946d73eb967ef0a351"
+    },
+    {
+      "member": "native-proof-seventh.json",
+      "originalPath": "/tmp/human-ai-alert-v2-prospective/native-proof-seventh.json",
+      "bytes": 161830,
+      "sha256": "3bdc223a04b16eb1fe8883df7f759eaa9601eafcb8218b2e7f5c647e9f266ee6"
+    },
+    {
+      "member": "native-proof-sixth.json",
+      "originalPath": "/tmp/human-ai-alert-v2-prospective/native-proof-sixth.json",
+      "bytes": 146451,
+      "sha256": "ac616b06d50880c43b3bbdbdfed406645cdf88e5b87e0f32e72f1d4d101d6f7a"
+    },
+    {
+      "member": "native-proof-third.json",
+      "originalPath": "/tmp/human-ai-alert-v2-prospective/native-proof-third.json",
+      "bytes": 116832,
+      "sha256": "456f7a2839440f74df9ef9796cadb945a6cc1378cf5559e7cb21f85f4fc207bc"
+    },
+    {
+      "member": "r8-compatibility.patch",
+      "originalPath": "/tmp/human-ai-alert-v2-pan-compat.patch",
+      "bytes": 15508,
+      "sha256": "2caa546680142c236c2b0c25416453eb57e0580bce61dc29dfb2faba4926e464"
+    },
+    {
+      "member": "original-source/client/keys.js",
+      "originalPath": "/tmp/human-ai-alert-v2-prospective/client/keys.js",
+      "bytes": 7361,
+      "sha256": "867e3105b7e4665f8a313c2ab46e23fc3df9407f2163fd6862bb537a01ecd276"
+    },
+    {
+      "member": "original-source/shared/ai-attention.js",
+      "originalPath": "/tmp/human-ai-alert-v2-prospective/shared/ai-attention.js",
+      "bytes": 27980,
+      "sha256": "07c48dbdcc92f326eeb52222518f274dcf05a4d746dfd474126d932ed05ca7ba"
+    },
+    {
+      "member": "original-source/shared/ai-commander.js",
+      "originalPath": "/tmp/human-ai-alert-v2-prospective/shared/ai-commander.js",
+      "bytes": 30709,
+      "sha256": "19112a1e4c94da72d62564d940497d38cf7e93e3086c9bde3db9c29d088703df"
+    },
+    {
+      "member": "original-source/shared/ai-hands.js",
+      "originalPath": "/tmp/human-ai-alert-v2-prospective/shared/ai-hands.js",
+      "bytes": 63608,
+      "sha256": "8bd373c3afb8261bf8ca2a53f24512522b91f0ddc6568eaa61dbf7039684b9a3"
+    },
+    {
+      "member": "original-source/shared/ai-mind.js",
+      "originalPath": "/tmp/human-ai-alert-v2-prospective/shared/ai-mind.js",
+      "bytes": 19553,
+      "sha256": "18bb411cb1d057ce8cffe0b042c21f64b71238ae157b584242df206d708e6b92"
+    },
+    {
+      "member": "original-source/shared/ai-perception.js",
+      "originalPath": "/tmp/human-ai-alert-v2-prospective/shared/ai-perception.js",
+      "bytes": 34765,
+      "sha256": "50e611a932728940c5047a61bf4fd7554c696f93880d7907a952d8b39fdcf3fd"
+    },
+    {
+      "member": "original-source/shared/ai-persona.js",
+      "originalPath": "/tmp/human-ai-alert-v2-prospective/shared/ai-persona.js",
+      "bytes": 3586,
+      "sha256": "34de5882046129d2000e5502e354123786f3ad7b7133f31e93863dcc36ba66cf"
+    },
+    {
+      "member": "original-source/shared/ai-priority.js",
+      "originalPath": "/tmp/human-ai-alert-v2-prospective/shared/ai-priority.js",
+      "bytes": 5884,
+      "sha256": "6b5d5a8a22968209fe03c8235648a859b36919b9eafd44cd390a8252ab6b3542"
+    },
+    {
+      "member": "original-source/shared/ai-rng.js",
+      "originalPath": "/tmp/human-ai-alert-v2-prospective/shared/ai-rng.js",
+      "bytes": 641,
+      "sha256": "2d2f95266eda45ec4fa4862cb01079fc8464a98d8c88fa97ca89b54a5d6f8b90"
+    },
+    {
+      "member": "original-source/shared/ai-view.js",
+      "originalPath": "/tmp/human-ai-alert-v2-prospective/shared/ai-view.js",
+      "bytes": 13935,
+      "sha256": "4466958fc4b8e7a5d2f2bcb8dc3814e27c817a7480b0c765aa6ee2a98cbc87f7"
+    },
+    {
+      "member": "original-source/shared/ai.js",
+      "originalPath": "/tmp/human-ai-alert-v2-prospective/shared/ai.js",
+      "bytes": 91781,
+      "sha256": "c99be94a933f5c122d8ba7f32750f1a4bff66bf2875c8f3ec8e86322eb3d7e43"
+    },
+    {
+      "member": "original-source/shared/alert-events.js",
+      "originalPath": "/tmp/human-ai-alert-v2-prospective/shared/alert-events.js",
+      "bytes": 8219,
+      "sha256": "df5f0ae98145034e6893ce0b70c2df8938a2d786cc8de37a1fbbc1a9c8b634b0"
+    },
+    {
+      "member": "original-source/shared/debris-motion.js",
+      "originalPath": "/tmp/human-ai-alert-v2-prospective/shared/debris-motion.js",
+      "bytes": 4384,
+      "sha256": "d6a0f330f958ec6d78cfcc7f95b209aa5c099369576bf15dfd1c84770287b3b4"
+    },
+    {
+      "member": "original-source/shared/formation.js",
+      "originalPath": "/tmp/human-ai-alert-v2-prospective/shared/formation.js",
+      "bytes": 4865,
+      "sha256": "265fa63c8c72588f6c8f67057921fd4daa88f96e9d823faa2e41ba10a7dba005"
+    },
+    {
+      "member": "original-source/shared/grid.js",
+      "originalPath": "/tmp/human-ai-alert-v2-prospective/shared/grid.js",
+      "bytes": 2873,
+      "sha256": "30b0a5d67d99e54548d189374684e6b28863ecb7bf92de5221359e5c24fc5afc"
+    },
+    {
+      "member": "original-source/shared/local-traffic.js",
+      "originalPath": "/tmp/human-ai-alert-v2-prospective/shared/local-traffic.js",
+      "bytes": 7408,
+      "sha256": "abad3f6ba310783c3620cec8d599df90dac38bb74eed6509be7d19a8af1490f6"
+    },
+    {
+      "member": "original-source/shared/navigation.js",
+      "originalPath": "/tmp/human-ai-alert-v2-prospective/shared/navigation.js",
+      "bytes": 19838,
+      "sha256": "c277c12f86c9990e281ae28a703dc374126aa1c737d9dc94a300f8d99c898472"
+    },
+    {
+      "member": "original-source/shared/projectiles.js",
+      "originalPath": "/tmp/human-ai-alert-v2-prospective/shared/projectiles.js",
+      "bytes": 7769,
+      "sha256": "ded50f3bcd60cf79238d5dba48236d54e33b2b8032f704813118d1419708ccd7"
+    },
+    {
+      "member": "original-source/shared/scenarios.js",
+      "originalPath": "/tmp/human-ai-alert-v2-prospective/shared/scenarios.js",
+      "bytes": 16044,
+      "sha256": "93f6cda90224a805cc97f42418b2dc11c49e3ea80654b66e0036de55f9b9ba97"
+    },
+    {
+      "member": "original-source/shared/sim.js",
+      "originalPath": "/tmp/human-ai-alert-v2-prospective/shared/sim.js",
+      "bytes": 355291,
+      "sha256": "5e5f4c2d43d048be36d94f0cbcc68fb974c812fc8ab7e071cddb0a59079d89fa"
+    },
+    {
+      "member": "original-source/shared/story.js",
+      "originalPath": "/tmp/human-ai-alert-v2-prospective/shared/story.js",
+      "bytes": 3738,
+      "sha256": "fa33e53e61a7d636959dd1d1916d7b5c3359db72b523dc730b16ceab525d170f"
+    },
+    {
+      "member": "original-source/shared/structures.js",
+      "originalPath": "/tmp/human-ai-alert-v2-prospective/shared/structures.js",
+      "bytes": 4029,
+      "sha256": "933b100a9a4c19a0285f5b137cd29b46e44271776f031045a537009e0176e5a2"
+    },
+    {
+      "member": "original-source/shared/tutorial.js",
+      "originalPath": "/tmp/human-ai-alert-v2-prospective/shared/tutorial.js",
+      "bytes": 6342,
+      "sha256": "3aaa5e6affd936dae0ae4741d5173eee5d006132a1705d4b553097d3d8fabf42"
+    },
+    {
+      "member": "original-source/shared/vehicle-motion.js",
+      "originalPath": "/tmp/human-ai-alert-v2-prospective/shared/vehicle-motion.js",
+      "bytes": 12185,
+      "sha256": "05bd1e985a91b3268065a0a84ec4b9aee2c1079aafc4054c38a70677dfb1493b"
+    },
+    {
+      "member": "original-source/shared/weather.js",
+      "originalPath": "/tmp/human-ai-alert-v2-prospective/shared/weather.js",
+      "bytes": 7228,
+      "sha256": "faad682d6e40fdc6629533f684e1caeec5c9ae49e26e9922651773727c0bc1e5"
+    },
+    {
+      "member": "original-source/shared/world-conquest.js",
+      "originalPath": "/tmp/human-ai-alert-v2-prospective/shared/world-conquest.js",
+      "bytes": 7203,
+      "sha256": "1c251e6d340586d7fb367d4f47938d5898f5239824dac46f054880a3d897aeef"
+    },
+    {
+      "member": "original-source/shared/world-landforms.js",
+      "originalPath": "/tmp/human-ai-alert-v2-prospective/shared/world-landforms.js",
+      "bytes": 6645,
+      "sha256": "ecb6916db6785484f8bb813f7745c8c48ccea370f084fea290ff736edc968e34"
+    },
+    {
+      "member": "original-source/shared/world-layers.js",
+      "originalPath": "/tmp/human-ai-alert-v2-prospective/shared/world-layers.js",
+      "bytes": 6770,
+      "sha256": "f51f34b99946192107ada9a7077d787761c1a9cb6b1e316d7b7e243dd273bb22"
+    },
+    {
+      "member": "original-source/shared/world-roads.js",
+      "originalPath": "/tmp/human-ai-alert-v2-prospective/shared/world-roads.js",
+      "bytes": 6491,
+      "sha256": "5fb243b63fa9e2c082135b5b093ee753e8a92c197a076d78067e53f08f1885db"
+    },
+    {
+      "member": "original-source/shared/world-territories.js",
+      "originalPath": "/tmp/human-ai-alert-v2-prospective/shared/world-territories.js",
+      "bytes": 4110,
+      "sha256": "bb33a449d7f2c4d657dbceab8dbd0171eb8ccaa7494cedf9e18707822d8f717f"
+    },
+    {
+      "member": "original-source/test-engine-ai-public-alert-v2.js",
+      "originalPath": "/tmp/human-ai-alert-v2-prospective/test-engine-ai-public-alert-v2.js",
+      "bytes": 14718,
+      "sha256": "7fa24d55d97352c39d7f23fb2a97d2a9833c19332458ac8de0a08135c40cfcb6"
+    },
+    {
+      "member": "original-source/tools/ai-public-alert-response-v2.mjs",
+      "originalPath": "/tmp/human-ai-alert-v2-prospective/tools/ai-public-alert-response-v2.mjs",
+      "bytes": 24115,
+      "sha256": "e54b5bbf07f2e637cde592e2f6d079ef3a41f3ac4003dd3d68f70f706104c997"
+    },
+    {
+      "member": "original-source/tools/ai-public-alert-response.mjs",
+      "originalPath": "/tmp/human-ai-alert-v2-prospective/tools/ai-public-alert-response.mjs",
+      "bytes": 15189,
+      "sha256": "7974a9d20da09b9df2a3b8cb296e385d2ac2f94374be24396ac6df275c3cb829"
+    },
+    {
+      "member": "original-source/tools/ai-screen-v1-oracle.js",
+      "originalPath": "/tmp/human-ai-alert-v2-prospective/tools/ai-screen-v1-oracle.js",
+      "bytes": 28180,
+      "sha256": "6b3894b551f3bf9151372b048b2efc77ffc86a6a173d0871278b27417358b398"
+    },
+    {
+      "member": "original-source/tools/km-median-boundary.mjs",
+      "originalPath": "/tmp/human-ai-alert-v2-prospective/tools/km-median-boundary.mjs",
+      "bytes": 1037,
+      "sha256": "e92de6b62be628796cf1390a0b4333b87be32a2083f3d2193cf2dd3ac3755469"
+    },
+    {
+      "member": "r8-source/client/keys.js",
+      "originalPath": "/tmp/human-ai-alert-v2-r8-compat/client/keys.js",
+      "bytes": 7361,
+      "sha256": "867e3105b7e4665f8a313c2ab46e23fc3df9407f2163fd6862bb537a01ecd276"
+    },
+    {
+      "member": "r8-source/shared/ai-attention.js",
+      "originalPath": "/tmp/human-ai-alert-v2-r8-compat/shared/ai-attention.js",
+      "bytes": 27980,
+      "sha256": "07c48dbdcc92f326eeb52222518f274dcf05a4d746dfd474126d932ed05ca7ba"
+    },
+    {
+      "member": "r8-source/shared/ai-commander.js",
+      "originalPath": "/tmp/human-ai-alert-v2-r8-compat/shared/ai-commander.js",
+      "bytes": 30709,
+      "sha256": "19112a1e4c94da72d62564d940497d38cf7e93e3086c9bde3db9c29d088703df"
+    },
+    {
+      "member": "r8-source/shared/ai-hands.js",
+      "originalPath": "/tmp/human-ai-alert-v2-r8-compat/shared/ai-hands.js",
+      "bytes": 67889,
+      "sha256": "277cf75623b9432612db94e0356cfe098695214625605ac130e6984789211c4b"
+    },
+    {
+      "member": "r8-source/shared/ai-mind.js",
+      "originalPath": "/tmp/human-ai-alert-v2-r8-compat/shared/ai-mind.js",
+      "bytes": 19553,
+      "sha256": "18bb411cb1d057ce8cffe0b042c21f64b71238ae157b584242df206d708e6b92"
+    },
+    {
+      "member": "r8-source/shared/ai-perception.js",
+      "originalPath": "/tmp/human-ai-alert-v2-r8-compat/shared/ai-perception.js",
+      "bytes": 34765,
+      "sha256": "50e611a932728940c5047a61bf4fd7554c696f93880d7907a952d8b39fdcf3fd"
+    },
+    {
+      "member": "r8-source/shared/ai-persona.js",
+      "originalPath": "/tmp/human-ai-alert-v2-r8-compat/shared/ai-persona.js",
+      "bytes": 3586,
+      "sha256": "34de5882046129d2000e5502e354123786f3ad7b7133f31e93863dcc36ba66cf"
+    },
+    {
+      "member": "r8-source/shared/ai-priority.js",
+      "originalPath": "/tmp/human-ai-alert-v2-r8-compat/shared/ai-priority.js",
+      "bytes": 5884,
+      "sha256": "6b5d5a8a22968209fe03c8235648a859b36919b9eafd44cd390a8252ab6b3542"
+    },
+    {
+      "member": "r8-source/shared/ai-rng.js",
+      "originalPath": "/tmp/human-ai-alert-v2-r8-compat/shared/ai-rng.js",
+      "bytes": 641,
+      "sha256": "2d2f95266eda45ec4fa4862cb01079fc8464a98d8c88fa97ca89b54a5d6f8b90"
+    },
+    {
+      "member": "r8-source/shared/ai-view.js",
+      "originalPath": "/tmp/human-ai-alert-v2-r8-compat/shared/ai-view.js",
+      "bytes": 13935,
+      "sha256": "4466958fc4b8e7a5d2f2bcb8dc3814e27c817a7480b0c765aa6ee2a98cbc87f7"
+    },
+    {
+      "member": "r8-source/shared/ai.js",
+      "originalPath": "/tmp/human-ai-alert-v2-r8-compat/shared/ai.js",
+      "bytes": 91781,
+      "sha256": "c99be94a933f5c122d8ba7f32750f1a4bff66bf2875c8f3ec8e86322eb3d7e43"
+    },
+    {
+      "member": "r8-source/shared/alert-events.js",
+      "originalPath": "/tmp/human-ai-alert-v2-r8-compat/shared/alert-events.js",
+      "bytes": 8219,
+      "sha256": "df5f0ae98145034e6893ce0b70c2df8938a2d786cc8de37a1fbbc1a9c8b634b0"
+    },
+    {
+      "member": "r8-source/shared/debris-motion.js",
+      "originalPath": "/tmp/human-ai-alert-v2-r8-compat/shared/debris-motion.js",
+      "bytes": 4384,
+      "sha256": "d6a0f330f958ec6d78cfcc7f95b209aa5c099369576bf15dfd1c84770287b3b4"
+    },
+    {
+      "member": "r8-source/shared/formation.js",
+      "originalPath": "/tmp/human-ai-alert-v2-r8-compat/shared/formation.js",
+      "bytes": 4865,
+      "sha256": "265fa63c8c72588f6c8f67057921fd4daa88f96e9d823faa2e41ba10a7dba005"
+    },
+    {
+      "member": "r8-source/shared/grid.js",
+      "originalPath": "/tmp/human-ai-alert-v2-r8-compat/shared/grid.js",
+      "bytes": 2873,
+      "sha256": "30b0a5d67d99e54548d189374684e6b28863ecb7bf92de5221359e5c24fc5afc"
+    },
+    {
+      "member": "r8-source/shared/local-traffic.js",
+      "originalPath": "/tmp/human-ai-alert-v2-r8-compat/shared/local-traffic.js",
+      "bytes": 7408,
+      "sha256": "abad3f6ba310783c3620cec8d599df90dac38bb74eed6509be7d19a8af1490f6"
+    },
+    {
+      "member": "r8-source/shared/navigation.js",
+      "originalPath": "/tmp/human-ai-alert-v2-r8-compat/shared/navigation.js",
+      "bytes": 19838,
+      "sha256": "c277c12f86c9990e281ae28a703dc374126aa1c737d9dc94a300f8d99c898472"
+    },
+    {
+      "member": "r8-source/shared/projectiles.js",
+      "originalPath": "/tmp/human-ai-alert-v2-r8-compat/shared/projectiles.js",
+      "bytes": 7769,
+      "sha256": "ded50f3bcd60cf79238d5dba48236d54e33b2b8032f704813118d1419708ccd7"
+    },
+    {
+      "member": "r8-source/shared/scenarios.js",
+      "originalPath": "/tmp/human-ai-alert-v2-r8-compat/shared/scenarios.js",
+      "bytes": 16044,
+      "sha256": "93f6cda90224a805cc97f42418b2dc11c49e3ea80654b66e0036de55f9b9ba97"
+    },
+    {
+      "member": "r8-source/shared/sim.js",
+      "originalPath": "/tmp/human-ai-alert-v2-r8-compat/shared/sim.js",
+      "bytes": 355291,
+      "sha256": "5e5f4c2d43d048be36d94f0cbcc68fb974c812fc8ab7e071cddb0a59079d89fa"
+    },
+    {
+      "member": "r8-source/shared/story.js",
+      "originalPath": "/tmp/human-ai-alert-v2-r8-compat/shared/story.js",
+      "bytes": 3738,
+      "sha256": "fa33e53e61a7d636959dd1d1916d7b5c3359db72b523dc730b16ceab525d170f"
+    },
+    {
+      "member": "r8-source/shared/structures.js",
+      "originalPath": "/tmp/human-ai-alert-v2-r8-compat/shared/structures.js",
+      "bytes": 4029,
+      "sha256": "933b100a9a4c19a0285f5b137cd29b46e44271776f031045a537009e0176e5a2"
+    },
+    {
+      "member": "r8-source/shared/tutorial.js",
+      "originalPath": "/tmp/human-ai-alert-v2-r8-compat/shared/tutorial.js",
+      "bytes": 6342,
+      "sha256": "3aaa5e6affd936dae0ae4741d5173eee5d006132a1705d4b553097d3d8fabf42"
+    },
+    {
+      "member": "r8-source/shared/vehicle-motion.js",
+      "originalPath": "/tmp/human-ai-alert-v2-r8-compat/shared/vehicle-motion.js",
+      "bytes": 12185,
+      "sha256": "05bd1e985a91b3268065a0a84ec4b9aee2c1079aafc4054c38a70677dfb1493b"
+    },
+    {
+      "member": "r8-source/shared/weather.js",
+      "originalPath": "/tmp/human-ai-alert-v2-r8-compat/shared/weather.js",
+      "bytes": 7228,
+      "sha256": "faad682d6e40fdc6629533f684e1caeec5c9ae49e26e9922651773727c0bc1e5"
+    },
+    {
+      "member": "r8-source/shared/world-conquest.js",
+      "originalPath": "/tmp/human-ai-alert-v2-r8-compat/shared/world-conquest.js",
+      "bytes": 7203,
+      "sha256": "1c251e6d340586d7fb367d4f47938d5898f5239824dac46f054880a3d897aeef"
+    },
+    {
+      "member": "r8-source/shared/world-landforms.js",
+      "originalPath": "/tmp/human-ai-alert-v2-r8-compat/shared/world-landforms.js",
+      "bytes": 6645,
+      "sha256": "ecb6916db6785484f8bb813f7745c8c48ccea370f084fea290ff736edc968e34"
+    },
+    {
+      "member": "r8-source/shared/world-layers.js",
+      "originalPath": "/tmp/human-ai-alert-v2-r8-compat/shared/world-layers.js",
+      "bytes": 6770,
+      "sha256": "f51f34b99946192107ada9a7077d787761c1a9cb6b1e316d7b7e243dd273bb22"
+    },
+    {
+      "member": "r8-source/shared/world-roads.js",
+      "originalPath": "/tmp/human-ai-alert-v2-r8-compat/shared/world-roads.js",
+      "bytes": 6491,
+      "sha256": "5fb243b63fa9e2c082135b5b093ee753e8a92c197a076d78067e53f08f1885db"
+    },
+    {
+      "member": "r8-source/shared/world-territories.js",
+      "originalPath": "/tmp/human-ai-alert-v2-r8-compat/shared/world-territories.js",
+      "bytes": 4110,
+      "sha256": "bb33a449d7f2c4d657dbceab8dbd0171eb8ccaa7494cedf9e18707822d8f717f"
+    },
+    {
+      "member": "r8-source/test-engine-ai-public-alert-v2.js",
+      "originalPath": "/tmp/human-ai-alert-v2-r8-compat/test-engine-ai-public-alert-v2.js",
+      "bytes": 14718,
+      "sha256": "7fa24d55d97352c39d7f23fb2a97d2a9833c19332458ac8de0a08135c40cfcb6"
+    },
+    {
+      "member": "r8-source/tools/ai-public-alert-response-v2.mjs",
+      "originalPath": "/tmp/human-ai-alert-v2-r8-compat/tools/ai-public-alert-response-v2.mjs",
+      "bytes": 24115,
+      "sha256": "e54b5bbf07f2e637cde592e2f6d079ef3a41f3ac4003dd3d68f70f706104c997"
+    },
+    {
+      "member": "r8-source/tools/ai-public-alert-response.mjs",
+      "originalPath": "/tmp/human-ai-alert-v2-r8-compat/tools/ai-public-alert-response.mjs",
+      "bytes": 18485,
+      "sha256": "6d83c1a6a226de399fb386b612cbc54037aabc39bb155ffbaf74251518a30f08"
+    },
+    {
+      "member": "r8-source/tools/ai-screen-v1-oracle.js",
+      "originalPath": "/tmp/human-ai-alert-v2-r8-compat/tools/ai-screen-v1-oracle.js",
+      "bytes": 28180,
+      "sha256": "6b3894b551f3bf9151372b048b2efc77ffc86a6a173d0871278b27417358b398"
+    },
+    {
+      "member": "r8-source/tools/km-median-boundary.mjs",
+      "originalPath": "/tmp/human-ai-alert-v2-r8-compat/tools/km-median-boundary.mjs",
+      "bytes": 1037,
+      "sha256": "e92de6b62be628796cf1390a0b4333b87be32a2083f3d2193cf2dd3ac3755469"
+    }
+  ],
+  "archivedCaseNote": "No archived-case members are in this archive. Its manifest retains raw/compact case hashes only; raw original is /tmp/human-ai-final-v21/raw-matches/conquest/conquest-easy-1.json and compact original is /tmp/human-ai-final-v21/compact-spool/conquest-easy-1.json."
+}

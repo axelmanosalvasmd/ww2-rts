@@ -1,0 +1,172 @@
+{
+  "status": "PASS",
+  "secondsPerRun": 15,
+  "treatments": 4,
+  "matches": 36,
+  "laterRuntimeArrivalNeverCreditsInitialOriginal": true,
+  "inventedMappingRejected": true,
+  "comparisons": [
+    {
+      "mode": "conquest",
+      "level": "easy",
+      "fullNativeEvidence": "/tmp/human-ai-oracle-tick0-proposal/raw/conquest-easy.json.gz",
+      "rawSHA256": "0c9eb5413b630b304e5d1f1f87ab2c6aa4be08ed0c1a63e152a9c5028daf598d",
+      "rawBytes": 2320267,
+      "gzipSHA256": "4fc5d673127e4118e2cff76f073312b59b62785d0cef75ddc99547c5f93a388e",
+      "gzipBytes": 105040,
+      "exactRawRoundtrip": true,
+      "inputs": [
+        10,
+        11,
+        9
+      ],
+      "nativeSHA256": "69d066224da048bc63b18838c7377a63be728ae66c376c2adfeeaa58d00923f6",
+      "nativeTimelineAndRNGEqual": true,
+      "callbackMutationIsolated": true
+    },
+    {
+      "mode": "conquest",
+      "level": "normal",
+      "fullNativeEvidence": "/tmp/human-ai-oracle-tick0-proposal/raw/conquest-normal.json.gz",
+      "rawSHA256": "7531c5883cfafd913ad4345ad7cc7ab14a6739e6958dc049511a5f12c0629480",
+      "rawBytes": 2383081,
+      "gzipSHA256": "9bf1c473db5cea2c46b7202bc4294e02b79ec4c179293a2d74ef6f6fae8feb62",
+      "gzipBytes": 115501,
+      "exactRawRoundtrip": true,
+      "inputs": [
+        11,
+        11,
+        13
+      ],
+      "nativeSHA256": "ae8556375337c2fdb83a92723a0b89babcc21e48e44f7ba91cfb6d3e2464c308",
+      "nativeTimelineAndRNGEqual": true,
+      "callbackMutationIsolated": true
+    },
+    {
+      "mode": "conquest",
+      "level": "hard",
+      "fullNativeEvidence": "/tmp/human-ai-oracle-tick0-proposal/raw/conquest-hard.json.gz",
+      "rawSHA256": "57218b00b1e2caea52aa9098265d940ca9dca065ae83b872ffd12d3126f0de17",
+      "rawBytes": 2561927,
+      "gzipSHA256": "a72f604c4722646b8aa3c89b3d2cc62fb953dbef360799a419c01b37be63f196",
+      "gzipBytes": 136269,
+      "exactRawRoundtrip": true,
+      "inputs": [
+        13,
+        12,
+        13
+      ],
+      "nativeSHA256": "66e806f4fdd380fad91209cc91815d5512df4c816a00867aab6cfa5ce6490e83",
+      "nativeTimelineAndRNGEqual": true,
+      "callbackMutationIsolated": true
+    },
+    {
+      "mode": "classic",
+      "level": "easy",
+      "fullNativeEvidence": "/tmp/human-ai-oracle-tick0-proposal/raw/classic-easy.json.gz",
+      "rawSHA256": "f3578cdc970d5b91dab3e4abe858385498e1ffda25b54be03c780dc42aaaf08b",
+      "rawBytes": 2467664,
+      "gzipSHA256": "52444759082c1bc89cd3a75abcdfc0e1d3dadade15be45aeb5cebf699c496c7b",
+      "gzipBytes": 109640,
+      "exactRawRoundtrip": true,
+      "inputs": [
+        6,
+        8,
+        8
+      ],
+      "nativeSHA256": "26cd020959597bf307ed41be7c09883d73b39a995b47d4532149e812893acfa1",
+      "nativeTimelineAndRNGEqual": true,
+      "callbackMutationIsolated": true
+    },
+    {
+      "mode": "classic",
+      "level": "normal",
+      "fullNativeEvidence": "/tmp/human-ai-oracle-tick0-proposal/raw/classic-normal.json.gz",
+      "rawSHA256": "dda4d1915d5126b35d6072186346a88573cea573d9e946857487905ce7068d63",
+      "rawBytes": 2491418,
+      "gzipSHA256": "0619913dd7f4d87324bd822dc1603b5d126f60ef4e286e805b52dc0da65f46eb",
+      "gzipBytes": 112303,
+      "exactRawRoundtrip": true,
+      "inputs": [
+        10,
+        10,
+        8
+      ],
+      "nativeSHA256": "a7034d14c6850e5a08939435205286488f05c9ed93505b252490b20ef0ebef9a",
+      "nativeTimelineAndRNGEqual": true,
+      "callbackMutationIsolated": true
+    },
+    {
+      "mode": "classic",
+      "level": "hard",
+      "fullNativeEvidence": "/tmp/human-ai-oracle-tick0-proposal/raw/classic-hard.json.gz",
+      "rawSHA256": "16520632e4c7602bc9b127a2727ef3efd150661312aaa91526ae303c12c69d27",
+      "rawBytes": 2613396,
+      "gzipSHA256": "2270a95da4da7820dab6508458da4dc69c59b7b0809b76fc2b762a259dbc2278",
+      "gzipBytes": 121428,
+      "exactRawRoundtrip": true,
+      "inputs": [
+        11,
+        11,
+        11
+      ],
+      "nativeSHA256": "52712ad8068ee5d57e9afcced9b13b676c55588cdab6a474902864fdc4622f98",
+      "nativeTimelineAndRNGEqual": true,
+      "callbackMutationIsolated": true
+    },
+    {
+      "mode": "world",
+      "level": "easy",
+      "fullNativeEvidence": "/tmp/human-ai-oracle-tick0-proposal/raw/world-easy.json.gz",
+      "rawSHA256": "97c8f675b8e0ed62e0169d74cb866a4bb28ee4c18749875d6836a25436a69a9c",
+      "rawBytes": 224794870,
+      "gzipSHA256": "180c0bc77e4eff32e2467fa8526d40dcb736c77abc90aef61299a973d8b3badd",
+      "gzipBytes": 3206600,
+      "exactRawRoundtrip": true,
+      "inputs": [
+        10,
+        11,
+        6
+      ],
+      "nativeSHA256": "08bf2d804d845f2a5b637133df4c68d313ca5be5614cd8a31fa9246d3ad6e596",
+      "nativeTimelineAndRNGEqual": true,
+      "callbackMutationIsolated": true
+    },
+    {
+      "mode": "world",
+      "level": "normal",
+      "fullNativeEvidence": "/tmp/human-ai-oracle-tick0-proposal/raw/world-normal.json.gz",
+      "rawSHA256": "a7eb7fa60cf2d986535a68eec41e2594ee82916ca16360ce0ef1830d7d3e96f4",
+      "rawBytes": 225061154,
+      "gzipSHA256": "7bbe174cc5b36f050f4603d017eacc96c68354b4ce0fc7676a3081eb0c57d3f8",
+      "gzipBytes": 3265512,
+      "exactRawRoundtrip": true,
+      "inputs": [
+        12,
+        12,
+        12
+      ],
+      "nativeSHA256": "f271ca23b8b3ec3415183757b20d96b1b4f291ac71ad438e85fdd4479410b8ee",
+      "nativeTimelineAndRNGEqual": true,
+      "callbackMutationIsolated": true
+    },
+    {
+      "mode": "world",
+      "level": "hard",
+      "fullNativeEvidence": "/tmp/human-ai-oracle-tick0-proposal/raw/world-hard.json.gz",
+      "rawSHA256": "3480929f0d6cf54a43ef5356836eb42a66660087795f3445e465e35193d8be23",
+      "rawBytes": 225366592,
+      "gzipSHA256": "853d57daf1a4ed1d67317236f5db603d8a976e104bed75f2b4c3b51a096321e1",
+      "gzipBytes": 3288287,
+      "exactRawRoundtrip": true,
+      "inputs": [
+        14,
+        12,
+        12
+      ],
+      "nativeSHA256": "0e251a2718ec1343f188ccd4c0d16a3896ccc0ce42c303515929a424c4cef9ae",
+      "nativeTimelineAndRNGEqual": true,
+      "callbackMutationIsolated": true
+    }
+  ]
+}

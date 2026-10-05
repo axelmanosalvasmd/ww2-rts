@@ -1,0 +1,83 @@
+--- a/tools/ai-humanity.mjs
++++ b/tools/ai-humanity.mjs
+@@ -1,4 +1,5 @@
+ // Seeded input and command measurements. Legacy command APM is not physical input APM.
++import assert from 'node:assert/strict';
+ import { readFile, writeFile, readdir, stat, mkdir, mkdtemp, rm } from 'node:fs/promises';
+ import { tmpdir } from 'node:os';
+ import { writeJSON, hashJSON, rawJSONFile, readReport, stageGzip, temporaryOutput } from './json-stream.mjs';
+@@ -493,10 +494,46 @@
+   });
+   return { report, files };
+ }
++export function privateTickZeroObservation(g, slot, cache, viewFor, oracle) {
++  assert.equal(g.tick, 0);
++  const projection = g.world ? { ...g, world: { ...g.world, memory: structuredClone(g.world.memory) } } : g;
++  const data = { ...viewFor(projection, slot, {}, cache) };
++  delete data.sees;
++  return oracle.detachedCopy(data);
++}
++
++export function bootstrapPrivateOracle(observation, slot, record, oracle) {
++  assert.equal(observation.tick, 0);
++  assert.equal(typeof record, 'function');
++  const data = { ...observation };
++  delete data.sees;
++  const initial = oracle.detachedCopy(data);
++  const state = { camera: oracle.startCamera(initial, slot), hands: { selected: [] } };
++  const first = oracle.perceive(initial, slot, state, 0);
++  record(oracle.detachedCopy({ tick: 0, observationTick: 0,
++    original: { policy: 'screen-v1', baselineTick: 0, events: state.events ?? [], newEvents: first.newEvents },
++    observed: { policy: 'screen-observed-v1', events: [], newEvents: [] }, links: [] }));
++  return {
++    measureRaw(delivered, actualSlot, diagnosticState, tick) {
++      assert.equal(actualSlot, slot);
++      state.camera = oracle.detachedCopy(diagnosticState.camera);
++      state.hands.selected = [...diagnosticState.hands.selected];
++      return oracle.perceive(delivered, actualSlot, state, tick);
++    },
++    onMeasurements(payload) {
++      assert.ok(payload.original);
++      const detached = oracle.detachedCopy(payload);
++      detached.original.baselineTick = 0;
++      record(detached);
++    },
++  };
++}
++
+ async function runMatch(options, task) {
+   const sim = await import('../shared/sim.js');
+   const ai = await import(options.legacy ? './legacy-ai/ai.js' : '../shared/ai.js');
+   const oracle = ai.humanCommander ? await import('./ai-screen-v1-oracle.js') : null;
++  const viewModule = oracle ? await import('../shared/ai-view.js') : null;
+   const map = JSON.parse(await readFile(resolve(root, `maps/${options.map}.json`), 'utf8'));
+   const slots = task.mode === 'world' ? 3 : sim.spawnsFor(map, task.mode).length;
+   const originalRandom = Math.random; Math.random = seededRandom(task.seed);
+@@ -506,6 +543,14 @@
+     const noticed = g.players.map(() => new Map()), reacted = g.players.map(() => new Set()), idle = g.players.map(() => new Map()), attention = g.players.map(() => null);
+     const idleNoticed = g.players.map(() => new Set()), recordedEvents = g.players.map(() => new Set()), recordedProduction = g.players.map(() => new Set());
+     const initialCache = sim.snapshotCache(g);
++    const recordMeasurements = slot => payload => {
++      const stream = logs[slot].perceptionMeasurements ??= { schema: 'ww2-private-perception-measurements-v1', toolOnly: true, startedTick: g.tick, frames: [] };
++      if (!stream.frames.length || payload.original?.newEvents?.length || payload.observed?.newEvents?.length || payload.links?.length)
++        stream.frames.push(structuredClone(payload));
++    };
++    const privateObservers = oracle ? g.players.map((_, slot) => bootstrapPrivateOracle(
++      privateTickZeroObservation(g, slot, initialCache, viewModule.viewFor, oracle), slot, recordMeasurements(slot), oracle)) : null;
++
+     const views = g.players.map((_, slot) => { if (ai.humanCommander && ai.startCommander) { ai.startCommander(g, slot, { w: g.w, h: g.h, spawn: g.players[slot].spawn, level: task.level, seed: task.seed }); return null; } return ai.observe?.(g, slot, initialCache); });
+     const cameraSpan = options.screenSpan ?? DEFAULT_SCREEN_SPAN;
+     const inputLog = (slot, input) => {
+@@ -555,11 +600,7 @@
+           return result;
+         };
+         const opts = { level: task.level, view: views[slot], submit, inputLog: input => inputLog(slot, input), seed: task.seed,
+-          ...(oracle ? { perceptionMeasurements: { measureRaw: oracle.perceive, onMeasurements: payload => {
+-            const stream = logs[slot].perceptionMeasurements ??= { schema: 'ww2-private-perception-measurements-v1', toolOnly: true, startedTick: g.tick, frames: [] };
+-            if (!stream.frames.length || payload.original?.newEvents?.length || payload.observed?.newEvents?.length || payload.links?.length)
+-              stream.frames.push(structuredClone(payload));
+-          } } } : {}) };
++          ...(privateObservers ? { perceptionMeasurements: privateObservers[slot] } : {}) };
+         if ((!ai.humanCommander || views[slot]) && (ai.humanCommander || (g.tick + slot * 13) % (ai.thinkEvery?.(task.level) ?? 40) === 0)) ai.think(g, slot, opts);
+         const diagnostic = ai.aiDiagnostics?.(g, slot);
+         if (diagnostic?.production?.id != null && !recordedProduction[slot].has(diagnostic.production.id)) {

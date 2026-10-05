@@ -1,0 +1,96 @@
+{
+  "copies": [
+    {
+      "source": "/tmp/r5-camera-current-visibility/REVIEW.md",
+      "file": "REVIEW.md",
+      "bytes": 3138,
+      "sha256": "32251d24387b1f71cf829f063532687d681e255efb7f0611801825d72e624911"
+    },
+    {
+      "source": "/tmp/r5-camera-current-visibility/after-extended-response-final.log",
+      "file": "after-extended-response-final.log",
+      "bytes": 576,
+      "sha256": "166fe6cacdb9a9b72c84ed79f1fe2165529e99f8a913b195c91cd5797a2faa87"
+    },
+    {
+      "source": "/tmp/r5-camera-current-visibility/after-extended-response-strict.log",
+      "file": "after-extended-response-strict.log",
+      "bytes": 576,
+      "sha256": "166fe6cacdb9a9b72c84ed79f1fe2165529e99f8a913b195c91cd5797a2faa87"
+    },
+    {
+      "source": "/tmp/r5-camera-current-visibility/after-extended-response.log",
+      "file": "after-extended-response.log",
+      "bytes": 584,
+      "sha256": "aafd51edc5fed75387038a08c209f2ed6795dc05c825acdc3cfe0cfd5dbe6e54"
+    },
+    {
+      "source": "/tmp/r5-camera-current-visibility/after-unchanged-response.log",
+      "file": "after-unchanged-response.log",
+      "bytes": 362,
+      "sha256": "16f2653e4a87491a6f841c3958be2552d94b8ab4b5acbbce2a00f5e114077b69"
+    },
+    {
+      "source": "/tmp/r5-camera-current-visibility/before.log",
+      "file": "before.log",
+      "bytes": 657,
+      "sha256": "2bdd3d075fd13a33d447b4ec4b8bb1fe18604104437b55207c27f1bc644a36f2"
+    },
+    {
+      "source": "/tmp/r5-camera-current-visibility/only-concern-guard-strict.log",
+      "file": "only-concern-guard-strict.log",
+      "bytes": 646,
+      "sha256": "212a80980cf8790de3164a8cd073f62711b3862bb707ffe6ca7b57f98b60d15e"
+    },
+    {
+      "source": "/tmp/r5-camera-current-visibility/only-concern-guard.log",
+      "file": "only-concern-guard.log",
+      "bytes": 576,
+      "sha256": "a337dbcc5684ed372a5e57166517d8afd63b72f0fb498e8d1708dc9010d1b94a"
+    },
+    {
+      "source": "/tmp/r5-camera-current-visibility/only-pending-guard.log",
+      "file": "only-pending-guard.log",
+      "bytes": 777,
+      "sha256": "774a23c93bf88e8517c4ecfa88f47a77653f482d53718c4e72b6e5f230203a6c"
+    },
+    {
+      "source": "/tmp/r5-camera-current-visibility/response-additions.patch",
+      "file": "response-additions.patch",
+      "bytes": 5933,
+      "sha256": "92af2cae05a9f78f6fc39c35cd9692f2953ca91556da90d3d9b075cff95ece0c"
+    },
+    {
+      "source": "/tmp/r5-camera-current-visibility/runtime.patch",
+      "file": "runtime.patch",
+      "bytes": 1155,
+      "sha256": "d3fc1a6514e964270d6f12cf77efcbf0e4144ad267b504f5eeb185cafab34b8f"
+    },
+    {
+      "source": "/tmp/r5-camera-current-visibility/source-manifest.json",
+      "file": "source-manifest.json",
+      "bytes": 33733,
+      "sha256": "4133eef788e5c755b272abeccd58849542b7477c495267f908a4392a3ebb6add"
+    },
+    {
+      "source": "/tmp/human-ai-v15-response-group-fixture.patch",
+      "file": "human-ai-v15-response-group-fixture.patch",
+      "bytes": 4156,
+      "sha256": "b1f66b36d373b77d147c057ab5e67ff4097128d3a0a851fe51a93a338c23d8e2"
+    },
+    {
+      "source": "/tmp/human-ai-v15-response-fixture-proof.json",
+      "file": "human-ai-v15-response-fixture-proof.json",
+      "bytes": 1284,
+      "sha256": "f7f0281b8a9e52151e4453394df7201830d3d90a654947a48b4f849f7146a7f2"
+    },
+    {
+      "source": "/tmp/r6-root-camera-response.log",
+      "file": "r6-root-camera-response.log",
+      "bytes": 576,
+      "sha256": "166fe6cacdb9a9b72c84ed79f1fe2165529e99f8a913b195c91cd5797a2faa87"
+    }
+  ],
+  "bytes": 54729,
+  "exactByteCopies": true
+}

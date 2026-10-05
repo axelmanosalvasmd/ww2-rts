@@ -1,0 +1,24 @@
+{
+  "nativeSemantic": {
+    "fullGameEveryTickSHA256": "1e9b6362c3c8090d3c67365711cb0fc48016157ef75e6b5ad18d1ae76f01f826",
+    "nativeInputsSHA256": "d1c1aa7ed12f5774969e264100e99f5f64aa22e6de832d9498078a6490e63455",
+    "nativeCommandsSHA256": "d7dd3b1cf570ae32d59c6329e586ad34047d1f10a5147bc48e680bda9fd189d7",
+    "nativeInputs": 303,
+    "nativeCommands": 130
+  },
+  "full1000TickGameGraphsEqual": true,
+  "checksAgainstOriginal": {
+    "fixture": true,
+    "ticks": true,
+    "initialUnits": true,
+    "finalUnits": true,
+    "finalStateSHA256": true,
+    "snapshotBytes": true,
+    "payloadSample": true,
+    "events": true,
+    "stateCounts": true,
+    "peakStateCounts": true,
+    "paths": true
+  },
+  "scope": "Canonical full enumerable game graph preserves Map/Set order, array holes, typed-array backing-buffer aliases, object aliases, undefined, negative zero and non-finite numbers. Private commander WeakMap memory is not included. Both full native input value streams equal. Initial noncanonical V8 byte hashes differed; retained initial reports are not evidence of value inequality."
+}

@@ -1,0 +1,168 @@
+{
+  "copiedAt": "2026-10-04T18:12:02.100900+00:00",
+  "qualification": "Root adopted small13line fresh-root patch only. Candidate differs from production only by one micro export. Six exact native graph/input/command cases and9source-trace controls pass; root perception/privacy pass. Fixedmicro14.3%pair saving does not establish fullperformance pass. Largerdualcopy rejected; failures retained.",
+  "files": [
+    {
+      "source": "/tmp/public-copy-v16-review.md",
+      "destination": "docs/evidence/human-like-ai-v16-fresh-copy/public-copy-v16-review.md",
+      "bytes": 5475,
+      "sha256": "c7920e39ae70c9ec5c1bc9b57ea75e95e172453b688bb2d4b955941de99fbb2d"
+    },
+    {
+      "source": "/tmp/ai-v16-fresh-root.patch",
+      "destination": "docs/evidence/human-like-ai-v16-fresh-copy/ai-v16-fresh-root.patch",
+      "bytes": 1613,
+      "sha256": "a8efa08eb461ba237600051b96ba8be3181e718b7efd82dec72dbf5e9e01db2b"
+    },
+    {
+      "source": "/tmp/public-copy-pair-v16.patch",
+      "destination": "docs/evidence/human-like-ai-v16-fresh-copy/public-copy-pair-v16.patch",
+      "bytes": 4184,
+      "sha256": "cb3ccbf1bb4fc9d58c63232f86f47e509f8f5e773869472d080e643a1ef8e5d8"
+    },
+    {
+      "source": "/tmp/ai-v16-fresh-root-micro.json",
+      "destination": "docs/evidence/human-like-ai-v16-fresh-copy/ai-v16-fresh-root-micro.json",
+      "bytes": 1978,
+      "sha256": "c8d22aeadfee86db77b54a95e792be9b648641e8346e10ed599e9983ac15c74d"
+    },
+    {
+      "source": "/tmp/public-copy-options-micro.json",
+      "destination": "docs/evidence/human-like-ai-v16-fresh-copy/public-copy-options-micro.json",
+      "bytes": 2687,
+      "sha256": "d2b50cf7f1713239b9e850e6787e1e17790efeaa65149e362ef475b33d285330"
+    },
+    {
+      "source": "/tmp/public-copy-pair-micro.json",
+      "destination": "docs/evidence/human-like-ai-v16-fresh-copy/public-copy-pair-micro.json",
+      "bytes": 2120,
+      "sha256": "6a69983b8bc53bbf2dd6a9e167448f9d2b09c50ce229bbc820d2da23eb484fac"
+    },
+    {
+      "source": "/tmp/public-copy-root-native-equivalence.json",
+      "destination": "docs/evidence/human-like-ai-v16-fresh-copy/public-copy-root-native-equivalence.json",
+      "bytes": 1741,
+      "sha256": "ea65de968d918d3d5cc83d1b7e0cd011c7f6c35230e7bc85bf0105b72a403598"
+    },
+    {
+      "source": "/tmp/public-copy-pair-native-equivalence.json",
+      "destination": "docs/evidence/human-like-ai-v16-fresh-copy/public-copy-pair-native-equivalence.json",
+      "bytes": 1741,
+      "sha256": "ea65de968d918d3d5cc83d1b7e0cd011c7f6c35230e7bc85bf0105b72a403598"
+    },
+    {
+      "source": "/tmp/public-copy-root-controls.log",
+      "destination": "docs/evidence/human-like-ai-v16-fresh-copy/public-copy-root-controls.log",
+      "bytes": 116,
+      "sha256": "dc4e6a6e9334c318ff76029e440f3b3c6cbc82582bc15f4272cca96c4afd8b0c"
+    },
+    {
+      "source": "/tmp/public-copy-pair-controls-final.log",
+      "destination": "docs/evidence/human-like-ai-v16-fresh-copy/public-copy-pair-controls-final.log",
+      "bytes": 116,
+      "sha256": "dc4e6a6e9334c318ff76029e440f3b3c6cbc82582bc15f4272cca96c4afd8b0c"
+    },
+    {
+      "source": "/tmp/public-copy-root-proxy-controls.json",
+      "destination": "docs/evidence/human-like-ai-v16-fresh-copy/public-copy-root-proxy-controls.json",
+      "bytes": 957,
+      "sha256": "160a5c9677dcdd5c157ea600947143f6039ee3af5faf933dd57412d134340b59"
+    },
+    {
+      "source": "/tmp/public-copy-pair-proxy-controls.json",
+      "destination": "docs/evidence/human-like-ai-v16-fresh-copy/public-copy-pair-proxy-controls.json",
+      "bytes": 957,
+      "sha256": "160a5c9677dcdd5c157ea600947143f6039ee3af5faf933dd57412d134340b59"
+    },
+    {
+      "source": "/tmp/public-copy-v16-source-manifests.json",
+      "destination": "docs/evidence/human-like-ai-v16-fresh-copy/public-copy-v16-source-manifests.json",
+      "bytes": 1109,
+      "sha256": "ca0759d4266dc8691c4dd580cc12d61a436376ae92a8be176ff458d2fd0baec4"
+    },
+    {
+      "source": "/tmp/public-copy-pair-proxy-controls.initial-failure.log",
+      "destination": "docs/evidence/human-like-ai-v16-fresh-copy/public-copy-pair-proxy-controls.initial-failure.log",
+      "bytes": 576,
+      "sha256": "402fc86a79db385355a92b7e4341de45a45fd0c15aa879aec61e2684be652427"
+    },
+    {
+      "source": "/tmp/public-copy-pair-controls.initial-harness-failure.log",
+      "destination": "docs/evidence/human-like-ai-v16-fresh-copy/public-copy-pair-controls.initial-harness-failure.log",
+      "bytes": 71574,
+      "sha256": "eeceea89e252ae5e340697836baef5340c8be7d7626c31e2546055aabd23a7b7"
+    },
+    {
+      "source": "/tmp/micro-v16-fresh-root.mjs",
+      "destination": "docs/evidence/human-like-ai-v16-fresh-copy/micro-v16-fresh-root.mjs",
+      "bytes": 1204,
+      "sha256": "ffbcdc9543639fda9446e4e6e31ae1ced896f527c00248d0fe2d49813ccccbac"
+    },
+    {
+      "source": "/tmp/prepare-public-copy-root-v16.py",
+      "destination": "docs/evidence/human-like-ai-v16-fresh-copy/prepare-public-copy-root-v16.py",
+      "bytes": 1337,
+      "sha256": "fc89a454caba6ed0e8412b917d1417333e93a3b268935a850edf31eedab8129f"
+    },
+    {
+      "source": "/tmp/prepare-v16-fresh-root.py",
+      "destination": "docs/evidence/human-like-ai-v16-fresh-copy/prepare-v16-fresh-root.py",
+      "bytes": 1264,
+      "sha256": "c3d19bb18385442ac462f5d5cb7f8ca7f472c3ff199fb1497ea0eef703fd5099"
+    },
+    {
+      "source": "/tmp/public-copy-options-micro.mjs",
+      "destination": "docs/evidence/human-like-ai-v16-fresh-copy/public-copy-options-micro.mjs",
+      "bytes": 1884,
+      "sha256": "f7530900e6ec2e9a4dca2a9165e41fa24879f280b73db4d5ac5db8392c9aa239"
+    },
+    {
+      "source": "/tmp/public-copy-root-controls.mjs",
+      "destination": "docs/evidence/human-like-ai-v16-fresh-copy/public-copy-root-controls.mjs",
+      "bytes": 498,
+      "sha256": "c5437c4dce87ccf23767fff9f60f1e3d5999300a29c451c0f6995d1a011a593b"
+    },
+    {
+      "source": "/tmp/public-copy-root-native-equivalence.mjs",
+      "destination": "docs/evidence/human-like-ai-v16-fresh-copy/public-copy-root-native-equivalence.mjs",
+      "bytes": 3163,
+      "sha256": "4b947b903ebd5d5b260e4c6c04a2a879af7cca2b275d3d17cf9b67afdf2331b9"
+    },
+    {
+      "source": "/tmp/public-copy-root-proxy-controls.mjs",
+      "destination": "docs/evidence/human-like-ai-v16-fresh-copy/public-copy-root-proxy-controls.mjs",
+      "bytes": 2563,
+      "sha256": "d5d07609c94a88a4092c0e7f49907618bb8a4799e2de6140b7eddbc0e5c5c0d1"
+    },
+    {
+      "source": "/tmp/ai-v16-root-fresh-copy-perception.log",
+      "destination": "docs/evidence/human-like-ai-v16-fresh-copy/ai-v16-root-fresh-copy-perception.log",
+      "bytes": 63,
+      "sha256": "ebb3a1fcc39178638d3aca81e0965dab494dbb59a8c92f4cdaf12a68c9988871"
+    },
+    {
+      "source": "/tmp/ai-v16-root-fresh-copy-privacy.log",
+      "destination": "docs/evidence/human-like-ai-v16-fresh-copy/ai-v16-root-fresh-copy-privacy.log",
+      "bytes": 53,
+      "sha256": "510c100ece33133a666925c98297348459886874c27799b99f5c284791e1f41d"
+    },
+    {
+      "source": "/tmp/human-ai-perf-v16-frozen/shared/ai-perception.js",
+      "destination": "docs/evidence/human-like-ai-v16-fresh-copy/baseline-perception.js",
+      "bytes": 34168,
+      "sha256": "75b5f4877b5c4509a762028c880b45691a7c9e8d1923a7815e026f2174d33c9c"
+    },
+    {
+      "source": "/tmp/ai-v16-fresh-root/shared/ai-perception.js",
+      "destination": "docs/evidence/human-like-ai-v16-fresh-copy/diagnostic-perception.js",
+      "bytes": 34792,
+      "sha256": "012a015021bb96be02f768e92289a5df4d42e7ad49afcaac896d8188f6168f9c"
+    },
+    {
+      "source": "/home/judiazm/.t3/worktrees/ww2-rts/ai-human-commander/shared/ai-perception.js",
+      "destination": "docs/evidence/human-like-ai-v16-fresh-copy/adopted-perception.js",
+      "bytes": 34765,
+      "sha256": "50e611a932728940c5047a61bf4fd7554c696f93880d7907a952d8b39fdcf3fd"
+    }
+  ]
+}

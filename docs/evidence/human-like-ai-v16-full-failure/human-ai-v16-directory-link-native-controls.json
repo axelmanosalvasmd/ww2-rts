@@ -1,0 +1,35 @@
+{
+  "passes": true,
+  "checks": [
+    "captured relative directory and regular-file aliases pass with declared target types",
+    "uncaptured physical subtree file rejected",
+    "phantom captured subtree member rejected",
+    "subtree byte/metadata drift rejected",
+    "relative external directory alias rejected",
+    "absolute in-root directory alias still rejected",
+    "missing directory target rejected",
+    "empty directory target rejected",
+    "captured nested in-root source file alias remains valid",
+    "captured nested external source link rejected individually",
+    "uncaptured regular-file alias target rejected",
+    "copied archive preserves literal link identity and complete target declarations",
+    "actual repository skills directory alias passes its captured nonempty subtree"
+  ],
+  "actualSourceLinkTargets": {
+    ".agents/skills/ww2-model-qa": {
+      "kind": "directory",
+      "path": "tools/blender/skills/ww2-model-qa",
+      "members": [
+        "tools/blender/skills/ww2-model-qa/SKILL.md"
+      ]
+    },
+    ".claude/skills/ww2-model-qa": {
+      "kind": "directory",
+      "path": "tools/blender/skills/ww2-model-qa",
+      "members": [
+        "tools/blender/skills/ww2-model-qa/SKILL.md"
+      ]
+    }
+  },
+  "scope": "Native filesystem and actual read-only source manifest controls only. No freeze or gameplay test launched."
+}

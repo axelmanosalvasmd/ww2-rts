@@ -1,0 +1,468 @@
+{
+  "recordedAt": "2026-10-04T14:15:11.136383+00:00",
+  "destinationBase": "docs/evidence/human-like-ai-opening-r5",
+  "scope": "Reviewable copy plan only. No repository writes. All original campaign failures/outcomes retained. No per-match raw spool duplication because three canonical full gzip reports retain the complete raw graphs.",
+  "artifacts": [
+    {
+      "source": "/tmp/human-ai-opening-paired/base/full.json.gz",
+      "destination": "docs/evidence/human-like-ai-opening-r5/original/full.json.gz",
+      "sha256": "0675afa224139a41c67d71232b7a7eac38bfdacbaeed5d79a37ab15bf307ff99",
+      "bytes": 2012458,
+      "purpose": "Complete canonical report bytes: all60matches180seats, metrics, native inputs/commands/events and both private measurement policies."
+    },
+    {
+      "source": "/tmp/human-ai-opening-r5-copy/original/compact.json.gz",
+      "destination": "docs/evidence/human-like-ai-opening-r5/original/compact.json.gz",
+      "sha256": "dddfac34d505088877f79fc22c1ac2ffae7c7f17755da10b7c71eeb9a09fdd9b",
+      "bytes": 684673,
+      "purpose": "Every seat/pooled metric, source checkpoints and timeline/private-stream digests. Historical evidenceArchive.path full.json.gz remains valid in this target subdirectory.",
+      "uncompressedSHA256": "1a6f15029adb887c1d9b819eb51e776abf892de4fa63b13565b468e01ce8e530",
+      "uncompressedBytes": 17068938,
+      "uncompressedSource": "/tmp/human-ai-opening-paired/base/compact.json"
+    },
+    {
+      "source": "/tmp/human-ai-opening-paired/base/source-checkpoint.json",
+      "destination": "docs/evidence/human-like-ai-opening-r5/original/source-checkpoint.json",
+      "sha256": "2f59865a7d2b168d8d5467489d7928abb49ea899e9ddba22efc9a3bc479886df",
+      "bytes": 3677,
+      "purpose": "Exact runtime dependency hashes captured before first import in all workers."
+    },
+    {
+      "source": "/tmp/human-ai-opening-paired-base-source/source-archive.json",
+      "destination": "docs/evidence/human-like-ai-opening-r5/original/source-manifest.json",
+      "sha256": "526d1a2fa41b8f6ad1e7db3cc7413b8a4ead5561412cbb9b252e217b53a15b8b",
+      "bytes": 4377,
+      "purpose": "Exact42file source/dependency manifest, including oracle provenance, client keys and streaming writer."
+    },
+    {
+      "source": "/tmp/human-ai-opening-paired/base-source.tar.gz",
+      "destination": "docs/evidence/human-like-ai-opening-r5/original/source.tar.gz",
+      "sha256": "429f97f2de81a8e04f5e7685adb79b6dfeb30761228cb77ccbf8f92deb68f072",
+      "bytes": 398390,
+      "purpose": "Complete immutable runtime source archive; paired sources root ./, receipt source root source/."
+    },
+    {
+      "source": "/tmp/human-ai-opening-paired/base/raw-manifest.json",
+      "destination": "docs/evidence/human-like-ai-opening-r5/original/historical-spool-manifest.json",
+      "sha256": "e9feee98c88831f489728af058e47bab113ca4125843e84b2c9de6f0a9b12615",
+      "bytes": 15329,
+      "purpose": "Original per-match serialized-file hashes and historical /tmp spool paths. Spool files are not duplicated; all raw graphs are in full.json.gz."
+    },
+    {
+      "source": "/tmp/human-ai-opening-paired/candidate/full.json.gz",
+      "destination": "docs/evidence/human-like-ai-opening-r5/saving/full.json.gz",
+      "sha256": "405d3c9bd9f2ef19eb3e617282e04177bd64e511892f086b0477c0185510c24c",
+      "bytes": 1905997,
+      "purpose": "Complete canonical report bytes: all60matches180seats, metrics, native inputs/commands/events and both private measurement policies."
+    },
+    {
+      "source": "/tmp/human-ai-opening-r5-copy/saving/compact.json.gz",
+      "destination": "docs/evidence/human-like-ai-opening-r5/saving/compact.json.gz",
+      "sha256": "7fc250cbae3a2856936848223b1f7d84e46196be74f2f5f47f96d6a21972c705",
+      "bytes": 671377,
+      "purpose": "Every seat/pooled metric, source checkpoints and timeline/private-stream digests. Historical evidenceArchive.path full.json.gz remains valid in this target subdirectory.",
+      "uncompressedSHA256": "6bbfdf31379f0727faaa0eb8c14d149aaa39621ab4c045e3e80e6cd159577c0c",
+      "uncompressedBytes": 16999384,
+      "uncompressedSource": "/tmp/human-ai-opening-paired/candidate/compact.json"
+    },
+    {
+      "source": "/tmp/human-ai-opening-paired/candidate/source-checkpoint.json",
+      "destination": "docs/evidence/human-like-ai-opening-r5/saving/source-checkpoint.json",
+      "sha256": "362e24788332b174340c21ef9e4e99a6dfa35587752249a320315f60b58d8b06",
+      "bytes": 3677,
+      "purpose": "Exact runtime dependency hashes captured before first import in all workers."
+    },
+    {
+      "source": "/tmp/human-ai-opening-paired-candidate-source/source-archive.json",
+      "destination": "docs/evidence/human-like-ai-opening-r5/saving/source-manifest.json",
+      "sha256": "43acc0ee97b1eeec2c84eca68c8b10527031df8d4c562bdb8ceb0e369f1a5686",
+      "bytes": 4740,
+      "purpose": "Exact42file source/dependency manifest, including oracle provenance, client keys and streaming writer."
+    },
+    {
+      "source": "/tmp/human-ai-opening-paired/candidate-source.tar.gz",
+      "destination": "docs/evidence/human-like-ai-opening-r5/saving/source.tar.gz",
+      "sha256": "580136394ae5497f02d18a91d28c64ca22b6c5ca965031b3234dbb079488593f",
+      "bytes": 398827,
+      "purpose": "Complete immutable runtime source archive; paired sources root ./, receipt source root source/."
+    },
+    {
+      "source": "/tmp/human-ai-opening-paired/candidate/raw-manifest.json",
+      "destination": "docs/evidence/human-like-ai-opening-r5/saving/historical-spool-manifest.json",
+      "sha256": "7f8d284868ed5378a1de1887072b2e5e7a950603a26c0bf59378c6a643c11710",
+      "bytes": 15629,
+      "purpose": "Original per-match serialized-file hashes and historical /tmp spool paths. Spool files are not duplicated; all raw graphs are in full.json.gz."
+    },
+    {
+      "source": "/tmp/human-ai-opening-receipt-followup/candidate/full.json.gz",
+      "destination": "docs/evidence/human-like-ai-opening-r5/saving-receipt/full.json.gz",
+      "sha256": "2bc11a29531c285171cc1804fb7783c180f10acb5f90db9cf635b9142f67517c",
+      "bytes": 1909069,
+      "purpose": "Complete canonical report bytes: all60matches180seats, metrics, native inputs/commands/events and both private measurement policies."
+    },
+    {
+      "source": "/tmp/human-ai-opening-r5-copy/saving-receipt/compact.json.gz",
+      "destination": "docs/evidence/human-like-ai-opening-r5/saving-receipt/compact.json.gz",
+      "sha256": "9aae9a4035f196b6337dae683980571561dc6c52eb2414f94d19912a6a5698ef",
+      "bytes": 675422,
+      "purpose": "Every seat/pooled metric, source checkpoints and timeline/private-stream digests. Historical evidenceArchive.path full.json.gz remains valid in this target subdirectory.",
+      "uncompressedSHA256": "21a0fdba896fb7a1195ec7f57133b77c895159aefc97168d91141c1eb51ef55d",
+      "uncompressedBytes": 17020390,
+      "uncompressedSource": "/tmp/human-ai-opening-receipt-followup/candidate/compact.json"
+    },
+    {
+      "source": "/tmp/human-ai-opening-receipt-followup/candidate/source-checkpoint.json",
+      "destination": "docs/evidence/human-like-ai-opening-r5/saving-receipt/source-checkpoint.json",
+      "sha256": "59b15fd3910d5d60421ad04d90d6666f7b7d59fd5eeac9aacf63a6a924d2f195",
+      "bytes": 3677,
+      "purpose": "Exact runtime dependency hashes captured before first import in all workers."
+    },
+    {
+      "source": "/tmp/human-ai-opening-receipt-source/source-archive.json",
+      "destination": "docs/evidence/human-like-ai-opening-r5/saving-receipt/source-manifest.json",
+      "sha256": "be6557730ae37e03d01f3b89951d8657ab9c1049c231eb1e72f820c9f938c2aa",
+      "bytes": 4481,
+      "purpose": "Exact42file source/dependency manifest, including oracle provenance, client keys and streaming writer."
+    },
+    {
+      "source": "/tmp/human-ai-opening-receipt-followup/candidate-source.tar.gz",
+      "destination": "docs/evidence/human-like-ai-opening-r5/saving-receipt/source.tar.gz",
+      "sha256": "80d3af5035c9e8c99f8bb65c7fcd958b2d8b24c166d1bd54c437601d89d92a78",
+      "bytes": 381132,
+      "purpose": "Complete immutable runtime source archive; paired sources root ./, receipt source root source/."
+    },
+    {
+      "source": "/tmp/human-ai-opening-receipt-followup/candidate/raw-manifest.json",
+      "destination": "docs/evidence/human-like-ai-opening-r5/saving-receipt/historical-spool-manifest.json",
+      "sha256": "c51d9a74fb1320c8bb90c5334ce86f581cf3da5498a82fbc1fe7139db0989879",
+      "bytes": 16229,
+      "purpose": "Original per-match serialized-file hashes and historical /tmp spool paths. Spool files are not duplicated; all raw graphs are in full.json.gz."
+    },
+    {
+      "source": "/tmp/human-ai-opening-paired/protocol-preregistration.json",
+      "destination": "docs/evidence/human-like-ai-opening-r5/protocols/saving-preregistration.json",
+      "sha256": "d7c0e9dff40c22b85fd73c66fac0661d6eb8a632cff6ed250b6fffef23f7ef32",
+      "bytes": 2770,
+      "purpose": "Original declared seeds/configuration/opening endpoint before both first-pair treatments."
+    },
+    {
+      "source": "/tmp/human-ai-opening-receipt-followup/protocol-preregistration.json",
+      "destination": "docs/evidence/human-like-ai-opening-r5/protocols/receipt-preregistration.json",
+      "sha256": "0dfe19f3b43962c622be2f25135d8b0d2fdd5f1983044cb050a507e2bdd82630",
+      "bytes": 2191,
+      "purpose": "Prospective receipt-only hypothesis, complete unchanged-before reuse and same endpoint before followup."
+    },
+    {
+      "source": "/tmp/human-ai-opening-paired/launch.json",
+      "destination": "docs/evidence/human-like-ai-opening-r5/protocols/saving-launch.json",
+      "sha256": "b02576438bfc36463d5a2af1cce757c3b21c9d1c1a84181fa5eedec8c7e21dd9",
+      "bytes": 209,
+      "purpose": "UTC/PID/command for first trial."
+    },
+    {
+      "source": "/tmp/human-ai-opening-receipt-followup/launch.json",
+      "destination": "docs/evidence/human-like-ai-opening-r5/protocols/receipt-launch.json",
+      "sha256": "8188332d7bacac43cd4c1c71a45aac2dfac76d46db9448c5c0f120f670605ca4",
+      "bytes": 387,
+      "purpose": "UTC/PID/command for second trial."
+    },
+    {
+      "source": "/tmp/human-ai-opening-paired/status.json",
+      "destination": "docs/evidence/human-like-ai-opening-r5/protocols/saving-completion.json",
+      "sha256": "779715a142269e1e96a0fa7391a2d4874a9167a3348d7ae8d1e3bffc96fd2b30",
+      "bytes": 586,
+      "purpose": "All60/180 per treatment complete, no selected subset."
+    },
+    {
+      "source": "/tmp/human-ai-opening-receipt-followup/status.json",
+      "destination": "docs/evidence/human-like-ai-opening-r5/protocols/receipt-completion.json",
+      "sha256": "f59a36cff8609587929f99256b2a9794904ca55a6f07e2c1b5d0577f58620bd8",
+      "bytes": 593,
+      "purpose": "All60new/180seats complete and exact before-output reuse."
+    },
+    {
+      "source": "/tmp/human-ai-opening-paired/campaign.log",
+      "destination": "docs/evidence/human-like-ai-opening-r5/protocols/saving-campaign.log",
+      "sha256": "511dd02d347770d606f3432d8c2ca20d7ec6f1dfcc3599139610da959ec7dd99",
+      "bytes": 4611,
+      "purpose": "Every completion and failure from original trial."
+    },
+    {
+      "source": "/tmp/human-ai-opening-receipt-followup/campaign.log",
+      "destination": "docs/evidence/human-like-ai-opening-r5/protocols/receipt-campaign.log",
+      "sha256": "849a9421635d4d0c7cf2cd43180043b01ed4405e0f729bac37df16fd843ed81f",
+      "bytes": 2634,
+      "purpose": "Every completion and failure from receipt-only trial."
+    },
+    {
+      "source": "/tmp/human-ai-opening-paired/independent-verification.json",
+      "destination": "docs/evidence/human-like-ai-opening-r5/verification/saving-roundtrip.json",
+      "sha256": "0dad26c59999cf02cfbe613867dedda324b751ed0d8d3b2666c12a599a06fc3e",
+      "bytes": 1660,
+      "purpose": "Independent recomputation of all360seat metrics/aggregates, hashes and exact raw gzip bytes."
+    },
+    {
+      "source": "/tmp/human-ai-opening-receipt-followup/independent-verification.json",
+      "destination": "docs/evidence/human-like-ai-opening-r5/verification/receipt-roundtrip.json",
+      "sha256": "3467f022d990f3f6bfbb7f19c7784efc9bf4c9c7654dffeec5b07d75548119a5",
+      "bytes": 1660,
+      "purpose": "Independent recomputation of both360compared-seat metrics/aggregates, hashes and exact raw gzip bytes."
+    },
+    {
+      "source": "/tmp/human-ai-opening-paired/verify-human-ai-opening-paired.mjs",
+      "destination": "docs/evidence/human-like-ai-opening-r5/scripts/verify-saving.mjs",
+      "sha256": "4f1cc581b1729105c0bc4b8723f5614496116ef057829db2c8475d4371d49d3c",
+      "bytes": 3269,
+      "purpose": "Original independent verification source, immutable reducers."
+    },
+    {
+      "source": "/tmp/human-ai-opening-receipt-followup/verify.mjs",
+      "destination": "docs/evidence/human-like-ai-opening-r5/scripts/verify-receipt.mjs",
+      "sha256": "bfd9ca9bc1db5fc16a36006d370480c9118ea51c52bc927064f880318404e819",
+      "bytes": 3334,
+      "purpose": "Receipt comparison independent verification source."
+    },
+    {
+      "source": "/tmp/human-ai-opening-paired/run-paired.mjs",
+      "destination": "docs/evidence/human-like-ai-opening-r5/scripts/run-saving.mjs",
+      "sha256": "70b752d2250a2d7146f6293ebd8f8d9db6855c2ef223eda8a4eb871e9f191371",
+      "bytes": 5410,
+      "purpose": "Authorized full original-pair runner, persistent spools on failure."
+    },
+    {
+      "source": "/tmp/human-ai-opening-receipt-followup/run-paired.mjs",
+      "destination": "docs/evidence/human-like-ai-opening-r5/scripts/run-receipt.mjs",
+      "sha256": "b0bc36e33147a8bde2bc4e1471131e7cfe28fc3a39dd99b1cf3a5c331181e337",
+      "bytes": 5741,
+      "purpose": "Authorized followup runner, byte-identical before-output reuse."
+    },
+    {
+      "source": "/tmp/human-ai-opening-paired/analyze-human-ai-opening-paired.py",
+      "destination": "docs/evidence/human-like-ai-opening-r5/scripts/analyze-saving.py",
+      "sha256": "a986a34e73ac6ebd493d3c44e83ce95b0ac4c19b36924fb29622db1ac26b5a7c",
+      "bytes": 5821,
+      "purpose": "Original accepted-family sequence and work-output reducer."
+    },
+    {
+      "source": "/tmp/human-ai-opening-receipt-followup/analyze.py",
+      "destination": "docs/evidence/human-like-ai-opening-r5/scripts/analyze-receipt.py",
+      "sha256": "3eaf3fbf0d2b3861e52273b75dadb8aa99106f9a1b840ab5f8bb81105fbe7afc",
+      "bytes": 5831,
+      "purpose": "Same unchanged reducer for followup."
+    },
+    {
+      "source": "/tmp/human-ai-opening-paired/persona.patch",
+      "destination": "docs/evidence/human-like-ai-opening-r5/patches/saving-persona.patch",
+      "sha256": "b319431226c4db9c480cdcacc20dde3471dffb8b159387d992e2530c5e000be1",
+      "bytes": 1739,
+      "purpose": "Exact saving helper change tested originally."
+    },
+    {
+      "source": "/tmp/human-ai-opening-paired/purchase.patch",
+      "destination": "docs/evidence/human-like-ai-opening-r5/patches/saving-purchase.patch",
+      "sha256": "08986c5f7ad512a192483aa78150dd4edb6484e49b373095898f985cf31cb5f6",
+      "bytes": 3162,
+      "purpose": "Exact original saving planner change."
+    },
+    {
+      "source": "/tmp/human-ai-opening-receipt-followup/ai-commander.patch",
+      "destination": "docs/evidence/human-like-ai-opening-r5/patches/receipt-commander.patch",
+      "sha256": "534cf6cf8618adceecde2bea51e57a9246d7ae325b42856c12f3a9a8d12d7c30",
+      "bytes": 493,
+      "purpose": "Only actual accepted own-buy receipt timestamp."
+    },
+    {
+      "source": "/tmp/human-ai-opening-receipt-followup/ai.patch",
+      "destination": "docs/evidence/human-like-ai-opening-r5/patches/receipt-planner.patch",
+      "sha256": "1e39e8a9735c0a5410a6cf5c6e773c1c88686106896c53bed3613a3194486102",
+      "bytes": 973,
+      "purpose": "Only newer-frame planning barrier; no second ledger."
+    },
+    {
+      "source": "/tmp/human-ai-opening-receipt-followup/three-treatment-comparison.json",
+      "destination": "docs/evidence/human-like-ai-opening-r5/results/three-treatment-comparison.json",
+      "sha256": "5ad00f6b357e1f9e31ba43d73baf6217730f0238729810dc0e7ed880e9ecbe6e",
+      "bytes": 22149,
+      "purpose": "Actual accepted family counts and all three work-output summaries; original failures retained."
+    },
+    {
+      "source": "/tmp/human-ai-opening-receipt-followup/witness-result.json",
+      "destination": "docs/evidence/human-like-ai-opening-r5/witnesses/native-prefix-comparison.json",
+      "sha256": "47805f843acbf09dfe80a315565cafb43cbe14431510f3139d43d03d748def97",
+      "bytes": 2398,
+      "purpose": "Nine original native prefixes byte-identical through first receipt; actual stale-refusal witnesses disappear."
+    },
+    {
+      "source": "/tmp/human-ai-opening-receipt-followup/witness.mjs",
+      "destination": "docs/evidence/human-like-ai-opening-r5/scripts/native-prefix-comparison.mjs",
+      "sha256": "543abf0713efc134f5c8dcec35fb4ce0ddae05e7395d4be6694a642ba4291f67",
+      "bytes": 2217,
+      "purpose": "Actual frozen-source witness replay source."
+    },
+    {
+      "source": "/tmp/human-ai-opening-receipt-followup/fixture-result.json",
+      "destination": "docs/evidence/human-like-ai-opening-r5/witnesses/receipt-engine-callbacks.json",
+      "sha256": "13ec3302d8a97c9f1fbee49b05bbff7365714cc5f0508997eb51a71e6f5f49c4",
+      "bytes": 1245,
+      "purpose": "Authoritative accepted and refused command callback receipts, including negative controls."
+    },
+    {
+      "source": "/tmp/human-ai-opening-receipt-followup/test-receipt.mjs",
+      "destination": "docs/evidence/human-like-ai-opening-r5/scripts/receipt-engine-fixtures.mjs",
+      "sha256": "c3e15a54c8f2f0063d1efc403f42884eeb613c4ef88b5c55dddc42ba64b13b5c",
+      "bytes": 5282,
+      "purpose": "Initial focused engine receipt fixture source."
+    },
+    {
+      "source": "/tmp/human-ai-opening-receipt-followup/test-engine-ai-purchase-receipts.js",
+      "destination": "docs/evidence/human-like-ai-opening-r5/scripts/test-engine-ai-purchase-receipts.js",
+      "sha256": "04e0039a90edc6d45c3ff03e651cfe0b38581375902c52fbf007f3160b2eb123",
+      "bytes": 5465,
+      "purpose": "Reviewed permanent receipt fixture,13checks including actual queued gestures and seed controls."
+    },
+    {
+      "source": "/tmp/human-ai-opening-receipt-followup/test-engine-ai-opening-saving.js",
+      "destination": "docs/evidence/human-like-ai-opening-r5/scripts/test-engine-ai-opening-saving.js",
+      "sha256": "9fa2f64fa702f015f098f528da71c264d76db4a5f576db491c77d8912b1d3d7b",
+      "bytes": 7779,
+      "purpose": "Reviewed permanent opening fixture,34guard/planner+7actualcounter+6native simulations."
+    },
+    {
+      "source": "/tmp/human-ai-opening-receipt-followup/permanent-test.log",
+      "destination": "docs/evidence/human-like-ai-opening-r5/verification/receipt-permanent-test.log",
+      "sha256": "7c940a94f633bf4186d446a3f6e40354ff85580d9f4f6812a39bf6c821a00668",
+      "bytes": 47,
+      "purpose": "Permanent fixture passes on historical receipt snapshot."
+    },
+    {
+      "source": "/tmp/human-ai-opening-paired/human-ai-opening-candidate-fixtures.mjs",
+      "destination": "docs/evidence/human-like-ai-opening-r5/scripts/original-opening-fixtures.mjs",
+      "sha256": "9a85f1057811a6074580cd5a7b8e08b97412497900349611f213b7e2e33374ef",
+      "bytes": 8535,
+      "purpose": "Original guard/planner/counter/native movement fixture source."
+    },
+    {
+      "source": "/tmp/human-ai-opening-paired/human-ai-opening-candidate-fixtures.log",
+      "destination": "docs/evidence/human-like-ai-opening-r5/verification/original-opening-fixtures.log",
+      "sha256": "3c540a7474b17abca95b40494d054b8f6d4d181f7755a4bd409f63b88b131baa",
+      "bytes": 3771,
+      "purpose": "34+7+6original frozen-source pass record."
+    },
+    {
+      "source": "/tmp/human-ai-opening-paired/human-ai-opening-candidate-fixtures-initial.log",
+      "destination": "docs/evidence/human-like-ai-opening-r5/verification/original-fixture-initial-failure.log",
+      "sha256": "2a06b431d119a9733fb81a1ac092bd46274fd2e8dd5888828457c64bf7717fad",
+      "bytes": 652,
+      "purpose": "Retained initial fixture failure; not a campaign outcome."
+    },
+    {
+      "source": "/tmp/human-ai-opening-paired/human-ai-opening-candidate-fixtures-second.log",
+      "destination": "docs/evidence/human-like-ai-opening-r5/verification/original-fixture-second-failure.log",
+      "sha256": "b2beb4a09939f7770ef8a71975e8f45236a6988d8c203984c9a1bf146c69dbb5",
+      "bytes": 545,
+      "purpose": "Retained later-refusal fixture failure that triggered exact attribution."
+    },
+    {
+      "source": "/tmp/human-ai-opening-paired/purchase-rejection-attribution.json",
+      "destination": "docs/evidence/human-like-ai-opening-r5/witnesses/saving-refusal-attribution.json",
+      "sha256": "8827a2d2baa662adf812dd2eec4602b41b90220eba716e814172bc2e279d7615",
+      "bytes": 80813,
+      "purpose": "Every45refusal from both first-trial treatments with observed/actual MP, cycles, batches and deductions; all35prefixes exact."
+    },
+    {
+      "source": "/tmp/human-ai-opening-paired/automatic-reinforcement-rejection-attribution.json",
+      "destination": "docs/evidence/human-like-ai-opening-r5/witnesses/saving-maintenance-attribution.json",
+      "sha256": "b43425904b12ce176c3de2550744f50c3824ff09f770f19a14b4fd65593346b1",
+      "bytes": 7070,
+      "purpose": "Actual HP/MP step witnesses for real automatic reinforcement costs."
+    },
+    {
+      "source": "/tmp/human-ai-opening-receipt-followup/remaining-refusal-attribution.json",
+      "destination": "docs/evidence/human-like-ai-opening-r5/witnesses/receipt-remaining-refusals.json",
+      "sha256": "188a2dd4fe58d91a3509bf562969bef0bac350e09b74c4da696df2614a03bf50",
+      "bytes": 5333,
+      "purpose": "All3retained final refusals proven automatic reinforcement during pointer travel."
+    },
+    {
+      "source": "/tmp/human-ai-opening-paired/attribute-human-ai-opening-rejections.mjs",
+      "destination": "docs/evidence/human-like-ai-opening-r5/scripts/attribute-saving-refusals.mjs",
+      "sha256": "6b4662a28e2bf2fcc9f5d12194a5254848a6ca36112f870cb92cdc1e5541b3a2",
+      "bytes": 6070,
+      "purpose": "Exact unchanged-source replay of all45refused purchases."
+    },
+    {
+      "source": "/tmp/human-ai-opening-paired/attribute-human-ai-opening-automatic.mjs",
+      "destination": "docs/evidence/human-like-ai-opening-r5/scripts/attribute-saving-maintenance.mjs",
+      "sha256": "f0d69eba561bbef9b134cb9a1cb2033d38eb144e49891e15fb47c310b6b067c8",
+      "bytes": 6772,
+      "purpose": "Actual sim.step resource/health evidence collector."
+    },
+    {
+      "source": "/tmp/human-ai-opening-receipt-followup/attribute-remaining.mjs",
+      "destination": "docs/evidence/human-like-ai-opening-r5/scripts/attribute-receipt-refusals.mjs",
+      "sha256": "539b28cc41cd6c837ad749d40eb9e95b63fe0e4ee7d4b74fc17e7e37825322a4",
+      "bytes": 6628,
+      "purpose": "Exact replay of all3remaining final refusals."
+    },
+    {
+      "source": "/tmp/human-ai-opening-paired/rejection-replay.log",
+      "destination": "docs/evidence/human-like-ai-opening-r5/verification/saving-refusal-replays.log",
+      "sha256": "9d2828754003871f523fa364fd3519ec460ee2599519c55d664c284ce3789f1b",
+      "bytes": 3606,
+      "purpose": "All35affected original/native prefixes exact."
+    },
+    {
+      "source": "/tmp/human-ai-opening-receipt-followup/remaining-replay.log",
+      "destination": "docs/evidence/human-like-ai-opening-r5/verification/receipt-refusal-replays.log",
+      "sha256": "9ec800191b05cdb32aef175deae3321062a9d0d8626d552adf4264c1db8146c9",
+      "bytes": 378,
+      "purpose": "All3remaining final native prefixes exact."
+    },
+    {
+      "source": "/tmp/human-ai-opening-r5-copy/results/saving-accepted-openings.json.gz",
+      "destination": "docs/evidence/human-like-ai-opening-r5/results/saving-accepted-openings.json.gz",
+      "sha256": "64623b774e8e77d46989984f6bb0d0d65838c61309e440793655f321b8406e8a",
+      "bytes": 23112,
+      "purpose": "All360original-pair seats, exact accepted prefixes/counts, paired firstfamily/timing outcomes, spending/refusals/work-output.",
+      "uncompressedSHA256": "2954947e66ffce920b454a31204e5ccca161dac7fceb22b30adcb69bfc709bfb",
+      "uncompressedBytes": 682290,
+      "uncompressedSource": "/tmp/human-ai-opening-paired/opening-analysis.json"
+    },
+    {
+      "source": "/tmp/human-ai-opening-r5-copy/results/receipt-accepted-openings.json.gz",
+      "destination": "docs/evidence/human-like-ai-opening-r5/results/receipt-accepted-openings.json.gz",
+      "sha256": "059518963e61e9ac7512ac5783b919b2b5f8d06caf73c421add2c7e22e5f10b5",
+      "bytes": 23504,
+      "purpose": "All360followup comparison seats, unchanged-before reuse, accepted prefixes/counts, all outcomes.",
+      "uncompressedSHA256": "ba73eaa978f85672e3312332c923949f1c33a238a18d6e8c847e18f0a33bd490",
+      "uncompressedBytes": 678251,
+      "uncompressedSource": "/tmp/human-ai-opening-receipt-followup/opening-analysis.json"
+    },
+    {
+      "source": "/tmp/human-ai-opening-r5-copy/witnesses/native-saving-movement.json.gz",
+      "destination": "docs/evidence/human-like-ai-opening-r5/witnesses/native-saving-movement.json.gz",
+      "sha256": "5856b995aadd8162b5bc6c7e1375b2edb772351b8132aee03d6f8478c5c96f23",
+      "bytes": 11491,
+      "purpose": "All6native physical-input/actual-command timelines, initial/current unit positions, meaningful movement while saving and retained later refusal.",
+      "uncompressedSHA256": "817a51f022115a57c92edd315518c6133d02dbcbdadc4885386ac7b4d0105fed",
+      "uncompressedBytes": 150422,
+      "uncompressedSource": "/tmp/human-ai-opening-paired/human-ai-opening-candidate-fixtures.json"
+    },
+    {
+      "source": "/tmp/human-ai-opening-r5-copy/verified-copy-inputs.json",
+      "destination": "docs/evidence/human-like-ai-opening-r5/verification/copy-inputs-roundtrip.json",
+      "sha256": "a813d116c8067528c44735373a6961222307a33db24e079658dca7cf696a5eeb",
+      "bytes": 1867,
+      "purpose": "Fresh independent exact source-tar and full-report raw SHA/bytes verification before durable copy."
+    },
+    {
+      "source": "/tmp/human-ai-opening-r5-copy/artifact-copy-review.md",
+      "destination": "docs/evidence/human-like-ai-opening-r5/README.md",
+      "sha256": "b34707a67edc2b71a7e546bb261f6a1e068387a091269d7174a120a25f15cf42",
+      "bytes": 19190,
+      "purpose": "Reviewable prospective evidence report with all original/final short diagnostics, source-scope differences and exact payload copy map."
+    }
+  ],
+  "copyBytes": 9418154,
+  "copyFiles": 63
+}

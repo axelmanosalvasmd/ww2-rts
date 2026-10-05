@@ -4,6 +4,7 @@ import { createGame, command, UNITS } from './shared/sim.js';
 import { viewFor } from './shared/ai-view.js';
 import { plan } from './shared/ai.js';
 import { createHands, enqueueDecision, advanceHands } from './shared/ai-hands.js';
+import { perceive as screenV1Oracle } from './tools/ai-screen-v1-oracle.js';
 import { perceive, readinessFor, needsInspection } from './shared/ai-perception.js';
 import { createHands as inspectionHands, queueInspection, advanceHands as advanceInspection } from './shared/ai-hands.js';
 const map={w:160,h:160,rows:Array(160).fill('.'.repeat(160)),spawns:[{x:20,y:20},{x:140,y:140}],points:[]};
@@ -110,9 +111,14 @@ for (const outcome of ['correct', 'wrong', 'miss']) {
  assert.equal(a.units.get(f.e.id).cd,Infinity);assert.equal(b.units.get(f.e.id).cd,Infinity);
  f.a.hp=full*.58;
  const eventState={camera:{...f.state.camera},hands:{selected:[]}};
- const initial=observed(f);perceive(initial,0,eventState);
+ let measurements;const options={measureRaw:screenV1Oracle,onMeasurements:frame=>{measurements=frame;}};
+ const initial=observed(f);perceive(initial,0,eventState,initial.tick,options);
  f.g.tick+=2;f.a.hp=full*.2;
- const event=perceive(observed(f),0,eventState).newEvents.find(event=>event.kind==='screen-damage');
+ const runtime=perceive(observed(f),0,eventState,f.g.tick,options),event=measurements.original.newEvents.find(event=>event.kind==='screen-damage');
+ const observedEvent=runtime.newEvents.find(event=>event.kind==='screen-damage');
+ assert.equal(observedEvent.amount,30,'runtime uses the observed60%to20% world-bar loss, not the exact delivered29HP');
+ assert.equal(Object.hasOwn(observedEvent,'responseRequired'),false);
+ assert.equal(observedEvent.observedDanger.lossShare,.4);
  assert.equal(event.amount,29,'measurement retains the delivered HP delta rather than the coarser planner estimate');
  assert.equal(event.provenance,'heavy-damage');assert.equal(event.responseRequired,true);
  assert.equal(event.responseReason,'heavy-damage');assert.equal(event.responsePolicy,'screen-v1');
@@ -169,7 +175,13 @@ for (const outcome of ['correct', 'wrong', 'miss']) {
    previousSnapshot:structuredClone(first.snapshot),alertState:{tick:400},eventSerial:7,damageSerial:2,
    damageEpisodes:new Map([[f.a.id,{id:`${f.a.id}:2`,started:380,lastDamage:400}]])};
  f.g.tick+=2;f.a.hp=40;
- const event=perceive(observed(f),0,migrating).newEvents.find(event=>event.kind==='screen-damage');
+ const originalMigrating=structuredClone(migrating);
+ const event=screenV1Oracle(observed(f),0,originalMigrating).newEvents.find(event=>event.kind==='screen-damage');
+ const runtime=perceive(observed(f),0,migrating);
+ assert.ok(!runtime.newEvents.some(event=>event.kind==='screen-damage'),
+   'a legacy exact-health baseline has no observed basis, so migration establishes a fair damage baseline');
+ assert.equal(runtime.units.get(f.a.id).hp,41.25);
+ assert.equal(Object.hasOwn(originalMigrating,'previousScreen'),false);assert.equal(Object.hasOwn(originalMigrating,'previousSnapshot'),false);
  assert.equal(event.id,'screen:402:8');assert.equal(event.amount,35);assert.equal(event.provenance,'heavy-damage');
  assert.equal(event.episode,`${f.a.id}:2`);assert.equal(event.episodeTick,380);
  assert.equal(event.responseRequired,true);assert.deepEqual(event.responseUnits,[f.a.id]);

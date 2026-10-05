@@ -1,0 +1,308 @@
+{
+  "status": "PASS",
+  "method": "Exact immutable-source replay of every affected match only through its last rejected purchase; every emitted native input and actual command/resources/acceptance must equal retained original prefix. No source edits or new campaign.",
+  "cases": [
+    {
+      "treatment": "base",
+      "level": "easy",
+      "seed": 8,
+      "slot": 1,
+      "faction": "Germany",
+      "refusedTick": 806,
+      "queuedTick": 795,
+      "cycle": 19,
+      "command": {
+        "t": "buy",
+        "unit": "rifle"
+      },
+      "price": {
+        "mp": 100,
+        "fuel": 0
+      },
+      "rejectionReason": "mp",
+      "enqueue": {
+        "actualMP": 106.62829166666464,
+        "actualFuel": 0,
+        "observationTick": 794,
+        "observedMP": 106,
+        "observedFuel": 0
+      },
+      "click": {
+        "mp": 85.33208333333131,
+        "fuel": 0
+      },
+      "acceptedDeductionsSinceObserved": [],
+      "acceptedDeductionsWhileQueued": [],
+      "batchCost": 100,
+      "batch": [
+        {
+          "tick": 806,
+          "unit": "rifle",
+          "price": {
+            "mp": 100,
+            "fuel": 0
+          },
+          "accepted": false
+        }
+      ],
+      "classification": "other",
+      "automaticMPDecreasesWhileQueued": [
+        {
+          "slot": 1,
+          "tick": 798,
+          "mpBefore": 107.3005833333313,
+          "mpAfter": 82.63691666666463,
+          "income": 6.726666666666666,
+          "unitHealthGains": [
+            {
+              "id": 6,
+              "type": "mg",
+              "beforeHP": 50,
+              "afterHP": 75,
+              "x": 139,
+              "z": 115
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "treatment": "candidate",
+      "level": "easy",
+      "seed": 8,
+      "slot": 1,
+      "faction": "Germany",
+      "refusedTick": 806,
+      "queuedTick": 795,
+      "cycle": 19,
+      "command": {
+        "t": "buy",
+        "unit": "rifle"
+      },
+      "price": {
+        "mp": 100,
+        "fuel": 0
+      },
+      "rejectionReason": "mp",
+      "enqueue": {
+        "actualMP": 106.62829166666464,
+        "actualFuel": 0,
+        "observationTick": 794,
+        "observedMP": 106,
+        "observedFuel": 0
+      },
+      "click": {
+        "mp": 85.33208333333131,
+        "fuel": 0
+      },
+      "acceptedDeductionsSinceObserved": [],
+      "acceptedDeductionsWhileQueued": [],
+      "batchCost": 100,
+      "batch": [
+        {
+          "tick": 806,
+          "unit": "rifle",
+          "price": {
+            "mp": 100,
+            "fuel": 0
+          },
+          "accepted": false
+        }
+      ],
+      "classification": "other",
+      "automaticMPDecreasesWhileQueued": [
+        {
+          "slot": 1,
+          "tick": 798,
+          "mpBefore": 107.3005833333313,
+          "mpAfter": 82.63691666666463,
+          "income": 6.726666666666666,
+          "unitHealthGains": [
+            {
+              "id": 6,
+              "type": "mg",
+              "beforeHP": 50,
+              "afterHP": 75,
+              "x": 139,
+              "z": 115
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "treatment": "candidate",
+      "level": "hard",
+      "seed": 7,
+      "slot": 0,
+      "faction": "USA",
+      "refusedTick": 166,
+      "queuedTick": 163,
+      "cycle": 9,
+      "command": {
+        "t": "buy",
+        "unit": "mg"
+      },
+      "price": {
+        "mp": 150,
+        "fuel": 0
+      },
+      "rejectionReason": "mp",
+      "enqueue": {
+        "actualMP": 2.5999999999981585,
+        "actualFuel": 0,
+        "observationTick": 162,
+        "observedMP": 182,
+        "observedFuel": 0
+      },
+      "click": {
+        "mp": 3.199999999998159,
+        "fuel": 0
+      },
+      "acceptedDeductionsSinceObserved": [
+        {
+          "tick": 162,
+          "command": {
+            "t": "buy",
+            "unit": "mortar"
+          },
+          "accepted": true,
+          "rejectionReason": null,
+          "locations": [],
+          "sourceLocations": [],
+          "region": null,
+          "resourcesBefore": {
+            "mp": 182.39999999999816,
+            "fuel": 0
+          },
+          "resourcesAfter": {
+            "mp": 2.3999999999981583,
+            "fuel": 0
+          },
+          "purchasePrice": {
+            "mp": 180,
+            "fuel": 0
+          },
+          "spend": {
+            "mp": 180,
+            "fuel": 0
+          }
+        }
+      ],
+      "acceptedDeductionsWhileQueued": [],
+      "batchCost": 150,
+      "batch": [
+        {
+          "tick": 166,
+          "unit": "mg",
+          "price": {
+            "mp": 150,
+            "fuel": 0
+          },
+          "accepted": false
+        }
+      ],
+      "classification": "stale-observation-after-accepted-deduction",
+      "automaticMPDecreasesWhileQueued": []
+    },
+    {
+      "treatment": "candidate",
+      "level": "hard",
+      "seed": 7,
+      "slot": 1,
+      "faction": "Germany",
+      "refusedTick": 792,
+      "queuedTick": 784,
+      "cycle": 50,
+      "command": {
+        "t": "buy",
+        "unit": "rifle"
+      },
+      "price": {
+        "mp": 100,
+        "fuel": 0
+      },
+      "rejectionReason": "mp",
+      "enqueue": {
+        "actualMP": 107.07629166666617,
+        "actualFuel": 0,
+        "observationTick": 784,
+        "observedMP": 107,
+        "observedFuel": 0
+      },
+      "click": {
+        "mp": 99.2236249999995,
+        "fuel": 0
+      },
+      "acceptedDeductionsSinceObserved": [],
+      "acceptedDeductionsWhileQueued": [],
+      "batchCost": 100,
+      "batch": [
+        {
+          "tick": 792,
+          "unit": "rifle",
+          "price": {
+            "mp": 100,
+            "fuel": 0
+          },
+          "accepted": false
+        }
+      ],
+      "classification": "other",
+      "automaticMPDecreasesWhileQueued": [
+        {
+          "slot": 1,
+          "tick": 785,
+          "mpBefore": 107.07629166666617,
+          "mpAfter": 97.34441666666616,
+          "income": 5.362500000000001,
+          "unitHealthGains": [
+            {
+              "id": 4,
+              "type": "rifle",
+              "beforeHP": 80,
+              "afterHP": 100,
+              "x": 139.94519986680774,
+              "z": 117.03022107048697
+            }
+          ]
+        }
+      ]
+    }
+  ],
+  "matches": [
+    {
+      "treatment": "base",
+      "level": "easy",
+      "seed": 8,
+      "throughTick": 806,
+      "allNativeInputsExact": true,
+      "allCommandsResourcesAcceptanceExact": true
+    },
+    {
+      "treatment": "candidate",
+      "level": "easy",
+      "seed": 8,
+      "throughTick": 806,
+      "allNativeInputsExact": true,
+      "allCommandsResourcesAcceptanceExact": true
+    },
+    {
+      "treatment": "candidate",
+      "level": "hard",
+      "seed": 7,
+      "throughTick": 792,
+      "allNativeInputsExact": true,
+      "allCommandsResourcesAcceptanceExact": true
+    }
+  ],
+  "counts": {
+    "base": {
+      "other": 1
+    },
+    "candidate": {
+      "other": 2,
+      "stale-observation-after-accepted-deduction": 1
+    }
+  }
+}

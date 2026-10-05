@@ -1,0 +1,14 @@
+import assert from 'node:assert/strict';
+import {readFileSync,writeFileSync} from 'node:fs';
+import {deserialize} from 'node:v8';
+const dir='/tmp/human-once-hesitation',read=name=>JSON.parse(readFileSync(dir+'/'+name));
+const baseline=read('baseline-replay.json'),candidate=read('candidate-replay.json'),original=JSON.parse(readFileSync('/tmp/v16-easy1-gameplay-diagnostic/native-0.json'));
+assert.deepEqual(baseline.inputs,original.inputs.filter(i=>i.tick<=1660));
+for(const key of ['commands','inputs'])assert.deepEqual(candidate[key].filter(i=>i.tick<=937),baseline[key].filter(i=>i.tick<=937));
+const old=read('checkpoint-baseline.json'),fixed=read('checkpoint-candidate.json');assert.deepEqual(old.inputs,original.inputs.filter(i=>i.tick>=1595&&i.tick<=1684));
+assert.equal(old.states.find(s=>s.tick===1595).noWorkUntil,1625);assert.equal(old.states.find(s=>s.tick===1625).noWorkUntil,1655);assert.equal(old.states.find(s=>s.tick===1595).concern.since,old.states.find(s=>s.tick===1625).concern.since);
+assert.ok(fixed.states.filter(s=>s.tick<1625).every(s=>!s.active&&!s.queue.length&&s.actor14.path.length===0));assert.equal(fixed.commands[0].tick,1643);assert.equal(fixed.commands[0].accepted,true);assert.equal(fixed.states.find(s=>s.tick===1643).actor14.path.length,3);
+assert.deepEqual(fixed.inputs.map(i=>[i.tick,i.kind,i.motorTicks]),[[1630,'attack-key',4],[1643,'place-click',13]]);
+const checkpoint=deserialize(readFileSync(dir+'/baseline-tick1594.v8'));assert.ok(checkpoint.memories[0].human.hands.selected.includes(14));
+assert.deepEqual(read('fixture-proof.json').firstDecisions,read('baseline-first-decisions.json'));
+const s=fixed.states[0],proof={unchangedHistoryThrough:937,firstChangedPolicyTick:937,firstDifferentMotorInputTick:965,checkpointTick:1594,baselinePauses:[[1595,1625],[1625,1655]],candidatePause:[1595,1625],actualCommand:fixed.commands[0],nativePathAtCommand:3,selectedBeforeScene:checkpoint.memories[0].human.hands.selected,publicConcern:s.concern,actor14:{id:s.actor14.id,x:s.actor14.x,z:s.actor14.z,hp:s.actor14.hp,path:s.actor14.path.length},camera:checkpoint.memories[0].human.camera,initialDecisionsEquivalent:192};writeFileSync(dir+'/native-proof.json',JSON.stringify(proof,null,2));console.log('Original native baseline, exact unchanged prefix, labeled checkpoint paid advance and192 initial-decision equivalence PASS.');

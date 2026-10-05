@@ -1,0 +1,23 @@
+node:internal/modules/run_main:107
+    triggerUncaughtException(
+    ^
+
+AssertionError [ERR_ASSERTION]: native wall keeps the nearby node unseen
+
+true !== false
+
+    at nativeFixture (file:///tmp/human-local-engineer-candidate/test-engine-ai-local-engineer.js:45:36)
+    at fixture (file:///tmp/human-local-engineer-candidate/test-engine-ai-local-engineer.js:10:13)
+    at file:///tmp/human-local-engineer-candidate/test-engine-ai-local-engineer.js:57:196
+    at ModuleJob.run (node:internal/modules/esm/module_job:561:25)
+    at async node:internal/modules/esm/loader:647:26
+    at async asyncRunEntryPointWithESMLoader (node:internal/modules/run_main:101:5) {
+  generatedMessage: false,
+  code: 'ERR_ASSERTION',
+  actual: true,
+  expected: false,
+  operator: 'strictEqual',
+  diff: 'simple'
+}
+
+Node.js v24.21.0

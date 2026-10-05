@@ -1,0 +1,17 @@
+{
+  "exit": "EXIT_CODE=1",
+  "exitCode": 1,
+  "filesBefore": 611,
+  "filesAfter": 611,
+  "hashesIdentical": true,
+  "headIdentical": true,
+  "changed": [],
+  "fileManifestDigest": "cdd703e3bc7a3ff6ce67a2b8bd6c0efb9767f5daada84a20c25395ff06f1e914",
+  "beforeManifestSHA256": "ebf0fd36650dbc8731a9baacc4524b31baea396c8310fc906fbc44327b293f12",
+  "afterManifestSHA256": "f0725e919f854310a43c9bc5cd1bafbb2632b983a906c18f2ba953219e204716",
+  "logSHA256": "1e9e06e4892fd6c12c792f465c1fd177fcb4f214f907d8e0cd64c25d94eb68e3",
+  "logBytes": 13746,
+  "startedAtUnix": 1791113758.741238,
+  "finalizedAtUnix": 1791115367.7553144,
+  "passes": false
+}

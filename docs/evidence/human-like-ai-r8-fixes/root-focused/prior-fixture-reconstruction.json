@@ -1,0 +1,32 @@
+{
+  "command": [
+    "git",
+    "apply",
+    "--reverse",
+    "--include=test-engine-ai-response.js",
+    "--include=test-engine-ai-public-alert.js",
+    "/tmp/ai-pan-early-release/early-release.patch"
+  ],
+  "sourceBefore": {
+    "test-engine-ai-response.js": "a1b9ae52e60e952e70c896140a0813b6eb533cad2f0afc4cd45cc5de93685804",
+    "test-engine-ai-public-alert.js": "51bd3d274994f3b320001ca2771510fe6a7c2a5c064874ecdbea7e38c6dabaa6"
+  },
+  "patchSHA256": "d0d006a34aebd8ebb8cc97b5d3376605cb7319b581defbaabe015a68b76d7ed8",
+  "results": [
+    {
+      "name": "test-engine-ai-response.js",
+      "reconstructedSHA256": "cacd3cfc34b5dd7af185c2b89cf7c7dbfa26965202c0938a4a6b6be7ce62907e",
+      "recordedOriginalSHA256": "cacd3cfc34b5dd7af185c2b89cf7c7dbfa26965202c0938a4a6b6be7ce62907e",
+      "bytes": 26033,
+      "matches": true
+    },
+    {
+      "name": "test-engine-ai-public-alert.js",
+      "reconstructedSHA256": "4655cc6f966bc815bc18f2d26dfc9dc10fce55875ff2e374bd3ca71292248b13",
+      "recordedOriginalSHA256": "4655cc6f966bc815bc18f2d26dfc9dc10fce55875ff2e374bd3ca71292248b13",
+      "bytes": 15585,
+      "matches": true
+    }
+  ],
+  "qualification": "Reconstructed prior fixtures by reversing the exact retained source patch. This validates old archive bytes and recorded focused-test source hashes, not a claim of unchanged current ROOT files or an original pre-change physical snapshot."
+}

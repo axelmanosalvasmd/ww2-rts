@@ -58,7 +58,7 @@ async function connect(room, token) {
 async function tick(room, seats, count = 2) {
   for (let n = 0; n < count; n++) server.tickRooms();
   await settle();
-  const target = room.game.tick - (room.snapEvery ?? 2);
+  const every = room.snapEvery ?? 2, target = room.game.tick - room.game.tick % every;
   for (const seat of seats) await until(() => seat.latest('s')?.tick >= target, 'WebSocket snapshot catches up');
 }
 function place(unit, x, z) {

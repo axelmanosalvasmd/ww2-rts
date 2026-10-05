@@ -1,0 +1,133 @@
+{
+  "schema": "native-pan-early-release-evidence-v1",
+  "diagnosticOnly": true,
+  "rootMutationsByAgent": false,
+  "patchApplyCheck": 0,
+  "sourceBindings": "source-hashes.json",
+  "finalComparison": {
+    "raw": "comparison-native.json",
+    "seed": 27,
+    "seconds": 12,
+    "sameCueTick": 120,
+    "baselineRetreatTick": 183,
+    "candidateRetreatTick": 132,
+    "claim": "Authored native defect proof. Not archived V21 replay, pooled population or Hard timing target pass."
+  },
+  "historicalDevelopment": "native-baseline.json/native-candidate.json are earlier 30-second setup diagnostics, not the final declared 12-second paired proof. response-development.log records the old full-hold assertion failure before justified migration. REVIEW records wrapper setup failures and the 40% hit setup-negative.",
+  "captureCompatibility": "Prospective optional panGestureVersion3 with sealed interruption request proofs. Historical streams are not modified. Alert-v2 integration is separately owned.",
+  "profilesFloors": "Original skill profiles, reactionDelay and minimumResponseTick verified byte-identical.",
+  "files": {
+    "REVIEW.md": {
+      "bytes": 6673,
+      "sha256": "d346979042cdc6c66a5fb4ce880ee3adf61c38f199875e4fcc17899945fd2538"
+    },
+    "alert-native-proof.json": {
+      "bytes": 4330495,
+      "sha256": "5a652a866fc48e82b7b1f4c133b2b03243f14013a8ee98024592108d0f94bcbc"
+    },
+    "alert-proof-test.log": {
+      "bytes": 3444,
+      "sha256": "dfd459fe62002f4c155d99934c3df89af85d57fee5c833e3072f9606d3cfe375"
+    },
+    "base-hashes.json": {
+      "bytes": 49844,
+      "sha256": "78ae3957cfdd34abefa396a7b6ee83c4cb67c5f65550f0e0fa626488fe39e549"
+    },
+    "checks.json": {
+      "bytes": 1020,
+      "sha256": "cd08c81a4bc44478fdbe1d3e3a3c105ce0b1037633aa80c8656f62e3575000f8"
+    },
+    "checks.py": {
+      "bytes": 841,
+      "sha256": "2aec37899a65c957b57a2219656840ed6c27030818bc7f24fc29dd7dfbad5072"
+    },
+    "comparison-native.json": {
+      "bytes": 1034429,
+      "sha256": "a5633070b636f5dec87009f49220b035e19e6c7e4e289ea93faf88c3e06acc25"
+    },
+    "comparison.log": {
+      "bytes": 466,
+      "sha256": "ff5b7ec59f9fef534a3d293c710410d95acda422d6107fea6388a3b86e47d300"
+    },
+    "comparison.mjs": {
+      "bytes": 1360,
+      "sha256": "ee205ef46682a3e517aa2f75b78e2874b82ef314349420f7f6c4ad92999982c2"
+    },
+    "early-release.patch": {
+      "bytes": 30967,
+      "sha256": "d0d006a34aebd8ebb8cc97b5d3376605cb7319b581defbaabe015a68b76d7ed8"
+    },
+    "native-baseline.json": {
+      "bytes": 1110114,
+      "sha256": "c4004c1d998c222c35bf59f0e192a92fff25c27df9529cf58c84ad736b54fb2f"
+    },
+    "native-candidate.json": {
+      "bytes": 1068240,
+      "sha256": "717d6507253c586dff7b9e7ead00bde05411764eafb67dfc4d9fda8fe0e63843"
+    },
+    "native-proofs.json": {
+      "bytes": 1083693,
+      "sha256": "09eea6ef79f9d1baac309cd77794c788d57713e8242f16fe77a599617f7de205"
+    },
+    "native-scene.mjs": {
+      "bytes": 2622,
+      "sha256": "9e0893b30478615ecb314a4ca2d2ca95f6e67c7cca33cd177bc55e47da1e6b5d"
+    },
+    "physical-controls.json": {
+      "bytes": 119278,
+      "sha256": "6e31497911dc1e280ac85e0b8d2a4d81157278f0844bbc4aed55642eaea3cc54"
+    },
+    "response-development.log": {
+      "bytes": 576,
+      "sha256": "5d5901472b6209c057ab7871591babeee2977bfaa6de889610c005f2aad7e34c"
+    },
+    "source-hashes.json": {
+      "bytes": 2727,
+      "sha256": "4285060b4ecfcd5078bf1e6dc528751ac7c17de100b147f25571e925ab203448"
+    },
+    "source/shared/ai-commander.js": {
+      "bytes": 30998,
+      "sha256": "16538e56be6a730b8f92480cd96e2726a1a1ca35312fc509a4c44011e929fba6"
+    },
+    "source/shared/ai-hands.js": {
+      "bytes": 70227,
+      "sha256": "b1e47b2b0aef315529a5e16003fcd72730da0cdfd33b93cefead63de68d1f908"
+    },
+    "source/test-engine-ai-pan-release.js": {
+      "bytes": 11884,
+      "sha256": "dc03fb315b6ab1d3b044caa19f3a54c146a178ec54bcad228a415c28b7d73596"
+    },
+    "source/test-engine-ai-public-alert.js": {
+      "bytes": 17816,
+      "sha256": "51bd3d274994f3b320001ca2771510fe6a7c2a5c064874ecdbea7e38c6dabaa6"
+    },
+    "source/test-engine-ai-response.js": {
+      "bytes": 26604,
+      "sha256": "a1b9ae52e60e952e70c896140a0813b6eb533cad2f0afc4cd45cc5de93685804"
+    },
+    "source/tools/ai-public-alert-response.mjs": {
+      "bytes": 20592,
+      "sha256": "6ea2b5b42af9f1ed1bc87f14433adb66da05fdd71f8c6fbe35ca36180fed9baa"
+    },
+    "test-engine-ai-diagonal-pan.js.log": {
+      "bytes": 166,
+      "sha256": "301ad4b9afa0b4803aebe6958daec3b5dc6aa54b7e78c61ca977ad05f21ff0dd"
+    },
+    "test-engine-ai-hands.js.log": {
+      "bytes": 108,
+      "sha256": "9cd01eb1d7cbf22bbf205c6e2556491c73fddd8cf15d6658a496aad4605e51de"
+    },
+    "test-engine-ai-pan-release.js.log": {
+      "bytes": 273,
+      "sha256": "8d622a4c24ca16a32fde545ad218f2e31e71fdad217373dd3b9d2c22b20e0dbf"
+    },
+    "test-engine-ai-public-alert.js.log": {
+      "bytes": 3444,
+      "sha256": "dfd459fe62002f4c155d99934c3df89af85d57fee5c833e3072f9606d3cfe375"
+    },
+    "test-engine-ai-response.js.log": {
+      "bytes": 575,
+      "sha256": "5f89c348ec9847cca46830682a70f09824b0040b459690e7821925fbffe9f80c"
+    }
+  }
+}

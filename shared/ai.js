@@ -1,16 +1,18 @@
 // Seat commander. Advances timed inputs every tick from a detached per-seat observation.
 // During an attended visit it chooses a situation, wait, hold, or attack, and keeps that
 // operation while the reason for it still holds. Issuing inputs use ordinary command().
-import { UNITS, CELL, CFG, COVER, MOVE, TRENCH, FORTS, command, spoiled, SUPPORT, abCost, canBuild, allied, supCost, siteNear, priceOf, popUse, alive, los, placementCheck } from './sim.js';
-import { viewFor } from './ai-view.js';
+import { UNITS, CELL, CFG, COVER, MOVE, SIGHT, TRENCH, FORTS, command, spoiled, SUPPORT, abCost, canBuild, allied, supCost, siteNear, priceOf, popUse, alive, los, placementCheck } from './sim.js';
+import { onScreen } from './ai-perception.js';
+import { viewFor, commanderViewFor } from './ai-view.js';
 import { beginMind, knownSince, pointReady, lesson, pointExtra, dropEmptyGround, liveSightings, operationHolds, planAssault, clearAssault, ARMOR, ANTI_ARMOR } from './ai-mind.js';
 import { gridFor, rebuildGrid } from './grid.js';
 import { aiCaution } from './weather.js';
 import { insideKnownRegion } from './world-territories.js';
 import { createRng, random } from './ai-rng.js';
-import { openingBuy } from './ai-persona.js';
-import { runCommander } from './ai-commander.js';
+import { openingBuy, saveOpeningPreference } from './ai-persona.js';
+import { runCommander, initializePublicStart } from './ai-commander.js';
 import { diagnostics } from './ai-hands.js';
+import { armedContactActor, supportClearOfObservedFriends } from './ai-priority.js';
 import { productionStatus, SUPPORT_RESERVES } from './ai-attention.js';
 
 const d = (a, b) => Math.hypot(a.x - b.x, a.z - b.z);
@@ -37,6 +39,22 @@ function cellsNear(view, p, r, test) {
       if (x >= 0 && y >= 0 && x < view.w && y < view.h && test(y * view.w + x)) n++;
   return n;
 }
+// The key chooses its own reachable destination. Pay for it only when watched terrain offers
+// a possible shelter; a wall can protect a nearby open cell as well as a cover cell itself.
+function watchedCoverNear(view, unit) {
+  if (!view.camera) return true;
+  const radius = CFG.coverSeek + CELL * 2;
+  return cellsNear(view, unit, radius, c => {
+    const flags = view.flags[c];
+    if (!(flags & (COVER | SIGHT))) return false;
+    const at = { x: (c % view.w + .5) * CELL, z: (Math.floor(c / view.w) + .5) * CELL };
+    if (!onScreen(at, view.camera, view)) return false;
+    const distance = d(unit, at);
+    return distance <= CFG.coverSeek && !!(flags & COVER)
+      || distance <= radius && !!(flags & SIGHT);
+  }) > 0;
+}
+
 const trenchesNear = (view, p, r) => cellsNear(view, p, r, c => view.flags[c] & TRENCH);
 
 // how many of my side's mines lie within r of p (the view's terrain shows only the mines my side laid)
@@ -72,7 +90,7 @@ function rebuildBridge(view, slot, squads, enemies, busy, mem, submit) {
   const refused = submit({ t: 'dig', ids: [u.id], kind: 'bridge', x: spot.x, z: spot.z, dir: alongX ? 0 : Math.PI / 2 });
   if (refused === undefined) { if (!mem.human) crew.set(u.id, { t: now, dug: false }); }
   else if (!u.path.length) {
-    const k = Math.min(1, (FORTS.bridge.reach - 2) / (d(u, spot) || 1));
+    const k = Math.min(1, (FORTS.bridge.reach - (mem.human && refused === 'notVisible' ? 4 : 2)) / (d(u, spot) || 1));
     submit({ t: 'move', orders: [[u.id, spot.x + (u.x - spot.x) * k, spot.z + (u.z - spot.z) * k]] });
   }
 }
@@ -164,6 +182,12 @@ const projectionOf = mem => {
   return PROJECTIONS.get(mem);
 };
 const memoryOf = (g, slot) => { if (!MEMORY.has(g)) MEMORY.set(g, []); const m = MEMORY.get(g); return (m[slot] ??= {}); };
+// Call only for a controller assigned at the actual newly created match's public start delivery.
+// The DTO carries only that delivery's map dimensions and own spawn, plus controller configuration.
+export function startCommander(g, slot, setup, options = {}) {
+  if (g.tick !== 0 || options.decisionOnly || options.handoff) return false;
+  return initializePublicStart(setup, slot, options.memory ?? memoryOf(g, slot), options);
+}
 // Called when a human resumes this seat, before the next AI takeover can claim its units.
 export function resetAI(g, slot) { const memories = MEMORY.get(g); if (memories) delete memories[slot]; }
 const knownBuildings = (view) => view.ghosts;
@@ -171,7 +195,7 @@ const inCover = (_view, u) => u.cover === 1 || u.cover === 2;
 
 // Refresh on the same beat as human snapshots. A think between beats uses the previous view.
 export function observe(g, slot, cache) {
-  const mem = memoryOf(g, slot), view = viewFor(g, slot, projectionOf(mem), cache);
+  const mem = memoryOf(g, slot), view = commanderViewFor(g, slot, projectionOf(mem), cache);
   flushHordeMovement(view, slot, mem, cmd => command(g, slot, cmd));
   return view;
 }
@@ -247,7 +271,7 @@ export const thinkEvery = (level) => (Object.hasOwn(AI_LEVELS, level) ? AI_LEVEL
 export function think(g, slot, opts = {}) {
   const mem = opts.memory ?? memoryOf(g, slot);
   mem.seen ??= new Map(); mem.node ??= new Map();
-  const view = opts.view ?? viewFor(g, slot, opts.decisionOnly ? mem : projectionOf(mem));
+  const view = opts.view ?? (opts.decisionOnly ? viewFor(g, slot, mem) : commanderViewFor(g, slot, projectionOf(mem)));
   mem.rng ??= createRng(opts.seed ?? view.matchSeed ?? 1, slot);
   // Wave lifecycle is public. A between-snapshot look cannot dispatch an expired Wave's queue.
   if (view.mode?.kind === 'horde' && view.mode.slot === slot
@@ -341,7 +365,14 @@ export function plan(observation, slot, opts, mem, send) {
   const economyVisit = !opts.human || ['production', 'expansion'].includes(opts.concern?.kind);
   const engineerFocus = all.filter(u => u.type === 'engineer' && (!opts.human || (observation.screenIds.has(u.id)
     && (opts.concern?.unitId == null || opts.concern.unitId === u.id))));
-  const reserve = classic && economyVisit ? (rush.length ? 0 : 1)
+  const localEngineerVisit = opts.human && opts.concern?.kind === 'idle' && engineerFocus.length === 1
+    && opts.concern.unitId === engineerFocus[0].id
+    && !['bridgeCrew', 'fillCrew', 'demineCrew'].some(key => mem[key]?.has(engineerFocus[0].id))
+    && !engineerFocus[0].inventoryOnly && !engineerFocus[0].path.length && !engineerFocus[0].orders.length
+    && !engineerFocus[0].retreating && !engineerFocus[0].targetId && !engineerFocus[0].build && !engineerFocus[0].dig
+    && !engineerFocus[0].attackId && !engineerFocus[0].amove && !engineerFocus[0].entrench && !engineerFocus[0].nade
+    && engineerFocus[0].garrison < 0 && engineerFocus[0].enter < 0 && engineerFocus[0].fireAt < 0;
+  const reserve = classic && (economyVisit || localEngineerVisit) ? (rush.length ? 0 : 1)
     * buildEconomy(view, slot, engineerFocus, counters && seenArmor > 0, mem, submit, opts.concern) : 0;
   // Classic: only what my finished buildings can train
   const trains = (t) => !classic || grid.ownedBy(slot).some(b => b.built >= 1 && UNITS[b.type].makes?.includes(t));
@@ -410,9 +441,12 @@ export function plan(observation, slot, opts, mem, send) {
     }
   }
   // A visit to expansion serves that objective. A dangerous remembered point still needs its ordinary counter.
-  if (opts.human && opts.concern?.kind === 'combat' && opts.concern.event === 'screen-contact'
-    && opts.concern.responseRequired && sit?.kind !== 'wait') {
-    const threat = enemies.find(enemy => enemy.id === opts.concern.targetId);
+  const attendedContact = opts.human && opts.concern?.event === 'screen-contact'
+    ? view.events?.find(event => event.kind === 'screen-contact' && event.onScreen
+      && (opts.concern.eventId ? event.id === opts.concern.eventId : event.targetId === opts.concern.targetId)) : null;
+  if (opts.human && opts.concern?.kind === 'combat' && attendedContact
+    && attendedContact.observedDanger?.idleOwnUnits?.length && sit?.kind !== 'wait') {
+    const threat = enemies.find(enemy => enemy.id === attendedContact.targetId && view.screenIds.has(enemy.id));
     if (threat && !UNITS[threat.type].structure) sit = {
       kind: 'defense', until: now + L.commit, point: null, threatId: threat.id,
       at: { x: threat.x, z: threat.z }, counter: null, failedAt: 0,
@@ -462,16 +496,26 @@ export function plan(observation, slot, opts, mem, send) {
   if (want === 'rifle' && canBuild('commando', me.faction) && count('commando') < 2 && count('rifle') >= 1) buy = 'commando';
   if (canBuild('churchill', me.faction) && count('churchill') < 1 && armySize >= 5 && affords('churchill') && (want === 'tank' || want === 'rifle')) buy = 'churchill';
   // A tank that already wiped a squad, or one this seat still remembers, changes the next buy after it leaves sight.
-  if (mindful) {
-    const learned = lesson(mind, buy, count('at'), count('mg')) || sit?.counter || null;
-    if (learned) buy = learned;
-  }
+  const learnedBuy = mindful ? lesson(mind, buy, count('at'), count('mg')) || sit?.counter || null : null;
+  if (learnedBuy) buy = learnedBuy;
   // Classic: keep an Engineer while there are nodes to build on
   // Classic: no building for it, or no Fuel for a vehicle: infantry instead
   if (!trains(buy) || !canBuild(buy, me.faction) || priceOf(view, buy).fuel > (me.fuel ?? 0)) buy = trains('conscript') && canBuild('conscript', me.faction) ? 'conscript' : 'rifle';
   if (world && (!count('engineer') || !ownB.some(b => b.type === 'hq'))) submit({ t: 'recover' });
-  if (classic && count('engineer') < (view.nodes.some((_, i) => !view.claimedNodes.has(i)) ? 2 : 1)) buy = 'engineer';
+  const engineerTarget = classic ? (view.nodes.some((_, i) => !view.claimedNodes.has(i)) ? 2 : 1) : 0;
+  // Full queue types are shown only for one actual selected production building.
+  const hud = observation.selectedHUD;
+  const selectedProducer = classic && opts.human && hud?.slot === slot && hud.observedTick === observation.tick
+    && hud.ids.length === 1 ? observation.units.get(hud.ids[0]) : null;
+  const knownQueuedEngineers = selectedProducer?.owner === slot && selectedProducer.built >= 1
+    && UNITS[selectedProducer.type].building && observation.screenIds.has(selectedProducer.id)
+    ? (selectedProducer.queue ?? []).filter(type => type === 'engineer').length : 0;
+  let engineerShortage = Math.max(0, engineerTarget - count('engineer') - knownQueuedEngineers);
+  if (classic && engineerShortage > 0) buy = 'engineer';
   if (opts.human && !seenTanks && !sit?.counter) buy = openingBuy(mem.human, view, slot, buy, trains);
+  const saveFirstPreference = opts.human && saveOpeningPreference(mem.human, view, slot, buy, trains, { armySize,
+    tacticalCounter: seenTanks || enemyPlanes || seenGarrison || seenDugIn || learnedBuy || sit?.counter
+      || sit?.kind === 'defense' || seenInf >= 6 && armySize >= 5 });
   // Classic: save up for the next building, unless the army is nearly gone
   // big armies: buy several at a time (one per decision can't keep a 60-unit army topped up)
   const purchaseLimit = opts.human ? ({ easy: 1, normal: 2, hard: 3 }[level]) : view.army?.pop > 1 ? 4 : 1;
@@ -483,10 +527,14 @@ export function plan(observation, slot, opts, mem, send) {
     reason: 'unaffordable', proposedBuys: 0, queuedBuys: 0,
     readiness: productionStatus(observation, slot),
   } : null;
-  if (!horde && economyVisit && opts.concern?.panel !== 'air') for (let k = 0; k < purchaseLimit; k++) {
+  // An own accepted receipt can postdate the resource reading in the delivered frame.
+  const freshPurchaseFrame = !opts.human || opts.decisionOnly || !Number.isFinite(mem.human.lastAcceptedBuyTick)
+    || observation.tick > mem.human.lastAcceptedBuyTick;
+  if (production && !freshPurchaseFrame) production.reason = 'awaiting-buy-receipt-frame';
+  if (!horde && economyVisit && opts.concern?.panel !== 'air' && freshPurchaseFrame) for (let k = 0; k < purchaseLimit; k++) {
     // Keep a useful army in the field rather than waiting forever for a prestige purchase.
     let candidate = buy;
-    if (opts.human && armySize < 6 && !affords(candidate)) {
+    if (opts.human && armySize < 6 && !affords(candidate) && !saveFirstPreference) {
       const fallback = canBuild('conscript', me.faction) && trains('conscript') ? 'conscript' : 'rifle';
       if (trains(fallback) && affords(fallback)) candidate = fallback;
     }
@@ -500,6 +548,7 @@ export function plan(observation, slot, opts, mem, send) {
       if (production) production.reason = reserve ? 'building-reserve' : 'unaffordable';
       break;
     }
+    if (opts.human && classic && candidate === 'engineer' && engineerShortage <= 0) break;
     if (opts.human && (knownPopulation + popUse(candidate) > knownCap
       || count(candidate) >= (UNITS[candidate].max ?? Infinity))) {
       if (production) production.reason = knownPopulation + popUse(candidate) > knownCap ? 'pop' : 'max';
@@ -511,6 +560,7 @@ export function plan(observation, slot, opts, mem, send) {
       production.reason = result === undefined ? 'proposed' : result;
     }
     if (result !== undefined) break;
+    if (opts.human && classic && candidate === 'engineer') engineerShortage--;
     knownPopulation += popUse(candidate);
   }
   if (production) mem.human.production = production;
@@ -520,7 +570,7 @@ export function plan(observation, slot, opts, mem, send) {
   const load = view.points.map(() => 0), holding = view.points.map(() => 0);
   for (const u of opts.human ? all : mine) {
     const i = pointOf(u.path.length ? u.path.at(-1) : u);
-    if (i >= 0) load[i]++;
+    if (i >= 0 && (view.points[i].owner >= 0 || UNITS[u.type].infantry)) load[i]++;
   }
 
   const orders = [], assault_ = [], retreat = [], pending = view.points.map(() => []), heading = [...load];
@@ -601,6 +651,7 @@ export function plan(observation, slot, opts, mem, send) {
   // One support call per look. A siren (fighter cover) can be that call. A unit just spotted is not a target yet.
   const call = (kind, at, dir) => {
     if (spentSupport || !at) return;
+    if (opts.human && ['dive','bombing'].includes(kind) && !supportClearOfObservedFriends({ kind, ...at, dir }, view, slot)) return;
     // Cover answers a siren wherever it is. Every other call has to be the fight this look already chose.
     if (mindful && kind !== 'cover' && sit?.at && d(at, sit.at) > 40) return;
     if (!submit({ t: 'support', kind, x: at.x, z: at.z, dir })) { mem.called = now; spentSupport = true; }
@@ -622,7 +673,10 @@ export function plan(observation, slot, opts, mem, send) {
   // A completed click owns its crew until the delivered screen shows the work finish. The next snapshot may
   // still show dig:null, so a new visit must not replace that accepted repair with a fortification or march.
   const busy = new Set(opts.human ? ['bridgeCrew', 'fillCrew', 'demineCrew'].flatMap(key => [...(mem[key]?.keys() ?? [])]) : []);
-  rebuildBridge(view, slot, mine.filter(u => !u.air), enemies, busy, mem, submit);
+  const bridgeBuilders = opts.human && idleActor
+    ? all.filter(unit => unit.id === idleActor.id && observation.screenIds.has(unit.id) && !unit.inventoryOnly)
+    : mine.filter(unit => !unit.air);
+  rebuildBridge(view, slot, bridgeBuilders, enemies, busy, mem, submit);
   fillHoles(view, slot, mine.filter(u => !u.air), enemies, busy, mem, submit);
   clearMines(view, slot, mine.filter(u => !u.air), enemies, busy, mem, submit);
   if (adapt) {
@@ -656,18 +710,19 @@ export function plan(observation, slot, opts, mem, send) {
   // enemies it can see at one of its Classic depots (or, Hard, a point it holds in Conquest). The nearest free units go to
   // fight them off, but only when together they're worth more than the attackers (else they'd just feed them); units
   // already there count, and stay where they are (in their house or trench). A lost depot is lost income at any level.
+  const movementReserved = new Set(), dangerMoves = new Set();
   const guarded = [...ownB.filter(b => b.type === 'depot'), ...(L.guard && !classic ? view.points.filter(p => p.owner === slot) : [])];
   for (const at of guarded) {
     const foes = enemiesNear(at, 24).filter(e => !UNITS[e.type].structure && !e.air && d(e, at) <= 24);
     if (!foes.length) continue;
     const foeVal = foes.reduce((a, e) => a + worth(e), 0), go = [];
     let val = 0;
-    for (const u of mine.filter(u => !u.air && !u.retreating && !busy.has(u.id) && (!u.targetId || d(u, at) < 30) && d(u, at) < 70 && worth(u) >= UNITS[u.type].cost * 0.4 && !hurt(u)).sort((a, b) => d(a, at) - d(b, at))) {
+    for (const u of mine.filter(u => !u.air && !u.retreating && !busy.has(u.id) && !movementReserved.has(u.id) && (!u.targetId || d(u, at) < 30) && d(u, at) < 70 && worth(u) >= UNITS[u.type].cost * 0.4 && !hurt(u)).sort((a, b) => d(a, at) - d(b, at))) {
       if (val >= foeVal * 1.3) break;
       go.push(u); val += worth(u);
     }
     if (val < foeVal) continue;
-    for (const u of go) { busy.add(u.id); arm(u); if (d(u, at) > 12 && (!u.amove || d(u.amove, at) > 6)) assault_.push([u.id, at.x, at.z]); }
+    for (const u of go) { (opts.human ? movementReserved : busy).add(u.id); arm(u); if (d(u, at) > 12 && (!u.amove || d(u.amove, at) > 6)) assault_.push([u.id, at.x, at.z]); }
   }
   // rule 3, attack timing: march on a base only with an army worth 1.3x what that enemy was recently seen fielding
   const target = bunkers[0], myVal = mine.reduce((a, u) => a + worth(u), 0);
@@ -693,12 +748,25 @@ export function plan(observation, slot, opts, mem, send) {
   // that fell back to a Barracks away from the HQ used to head out again half empty)
   const bases = classic ? [...view.units.values()].filter(b => UNITS[b.type].produces && b.built >= 1 && b.hp > 0 && allied(view, b.owner, slot)) : null;
   const atBase = (u) => (bases ? bases.some(b => d(u, b) <= CFG.reinforceRadius) : d(u, me.spawn) <= CFG.reinforceRadius);
-  const idleCombat = (u) => !u.air && !u.retreating && !busy.has(u.id) && !UNITS[u.type].medic && !u.path.length && !u.attackId && !u.targetId && !u.dig && !u.entrench && u.enter < 0 && u.fireAt < 0;
+  const grenadeTarget = u => {
+    const ability = UNITS[u.type].ab;
+    return enemiesNear(u, ability.range + 4).find(enemy => watched(enemy) && UNITS[enemy.type].infantry
+      && d(u, enemy) <= ability.range + 4 && (enemy.type !== 'rifle' || inCover(view, enemy)));
+  };
+  const stationaryGrenade = u => UNITS[u.type].ab.id === 'grenade' && abCost(view, UNITS[u.type].ab) <= me.mun
+    && (u.cd <= 0 || u.cdKnown === false && typeof opts.requestInspection === 'function') && !!grenadeTarget(u);
+  // An objective reservation blocks new marches, while an actually idle guard can address its attended local contact.
+  const attendedDefender = u => opts.human && attendedContact?.observedDanger?.idleOwnUnits?.includes(u.id)
+    && sit?.threatId === attendedContact.targetId && d(u, sit.at) <= 45
+    && u.garrison < 0 && u.cover !== 2 && !u.holdPos && !u.nade && !u.build && !u.orders.length && !u.amove
+    && !stationaryGrenade(u);
+  const idleCombat = (u, localDefense = false) => armedContactActor(u) && !u.air && !u.retreating && !busy.has(u.id)
+    && (!movementReserved.has(u.id) || localDefense && attendedDefender(u)) && !UNITS[u.type].medic && !u.path.length && !u.attackId && !u.targetId && !u.dig && !u.entrench && u.enter < 0 && u.fireAt < 0;
   const baseReady = opts.human ? mine.filter(u => idleCombat(u) && !u.nade && !u.build && u.garrison < 0 && worth(u) >= UNITS[u.type].cost * 0.65) : mine;
   // A watched threat on ground we hold: idle squads go there, and the attack loop will not open another objective.
   if (mindful && sit?.kind === 'defense' && sit.at) {
     for (const u of mine) {
-      if (!idleCombat(u)) continue;
+      if (!idleCombat(u, true) || hurt(u)) continue;
       if (!takeHand()) break;
       assault_.push([u.id, sit.at.x, sit.at.z]);
       arm(u);
@@ -716,6 +784,157 @@ export function plan(observation, slot, opts, mem, send) {
       busy.add(u.id);
     }
   }
+  // A recent watched health drop needs an actual on-screen hit. Reacquisition alone is not damage.
+  const watchedHealth = mem.watchedHealth ??= new Map();
+  const localDamage = new Map();
+  if (opts.human) for (const u of mine) {
+    if (!view.screenIds.has(u.id)) continue;
+    const full = UNITS[u.type].models * UNITS[u.type].hpPer;
+    const fraction = Math.round(u.hp / full * 20) / 20, previous = watchedHealth.get(u.id);
+    const continuous = previous && view.tick - previous.tick <= 80;
+    const observedHit = view.events?.some(event => event.kind === 'screen-damage' && event.onScreen
+      && event.unitId === u.id && event.tick > (previous?.tick ?? view.tick) && event.tick <= view.tick);
+    const hitTick = continuous && observedHit && previous.fraction - fraction >= .25 - 1e-9 ? view.tick
+      : continuous ? previous.hitTick : -Infinity;
+    watchedHealth.set(u.id, { fraction, tick: view.tick, hitTick });
+    if (view.tick - hitTick <= 80) localDamage.set(u.id, hitTick);
+  }
+  for (const [id, health] of watchedHealth) if (!view.units.has(id) || view.tick - health.tick > 1200) watchedHealth.delete(id);
+  const visibleArmor = enemies.filter(e => ARMOR.has(e.type) && view.screenIds?.has(e.id));
+  const dangerDestination = u => {
+    if (!opts.human || !localDamage.has(u.id) || ANTI_ARMOR.has(u.type) || u.garrison >= 0 || !u.path.length) return null;
+    const goal = u.amove ?? u.path.at(-1);
+    const threatens = e => d(u, e) <= UNITS[e.type].w.range + 2 && d(goal, e) <= Math.max(28, UNITS[e.type].w.range);
+    if (!visibleArmor.some(threatens)) return null;
+    const safe = at => visibleArmor.every(e => d(at, e) >= UNITS[e.type].w.range + 4);
+    let best = null, score = Infinity;
+    for (let y = Math.max(0, Math.floor((u.z - 24) / CELL)); y < Math.min(view.h, (u.z + 24) / CELL); y++)
+      for (let x = Math.max(0, Math.floor((u.x - 24) / CELL)); x < Math.min(view.w, (u.x + 24) / CELL); x++) {
+        const cell = y * view.w + x, at = { x: (x + .5) * CELL, z: (y + .5) * CELL };
+        const travel = d(u, at);
+        if (travel < 4 || travel > 24 || view.flags[cell] & MOVE || !view.sees(at) || !safe(at)) continue;
+        const value = travel - (view.flags[cell] & COVER ? 4 : 0);
+        if (value < score) { score = value; best = at; }
+      }
+    return best;
+  };
+  // A local attended squad can be losing a bad fight even after its march has stopped.
+  // Current screen health and a visible armed vehicle suffice; suppressed hits need their actual damage cue.
+  const screenThreats = opts.human && opts.concern?.kind === 'combat' ? enemies.filter(enemy => view.screenIds?.has(enemy.id) && !enemy.air
+    && !UNITS[enemy.type].structure && UNITS[enemy.type].w?.inf > 0) : [];
+  const attendedDangerDestination = u => {
+    const def = UNITS[u.type], fraction = u.hp / (def.models * def.hpPer);
+    if (!opts.human || opts.concern?.kind !== 'combat' || !view.screenIds.has(u.id)
+      || !def.infantry || !armedContactActor(u) || ANTI_ARMOR.has(u.type) || u.garrison >= 0 || u.retreating
+      || u.nade || u.dig || u.build || u.entrench || u.enter >= 0 || u.fireAt >= 0) return null;
+    const damage = view.events?.find(event => event.kind === 'screen-damage' && event.onScreen
+      && event.unitId === u.id && (opts.concern.eventId ? event.id === opts.concern.eventId : opts.concern.unitId === u.id));
+    if (opts.concern.unitId !== u.id && !damage) return null;
+    const suppressedHit = damage && view.tick - damage.tick <= 80 && damage.observedDanger?.lossShare >= .25
+      && damage.observedDanger.suppressionBand !== 'normal' && u.supp > 0 && !damage.observedDanger.autoRetreatCovered;
+    const threats = screenThreats.filter(enemy => {
+      const weapon = UNITS[enemy.type].w, range = d(u, enemy);
+      return range <= weapon.range && range >= (weapon.minRange ?? 0) && los(view, u, enemy);
+    });
+    const armored = threats.some(enemy => !UNITS[enemy.type].infantry);
+    if (!(armored && fraction <= .5) && !suppressedHit) return null;
+    if (!threats.length) return null;
+    const target = view.units.get(u.targetId);
+    // A useful current infantry fight or a grenade already being thrown is a held tactic, not an empty response.
+    if (fraction > .5 && target && view.screenIds.has(target.id) && UNITS[target.type].infantry
+      && (!u.holdFire || u.attackId) && d(u, target) <= def.w.range) return null;
+    if (mine.some(friend => friend.nade && threats.some(enemy => d(friend.nade, enemy) <= (UNITS[friend.type].ab.radius ?? 0)))) return null;
+    const clear = at => screenThreats.every(enemy => {
+      const weapon = UNITS[enemy.type].w, range = d(at, enemy);
+      return range >= weapon.range + 4 || weapon.minRange && range <= weapon.minRange - 4;
+    });
+    const cover = at => !(view.flags[Math.floor(u.z / CELL) * view.w + Math.floor(u.x / CELL)] & COVER)
+      && !!(view.flags[Math.floor(at.z / CELL) * view.w + Math.floor(at.x / CELL)] & COVER)
+      && screenThreats.every(enemy => d(at, enemy) >= d(u, enemy));
+    const goal = u.amove ?? u.path.at(-1);
+    if (goal && (clear(goal) || cover(goal))) return null;
+    let best = null, score = Infinity;
+    for (let y = Math.max(0, Math.floor((u.z - 24) / CELL)); y < Math.min(view.h, (u.z + 24) / CELL); y++)
+      for (let x = Math.max(0, Math.floor((u.x - 24) / CELL)); x < Math.min(view.w, (u.x + 24) / CELL); x++) {
+        const cell = y * view.w + x, at = { x: (x + .5) * CELL, z: (y + .5) * CELL }, travel = d(u, at);
+        if (travel < 4 || travel > 24 || view.flags[cell] & MOVE || !view.sees(at)) continue;
+        const escaped = clear(at);
+        if (!escaped && !cover(at)) continue;
+        const value = travel + (escaped ? 0 : 24);
+        if (value < score) { score = value; best = at; }
+      }
+    return best;
+  };
+  // A suppressed heavy hit can justify going home without guessing an unseen shooter's position.
+  const attendedUnseenHitRetreat = u => {
+    const def = UNITS[u.type], fraction = u.hp / (def.models * def.hpPer);
+    if (!opts.human || classic || atBase(u) || opts.concern?.kind !== 'combat' || opts.concern.event !== 'screen-damage'
+      || opts.concern.unitId !== u.id || !view.screenIds.has(u.id) || !def.infantry || !armedContactActor(u)
+      || ANTI_ARMOR.has(u.type) || u.retreating || u.garrison >= 0 || u.cover === 2 || u.holdPos || u.targetId || u.attackId
+      || !u.amove && !u.path.length || u.orders.length || u.nade || u.dig || u.build || u.entrench
+      || u.enter >= 0 || u.fireAt >= 0) return false;
+    const damage = view.events?.find(event => event.kind === 'screen-damage' && event.onScreen
+      && event.unitId === u.id && event.id === opts.concern.eventId && event.tick <= view.tick
+      && view.tick - event.tick <= 80);
+    const cue = damage?.observedDanger;
+    if (!cue || !(cue.lossShare >= .25) || !(cue.healthShare >= fraction) || !['suppressed', 'pinned'].includes(cue.suppressionBand)
+      || !(u.supp > 0) || cue.autoRetreatCovered || cue.alreadyRetreating
+      || u.autoRetreat && fraction < CFG.autoRetreat || screenThreats.length) return false;
+    const goal = u.amove ?? u.path.at(-1);
+    if (goal && d(goal, me.spawn) <= CFG.reinforceRadius) return false;
+    if ((view.sightings ?? []).some(sighting => {
+      const weapon = UNITS[sighting.type]?.w;
+      return weapon?.range > 0 && d(sighting, me.spawn) <= weapon.range;
+    })) return false;
+    return ![...view.screenIds].some(id => {
+      const enemy = view.units.get(id), weapon = enemy && UNITS[enemy.type].w;
+      return enemy && !allied(view, enemy.owner, slot) && weapon?.range > 0 && d(enemy, me.spawn) <= weapon.range;
+    });
+  };
+  // An idle rifle just took a watched heavy hit from armor it cannot safely leave within the local search.
+  const attendedStationaryArmorRetreat = u => {
+    const def = UNITS[u.type], fraction = u.hp / (def.models * def.hpPer);
+    if (!opts.human || classic || world || atBase(u) || opts.concern?.kind !== 'combat'
+      || opts.concern.event !== 'screen-damage' || opts.concern.unitId !== u.id || !view.screenIds.has(u.id)
+      || !def.infantry || !armedContactActor(u) || ANTI_ARMOR.has(u.type) || u.retreating || u.garrison >= 0
+      || u.cover === 2 || u.holdPos || u.attackId || u.path.length || u.amove || u.orders.length
+      || u.nade || u.dig || u.build || u.entrench || u.enter >= 0 || u.fireAt >= 0 || u.riding || u.board
+      || stationaryGrenade(u) || u.autoRetreat && fraction < CFG.autoRetreat) return false;
+    const damage = view.events?.find(event => event.kind === 'screen-damage' && event.onScreen
+      && event.unitId === u.id && event.id === opts.concern.eventId && event.tick <= view.tick
+      && view.tick - event.tick <= 80);
+    const cue = damage?.observedDanger;
+    if (!cue || !(cue.lossShare >= .25) || !(cue.healthShare >= fraction)
+      || cue.autoRetreatCovered || cue.alreadyRetreating) return false;
+    const threats = screenThreats.filter(enemy => watched(enemy) && ARMOR.has(enemy.type)
+      && !UNITS[enemy.type].infantry && d(u, enemy) <= UNITS[enemy.type].w.range
+      && d(u, enemy) >= (UNITS[enemy.type].w.minRange ?? 0) && los(view, u, enemy));
+    // Automatic small-arms fire does not commit a rifle to a losing armor fight.
+    if (u.targetId && (!threats.some(enemy => enemy.id === u.targetId) || u.holdFire
+      || !(def.w.veh > 0) || def.w.veh > def.w.inf || def.w.area || def.w.salvo)) return false;
+    if (!threats.length || mine.some(friend => friend.nade && threats.some(enemy =>
+      d(friend.nade, enemy) <= (UNITS[friend.type].ab.radius ?? 0)))) return false;
+    const clear = at => screenThreats.every(enemy => {
+      const weapon = UNITS[enemy.type].w, range = d(at, enemy);
+      return range >= weapon.range + 4 || weapon.minRange && range <= weapon.minRange - 4;
+    });
+    const currentCover = view.flags[Math.floor(u.z / CELL) * view.w + Math.floor(u.x / CELL)] & COVER;
+    for (let y = Math.max(0, Math.floor((u.z - 24) / CELL)); y < Math.min(view.h, (u.z + 24) / CELL); y++)
+      for (let x = Math.max(0, Math.floor((u.x - 24) / CELL)); x < Math.min(view.w, (u.x + 24) / CELL); x++) {
+        const cell = y * view.w + x, at = { x: (x + .5) * CELL, z: (y + .5) * CELL }, travel = d(u, at);
+        if (travel < 4 || travel > 24 || view.flags[cell] & MOVE || !view.sees(at)) continue;
+        if (clear(at) || !currentCover && view.flags[cell] & COVER
+          && screenThreats.every(enemy => d(at, enemy) >= d(u, enemy))) return false;
+      }
+    if ((view.sightings ?? []).some(sighting => {
+      const weapon = UNITS[sighting.type]?.w;
+      return weapon?.range > 0 && d(sighting, me.spawn) <= weapon.range;
+    })) return false;
+    return ![...view.screenIds].some(id => {
+      const enemy = view.units.get(id), weapon = enemy && UNITS[enemy.type].w;
+      return enemy && !allied(view, enemy.owner, slot) && weapon?.range > 0 && d(enemy, me.spawn) <= weapon.range;
+    });
+  };
   for (const u of mine) {
     if (u.air) continue; // planes are flown above
     if (busy.has(u.id)) continue;
@@ -727,10 +946,11 @@ export function plan(observation, slot, opts, mem, send) {
     if (u.cd <= 0 || (opts.human && u.cdKnown === false && typeof opts.requestInspection === 'function')) {
       if (def.ab.id === 'grenade') {
         // lob it at a dug-in MG or AT gun, or any squad sitting in cover
-        const t = enemiesNear(u, def.ab.range + 4).find(e => watched(e) && UNITS[e.type].infantry && d(u, e) <= def.ab.range + 4 && (e.type !== 'rifle' || inCover(view, e)));
+        const t = grenadeTarget(u);
         if (t) cast({ t: 'ability', ids: [u.id], x: t.x, z: t.z });
       } else if (def.ab.id === 'suppress' && target && watched(target)) cast({ t: 'ability', ids: [u.id] });
-      else if (def.ab.id === 'ap' && target?.type === 'tank' && watched(target)) cast({ t: 'ability', ids: [u.id] });
+      else if (def.ab.id === 'ap' && target && !target.air && !UNITS[target.type].infantry && !UNITS[target.type].structure
+        && (!def.ab.naval || UNITS[target.type].naval) && watched(target)) cast({ t: 'ability', ids: [u.id] });
       else if (def.ab.id === 'smoke' && frac < 0.5 && !home) cast({ t: 'ability', ids: [u.id] });
       else if (def.ab.id === 'satchel') {
         // demolish a house the enemy is holding, or plant it on a tank
@@ -742,6 +962,17 @@ export function plan(observation, slot, opts, mem, send) {
     // save hurt units instead of letting them die: retreat, get reinforced, come back
     if (!horde && !home && hurt(u)) { retreat.push(u.id); continue; }
     if (!horde && home && frac < 1 && (me.mp >= 20 || hurt(u))) continue; // wait for reinforcements
+    if (attendedUnseenHitRetreat(u)) { retreat.push(u.id); busy.add(u.id); continue; }
+    const safer = dangerDestination(u) ?? attendedDangerDestination(u);
+    if (safer) {
+      dangerMoves.add(u.id); busy.add(u.id);
+      for (let i = assault_.length - 1; i >= 0; i--) if (assault_[i][0] === u.id) assault_.splice(i, 1);
+      orders.push([u.id, safer.x, safer.z]);
+      opts.requestDangerMove?.(u.id, safer);
+      continue;
+    }
+    if (attendedStationaryArmorRetreat(u)) { retreat.push(u.id); busy.add(u.id); continue; }
+    if (movementReserved.has(u.id)) continue;
     // a medic keeps near the middle of the army; within reach of it the sim walks it to the wounded
     if (def.medic) { if (!u.path.length && d(u, front) > CFG.aid.seek * 0.8) orders.push([u.id, front.x, front.z]); continue; }
     // tanks knock down houses that enemy squads are hiding in
@@ -803,7 +1034,7 @@ export function plan(observation, slot, opts, mem, send) {
         if (free && needs.trench) { const at = toward(6); submit({ t: 'entrench', ids: [u.id], pattern: me.mp >= 600 ? 'strongpoint' : 'arc', x: p.x, z: p.z, x2: at.x, z2: at.z }); continue; }
         if (free && needs.wire && submit({ t: 'entrench', ids: [u.id], pattern: 'line', fort: 'wire', ...across(R + 5, 7) }) === undefined) continue;
         if (free && needs.traps && submit({ t: 'entrench', ids: [u.id], pattern: 'line', fort: 'traps', ...across(R + 10, 8) }) === undefined) continue;
-        if (!u.dig && !u.entrench && !inCover(view, u)) submit({ t: 'cover', ids: [u.id] }); // stand in the trench, not beside it
+        if (!u.dig && !u.entrench && !inCover(view, u) && (!opts.human || watchedCoverNear(view, u))) submit({ t: 'cover', ids: [u.id] }); // stand in the trench, not beside it
         continue;
       }
     }
@@ -819,7 +1050,14 @@ export function plan(observation, slot, opts, mem, send) {
       }
       continue;
     }
+    // Idle infantry covers an unassigned neutral point before joining another enemy objective.
+    const uncoveredNeutral = def.infantry && view.points.some((p, i) => p.owner < 0 && !p.locked && load[i] === 0
+      && (!defending || d(p, me.spawn) <= 70) && (visitingPoint == null || visitingPoint === i)
+      && (!(mindful && sit?.kind === 'wait') || sit.safe === i)
+      && !enemiesNear(p, 25).some(enemy => !enemy.air && enemy.hp > 0));
     view.points.forEach((p, i) => {
+      if (uncoveredNeutral && (p.owner >= 0 || load[i] > 0
+        || enemiesNear(p, 25).some(enemy => !enemy.air && enemy.hp > 0))) return;
       // a point of ours that is cut off from the HQ is a target again, for units not already at it: they
       // attack-move to it and meet whatever sits on the road
       if ((allied(view, p.owner, slot) && (!p.cut || d(u, p) <= CFG.pointRadius + 16)) || p.locked) return;
@@ -835,7 +1073,7 @@ export function plan(observation, slot, opts, mem, send) {
     });
     if (best < 0) continue; // we hold everything: stay put
     if (mindful && !mind.aim) mind.aim = { i: best, until: now + L.commit };
-    load[best]++;
+    if (view.points[best].owner >= 0 || def.infantry) load[best]++;
     pending[best].push(u);
   }
   // grab neutral points with whoever is free, but only hit enemy-held points as a group (and, Hard, one worth more than
@@ -915,10 +1153,10 @@ export function plan(observation, slot, opts, mem, send) {
   // Persistent members own their ground orders for this look, while abilities keep their ordinary checks.
   const operationSituation = sit?.kind === 'push' && !sit.at && target && armySize >= Math.round(L.baseArmy * caution) && strongEnough
     ? { ...sit, at: { x: target.x, z: target.z } } : sit;
-  const operation = mindful ? planAssault(view, slot, mind, operationSituation, L, now, { busy, recovering: new Set(retreat), supportAt: mem.called, handoff: opts.handoff, deferred: opts.human, sightings: liveSightings(mem, view, slot, now) }) : { claims: new Set(), commands: [] };
+  const operation = mindful ? planAssault(view, slot, mind, operationSituation, L, now, { busy: new Set([...busy, ...movementReserved]), recovering: new Set([...retreat, ...dangerMoves]), supportAt: mem.called, handoff: opts.handoff, deferred: opts.human, sightings: liveSightings(mem, view, slot, now) }) : { claims: new Set(), commands: [] };
   const controlled = new Set([...operation.claims, ...[...(mind.assaultReleased ?? [])].filter(([,until]) => now < until).map(([id]) => id)]);
   if (controlled.size) {
-    for (const list of [orders, assault_]) for (let i = list.length - 1; i >= 0; i--) if (controlled.has(list[i][0])) list.splice(i, 1);
+    for (const list of [orders, assault_]) for (let i = list.length - 1; i >= 0; i--) if (controlled.has(list[i][0]) && !dangerMoves.has(list[i][0])) list.splice(i, 1);
     for (let i = retreat.length - 1; i >= 0; i--) if (controlled.has(retreat[i])) retreat.splice(i, 1);
   }
   if (mindful && sit) {
@@ -932,7 +1170,10 @@ export function plan(observation, slot, opts, mem, send) {
     if (operation.rejected) { mind.operation = null; mind.aim = null; }
   } else mind.decision = { buy, aim: mind.aim ? mind.aim.i : null };
   if (retreat.length) submit({ t: 'retreat', ids: retreat });
-  if (orders.length) submit({ t: 'move', orders });
+  const immediateDanger = orders.filter(row => dangerMoves.has(row[0]));
+  const ordinaryOrders = orders.filter(row => !dangerMoves.has(row[0]));
+  if (immediateDanger.length) submit({ t: 'move', orders: immediateDanger });
+  if (ordinaryOrders.length) submit({ t: 'move', orders: ordinaryOrders });
   if (assault_.length) submit({ t: 'amove', orders: assault_ });
   for (const cmd of operation.commands) submit(cmd);
 }
@@ -954,15 +1195,17 @@ function buildEconomy(view, slot, engineers, needArmor, mem, submit, concern) {
     if (!has('barracks') && ['barracks', 'motorpool'].includes(mem.human.persona.economy)) next = 'barracks';
     else if (mem.human.persona.economy === 'motorpool' && has('barracks', true) && !has('motorpool')) next = 'motorpool';
   }
+  const local = concern?.kind === 'idle';
+  const localWork = (u, at) => !local || d(u, at) <= 24 && view.sees(at);
   const ids = new Set(engineers.map(u => u.id));
   for (const id of mem.node.keys()) if (!view.units.has(id)) mem.node.delete(id);
   const taken = new Set(engineers.map(u => mem.node.get(u.id)).filter(n => n !== undefined));
   for (const u of engineers) {
     if (u.retreating || u.build) continue;
-    const fix = own.filter(b => !b.inventoryOnly && (b.built < 1 || b.hp < UNITS[b.type].hpPer * 0.7)).sort((a, b) => d(u, a) - d(u, b))[0];
+    const fix = own.filter(b => !b.inventoryOnly && localWork(u, b) && (b.built < 1 || b.hp < UNITS[b.type].hpPer * 0.7)).sort((a, b) => d(u, a) - d(u, b))[0];
     if (fix && d(u, fix) < 60) { submit({ t: 'assist', ids: [u.id], id: fix.id }); continue; }
     if (next === 'depot') {
-      const pick = free.map(n => ({ n, i: view.nodes.indexOf(n) })).filter(({ i }) => !taken.has(i) || mem.node.get(u.id) === i).sort((a, b) => d(u, a.n) - worthOf(a.n) * 20 - (d(u, b.n) - worthOf(b.n) * 20))[0]; // richer nodes are worth a walk
+      const pick = free.map(n => ({ n, i: view.nodes.indexOf(n) })).filter(({ n, i }) => localWork(u, n) && (!taken.has(i) || mem.node.get(u.id) === i)).sort((a, b) => d(u, a.n) - worthOf(a.n) * 20 - (d(u, b.n) - worthOf(b.n) * 20))[0]; // richer nodes are worth a walk
       if (!pick) continue;
       mem.node.set(u.id, pick.i); taken.add(pick.i);
       if (me.mp >= UNITS.depot.cost && view.sees(pick.n)) submit({ t: 'build', ids: [u.id], kind: 'depot', x: pick.n.x, z: pick.n.z });
@@ -970,7 +1213,7 @@ function buildEconomy(view, slot, engineers, needArmor, mem, submit, concern) {
     } else if (next) {
       // behind the HQ's front: a little toward the map center, off to one side
       const a = Math.atan2(cz - hq.z, cx - hq.x) + ({ barracks: 0.9, motorpool: -0.9, airfield: Math.PI, flakpos: (random(mem.rng) - 0.5) * 2 }[next] ?? 0), spot = siteNear(view.mode?.kind === 'world' ? { ...view, players: view.players.filter(p => p.spawn) } : view, hq.x + Math.cos(a) * 16, hq.z + Math.sin(a) * 16, UNITS[next].size);
-      if (spot && ownedGround(view, me.team, spot) && me.mp >= UNITS[next].cost) submit({ t: 'build', ids: [u.id], kind: next, x: spot.x, z: spot.z });
+      if (spot && localWork(u, spot) && ownedGround(view, me.team, spot) && me.mp >= UNITS[next].cost) submit({ t: 'build', ids: [u.id], kind: next, x: spot.x, z: spot.z });
     }
   }
   return next && next !== 'depot' ? UNITS[next].cost : 0;

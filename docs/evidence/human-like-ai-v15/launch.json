@@ -1,0 +1,18 @@
+{
+  "pid": 1412930,
+  "utc": "2026-10-04T14:57:40.878441+00:00",
+  "argv": [
+    "taskset",
+    "-c",
+    "6",
+    "node",
+    "/tmp/human-ai-final-v15-preparation/run-campaign.mjs",
+    "--protocol",
+    "/tmp/human-ai-final-v15/protocol-preregistration.json",
+    "--launch-authorized"
+  ],
+  "protocolSHA256": "c9998ab459d634bbb6f32230059ac15a8317b884aea93aa5e54560b946c4aceb",
+  "sourceManifestSHA256": "f2a118140ee11e43e7cec9d91ee0e8e69bab35a436abb4a6046f661f95e7519a",
+  "runtimeCheckpointSHA256": "e2d17224047076252b115e6e66e8dc2504aa003b2fc66d9169e9d32ec27c38c1",
+  "log": "/tmp/human-ai-final-v15/campaign.log"
+}

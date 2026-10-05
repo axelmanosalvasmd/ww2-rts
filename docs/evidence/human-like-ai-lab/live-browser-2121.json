@@ -1,0 +1,36 @@
+{
+  "recording": {
+    "id": "mcp-e5a71bd8-d16f-4b65-a318-a54464179920-2c1dd736-7ee1-4f78-87dc-aad9def7bc2d-mp4",
+    "tabId": "tab_g",
+    "path": "/home/judiazm/.t3/userdata/attachments/mcp-e5a71bd8-d16f-4b65-a318-a54464179920-2c1dd736-7ee1-4f78-87dc-aad9def7bc2d-mp4.mp4",
+    "mimeType": "video/mp4;codecs=avc1",
+    "sizeBytes": 529768,
+    "createdAt": "2026-10-04T21:21:25.594Z",
+    "toolIcon": {
+      "_tag": "website",
+      "pageUrl": "http://100.92.252.116:3106/tools/ai-lab.html?proof=20261004T2120Z"
+    }
+  },
+  "screenshot": "/home/judiazm/.t3/userdata/browser-artifacts/browser-screenshot-100-92-252-116-muubsspl-c7206404.png",
+  "reset": {
+    "content": [
+      {
+        "type": "text",
+        "text": "{\"toolIcon\":{\"_tag\":\"website\",\"pageUrl\":\"http://100.92.252.116:3106/tools/ai-lab.html?proof=20261004T2120Z\"},\"value\":{\"history\":\"600\",\"status\":\"Paused at tick 0. Authored edits reset all prior inputs and orders.\",\"x\":\"73\"}}"
+      }
+    ],
+    "structuredContent": {
+      "toolIcon": {
+        "_tag": "website",
+        "pageUrl": "http://100.92.252.116:3106/tools/ai-lab.html?proof=20261004T2120Z"
+      },
+      "value": {
+        "history": "600",
+        "status": "Paused at tick 0. Authored edits reset all prior inputs and orders.",
+        "x": "73"
+      }
+    },
+    "isError": false
+  },
+  "sourceQualification": "Fresh no-store navigation serves actual current ROOT shared modules and byte-identical adopted scratch lab UI tools; current Normal scene advanced60simsec,19inputs5nativeorders. Screenshots are inspected. No new console entries after21:20:40UTC. This is lab UI evidence, not real fullmatch gate."
+}

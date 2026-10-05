@@ -1,0 +1,17 @@
+node:internal/modules/esm/utils:280
+  throw new ERR_VM_DYNAMIC_IMPORT_CALLBACK_MISSING();
+        ^
+
+TypeError [ERR_VM_DYNAMIC_IMPORT_CALLBACK_MISSING]: A dynamic import callback was not specified.
+    at importModuleDynamicallyCallback (node:internal/modules/esm/utils:280:9)
+    at playMatches (./tools/balance.mjs:20:131)
+    at ./tools/balance.mjs:101:9
+    at ./tools/balance.mjs:156:4
+    at Script.runInContext (node:vm:149:12)
+    at Object.runInContext (node:vm:301:6)
+    at execute (file:///home/judiazm/.t3/worktrees/ww2-rts/ai-human-commander/test-engine-ai-callers.js:66:12)
+    at file:///home/judiazm/.t3/worktrees/ww2-rts/ai-human-commander/test-engine-ai-callers.js:97:60 {
+  code: 'ERR_VM_DYNAMIC_IMPORT_CALLBACK_MISSING'
+}
+
+Node.js v24.21.0

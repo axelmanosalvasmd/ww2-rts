@@ -1,0 +1,178 @@
+{
+  "scope": "R8-5 proposed narrow gameplay fix and R8-6 retained limitation, native diagnostics only",
+  "frozenSource": "/tmp/human-ai-v21-final-full-source",
+  "runtimeHashes": {
+    "shared/ai-attention.js": "07c48dbdcc92f326eeb52222518f274dcf05a4d746dfd474126d932ed05ca7ba",
+    "shared/ai-commander.js": "19112a1e4c94da72d62564d940497d38cf7e93e3086c9bde3db9c29d088703df",
+    "shared/ai-hands.js": "8bd373c3afb8261bf8ca2a53f24512522b91f0ddc6568eaa61dbf7039684b9a3",
+    "shared/ai-mind.js": "18bb411cb1d057ce8cffe0b042c21f64b71238ae157b584242df206d708e6b92",
+    "shared/ai-perception.js": "50e611a932728940c5047a61bf4fd7554c696f93880d7907a952d8b39fdcf3fd",
+    "shared/ai-persona.js": "34de5882046129d2000e5502e354123786f3ad7b7133f31e93863dcc36ba66cf",
+    "shared/ai-priority.js": "6b5d5a8a22968209fe03c8235648a859b36919b9eafd44cd390a8252ab6b3542",
+    "shared/ai-rng.js": "2d2f95266eda45ec4fa4862cb01079fc8464a98d8c88fa97ca89b54a5d6f8b90",
+    "shared/ai-view.js": "4466958fc4b8e7a5d2f2bcb8dc3814e27c817a7480b0c765aa6ee2a98cbc87f7",
+    "shared/ai.js": "c99be94a933f5c122d8ba7f32750f1a4bff66bf2875c8f3ec8e86322eb3d7e43",
+    "shared/alert-events.js": "df5f0ae98145034e6893ce0b70c2df8938a2d786cc8de37a1fbbc1a9c8b634b0",
+    "shared/command-feedback.js": "e851bb8f7e48291bd75f09be66fdeecbe7dca68dcc82c839c5c033083ce77a07",
+    "shared/debris-motion.js": "d6a0f330f958ec6d78cfcc7f95b209aa5c099369576bf15dfd1c84770287b3b4",
+    "shared/formation.js": "265fa63c8c72588f6c8f67057921fd4daa88f96e9d823faa2e41ba10a7dba005",
+    "shared/grid.js": "30b0a5d67d99e54548d189374684e6b28863ecb7bf92de5221359e5c24fc5afc",
+    "shared/human-input.js": "dec728db485690620e527f912fa2a0b491f545c5bbdaafc4dc25fd1e425763ff",
+    "shared/local-traffic.js": "abad3f6ba310783c3620cec8d599df90dac38bb74eed6509be7d19a8af1490f6",
+    "shared/navigation.js": "c277c12f86c9990e281ae28a703dc374126aa1c737d9dc94a300f8d99c898472",
+    "shared/projectiles.js": "ded50f3bcd60cf79238d5dba48236d54e33b2b8032f704813118d1419708ccd7",
+    "shared/scenarios.js": "93f6cda90224a805cc97f42418b2dc11c49e3ea80654b66e0036de55f9b9ba97",
+    "shared/sim.js": "5e5f4c2d43d048be36d94f0cbcc68fb974c812fc8ab7e071cddb0a59079d89fa",
+    "shared/story.js": "fa33e53e61a7d636959dd1d1916d7b5c3359db72b523dc730b16ceab525d170f",
+    "shared/structures.js": "933b100a9a4c19a0285f5b137cd29b46e44271776f031045a537009e0176e5a2",
+    "shared/tutorial.js": "3aaa5e6affd936dae0ae4741d5173eee5d006132a1705d4b553097d3d8fabf42",
+    "shared/vehicle-motion.js": "05bd1e985a91b3268065a0a84ec4b9aee2c1079aafc4054c38a70677dfb1493b",
+    "shared/weather.js": "faad682d6e40fdc6629533f684e1caeec5c9ae49e26e9922651773727c0bc1e5",
+    "shared/world-conquest.js": "1c251e6d340586d7fb367d4f47938d5898f5239824dac46f054880a3d897aeef",
+    "shared/world-landforms.js": "ecb6916db6785484f8bb813f7745c8c48ccea370f084fea290ff736edc968e34",
+    "shared/world-layers.js": "f51f34b99946192107ada9a7077d787761c1a9cb6b1e316d7b7e243dd273bb22",
+    "shared/world-roads.js": "5fb243b63fa9e2c082135b5b093ee753e8a92c197a076d78067e53f08f1885db",
+    "shared/world-territories.js": "bb33a449d7f2c4d657dbceab8dbd0171eb8ccaa7494cedf9e18707822d8f717f"
+  },
+  "files": [
+    {
+      "source": "/tmp/ai-r8-cover-fort/REVIEW.md",
+      "member": "cover-fort/REVIEW.md",
+      "bytes": 3430,
+      "sha256": "8765a4d1d459d61dcade94f492576f4f45b88f5e9ccdb4844abc56bc4a24ca68"
+    },
+    {
+      "source": "/tmp/ai-r8-cover-fort/integration.patch",
+      "member": "cover-fort/integration.patch",
+      "bytes": 8159,
+      "sha256": "e90cb51f5e78f96cc4e1d268fe7514c4c5e8fdf9bee2cadeed2cc22b39af8e76"
+    },
+    {
+      "source": "/tmp/ai-r8-cover-fort/candidate/test-engine-ai-fortification-cover.js",
+      "member": "cover-fort/candidate/test-engine-ai-fortification-cover.js",
+      "bytes": 6800,
+      "sha256": "56fb15c8737f75aaaf726558022fe87614274f5e06c9e2e180a333558ae0825c"
+    },
+    {
+      "source": "/tmp/ai-r8-cover-fort/source-and-proof-manifest.json",
+      "member": "cover-fort/source-and-proof-manifest.json",
+      "bytes": 977,
+      "sha256": "de9bbacf7ed9ec261483afd6c6face4bf461d495eb46dc28ada635ed63a74d28"
+    },
+    {
+      "source": "/tmp/ai-r8-cover-fort/native-proof.json",
+      "member": "cover-fort/native-proof.json",
+      "bytes": 5189739,
+      "sha256": "ded1cab0f042ef567456721c7ee601300c378f8a808815c61ce43fc193ee7e9b"
+    },
+    {
+      "source": "/tmp/ai-r8-cover-fort/native-test.log",
+      "member": "cover-fort/native-test.log",
+      "bytes": 176,
+      "sha256": "f1eed39c95e194e636dcfd9691ca7524e88e73330318971fd09f7f2c7223d4f0"
+    },
+    {
+      "source": "/tmp/ai-r8-cover-fort/cover-opportunity.log",
+      "member": "cover-fort/cover-opportunity.log",
+      "bytes": 136,
+      "sha256": "f9a4df1abe636a77292dcefc9184c5251dc42528c35f318bc4f600241d87d307"
+    },
+    {
+      "source": "/tmp/ai-r8-cover-fort/native-test-readonly-cleanup.log",
+      "member": "cover-fort/native-test-readonly-cleanup.log",
+      "bytes": 492,
+      "sha256": "8468cd8510d713763ed0f0cbbe5a80acbffedd6b81e8670d72a8895b4655f9d5"
+    },
+    {
+      "source": "/tmp/ai-r8-cover-fort/cover-opportunity-readonly.log",
+      "member": "cover-fort/cover-opportunity-readonly.log",
+      "bytes": 306,
+      "sha256": "b3bdf9d2488a5bce48868299fbe43e5aeb48922673a036d241a43999fbf8d00b"
+    },
+    {
+      "source": "/tmp/ai-r8-cover-fort/probe-first.mjs",
+      "member": "cover-fort/probe-first.mjs",
+      "bytes": 1743,
+      "sha256": "c770a4594971b28d7e078d429ed012dcb2908c1195bb3417b798c3fd39a8cc83"
+    },
+    {
+      "source": "/tmp/ai-r8-cover-fort/probe-first.log",
+      "member": "cover-fort/probe-first.log",
+      "bytes": 1719,
+      "sha256": "81d8fda8aee8763107935689845e93c3504292dae66e9d0b5f611c1490656442"
+    },
+    {
+      "source": "/tmp/ai-r8-cover-fort/probe-wire.log",
+      "member": "cover-fort/probe-wire.log",
+      "bytes": 635,
+      "sha256": "9bdc185e8e796225d899706ebbc96f99f569c2cdf1bb9c59210ba1a141fda3ac"
+    },
+    {
+      "source": "/tmp/ai-r8-cover-fort/trench-baseline.json",
+      "member": "cover-fort/trench-baseline.json",
+      "bytes": 4019669,
+      "sha256": "fcdd038e91e853a8f8736ba3b028e19e1465ecb8521d65d271cd655db7436aa1"
+    },
+    {
+      "source": "/tmp/ai-r8-cover-fort/trench-candidate.json",
+      "member": "cover-fort/trench-candidate.json",
+      "bytes": 4000799,
+      "sha256": "d8641d37f09c9cb74d361ccb6a7eeb6423e58a65b9c9eca26679b156b453a989"
+    },
+    {
+      "source": "/tmp/ai-r8-cover-fort/wire-baseline.json",
+      "member": "cover-fort/wire-baseline.json",
+      "bytes": 4034524,
+      "sha256": "6c23e8500ef67e1548e35784513fed439c44de56c5ccf7a20fc2faa188bdd81d"
+    },
+    {
+      "source": "/tmp/ai-r8-cover-fort/wire-candidate.json",
+      "member": "cover-fort/wire-candidate.json",
+      "bytes": 4034524,
+      "sha256": "6c23e8500ef67e1548e35784513fed439c44de56c5ccf7a20fc2faa188bdd81d"
+    },
+    {
+      "source": "/tmp/ai-r8-cover-fort/wire-new-baseline.json",
+      "member": "cover-fort/wire-new-baseline.json",
+      "bytes": 4032652,
+      "sha256": "b2efc5c0ae66b7afd2e0bea2f0e0fc4ec770d9c1ac83e853e7e82c257e70b06e"
+    },
+    {
+      "source": "/tmp/ai-r8-cover-fort/wire-new-candidate.json",
+      "member": "cover-fort/wire-new-candidate.json",
+      "bytes": 4032652,
+      "sha256": "b2efc5c0ae66b7afd2e0bea2f0e0fc4ec770d9c1ac83e853e7e82c257e70b06e"
+    },
+    {
+      "source": "/tmp/ai-r8-armor-mode-gap/REVIEW.md",
+      "member": "mode-gap/REVIEW.md",
+      "bytes": 3117,
+      "sha256": "7f1946157a0bf41acab548308db06451f36e3e11547666d911fb7cee6eb0cf88"
+    },
+    {
+      "source": "/tmp/ai-r8-armor-mode-gap/native-homes.mjs",
+      "member": "mode-gap/native-homes.mjs",
+      "bytes": 3417,
+      "sha256": "cea7567022b8d9bd7d3dbcbec2d5712bc5dff1676f68eb9e1c6c50167eea374f"
+    },
+    {
+      "source": "/tmp/ai-r8-armor-mode-gap/native-homes.json",
+      "member": "mode-gap/native-homes.json",
+      "bytes": 9051,
+      "sha256": "e76776bc28ce5cb14f639aafe23b4a713c5bd146ed3f7c81ecca365c2fc81c7d"
+    },
+    {
+      "source": "/tmp/ai-r8-armor-mode-gap/native-homes.log",
+      "member": "mode-gap/native-homes.log",
+      "bytes": 96,
+      "sha256": "5c95d101b84431f8c0c267af3b8b0cb386c6f321d3cabdbfc36994ead783e50a"
+    },
+    {
+      "source": "/tmp/ai-r8-armor-mode-gap/native-homes-visibility-failure.log",
+      "member": "mode-gap/native-homes-visibility-failure.log",
+      "bytes": 650,
+      "sha256": "6557edc950759442e07993c813160c6778bc05ee4a1099f0075672441e0a31fe"
+    }
+  ],
+  "sourcePayloadBytes": 29385463
+}

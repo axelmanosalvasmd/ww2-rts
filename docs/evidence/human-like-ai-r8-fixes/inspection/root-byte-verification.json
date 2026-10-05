@@ -1,0 +1,705 @@
+{
+  "atUnix": 1791165060.8990328,
+  "archiveSHA256": "908cbba4564e04df7b830bf545034e80f2d6f4b460d4cd3e492ae7cdd0ca7cf1",
+  "archiveBytes": 721719,
+  "allOriginalPhysicalBytesEqual": true,
+  "payloadMembers": 116,
+  "members": [
+    {
+      "member": "original-agent-proof/shared/ai-priority.js",
+      "originalPath": "/tmp/human-ai-r8-inspection/shared/ai-priority.js",
+      "bytes": 11238,
+      "sha256": "8bf45be46b77ac78436356190de8b2b2e26005e65879cf61b0a87f840484dc60"
+    },
+    {
+      "member": "original-agent-proof/shared/ai-commander.js",
+      "originalPath": "/tmp/human-ai-r8-inspection/shared/ai-commander.js",
+      "bytes": 31105,
+      "sha256": "54ac57367727010017122c1d29c9050890537eced8c9d2b547f84927dc67f0f2"
+    },
+    {
+      "member": "original-agent-proof/test-engine-ai-inspection-priority.js",
+      "originalPath": "/tmp/human-ai-r8-inspection/test-engine-ai-inspection-priority.js",
+      "bytes": 10006,
+      "sha256": "f506ebc627a43e4d3f3e6f373d7a9fac16c1e305a3191809d54150784741b19e"
+    },
+    {
+      "member": "original-agent-proof/test-engine-ai-purpose.js",
+      "originalPath": "/tmp/human-ai-r8-inspection/test-engine-ai-purpose.js",
+      "bytes": 18261,
+      "sha256": "8ca1e51efe376401e312ca23abc3ee6caa2fb7ad8b3626c237a664aea8d781a9"
+    },
+    {
+      "member": "original-agent-proof/baseline/shared/ai-priority.js",
+      "originalPath": "/tmp/human-ai-r8-inspection/baseline/shared/ai-priority.js",
+      "bytes": 8934,
+      "sha256": "597c6ae80d69bbe9bb77a794096be4dd98c5f0791cd7da0f7a11359536850ab9"
+    },
+    {
+      "member": "original-agent-proof/baseline/shared/ai-commander.js",
+      "originalPath": "/tmp/human-ai-r8-inspection/baseline/shared/ai-commander.js",
+      "bytes": 30998,
+      "sha256": "16538e56be6a730b8f92480cd96e2726a1a1ca35312fc509a4c44011e929fba6"
+    },
+    {
+      "member": "original-agent-proof/baseline/test-engine-ai-inspection-priority.js",
+      "originalPath": "/tmp/human-ai-r8-inspection/baseline/test-engine-ai-inspection-priority.js",
+      "bytes": 9352,
+      "sha256": "38c96965e56e1064a54ec09bc21e805dd430c3c3d64211cdb916d13fe121faad"
+    },
+    {
+      "member": "original-agent-proof/baseline/test-engine-ai-purpose.js",
+      "originalPath": "/tmp/human-ai-r8-inspection/baseline/test-engine-ai-purpose.js",
+      "bytes": 18095,
+      "sha256": "b2d132df3dbaacc114d5616d79c8cf0cabf59375a10eee89009e43f58f02b718"
+    },
+    {
+      "member": "original-agent-proof/REVIEW.md",
+      "originalPath": "/tmp/human-ai-r8-inspection/REVIEW.md",
+      "bytes": 3090,
+      "sha256": "4fad276a807a95d79de1e9b297564861dbb80b90735326c281c8627f74668bd0"
+    },
+    {
+      "member": "original-agent-proof/candidate-bindings.json",
+      "originalPath": "/tmp/human-ai-r8-inspection/candidate-bindings.json",
+      "bytes": 564,
+      "sha256": "90c85e39a9475f0226e7dfad239f8217f954d6b1def0227e8260a9946d24d5d1"
+    },
+    {
+      "member": "original-agent-proof/baseline-hashes.json",
+      "originalPath": "/tmp/human-ai-r8-inspection/baseline-hashes.json",
+      "bytes": 586,
+      "sha256": "f9d05201c5e890f1d15f4e4dcc094d4a382bb5c518ae2fd960bf5f87a3e9d736"
+    },
+    {
+      "member": "original-agent-proof/verified-results.json",
+      "originalPath": "/tmp/human-ai-r8-inspection/verified-results.json",
+      "bytes": 2486,
+      "sha256": "e9e0269f91e9139c97341b40960a56f3698de19b6225e25d19a51b8d918841e4"
+    },
+    {
+      "member": "original-agent-proof/fallback-results.json",
+      "originalPath": "/tmp/human-ai-r8-inspection/fallback-results.json",
+      "bytes": 317,
+      "sha256": "c457e85f517ae6b704749ed9ee73e7314100029c6abe08cd34149b02ce9692d2"
+    },
+    {
+      "member": "original-agent-proof/focused-results.json",
+      "originalPath": "/tmp/human-ai-r8-inspection/focused-results.json",
+      "bytes": 527,
+      "sha256": "225fe97be8f842fd67bb9223c67dc9b4a3e9bb90ece9253c04eede6748f00366"
+    },
+    {
+      "member": "original-agent-proof/priority-diagnostic.js",
+      "originalPath": "/tmp/human-ai-r8-inspection/priority-diagnostic.js",
+      "bytes": 9836,
+      "sha256": "120d6174f1b54ee42fdd5d39ecb1af287d39290c75d75a67ce6c689630f6a797"
+    },
+    {
+      "member": "original-agent-proof/priority-diagnostic.log",
+      "originalPath": "/tmp/human-ai-r8-inspection/priority-diagnostic.log",
+      "bytes": 621,
+      "sha256": "1855d51bb5035064226d3016605e526500464d876c15e9476da9cfddcd0b8d5a"
+    },
+    {
+      "member": "original-agent-proof/priority-runtime-only-raw.json",
+      "originalPath": "/tmp/human-ai-r8-inspection/priority-runtime-only-raw.json",
+      "bytes": 7636,
+      "sha256": "f0167d266bd789ae0a7a4252aebe88065a256da932dd7c830b3361d838761065"
+    },
+    {
+      "member": "original-agent-proof/inspection-runtime-only.log",
+      "originalPath": "/tmp/human-ai-r8-inspection/inspection-runtime-only.log",
+      "bytes": 190,
+      "sha256": "261cba6ed4573da2754c2fb0382d2bac126d75bdbe32e3598d53b4fc59887fb6"
+    },
+    {
+      "member": "original-agent-proof/inspection-priority-runtime-only.log",
+      "originalPath": "/tmp/human-ai-r8-inspection/inspection-priority-runtime-only.log",
+      "bytes": 636,
+      "sha256": "334ebdd9288a15b70e271795d5b81e9b741ba041680a8c8152f6895ec418da3a"
+    },
+    {
+      "member": "original-agent-proof/inspection-priority-ready-separation.log",
+      "originalPath": "/tmp/human-ai-r8-inspection/inspection-priority-ready-separation.log",
+      "bytes": 110,
+      "sha256": "c7f3c647939ef526c8410382a40dfa1a6164207ab5781a3f8d2586d430bb75b7"
+    },
+    {
+      "member": "original-agent-proof/purpose-compatible.log",
+      "originalPath": "/tmp/human-ai-r8-inspection/purpose-compatible.log",
+      "bytes": 89,
+      "sha256": "3ce63b7db18dfc0c0850e686119512747446f035cbff55f657ef94bfb87526a9"
+    },
+    {
+      "member": "original-agent-proof/test-engine-ai-inspection.js.verified.log",
+      "originalPath": "/tmp/human-ai-r8-inspection/test-engine-ai-inspection.js.verified.log",
+      "bytes": 190,
+      "sha256": "261cba6ed4573da2754c2fb0382d2bac126d75bdbe32e3598d53b4fc59887fb6"
+    },
+    {
+      "member": "original-agent-proof/test-engine-ai-inspection-priority.js.verified.log",
+      "originalPath": "/tmp/human-ai-r8-inspection/test-engine-ai-inspection-priority.js.verified.log",
+      "bytes": 110,
+      "sha256": "c7f3c647939ef526c8410382a40dfa1a6164207ab5781a3f8d2586d430bb75b7"
+    },
+    {
+      "member": "original-agent-proof/test-engine-ai-priority.js.verified.log",
+      "originalPath": "/tmp/human-ai-r8-inspection/test-engine-ai-priority.js.verified.log",
+      "bytes": 98,
+      "sha256": "167ef11e79a0ff216791b3cb634188cce210239974c69814fcfe161f6fb37331"
+    },
+    {
+      "member": "original-agent-proof/test-engine-ai-purpose.js.verified.log",
+      "originalPath": "/tmp/human-ai-r8-inspection/test-engine-ai-purpose.js.verified.log",
+      "bytes": 89,
+      "sha256": "3ce63b7db18dfc0c0850e686119512747446f035cbff55f657ef94bfb87526a9"
+    },
+    {
+      "member": "original-agent-proof/test-engine-ai-manual-response-v3.js.verified.log",
+      "originalPath": "/tmp/human-ai-r8-inspection/test-engine-ai-manual-response-v3.js.verified.log",
+      "bytes": 95,
+      "sha256": "d84d66496136784f9c462cdb37bab2e7d5e187edfbbdd1e36a51bc7986a619ee"
+    },
+    {
+      "member": "original-agent-proof/test-engine-ai-inspection.js.final.log",
+      "originalPath": "/tmp/human-ai-r8-inspection/test-engine-ai-inspection.js.final.log",
+      "bytes": 421,
+      "sha256": "76f03b1204e986a6bd8cd85e4108f54fccccbbaf7e039be6c718aca8666cd544"
+    },
+    {
+      "member": "original-agent-proof/test-engine-ai-inspection-priority.js.final.log",
+      "originalPath": "/tmp/human-ai-r8-inspection/test-engine-ai-inspection-priority.js.final.log",
+      "bytes": 110,
+      "sha256": "c7f3c647939ef526c8410382a40dfa1a6164207ab5781a3f8d2586d430bb75b7"
+    },
+    {
+      "member": "original-agent-proof/test-engine-ai-priority.js.final.log",
+      "originalPath": "/tmp/human-ai-r8-inspection/test-engine-ai-priority.js.final.log",
+      "bytes": 880,
+      "sha256": "4f66ab17d5d13f669caaf9ecc25c4071ff1c5f20f8fb0161819ba098abdbaf95"
+    },
+    {
+      "member": "original-agent-proof/test-engine-ai-purpose.js.final.log",
+      "originalPath": "/tmp/human-ai-r8-inspection/test-engine-ai-purpose.js.final.log",
+      "bytes": 68807,
+      "sha256": "fc6c149267f74666887097baf79d63b930115721488c1b146c002d497f3fb95e"
+    },
+    {
+      "member": "original-agent-proof/test-engine-ai-manual-response-v3.js.final.log",
+      "originalPath": "/tmp/human-ai-r8-inspection/test-engine-ai-manual-response-v3.js.final.log",
+      "bytes": 95,
+      "sha256": "d84d66496136784f9c462cdb37bab2e7d5e187edfbbdd1e36a51bc7986a619ee"
+    },
+    {
+      "member": "original-agent-proof/patch.diff",
+      "originalPath": "/tmp/human-ai-r8-inspection/patch.diff",
+      "bytes": 10865,
+      "sha256": "2d622f31413b7b534428efff1ef64933f75472c872cc246186440fb11ecd4577"
+    },
+    {
+      "member": "original-agent-proof/package-manifest.json",
+      "originalPath": "/tmp/human-ai-r8-inspection/package-manifest.json",
+      "bytes": 4593,
+      "sha256": "8ac04843766fe8c25828002508674093536d1bacac8912d00660ea321e908e6b"
+    },
+    {
+      "member": "original-agent-proof/priority-final-diagnostic.js",
+      "originalPath": "/tmp/human-ai-r8-inspection/priority-final-diagnostic.js",
+      "bytes": 9829,
+      "sha256": "dbd0db787b99aa004818e4a2437879bb58f98f2c724bb7f0d607dcffaee3b537"
+    },
+    {
+      "member": "original-agent-proof/priority-final-diagnostic.log",
+      "originalPath": "/tmp/human-ai-r8-inspection/priority-final-diagnostic.log",
+      "bytes": 110,
+      "sha256": "c7f3c647939ef526c8410382a40dfa1a6164207ab5781a3f8d2586d430bb75b7"
+    },
+    {
+      "member": "original-agent-proof/priority-final-raw.json",
+      "originalPath": "/tmp/human-ai-r8-inspection/priority-final-raw.json",
+      "bytes": 5874,
+      "sha256": "fff7c062b2b7dd7776dd3ca347339e3e8cefd08e8531237eca9b72bd6a076951"
+    },
+    {
+      "member": "original-agent-proof/complete-import-source-binding.json",
+      "originalPath": "/tmp/human-ai-r8-inspection/complete-import-source-binding.json",
+      "bytes": 68741,
+      "sha256": "2200160d8d6751aa72d515ec91424d3a6b5ea5acc82ba211f59f2db9502e859a"
+    },
+    {
+      "member": "original-agent-proof/original-failures/test-engine-ai-inspection-priority.js.log",
+      "originalPath": "/tmp/human-ai-r8-inspection/original-failures/test-engine-ai-inspection-priority.js.log",
+      "bytes": 682,
+      "sha256": "04b9ea3a3b3752ed25eef4ed45be511ac3ef487dc54ff4d4498b9a7aaf769577"
+    },
+    {
+      "member": "original-agent-proof/original-failures/human-ai-r8-new-full-completion.json",
+      "originalPath": "/tmp/human-ai-r8-inspection/original-failures/human-ai-r8-new-full-completion.json",
+      "bytes": 140,
+      "sha256": "90062ba35425dfcc125161aa9a98f02768c6030e2becfa21ab6d80226b59faf2"
+    },
+    {
+      "member": "original-agent-proof/original-failures/human-ai-r8-new-full-verification.json",
+      "originalPath": "/tmp/human-ai-r8-inspection/original-failures/human-ai-r8-new-full-verification.json",
+      "bytes": 9914,
+      "sha256": "d6b0face8f815d84f729bf1b0484f1ef93d3486060fb02fa6d06264139f11c92"
+    },
+    {
+      "member": "original-agent-proof/original-failures/human-ai-r8-new-full-test.log",
+      "originalPath": "/tmp/human-ai-r8-inspection/original-failures/human-ai-r8-new-full-test.log",
+      "bytes": 13659,
+      "sha256": "6e445c83928e17f54fba25b3b378e2612c55925987085ab7ab87f0dca50a6654"
+    },
+    {
+      "member": "original-agent-proof/package-manifest-v2.json",
+      "originalPath": "/tmp/human-ai-r8-inspection/package-manifest-v2.json",
+      "bytes": 5961,
+      "sha256": "9603dfdbfe7ca7da0cf8c8acdede8db4bad7197612c490a82693bae06709e7c9"
+    },
+    {
+      "member": "immutable-pre-fix-source/shared/ai-priority.js",
+      "originalPath": "/tmp/human-ai-r8-new-full-source/shared/ai-priority.js",
+      "bytes": 8934,
+      "sha256": "597c6ae80d69bbe9bb77a794096be4dd98c5f0791cd7da0f7a11359536850ab9"
+    },
+    {
+      "member": "immutable-pre-fix-source/shared/ai-commander.js",
+      "originalPath": "/tmp/human-ai-r8-new-full-source/shared/ai-commander.js",
+      "bytes": 30998,
+      "sha256": "16538e56be6a730b8f92480cd96e2726a1a1ca35312fc509a4c44011e929fba6"
+    },
+    {
+      "member": "immutable-pre-fix-source/shared/ai-hands.js",
+      "originalPath": "/tmp/human-ai-r8-new-full-source/shared/ai-hands.js",
+      "bytes": 70724,
+      "sha256": "d209f6861bf1d4165012372d21398c46985d51e357b79009c5b7e4b8dffbdaa9"
+    },
+    {
+      "member": "immutable-pre-fix-source/shared/sim.js",
+      "originalPath": "/tmp/human-ai-r8-new-full-source/shared/sim.js",
+      "bytes": 355291,
+      "sha256": "5e5f4c2d43d048be36d94f0cbcc68fb974c812fc8ab7e071cddb0a59079d89fa"
+    },
+    {
+      "member": "immutable-pre-fix-source/test-engine-ai-inspection.js",
+      "originalPath": "/tmp/human-ai-r8-new-full-source/test-engine-ai-inspection.js",
+      "bytes": 15478,
+      "sha256": "77d6938b00bfe3eb460af83405cf733de7734e4146d59b6807a0dbe11c651188"
+    },
+    {
+      "member": "immutable-pre-fix-source/test-engine-ai-inspection-priority.js",
+      "originalPath": "/tmp/human-ai-r8-new-full-source/test-engine-ai-inspection-priority.js",
+      "bytes": 9352,
+      "sha256": "38c96965e56e1064a54ec09bc21e805dd430c3c3d64211cdb916d13fe121faad"
+    },
+    {
+      "member": "inspection-source-qualification.json",
+      "originalPath": "/tmp/r8-inspection-destination-durable-package/inspection-source-qualification.json",
+      "bytes": 2870,
+      "sha256": "3facff29c56a9cdf76945a3126cc7cde37d4a6a4a708caa60a319c21fb9312b2"
+    },
+    {
+      "member": "agent-proof-dependencies/client/keys.js",
+      "originalPath": "/tmp/human-ai-r8-inspection/client/keys.js",
+      "bytes": 7361,
+      "sha256": "867e3105b7e4665f8a313c2ab46e23fc3df9407f2163fd6862bb537a01ecd276"
+    },
+    {
+      "member": "agent-proof-dependencies/shared/ai-attention.js",
+      "originalPath": "/tmp/human-ai-r8-inspection/shared/ai-attention.js",
+      "bytes": 31888,
+      "sha256": "a55272249248bf1a7166da3038fa44794d7db3a163089010f6f3b905ccc3405a"
+    },
+    {
+      "member": "agent-proof-dependencies/shared/ai-hands.js",
+      "originalPath": "/tmp/human-ai-r8-inspection/shared/ai-hands.js",
+      "bytes": 70724,
+      "sha256": "d209f6861bf1d4165012372d21398c46985d51e357b79009c5b7e4b8dffbdaa9"
+    },
+    {
+      "member": "agent-proof-dependencies/shared/ai-mind.js",
+      "originalPath": "/tmp/human-ai-r8-inspection/shared/ai-mind.js",
+      "bytes": 19553,
+      "sha256": "18bb411cb1d057ce8cffe0b042c21f64b71238ae157b584242df206d708e6b92"
+    },
+    {
+      "member": "agent-proof-dependencies/shared/ai-perception.js",
+      "originalPath": "/tmp/human-ai-r8-inspection/shared/ai-perception.js",
+      "bytes": 34765,
+      "sha256": "50e611a932728940c5047a61bf4fd7554c696f93880d7907a952d8b39fdcf3fd"
+    },
+    {
+      "member": "agent-proof-dependencies/shared/ai-persona.js",
+      "originalPath": "/tmp/human-ai-r8-inspection/shared/ai-persona.js",
+      "bytes": 3586,
+      "sha256": "34de5882046129d2000e5502e354123786f3ad7b7133f31e93863dcc36ba66cf"
+    },
+    {
+      "member": "agent-proof-dependencies/shared/ai-rng.js",
+      "originalPath": "/tmp/human-ai-r8-inspection/shared/ai-rng.js",
+      "bytes": 641,
+      "sha256": "2d2f95266eda45ec4fa4862cb01079fc8464a98d8c88fa97ca89b54a5d6f8b90"
+    },
+    {
+      "member": "agent-proof-dependencies/shared/ai-view.js",
+      "originalPath": "/tmp/human-ai-r8-inspection/shared/ai-view.js",
+      "bytes": 13935,
+      "sha256": "4466958fc4b8e7a5d2f2bcb8dc3814e27c817a7480b0c765aa6ee2a98cbc87f7"
+    },
+    {
+      "member": "agent-proof-dependencies/shared/ai.js",
+      "originalPath": "/tmp/human-ai-r8-inspection/shared/ai.js",
+      "bytes": 91945,
+      "sha256": "685c178754646223ba57cbf6b0d795b0676b0a5cba84f51bfdfcae0cd71bc005"
+    },
+    {
+      "member": "agent-proof-dependencies/shared/alert-events.js",
+      "originalPath": "/tmp/human-ai-r8-inspection/shared/alert-events.js",
+      "bytes": 8219,
+      "sha256": "df5f0ae98145034e6893ce0b70c2df8938a2d786cc8de37a1fbbc1a9c8b634b0"
+    },
+    {
+      "member": "agent-proof-dependencies/shared/command-feedback.js",
+      "originalPath": "/tmp/human-ai-r8-inspection/shared/command-feedback.js",
+      "bytes": 303,
+      "sha256": "e851bb8f7e48291bd75f09be66fdeecbe7dca68dcc82c839c5c033083ce77a07"
+    },
+    {
+      "member": "agent-proof-dependencies/shared/debris-motion.js",
+      "originalPath": "/tmp/human-ai-r8-inspection/shared/debris-motion.js",
+      "bytes": 4384,
+      "sha256": "d6a0f330f958ec6d78cfcc7f95b209aa5c099369576bf15dfd1c84770287b3b4"
+    },
+    {
+      "member": "agent-proof-dependencies/shared/formation.js",
+      "originalPath": "/tmp/human-ai-r8-inspection/shared/formation.js",
+      "bytes": 4865,
+      "sha256": "265fa63c8c72588f6c8f67057921fd4daa88f96e9d823faa2e41ba10a7dba005"
+    },
+    {
+      "member": "agent-proof-dependencies/shared/grid.js",
+      "originalPath": "/tmp/human-ai-r8-inspection/shared/grid.js",
+      "bytes": 2873,
+      "sha256": "30b0a5d67d99e54548d189374684e6b28863ecb7bf92de5221359e5c24fc5afc"
+    },
+    {
+      "member": "agent-proof-dependencies/shared/human-input.js",
+      "originalPath": "/tmp/human-ai-r8-inspection/shared/human-input.js",
+      "bytes": 7966,
+      "sha256": "dec728db485690620e527f912fa2a0b491f545c5bbdaafc4dc25fd1e425763ff"
+    },
+    {
+      "member": "agent-proof-dependencies/shared/local-traffic.js",
+      "originalPath": "/tmp/human-ai-r8-inspection/shared/local-traffic.js",
+      "bytes": 7408,
+      "sha256": "abad3f6ba310783c3620cec8d599df90dac38bb74eed6509be7d19a8af1490f6"
+    },
+    {
+      "member": "agent-proof-dependencies/shared/navigation.js",
+      "originalPath": "/tmp/human-ai-r8-inspection/shared/navigation.js",
+      "bytes": 19838,
+      "sha256": "c277c12f86c9990e281ae28a703dc374126aa1c737d9dc94a300f8d99c898472"
+    },
+    {
+      "member": "agent-proof-dependencies/shared/projectiles.js",
+      "originalPath": "/tmp/human-ai-r8-inspection/shared/projectiles.js",
+      "bytes": 7769,
+      "sha256": "ded50f3bcd60cf79238d5dba48236d54e33b2b8032f704813118d1419708ccd7"
+    },
+    {
+      "member": "agent-proof-dependencies/shared/scenarios.js",
+      "originalPath": "/tmp/human-ai-r8-inspection/shared/scenarios.js",
+      "bytes": 16044,
+      "sha256": "93f6cda90224a805cc97f42418b2dc11c49e3ea80654b66e0036de55f9b9ba97"
+    },
+    {
+      "member": "agent-proof-dependencies/shared/sim.js",
+      "originalPath": "/tmp/human-ai-r8-inspection/shared/sim.js",
+      "bytes": 355291,
+      "sha256": "5e5f4c2d43d048be36d94f0cbcc68fb974c812fc8ab7e071cddb0a59079d89fa"
+    },
+    {
+      "member": "agent-proof-dependencies/shared/story.js",
+      "originalPath": "/tmp/human-ai-r8-inspection/shared/story.js",
+      "bytes": 3738,
+      "sha256": "fa33e53e61a7d636959dd1d1916d7b5c3359db72b523dc730b16ceab525d170f"
+    },
+    {
+      "member": "agent-proof-dependencies/shared/structures.js",
+      "originalPath": "/tmp/human-ai-r8-inspection/shared/structures.js",
+      "bytes": 4029,
+      "sha256": "933b100a9a4c19a0285f5b137cd29b46e44271776f031045a537009e0176e5a2"
+    },
+    {
+      "member": "agent-proof-dependencies/shared/tutorial.js",
+      "originalPath": "/tmp/human-ai-r8-inspection/shared/tutorial.js",
+      "bytes": 6342,
+      "sha256": "3aaa5e6affd936dae0ae4741d5173eee5d006132a1705d4b553097d3d8fabf42"
+    },
+    {
+      "member": "agent-proof-dependencies/shared/vehicle-motion.js",
+      "originalPath": "/tmp/human-ai-r8-inspection/shared/vehicle-motion.js",
+      "bytes": 12185,
+      "sha256": "05bd1e985a91b3268065a0a84ec4b9aee2c1079aafc4054c38a70677dfb1493b"
+    },
+    {
+      "member": "agent-proof-dependencies/shared/weather.js",
+      "originalPath": "/tmp/human-ai-r8-inspection/shared/weather.js",
+      "bytes": 7228,
+      "sha256": "faad682d6e40fdc6629533f684e1caeec5c9ae49e26e9922651773727c0bc1e5"
+    },
+    {
+      "member": "agent-proof-dependencies/shared/world-conquest.js",
+      "originalPath": "/tmp/human-ai-r8-inspection/shared/world-conquest.js",
+      "bytes": 7203,
+      "sha256": "1c251e6d340586d7fb367d4f47938d5898f5239824dac46f054880a3d897aeef"
+    },
+    {
+      "member": "agent-proof-dependencies/shared/world-landforms.js",
+      "originalPath": "/tmp/human-ai-r8-inspection/shared/world-landforms.js",
+      "bytes": 6645,
+      "sha256": "ecb6916db6785484f8bb813f7745c8c48ccea370f084fea290ff736edc968e34"
+    },
+    {
+      "member": "agent-proof-dependencies/shared/world-layers.js",
+      "originalPath": "/tmp/human-ai-r8-inspection/shared/world-layers.js",
+      "bytes": 6770,
+      "sha256": "f51f34b99946192107ada9a7077d787761c1a9cb6b1e316d7b7e243dd273bb22"
+    },
+    {
+      "member": "agent-proof-dependencies/shared/world-roads.js",
+      "originalPath": "/tmp/human-ai-r8-inspection/shared/world-roads.js",
+      "bytes": 6491,
+      "sha256": "5fb243b63fa9e2c082135b5b093ee753e8a92c197a076d78067e53f08f1885db"
+    },
+    {
+      "member": "agent-proof-dependencies/shared/world-territories.js",
+      "originalPath": "/tmp/human-ai-r8-inspection/shared/world-territories.js",
+      "bytes": 4110,
+      "sha256": "bb33a449d7f2c4d657dbceab8dbd0171eb8ccaa7494cedf9e18707822d8f717f"
+    },
+    {
+      "member": "agent-proof-dependencies/tools/ai-balance.mjs",
+      "originalPath": "/tmp/human-ai-r8-inspection/tools/ai-balance.mjs",
+      "bytes": 14906,
+      "sha256": "bf5b5ea07e3bf0eea2e4134647457191d9fe212a05b138677817f0cf5ec8db4b"
+    },
+    {
+      "member": "agent-proof-dependencies/tools/ai-humanity.mjs",
+      "originalPath": "/tmp/human-ai-r8-inspection/tools/ai-humanity.mjs",
+      "bytes": 97622,
+      "sha256": "5aaf88664e7a8af5504286de5d0b82f640ab2b8b3adc386a13fc8d541e5bf791"
+    },
+    {
+      "member": "agent-proof-dependencies/tools/ai-lab-browser.mjs",
+      "originalPath": "/tmp/human-ai-r8-inspection/tools/ai-lab-browser.mjs",
+      "bytes": 8245,
+      "sha256": "9017bac6153e3df8e55428a1bb89fb1586afa67402de3526d6c28e68507b49c9"
+    },
+    {
+      "member": "agent-proof-dependencies/tools/ai-lab-node.mjs",
+      "originalPath": "/tmp/human-ai-r8-inspection/tools/ai-lab-node.mjs",
+      "bytes": 1125,
+      "sha256": "3a673bac091d805ee0807862ba3c580bd6c75f36724521ceee582406529a8657"
+    },
+    {
+      "member": "agent-proof-dependencies/tools/ai-lab-report.mjs",
+      "originalPath": "/tmp/human-ai-r8-inspection/tools/ai-lab-report.mjs",
+      "bytes": 3951,
+      "sha256": "f13340cb3513a5d430ebb023947e4bc9bdede94c56c19a61155505bc6563e06e"
+    },
+    {
+      "member": "agent-proof-dependencies/tools/ai-lab-runner.mjs",
+      "originalPath": "/tmp/human-ai-r8-inspection/tools/ai-lab-runner.mjs",
+      "bytes": 13565,
+      "sha256": "d5f2e87078e6f1ea35300a653d86e0200aea554681ec60c4bd83eacabe17fb25"
+    },
+    {
+      "member": "agent-proof-dependencies/tools/ai-lab-server.mjs",
+      "originalPath": "/tmp/human-ai-r8-inspection/tools/ai-lab-server.mjs",
+      "bytes": 2169,
+      "sha256": "fb9124d7f4a0d18fbdc18a89964d190987f7e1a084807b43cc06cdefa1ac6a9a"
+    },
+    {
+      "member": "agent-proof-dependencies/tools/ai-lab.html",
+      "originalPath": "/tmp/human-ai-r8-inspection/tools/ai-lab.html",
+      "bytes": 4496,
+      "sha256": "f01569c13a0d596ea005611588bfda5e8e9641e2053ca13a283e9c3ca33cf73d"
+    },
+    {
+      "member": "agent-proof-dependencies/tools/ai-lab.mjs",
+      "originalPath": "/tmp/human-ai-r8-inspection/tools/ai-lab.mjs",
+      "bytes": 2832,
+      "sha256": "4aabd289dd136b04febfe0b6829628e542d7adb2492a774800a8f147a824100b"
+    },
+    {
+      "member": "agent-proof-dependencies/tools/ai-manual-response-capture-v3.mjs",
+      "originalPath": "/tmp/human-ai-r8-inspection/tools/ai-manual-response-capture-v3.mjs",
+      "bytes": 6778,
+      "sha256": "19e1a93ae79b04f3eb768263052d48b344b086831b261ae40e7da0b004ea8775"
+    },
+    {
+      "member": "agent-proof-dependencies/tools/ai-manual-response-capture.mjs",
+      "originalPath": "/tmp/human-ai-r8-inspection/tools/ai-manual-response-capture.mjs",
+      "bytes": 6600,
+      "sha256": "9ea0b3163788366234c4ff43cdb22f5127158a0a32bcc7e8ec27f978ca3102fc"
+    },
+    {
+      "member": "agent-proof-dependencies/tools/ai-manual-response-policy-v3.mjs",
+      "originalPath": "/tmp/human-ai-r8-inspection/tools/ai-manual-response-policy-v3.mjs",
+      "bytes": 29858,
+      "sha256": "c45e589d661b4980a79181ca987b503054ebb3e7e554f1bc272dd3eab50a6928"
+    },
+    {
+      "member": "agent-proof-dependencies/tools/ai-manual-response-policy.mjs",
+      "originalPath": "/tmp/human-ai-r8-inspection/tools/ai-manual-response-policy.mjs",
+      "bytes": 26551,
+      "sha256": "a5044b77c2b35d25d12d05d8d61135c956e59ee84451f15a3a8f5c0c05470373"
+    },
+    {
+      "member": "agent-proof-dependencies/tools/ai-public-alert-response-v2.mjs",
+      "originalPath": "/tmp/human-ai-r8-inspection/tools/ai-public-alert-response-v2.mjs",
+      "bytes": 24115,
+      "sha256": "e54b5bbf07f2e637cde592e2f6d079ef3a41f3ac4003dd3d68f70f706104c997"
+    },
+    {
+      "member": "agent-proof-dependencies/tools/ai-public-alert-response.mjs",
+      "originalPath": "/tmp/human-ai-r8-inspection/tools/ai-public-alert-response.mjs",
+      "bytes": 20592,
+      "sha256": "6ea2b5b42af9f1ed1bc87f14433adb66da05fdd71f8c6fbe35ca36180fed9baa"
+    },
+    {
+      "member": "agent-proof-dependencies/tools/ai-screen-v1-oracle-provenance.json",
+      "originalPath": "/tmp/human-ai-r8-inspection/tools/ai-screen-v1-oracle-provenance.json",
+      "bytes": 576,
+      "sha256": "7d6de7111625c96649ab2d80e3d2cb7cb4510a3dc6ec407dfc85ba3e0a797400"
+    },
+    {
+      "member": "agent-proof-dependencies/tools/ai-screen-v1-oracle.js",
+      "originalPath": "/tmp/human-ai-r8-inspection/tools/ai-screen-v1-oracle.js",
+      "bytes": 28180,
+      "sha256": "6b3894b551f3bf9151372b048b2efc77ffc86a6a173d0871278b27417358b398"
+    },
+    {
+      "member": "agent-proof-dependencies/tools/hash-json-native.mjs",
+      "originalPath": "/tmp/human-ai-r8-inspection/tools/hash-json-native.mjs",
+      "bytes": 3875,
+      "sha256": "84d9f9c2273071831d86fe88e4244bda6013c762412ef837a5dc4c90a08e41c5"
+    },
+    {
+      "member": "agent-proof-dependencies/tools/json-stream.mjs",
+      "originalPath": "/tmp/human-ai-r8-inspection/tools/json-stream.mjs",
+      "bytes": 9588,
+      "sha256": "34f01a09d4996f356a3dafc61084aae27a4bf18cd8e6b63b2fda9e95c5168798"
+    },
+    {
+      "member": "agent-proof-dependencies/tools/km-median-boundary.mjs",
+      "originalPath": "/tmp/human-ai-r8-inspection/tools/km-median-boundary.mjs",
+      "bytes": 1037,
+      "sha256": "e92de6b62be628796cf1390a0b4333b87be32a2083f3d2193cf2dd3ac3755469"
+    },
+    {
+      "member": "independent-ROOT-checks/after.json",
+      "originalPath": "/tmp/human-ai-r8-inspection-root/after.json",
+      "bytes": 716,
+      "sha256": "589a355df650dd80585d87a5f7e6bdad6bc7f2cdce66ac1315b7ec1a87984f23"
+    },
+    {
+      "member": "independent-ROOT-checks/before.json",
+      "originalPath": "/tmp/human-ai-r8-inspection-root/before.json",
+      "bytes": 716,
+      "sha256": "589a355df650dd80585d87a5f7e6bdad6bc7f2cdce66ac1315b7ec1a87984f23"
+    },
+    {
+      "member": "independent-ROOT-checks/results.json",
+      "originalPath": "/tmp/human-ai-r8-inspection-root/results.json",
+      "bytes": 970,
+      "sha256": "ff831ed370de494c11daa3a0583cc99838d44789adbea405584fcaeb45705670"
+    },
+    {
+      "member": "independent-ROOT-checks/test-engine-ai-inspection-priority.js.log",
+      "originalPath": "/tmp/human-ai-r8-inspection-root/test-engine-ai-inspection-priority.js.log",
+      "bytes": 110,
+      "sha256": "c7f3c647939ef526c8410382a40dfa1a6164207ab5781a3f8d2586d430bb75b7"
+    },
+    {
+      "member": "independent-ROOT-checks/test-engine-ai-inspection.js.log",
+      "originalPath": "/tmp/human-ai-r8-inspection-root/test-engine-ai-inspection.js.log",
+      "bytes": 190,
+      "sha256": "261cba6ed4573da2754c2fb0382d2bac126d75bdbe32e3598d53b4fc59887fb6"
+    },
+    {
+      "member": "independent-ROOT-checks/test-engine-ai-manual-response-v3.js.log",
+      "originalPath": "/tmp/human-ai-r8-inspection-root/test-engine-ai-manual-response-v3.js.log",
+      "bytes": 95,
+      "sha256": "d84d66496136784f9c462cdb37bab2e7d5e187edfbbdd1e36a51bc7986a619ee"
+    },
+    {
+      "member": "independent-ROOT-checks/test-engine-ai-priority.js.log",
+      "originalPath": "/tmp/human-ai-r8-inspection-root/test-engine-ai-priority.js.log",
+      "bytes": 98,
+      "sha256": "167ef11e79a0ff216791b3cb634188cce210239974c69814fcfe161f6fb37331"
+    },
+    {
+      "member": "independent-ROOT-checks/test-engine-ai-purpose.js.log",
+      "originalPath": "/tmp/human-ai-r8-inspection-root/test-engine-ai-purpose.js.log",
+      "bytes": 89,
+      "sha256": "3ce63b7db18dfc0c0850e686119512747446f035cbff55f657ef94bfb87526a9"
+    },
+    {
+      "member": "adopted-ROOT-recorded-source/shared/ai-priority.js",
+      "originalPath": "/home/judiazm/.t3/worktrees/ww2-rts/ai-human-commander/shared/ai-priority.js",
+      "bytes": 11238,
+      "sha256": "8bf45be46b77ac78436356190de8b2b2e26005e65879cf61b0a87f840484dc60"
+    },
+    {
+      "member": "adopted-ROOT-recorded-source/shared/ai-commander.js",
+      "originalPath": "/home/judiazm/.t3/worktrees/ww2-rts/ai-human-commander/shared/ai-commander.js",
+      "bytes": 31105,
+      "sha256": "54ac57367727010017122c1d29c9050890537eced8c9d2b547f84927dc67f0f2"
+    },
+    {
+      "member": "adopted-ROOT-recorded-source/test-engine-ai-inspection-priority.js",
+      "originalPath": "/home/judiazm/.t3/worktrees/ww2-rts/ai-human-commander/test-engine-ai-inspection-priority.js",
+      "bytes": 10006,
+      "sha256": "f506ebc627a43e4d3f3e6f373d7a9fac16c1e305a3191809d54150784741b19e"
+    },
+    {
+      "member": "adopted-ROOT-recorded-source/test-engine-ai-purpose.js",
+      "originalPath": "/home/judiazm/.t3/worktrees/ww2-rts/ai-human-commander/test-engine-ai-purpose.js",
+      "bytes": 18261,
+      "sha256": "8ca1e51efe376401e312ca23abc3ee6caa2fb7ad8b3626c237a664aea8d781a9"
+    },
+    {
+      "member": "adopted-ROOT-recorded-source/test-engine-ai-inspection.js",
+      "originalPath": "/home/judiazm/.t3/worktrees/ww2-rts/ai-human-commander/test-engine-ai-inspection.js",
+      "bytes": 15478,
+      "sha256": "77d6938b00bfe3eb460af83405cf733de7734e4146d59b6807a0dbe11c651188"
+    },
+    {
+      "member": "adopted-ROOT-recorded-source/test-engine-ai-priority.js",
+      "originalPath": "/home/judiazm/.t3/worktrees/ww2-rts/ai-human-commander/test-engine-ai-priority.js",
+      "bytes": 9278,
+      "sha256": "fc66fa621166266f6a555020de6701944ea8a0365fc1dd077b4197efd05670e0"
+    },
+    {
+      "member": "adopted-ROOT-recorded-source/test-engine-ai-manual-response-v3.js",
+      "originalPath": "/home/judiazm/.t3/worktrees/ww2-rts/ai-human-commander/test-engine-ai-manual-response-v3.js",
+      "bytes": 10682,
+      "sha256": "ee51561c9509fe0764c47c173b12ed35d161d4aa6d6ebf5985e06a9df78e9342"
+    },
+    {
+      "member": "original-package/human-ai-r8-inspection-package-v2.tar.gz",
+      "originalPath": "/tmp/human-ai-r8-inspection-package-v2.tar.gz",
+      "bytes": 111834,
+      "sha256": "494171b1b4f5828653439e033754550bf942f62e389bbbf1e772d8415aba7407"
+    },
+    {
+      "member": "adopted-patch/human-ai-r8-inspection.patch",
+      "originalPath": "/tmp/human-ai-r8-inspection.patch",
+      "bytes": 10865,
+      "sha256": "2d622f31413b7b534428efff1ef64933f75472c872cc246186440fb11ecd4577"
+    }
+  ]
+}

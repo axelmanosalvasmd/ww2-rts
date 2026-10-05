@@ -1,0 +1,48 @@
+/* Same gunmetal panels, khaki hairlines, brass and typography as the room UI. */
+:root { --panel-solid: rgba(25,28,30,.96); --cell:#24282b; --cell-hi:#2e3337; --cell-lo:#15181a; --line:rgba(176,164,122,.46); --line-soft:rgba(176,164,122,.24); --line-hot:rgba(214,178,94,.8); --text:#e2dfd3; --dim:#a6a292; --brass:#d6b25e; --olive:#a9b37b; --red-hi:#ee8a7b; --type:'Barlow Semi Condensed','Arial Narrow','Roboto Condensed',sans-serif; }
+* { box-sizing:border-box; }
+body { margin:0; background:#16191b; color:var(--text); font:500 16px/1.4 var(--type); font-variant-numeric:tabular-nums; padding:40px 16px; caret-color:var(--brass); }
+.card { max-width:1040px; margin:auto; padding:26px; background:var(--panel-solid); border:1px solid var(--line); border-radius:2px; }
+header,.section-head,footer { display:flex; justify-content:space-between; align-items:center; gap:16px; }
+header { padding-bottom:24px; }
+h1 { margin:0; font-size:38px; line-height:1.1; font-weight:600; }
+h2 { margin:0; font-size:23px; font-weight:600; }
+p { margin:8px 0; }
+.eyebrow { font-size:12px; letter-spacing:.14em; color:var(--brass); margin:0 0 8px; }
+.muted { color:var(--dim); }
+.tag { color:var(--brass); border:1px solid var(--line); padding:5px 9px; font-size:12px; letter-spacing:.08em; white-space:nowrap; }
+button,input,select { font:inherit; border:1px solid var(--line-soft); border-radius:2px; min-height:44px; padding:8px 12px; color:var(--text); background:var(--cell-lo); }
+button { background:var(--cell); cursor:pointer; }
+button:hover:not(:disabled) { background:var(--cell-hi); border-color:var(--line-hot); }
+button:active:not(:disabled) { background:var(--cell-lo); }
+button:disabled { opacity:.42; cursor:default; }
+.primary { border-color:var(--line-hot); color:var(--brass); }
+:focus-visible { outline:2px solid var(--brass); outline-offset:3px; }
+input,select { min-width:0; width:100%; }
+.identity { display:grid; grid-template-columns:auto minmax(140px,1fr) auto; align-items:center; gap:10px 16px; padding:20px 0; border-block:1px solid var(--line-soft); }
+.identity p { grid-column:2/-1; margin:0; }
+.section-head { margin-top:24px; }
+.filters { display:flex; align-items:center; gap:12px; flex-wrap:wrap; margin:14px 0; }
+.filters select { width:auto; }
+.check { display:flex; gap:8px; align-items:center; }
+.check input { width:18px; min-height:18px; accent-color:var(--brass); }
+#connection { margin-left:auto; font-size:14px; }
+.table-wrap { overflow-x:auto; }
+table { width:100%; border-collapse:collapse; text-align:left; }
+th { font-weight:500; font-size:13px; color:var(--dim); }
+th,td { padding:12px 10px; border-bottom:1px solid var(--line-soft); }
+th:first-child,td:first-child { padding-left:0; }
+td:first-child { width:40%; overflow-wrap:anywhere; }
+td small { display:block; color:var(--dim); font-size:14px; }
+td:last-child { text-align:right; padding-right:0; }
+.open { color:var(--olive); }
+.empty { padding:28px 12px; text-align:center; color:var(--dim); border:1px solid var(--line-soft); }
+.bottom-grid { display:grid; grid-template-columns:1fr 1fr; gap:32px; margin-top:30px; padding-top:24px; border-top:1px solid var(--line); }
+form { display:grid; gap:8px; margin-top:14px; }
+form label { color:var(--dim); font-size:14px; }
+form button { justify-self:start; margin-top:6px; }
+footer { border-top:1px solid var(--line-soft); margin-top:26px; padding-top:16px; color:var(--dim); font-size:13px; flex-wrap:wrap; }
+#notice { padding:12px; border:1px solid var(--red-hi); color:var(--red-hi); }
+.sr-only { position:absolute; width:1px; height:1px; overflow:hidden; clip-path:inset(50%); }
+[hidden] { display:none !important; }
+@media(max-width:640px) { body { padding:12px; } .card { padding:18px; } header { align-items:flex-start; } h1 { font-size:30px; } .tag { font-size:10px; } .identity { grid-template-columns:1fr; } .identity p { grid-column:auto; } .bottom-grid { grid-template-columns:1fr; gap:24px; } th,td { padding:10px 5px; } td button { padding:8px; } #connection { width:100%; margin-left:0; } }

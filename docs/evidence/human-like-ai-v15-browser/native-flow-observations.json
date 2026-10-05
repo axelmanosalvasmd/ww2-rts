@@ -1,0 +1,50 @@
+{
+  "url": "http://100.92.252.116:3106/play?aiOverlay=1#v15joined310",
+  "levels": [
+    "Normal",
+    "Normal",
+    "Normal"
+  ],
+  "teams": [
+    "Team 1",
+    "Team 2",
+    "Team 3"
+  ],
+  "firstStartPacketMetadata": [
+    {
+      "direction": "out",
+      "at": 34668.69999998808,
+      "type": "start"
+    },
+    {
+      "direction": "in",
+      "at": 34795.40000003576,
+      "type": "pause"
+    },
+    {
+      "direction": "in",
+      "at": 34798.10000002384,
+      "type": "lobby",
+      "state": "play"
+    },
+    {
+      "direction": "in",
+      "at": 34909.69999998808,
+      "type": "start",
+      "matchId": 1
+    },
+    {
+      "direction": "in",
+      "at": 36534.80000001192,
+      "type": "s",
+      "tick": 2
+    }
+  ],
+  "firstStartErrors": [],
+  "restartObservedTick": 6,
+  "restartOverlayEnabled": true,
+  "restartWatching": true,
+  "lastNativeInspectedTick": 2686,
+  "lastNativeApplicationErrors": [],
+  "source": "Exact values returned by native preview tools in this session. The host disconnected before the full in-page packet timeline could be exported."
+}

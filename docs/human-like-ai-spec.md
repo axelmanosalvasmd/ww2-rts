@@ -16,7 +16,10 @@ new AI he should think "wow, this feels like a real player, not a machine that a
 Being human is the goal, not being weak. A human-like Hard AI should still be a good player. It wins by better
 decisions, not by seeing everything at once and acting everywhere in the same instant.
 
-## What already exists (do not rebuild it)
+## What already existed before implementation (do not rebuild it)
+
+The following source and schedule descriptions refer to the preimplementation audit at `fc60be9`. Current player-seat
+commanders advance every tick from the latest delivered observation; their hands and attention schedule the work.
 
 - Fog-fair information (`shared/ai-view.js`, DESIGN.md "AI information and commands (2026-10-01)"). An AI seat sees
   only what a human in that seat receives and acts only through `command()`. `think(g, slot, opts)` builds or takes a
@@ -31,7 +34,9 @@ decisions, not by seeing everything at once and acting everywhere in the same in
   `client/camera.js` (view size, pan speed), `client/map-view.js` (minimap), `client/alerts.js` (alerts built only from
   what the server sends; Space jumps to the newest).
 
-## What still makes it superhuman
+## Original complaint and preimplementation hypotheses
+
+The audit below verifies and qualifies these original hypotheses. They are not claims about the current implementation.
 
 Verify each item against the code, add any you find, and record `file:line` for each in the audit (Phase 0).
 
@@ -84,7 +89,7 @@ same loop, with human limits at each stage.
 
 ### Phase 1: perceive
 
-- [ ] Perception tiers that match what the human client shows. Check the client code and write down exactly what
+- [x] Perception tiers that match what the human client shows. Check the client code and write down exactly what
       each tier exposes:
   - Screen: inside the seat's virtual camera (the area the default client view covers at default zoom on a
     1920x1080 window; derive it from `client/camera.js`). Full detail, as the client shows it on screen.
@@ -101,16 +106,18 @@ same loop, with human limits at each stage.
   mismatch and passes the read-only exact-key canonical mask correction, stale-key fallback, poisoned-history
   and live-cache immutability controls. `test-engine-ai-selected-hud.js` verifies actual selected-type HUD,
   grouped text and coarse world health. See `docs/human-like-ai-verification-v13.md`.
-  Reopened by `/tmp/human-ai-subprecision-events/proof.json`: identical unselected world-bar estimates can
-  produce different raw damage events and urgency. Runtime events and suppression must use visible estimates.
-- [ ] Every decision that needs detail (type, health, suppression, whether an ability is ready) uses only the screen
-      tier or memory of it.
+  Corrected after `/tmp/human-ai-subprecision-events/proof.json`: runtime damage now follows the observed
+  estimate or actual singleton HUD. `node test-engine-ai-observed-events.js`, `node test-engine-ai-selected-hud.js`
+  and `node test-engine-ai-perception.js` pass current production counterfactuals, visible category controls,
+  group privacy, selected health, actual Three projection and detached private detector history.
+- [x] Every decision that needs detail (type, health, suppression, whether an ability is ready) uses only the screen
+      tier, memory of it, or the actual selected-type HUD available to the human. Unselected readiness stays unknown.
       Evidence: `shared/ai-perception.js:129-170` removes the delivered snapshot before planning. Enemy minimap dots
       have no IDs, health or exact types. `node test-engine-ai-human.js` passes action-level off-camera invariance.
-      The unchanged V13 full suite verifies physical inspection and the selected-HUD boundary. Still open:
-      `/tmp/human-ai-subprecision-events/proof.json` confirms that equal world-bar estimates can expose a
-      one-HP loss, cross a raw heavy-damage threshold or create a raw risk-crossing event. Numeric suppression
-      also needs the rendered category boundary. Correction and permanent invariance controls remain open.
+      Current `test-engine-ai-observed-events.js` fixes the one-HP, raw heavy-hit and risk-crossing leaks while
+      preserving actual bar color and posture. `test-engine-ai-measurement-streams.js` proves private oracle
+      data cannot change nonempty native inputs, commands or runtime events at any difficulty. Original
+      raw populations remain separate and censored; equal estimates are not claimed to be identical pixels.
 - [x] Proofs in the style of the existing fog-fair tests: perturbing an off-camera enemy's health or type does not
       change the AI's next actions; the same perturbation on camera can (negative control).
       Evidence: `node test-engine-ai-human.js` reports "Default commander action-level camera detail invariance and
@@ -121,7 +128,10 @@ same loop, with human limits at each stage.
 - [x] One virtual camera per seat with a position. Moving it costs time: panning at the client's pan speed, jumping
       by minimap click, by alert (Space) or by double-tapping a control group, each with human latency.
       Evidence: `shared/ai-hands.js:35`, `:381` and `:516`; `node test-engine-ai-hands.js` passes real-key camera
-      gestures, dominant-axis 66 m/s pans, current-alert Space, minimap noise and two-key group jumps.
+      gestures, historical cardinal 66 m/s pans, current-alert Space, minimap noise and two-key group jumps.
+      Round 8 adds real concurrent diagonal keys with independently paid press/release times. Root passes
+      `node test-engine-ai-diagonal-pan.js` and the unchanged hands, response and public-alert controls.
+      Native client parity and retained earlier traces are in `docs/evidence/human-like-ai-r8-fixes/pan/`.
 - [x] An attention scheduler over concerns (each fight, base and production, expansion, scouting, idle units,
       support ready). It looks at one concern at a time, stays for a while, and pays a cost to switch. Alerts and
       minimap changes raise urgency. Under load it slips like a person: during a big fight, production and expansion
@@ -136,20 +146,38 @@ same loop, with human limits at each stage.
 
 ### Phase 3: decide
 
-- [ ] `plan()` stays view-only. Decisions for a concern are made while it has attention, from what the tiers allow.
+- [x] `plan()` stays view-only. Decisions for a concern are made while it has attention, from what the tiers allow.
       Evidence: `node test-engine-ai-human.js` passes action-level off-camera invariance and its on-camera negative
       control. `node test-engine-ai-commitment.js` passes actual idle-unit, expansion destination and production
       batch inputs. `plan(observation, slot, opts, mem, send)` receives no authoritative game reference.
-      V13 verifies private detector and projection WeakMaps. `test-engine-ai-selected-hud.js` traverses actual
-      planner memory and confirms those raw graphs are unreachable. Keep this box open while the damage-event
-      and suppression precision leak described in Phase 1 is corrected.
+      Current `test-engine-ai-selected-hud.js` traverses actual planner memory and confirms raw detector and
+      projection graphs are unreachable. `test-engine-ai-observed-events.js` verifies the corrected precision
+      boundary. `test-engine-ai-priority.js` and `test-engine-ai-tactical-reaction.js` prove diagnostic population
+      permutations cannot choose an actor, alter contact defense or create a danger pullback.
 - [x] Deliberation takes time, more for harder choices and lower skill. The opening is a real opening: the AI looks
       at its base and the map for a few seconds, then gives its first orders one group at a time.
-      Evidence: `node test-engine-ai-human.js` reports first commands at 4.5/3.4/2.65 seconds, with timed physical
+      Evidence: `node test-engine-ai-human.js` reports first commands at 4.5/3.4/2.75 seconds, with timed physical
       selections. `node test-engine-ai-hands.js` checks complete opening sequences and total reaction budgets.
 - [ ] Bounded rationality: score the options and choose with seeded noise (for example softmax) whose temperature
       depends on difficulty, so Easy makes plausible mistakes. Never choose what a person would read as a bug: a lone
       unit walking into the enemy base, units turning back and forth, an order given and cancelled again and again.
+      Round 6's accepted-formation repeated-click defect is corrected with actual destination receipts. One exact
+      archived Normal seed12 replay changes its ten cited clicks to one, with identical input history through that
+      first move. Changed points, actor order/membership, queue/facing, genuine movement away, refusals, partial
+      selection and current danger/base responses remain eligible. All three R6 gameplay fixes pass together on
+      current root; `docs/evidence/human-like-ai-r6-fixes/root-consolidated/r6-root-consolidated-result.json` retains
+      source hashes and seven passing native checks. Final campaign and independent review remain open.
+      A later real idle-objective-guard omission is corrected while preserving the existing useful stationary
+      grenade assertion. Five focused native controls pass. Repeated hesitation now samples once per attended
+      visit and keeps its full pause; native hesitation, commitment, coherence and response checks pass.
+      `docs/evidence/human-like-ai-attended-guard/` retains the initial regression and narrow correction.
+      Final-source population and independent-review gates still remain open.
+      The lab also reproduces an ordinary rifle's weak automatic fire preventing retreat after a native tank
+      hit. The correction distinguishes that automatic target from a paid attack or useful counterfire.
+      Root's new native fixture and all 90 prior stationary controls pass. Three captured level pairs retain
+      pre-hit equality and every later response and censor; the portable driver supplies six native pairs.
+      `docs/evidence/human-like-ai-automatic-armor/` independently verifies all 35 payload files against their
+      original bytes, including both timing sets. These episodes are diagnostic, not population acceptance.
 - [x] A persona per match from the seeded RNG (for example aggressive, defensive, armour-first, infantry mass,
       support-heavy), with build-order families and variations. It keeps its persona but adapts to what it sees.
       Evidence: `node test-engine-ai-persona.js` passes persona persistence through new visits, loss and score
@@ -164,8 +192,16 @@ same loop, with human limits at each stage.
       Evidence: `node test-engine-ai-coherence.js` and `node test-engine-ai-commitment.js` pass unfinished 12-second
       commitment, a 30-second arrived A-B-A guard, local base emergency override, delayed formation acknowledgement
       and refused-operation negative controls. Risky advance hesitation is seeded; accepted repairs retain crews.
-- [ ] Human slips, with frequency set by difficulty and seeded: an idle unit off screen goes unnoticed for a while,
+- [x] Human slips, with frequency set by difficulty and seeded: an idle unit off screen goes unnoticed for a while,
       MP piles up while it is busy fighting, a flank is answered late.
+      Evidence: the current default commander passes a fixed native 40-second scene at all three levels, a quiet
+      control and an exact full seeded replay. A rear MG remains idle and unwatched for six seconds. MP rises
+      from 44.9875 to 104.9708 during ordinary projectile combat, with 101 visible on the actual HUD. The native
+      flank hit at tick 162 receives a fully paid camera response after 4.60/2.75/1.05 seconds. Conditional seeded
+      optional-attention probabilities remain 0.5/0.3/0.15; these are authored rates, not measured population error.
+      Root independently reruns the pristine portable fixture against actual Root modules: exit zero in 4.403 seconds,
+      all 450 runtime/tool/client files unchanged. `docs/evidence/human-like-ai-r8-human-slips/` preserves all 92
+      original members, the separate Root replay and source maps. Campaign timing and APM gates remain open.
 - [x] Mood: more careful after a heavy loss, greedier when ahead, within limits.
       Evidence: `node test-engine-ai-persona.js` observes real roster losses in attended planner visits, caution
       bounded at 0.3, a 0.1 reduction when leading by more than 50 VP, and expiry/equal-score controls. Persona remains
@@ -192,8 +228,14 @@ same loop, with human limits at each stage.
       `node test-engine-ai-hands.js` passes missed selection, unit snapping and coarse minimap controls. The research
       note distinguishes the supported speed/accuracy relation from authored coefficients and endpoint noise.
 - [x] Control groups: the AI sets and recalls groups like a player, with human group sizes and mixes.
-      Evidence: `shared/ai-hands.js:427-430`; `node test-engine-ai-hands.js` verifies 2-8-unit operation bindings,
-      exact living-member recall, dead-member pruning, nine-key reuse and two-tap camera centering.
+      Evidence: `shared/ai-hands.js:141`; `node test-engine-ai-group-reuse.js` passes actual accepted first/second/third
+      movements: no first-use key, a separate paid binding after the second accepted movement, then real recall.
+      History retains at most 32 exact 2-8-troop sets for 60 seconds. Refusals, changed sets, dead members, actual
+      partial selections, aircraft, structures and singleton jobs are checked. `node test-engine-ai-hands.js` and
+      `node test-engine-ai-pointer-tracking.js` pass the migrated binding contract while preserving timing,
+      locality, actual selection, nine-key reuse, dead pruning and two-tap camera centering. Root logs:
+      `/tmp/r5-group-root-adoption.log`, `/tmp/r5-group-hands-root-adoption.log`,
+      `/tmp/r5-pointer-group-root-adoption.log`; historical hands SHA256 `f3f2d4a0a86e3cb6ce7980eaab6dadeb69d8f21430600c11e6500638729f0b80`.
 - [x] An APM budget per difficulty that counts the same inputs a person makes (camera moves and selections count),
       with short bursts allowed in fights.
       Evidence: `HUMAN_SKILLS` in `shared/ai-hands.js:8` and `node test-engine-ai-hands.js`: every physical input
@@ -225,7 +267,8 @@ same loop, with human limits at each stage.
 
 ### Difficulty as skill, not cheats
 
-Starting values. Phase 0 research must confirm or revise each one, with a source.
+Original authored acceptance targets. Phase 0 research records each value's provenance and retain decision.
+The sources support mechanisms, not empirical confirmation of these difficulty bands. Every original gate remains unchanged.
 
 | Measure | Easy | Normal | Hard |
 |---|---|---|---|
@@ -247,10 +290,20 @@ more than one command per tick. Difficulty changes skill (speed, attention, judg
       nothing the seat could not know.
       Evidence: `shared/ai-hands.js:58` and `tools/ai-humanity.mjs`; `node test-engine-ai-human.js` inspects emitted
       physical inputs. Reaction metadata separates event, decision, queue, motor and command clocks.
-- [ ] `tools/ai-humanity.mjs`: runs seeded AI matches (and can read recorded human logs) and prints every measure in
+- [x] `tools/ai-humanity.mjs`: runs seeded AI matches (and can read recorded human logs) and prints every measure in
       the table above plus commands per tick, camera jumps per minute, dwell time per cycle, actions per cycle, time to
       first buy, floating MP, unnoticed idle time, opening variety across seeds and cross-map orders within one
       second. It writes a JSON report under `docs/`.
+      Evidence: V14 collector `8326d7c0` supports independent measurement streams; `node test-engine-ai-humanity.js`, `node test-human-input.js` and
+      the native recorder-to-public-CLI fixture pass. `/tmp/human-ai-phase5-phase6-verification/README.md`
+      maps every metric to its field and observation limits. The 120-match baseline is saved under docs.
+      Human stimulus populations, attention, resources and semantic camera jumps remain explicitly unknown;
+      command APM is not physical input APM. The original V14 serialization attempt failed after 60 Conquest simulations.
+      Authorized storage-only streaming recovery completed all 120 original matches and 360 seats at frozen checkpoint
+      `7c87de19`. Every full raw frame and both policy/scoring comparisons are retained in
+      `docs/human-like-ai-verification-v14.md`. This is historical failed acceptance evidence, not proof of the later R5
+      corrections. The corrected public writer passes `test-ai-humanity-storage.js`, including nine real seats, complete
+      raw graphs, native reducers, package/merge, backpressure and failure cleanup. Acceptance gates remain open.
 - [x] A spectator and developer overlay: each AI seat's virtual camera rectangle and a ghost cursor that travels
       between clicks, with click markers like the human move marker. Off for players. Check the spectator rules
       (DESIGN.md, `test-engine-spectators.js`) so the overlay reveals nothing a spectator could not already see.
@@ -265,9 +318,15 @@ more than one command per tick. Difficulty changes skill (speed, attention, judg
       never sent to other seats.
       Evidence: `node test-human-input.js` and `node test-engine-ai-overlay.js` pass dual opt-in, bounded local
       files/queues, 10 Hz camera beats, denied neighboring cases and no telemetry relay to other seats.
-- [ ] `tools/ai-humanity.mjs` can fit the hands' timing distributions from those logs. Commit the literature defaults
+- [x] `tools/ai-humanity.mjs` can fit the hands' timing distributions from those logs. Commit the literature defaults
       now, and document in DESIGN.md the one command Julio runs after playing a few matches to calibrate to how he and
       his friends actually play.
+      Evidence: actual recorder, `--fit` CLI and hands consumer pass the synthetic contract fixture in
+      `/tmp/human-ai-phase5-phase6-verification/verification.json`. Five measured key gaps yield
+      `[0.14, 0.46]` seconds, applied as `[0.14, 0.4]` after the documented safety clamp. Unobserved reaction,
+      pointer and error distributions retain authored defaults. DESIGN.md gives
+      `node tools/ai-humanity.mjs --fit logs/human-input --out docs/local-ai-calibration.json`.
+      This verifies fitting support, not real-person calibration; local human recordings remain future work.
 
 ## Verification gates (all must pass)
 
@@ -277,32 +336,163 @@ more than one command per tick. Difficulty changes skill (speed, attention, judg
       assertion only to make it pass. Keep a way to test the decision layer without the hands.
       Evidence: V13 full suite exited 0 on 2026-10-04, 10:21:10-10:46:41 UTC. All 601 source/document hashes
       matched before and after, including master `a3564a6`. `docs/human-like-ai-verification-v13.md` lists the
-      checks, exact log hash and assertion migrations. Subsequent gameplay changes require a fresh full run.
-- [ ] The fog-fair proofs pass, plus the new perception-tier proofs.
-      Evidence: unchanged V13 full suite, 4,489 paired fog turns and the actual camera/minimap, canonical
-      effects, selected-HUD and off-camera private-memory proofs. The separate unselected damage-event
-      precision investigation remains open under Phase 1.
+      checks, exact log hash and assertion migrations. The current V14 run exited 1 at `test.js:7391`:
+      the bridge repair fixture still had no vehicle crossing after 60 seconds. All 611 file hashes matched
+      during the run. `/tmp/human-ai-v14-full-verification.json` records log SHA256
+      `1e9e06e4892fd6c12c792f465c1fd177fcb4f214f907d8e0cd64c25d94eb68e3`.
+      Preserve the repair requirement, correct the failure, then rerun the full suite.
+      V15 exited 1 at the response fixture with all 763 file hashes unchanged. The fixture now establishes real
+      second-use binding and keeps the paid survivor recall assertion. That exposed current-camera routing after
+      a held pan; the correction passes the complete response module with original clocks and added native guards.
+      `docs/human-like-ai-verification-v15.md` retains failure and correction evidence. Fresh full verification remains open.
+      The later commitment fixture also assumed a crowded noisy box would select both support teams. Its initial
+      scene now separates the actual MG pair, keeping every assertion, seed, camera, 300-tick bound and 30-tick
+      refusal observation. Root passes the complete module with accepted line tick 65 and refused pair tick 91;
+      the native scene proof remains in `docs/evidence/human-like-ai-r6-fixes/commitment-fixture`.
+      V16 then failed an incomplete direct-planner Engineer fixture; normal `think()` initializes the missing
+      `seen`/`node` maps. The corrected fixture retains all forty native repairs and the original sixty-second
+      limit, with a worst case of 52 seconds. V17 passes every AI child, including 162 manual-policy assertions
+      and all 27 integrated isolation treatments, then fails a stale WebSocket frame in traffic privacy.
+      The corrected wait preserves exact trajectory equality and passes hidden terrain/wreck controls plus
+      actual live-truth/live-cover negatives. Both full failures and all clean source checks remain in
+      `docs/evidence/human-like-ai-v16-full-failure/` and `docs/evidence/human-like-ai-v17-full-failure/`.
+      A fresh full exit 0 remains required.
+      V19 exits 1 at the lab's expected native-refusal assertion after the cover correction removes bare-ground
+      refusals. All 1,964 source hashes and 107 continuous checks remain unchanged. The recording assertion
+      remains required; its scene will be corrected to a genuine rejected paid input. Full failure evidence is
+      retained in `docs/evidence/human-like-ai-v19-full-failure/`.
+      The lab now uses a watched wall to reproduce a genuine `noCover` refusal after full selection and motor
+      timing. Its privacy control requires an accepted trench-cover operation before inspecting the remote
+      enemy, and caller-edit isolation follows actual simulated movement. Root's adopted `node test-ai-lab.js`
+      exits 0 in 2.8377 seconds. Thirteen payload files are independently byte-verified in
+      `docs/evidence/human-like-ai-lab-fixture/`. A fresh full-suite exit 0 remains required.
+      V21 passes all ninety-two registered children, then fails the spectator lobby assertion at `test.js:5818`.
+      All 2,039 source entries match across 291 continuous checks. Full failure proof is retained in
+      `docs/evidence/human-like-ai-v21-full-failure/`. The lobby now waits for a new matching delivery,
+      preserving all eleven original scenarios, which pass on Root. Cover and contact fixtures retain their
+      original behavioral assertions while verifying actual paid operations and genuine idle contact.
+      A fresh full-suite exit zero on the corrected source remains required.
+      The first integrated round 8 run exits one at inspection:110, with all 681 locked files identical across
+      nineteen checks. Its separate remaining-child continuation passes 59/61. Public HUD-read relevance is now
+      separated from strict useful-command acknowledgement, and Root passes all five complete affected modules.
+      The formation fixture preserves its original assertion and chooses an actor with the actual pair receipt,
+      proving paid singleton selection at 396 and acceptance at 400. Root's full fixture passes in 3.076 seconds.
+      Original failures and source-bound corrections remain in `docs/evidence/human-like-ai-r8-full-failure/`
+      and `docs/evidence/human-like-ai-r8-fixes/inspection/` and `accepted-destinations/`.
+      The corrected Root full run exits zero naturally on 2026-10-05, 01:43:59-02:12:23 UTC (1,704.183 seconds).
+      All 99 registered children, original native limits and full assertions pass. All 681 held files match across
+      113 valid checks. The complete log SHA256 is `ed166828b5133257272c384007c30fb65b183e7ac56fdee46479b7219c8b5fbb`.
+      `docs/evidence/human-like-ai-r8-full-pass/` retains the protocol, actual exit and registration; Root independently
+      matches all 142 archived originals against their physical bytes. This verifies the recorded source, with
+      subsequent runtime changes requiring renewed full verification.
+- [x] The fog-fair proofs pass, plus the new perception-tier proofs.
+      Evidence: the unchanged V14 full-run source passed 4,489 paired fog turns, including 30,213 hidden-unit,
+      9,566 visible-unit, 7,353 sub-precision, 2,205 secret-depot and 237,654 hidden-mine perturbations.
+      The registered camera/minimap, canonical effects, selected-HUD, observed-event, measurement-stream and
+      off-camera private-memory tests also passed before the later bridge assertion failed. The damage and
+      suppression precision correction passes its positive and negative controls. These component results
+      do not certify the separate full-suite or numeric campaign gates.
 - [x] New tests: one command per tick per seat; nothing before the opening look ends; the reaction floor; APM caps;
       camera locality (no order to an off-screen unit without a group recall or minimap order); seeded determinism;
       the handover pause.
-      Evidence: the unchanged V11 full suite runs `test-engine-ai-hands.js`, `test-engine-ai-human.js` and
-      `test-engine-ai-perception.js`. Opening, dispatch locality, real selection, one-command-per-tick, rolling
-      input caps, 0.2-second causal floor, complete seeded timelines and takeover pause all pass. Average APM and
-      population reaction medians remain separate, open campaign gates.
+      Evidence: the unchanged 611-file V14 run passes `test-engine-ai-hands.js`, `test-engine-ai-human.js` and
+      `test-engine-ai-perception.js`: opening, dispatch locality, real selection, one-command-per-tick, rolling
+      caps, 0.2-second causal floor, seeded timelines and takeover pause. Its 120-second human fixtures report
+      first commands 4.5/3.4/2.75 s. Average APM and population reaction medians remain open campaign gates.
 - [ ] `tools/ai-humanity.mjs` numbers fall inside the table for each difficulty over at least 20 seeds per difficulty
       on Conquest and 10 each on Classic and World Conquest. The numbers go into DESIGN.md.
+      Historical V14 evidence: all eight identifiable original required-screen medians fail; World Easy is not evaluable.
+      Physical APM fails five groups and first-order bounds fail five groups. Peak caps pass all nine groups.
+      `docs/human-like-ai-verification-v14.md` retains all required/censored endpoints and unchanged authored bands.
+      V15 retains all 120 matches and 360 seats: APM fails five mode/level groups; first-order, peak, reaction floor,
+      one-command and quarter-second locality checks pass. Original reaction gates are not evaluable because all
+      360 original baselines are tick 2. Full populations and raw data remain in
+      `docs/human-like-ai-verification-v15.md`. The collector-only initial-scene correction passes 36 native isolation
+      comparisons on current root in 71.11 seconds, preserving first actor delivery at tick 2 and every input,
+      resource receipt, complete game graph and RNG value. Historical coverage is unchanged.
+      Julio then authorized correcting the reaction scorer prospectively while retaining the original timing limits.
+      The adopted rule is documented in `docs/human-like-ai-manual-response-v2.md`. Native fixtures pass 162
+      assertions after correcting the latest public screen baseline following a real paid camera move. Earlier
+      27 source-bound controls preserve complete native graphs, inputs, commands, RNG and original metrics on
+      their recorded adapter checkpoint; the frozen full suite will recheck the corrected adapter. Root also verifies the adopted fixture and
+      unchanged humanity/multievent/stream tests. `docs/evidence/human-like-ai-manual-response-v2/` retains
+      original proposals and exact proof. Existing scores and all original limits remain preserved;
+      numerical acceptance still requires the next full frozen campaign.
+      The subsequent R7 correction is adopted prospectively as `screen-manual-v3`: useful support and direct
+      target abilities need real accepted receipts and public purpose; a later contact covered by an already
+      started physical attack input can be monitoring without a zero-time answer. Root's permanent native
+      fixture exits 0. `docs/human-like-ai-manual-response-v3.md` and
+      `docs/evidence/human-like-ai-manual-response-v3/` retain the declaration, controls and source hashes.
+      V2 and historical scores remain unchanged. No final-source population pass is claimed.
+      The prospective off-screen `public-danger-alert-v1` fixture verifies actual paid Space, minimap and pan
+      arrivals at the original public danger location, including retarget, partial and cancellation controls.
+      Root also runs the real collector with both new policies; its eventless alert population remains unknown.
+      `docs/ai-public-alert-response-v1.md` and `docs/evidence/human-like-ai-public-alert/` retain source-bound proof.
+      No population timing pass is claimed, and all original timing bands remain unchanged.
+      The running V16 collector also drops genuine original creations from its cumulative array. Its zero original
+      populations remain incomplete instrumentation evidence. The prospective one-line correction passes the
+      complete stream fixture and 36 current native isolation comparisons, retaining original oracle/scoring bytes,
+      timing limits and historical results. `docs/evidence/human-like-ai-original-cumulative/` records the defect and proof.
+      The lab's exact-half numerical correction is adopted prospectively as `km-exact-half-v1`.
+      Root's portable fixture passes 110 controls and the unchanged humanity and multi-event tests.
+      All curves and original rows remain unchanged; the retained Easy diagnostic first-input median
+      is 4.15 seconds historically and 1.65 seconds prospectively. Root independently verifies 19 archive
+      members in `docs/evidence/human-like-ai-km-boundary/`. The rule and unchanged limits are declared in
+      `docs/human-like-ai-km-boundary.md`; a fresh population pass remains required.
+      The completed archival V21 Conquest sixty-match sample fails: screen-manual-v3 medians are
+      3.50/1.65/1.15 seconds and physical APM medians 26.834/42.167/59.667. All 180 seats, required events
+      and censors remain recorded. Peak caps, first-order bands, floor and locality pass. Public-alert-v1
+      numeric medians fit their bands but unsupported causal inputs leave coverage unknown.
+      DESIGN.md records the exact counts and unchanged limits; the round 8 source still needs acceptance.
 - [ ] Opening variety: over 20 seeds per faction, at least 3 distinct openings and none in more than half the
       matches.
-      Evidence: the Conquest humanity campaign, 20 seeds per difficulty, checkpoint `223d17f`: USA 7/4/5/4,
+      Historical evidence only: the earlier Conquest campaign, 20 seeds per difficulty, checkpoint `223d17f`: USA 7/4/5/4,
       Germany 9/3/5/3, USSR 9/5/3/3 across infantry, anti-tank, mortar and machine-gun first accepted purchases.
       Each has four meaningful families and maximum 45%; pointer jitter and route coordinates are excluded.
+      Completed historical V14 accepted-purchase sequences over 20 Conquest seeds per faction/difficulty fail seven
+      of nine groups. Normal USSR passes (six sequences, maximum 30%); Hard Germany passes (five, maximum 35%).
+      `docs/human-like-ai-verification-v14.md` records every sequence count. First-family concentration is diagnostic,
+      not another gate. Classic and World have only ten seeds per faction; later R5 source needs fresh acceptance proof.
+      Historical V15 Conquest passes all nine faction/difficulty groups: 5-12 accepted-family sequences, maximum
+      concentration 20-45%, with every original seed retained. Later camera and runtime corrections still need
+      final-source verification. `docs/evidence/human-like-ai-v15/root-summary.json` retains exact per-group counts.
 - [ ] Balance with `tools/ai-balance.mjs`, same seeds before and after (Conquest 60, Classic 30, as in DESIGN.md):
       each faction wins 25 to 42%, matches still finish, and any change in median length is explained. Head to head
       against the old commander (kept reachable only for this measurement, for example a frozen copy under `tools/`):
       new Hard beats old Easy at least 70% of the time; report new Hard against old Normal and old Hard. Tune the AI,
       not unit stats.
+      Historical V15 finishes all 150 matches without timeout. Conquest faction shares are 30.0/41.7/28.3%,
+      Classic decisive shares 26.9/38.5/34.6%; new Hard wins 16/20, 17/20 and 10/20 against old Easy/Normal/Hard.
+      Root independently reduces all rows and verifies every compact-bundle member against its source.
+      `docs/evidence/human-like-ai-v15-balance/root-copy-manifest.json` retains baseline/source limitations.
+      These precede current R6 fixes, whose final-source balance gate remains open.
+      Historical V16 now finishes all 150 original rows naturally, with four Classic draws and zero timeouts.
+      Conquest wins are 23/22/15. Classic decisive shares are 26.92/42.31/30.77%, so Germany fails the exact
+      42% ceiling. Hard beats old Easy/Normal/Hard 15/20, 17/20 and 13/20. Root's independent full-row reduction
+      and byte-verified artifacts remain in `docs/evidence/human-like-ai-v16-balance/`. Current-source balance stays open.
 - [ ] Performance: `tools/bench-engine.mjs` AI phase p95 and maximum no worse than master by more than 10% or 2 ms,
       whichever is larger, and no new ticks over the 40 ms budget.
+      V15 fails: exact p95 9.501/10.876 ms passes, counts p95 9.142/11.749 ms exceeds the 2 ms allowance,
+      and raw timed ticks above 40 ms rise from four to five. All four fixed rows remain in
+      `docs/human-like-ai-verification-v15.md`; the later equivalent fog-loop change is not a passing benchmark.
+      V16's four quiet fixed rows also fail: exact p95 is 8.866/12.193 ms, counted maximum is
+      51.627/58.731 ms and counted ticks above 40 ms rise from two to four. All rows and byte-verified
+      source remain in `docs/evidence/human-like-ai-v16-performance/`. The subsequent small copy
+      reduction is supported by native equivalence and an isolated micro, not a full performance pass.
+      The exact sparse-effect fog correction preserves every native digest over 1,000 current-source ticks,
+      including human snapshots and canonical fog. Root passes 25 history, privacy and World controls plus
+      the unchanged effect-visibility, selected-HUD and perception tests. AI-phase fog line-of-sight calls
+      fall from 2,566,003 to 19,569; diagnostic p95 is 8.707251/6.482153 ms. Root independently verifies all
+      168 payload files and their manifest in `docs/evidence/human-like-ai-point-fog/`. This is a material implementation
+      change supporting a fresh quiet benchmark, not a performance gate pass.
+      The fixed quiet V21 exact AI p95 also fails at 10.746/15.880 ms against the original two-millisecond
+      allowance. Its counted rows pass; all four rows remain recorded. Slower ownership prototypes were
+      rejected. No unchanged favorable rerun substitutes for the failed exact measurement.
+      The fixed quiet round 8 rows pass their latency comparisons: exact p95 8.961/10.409 ms and maximum
+      40.759/38.962 ms; counted p95 8.676/10.531 ms and maximum 45.486/40.846 ms. Counted timed ticks above
+      40 ms increase from two to four, so overall performance still fails. Root independently byte-verifies
+      all 78 payload originals in `docs/evidence/human-like-ai-r8-performance/`, including the initial preflight
+      refusal and actual pause/resume journal. The later inspection fix still requires its own final-source gate.
 - [ ] Browser check: start the server, play or spectate a real match against Normal AIs, with the overlay on. Save
       screenshots or a short recording for the PR and check the console for errors. Confirm by eye: at the start the
       AI looks first, then moves groups one after another; its camera goes to fights; orders appear one at a time; it
@@ -310,6 +500,11 @@ more than one command per tick. Difficulty changes skill (speed, attention, judg
 - [ ] Independent review: give a reviewer that did not build it (another model through T3 `delegate_task` if
       available, otherwise a fresh Codex session) the input timelines and the recordings, and ask it to list every
       "bot tell". Fix what is fair to fix, review once more, and record both verdicts in the PR.
+      Round 6 by Claude Opus 5.5 confirms substantial behavioral improvement but retains a failing verdict,
+      including a formation-snap repeated-move loop and narrower-than-needed local responses. Its complete report
+      is preserved in `docs/evidence/human-like-ai-review-round6/human-ai-review-round6.md`. Its population classifications
+      are diagnostic; original baseline-2 gates remain not evaluable, V13's historical full pass remains valid,
+      and World completed after the review's snapshot. Final-source review and remaining corrections are open.
 - [ ] Docs: a new DESIGN.md section for the human-like commander (model, numbers, balance, what is left for later),
       the new terms in the CONTEXT.md glossary in its existing format, and CHANGELOG.md "Unreleased" bullets in the
       same commits as the changes. No em dashes in anything you write.

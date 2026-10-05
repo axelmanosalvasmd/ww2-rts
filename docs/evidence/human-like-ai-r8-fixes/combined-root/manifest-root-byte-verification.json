@@ -1,0 +1,171 @@
+{
+  "verifiedAtUnix": 1791164787.0221207,
+  "archive": "/home/judiazm/.t3/worktrees/ww2-rts/ai-human-commander/docs/evidence/human-like-ai-r8-fixes/combined-root/combined-root-native.tar.gz",
+  "archiveSHA256": "6b6b73b967c9cf056343525606fb78bff70f53493aa926a204793352abb2185e",
+  "originalPayloadCount": 23,
+  "verifiedMembers": [
+    {
+      "member": "ten-combined-checks/checks.json",
+      "originalPath": "/tmp/human-ai-r8-combined-checks/checks.json",
+      "sha256": "2c4667396832c75f3cb931382c9d0cd85069ada1ea441443ca4f6d7a4263ebde",
+      "bytes": 1920,
+      "originalBytesCurrentlyEqual": true
+    },
+    {
+      "member": "ten-combined-checks/declaration.json",
+      "originalPath": "/tmp/human-ai-r8-combined-checks/declaration.json",
+      "sha256": "0abbb41bbe8747ba939b0298ba30e8b19bebf71805edd948432539992305a1dc",
+      "bytes": 2536,
+      "originalBytesCurrentlyEqual": true
+    },
+    {
+      "member": "ten-combined-checks/source-after.json",
+      "originalPath": "/tmp/human-ai-r8-combined-checks/source-after.json",
+      "sha256": "2d2c332a50ee9979505603d8e94ea22d7222063abfcf5096d83ba85fff7e0bc2",
+      "bytes": 1895,
+      "originalBytesCurrentlyEqual": true
+    },
+    {
+      "member": "ten-combined-checks/test-engine-ai-diagonal-pan.js.log",
+      "originalPath": "/tmp/human-ai-r8-combined-checks/test-engine-ai-diagonal-pan.js.log",
+      "sha256": "301ad4b9afa0b4803aebe6958daec3b5dc6aa54b7e78c61ca977ad05f21ff0dd",
+      "bytes": 166,
+      "originalBytesCurrentlyEqual": true
+    },
+    {
+      "member": "ten-combined-checks/test-engine-ai-hands.js.log",
+      "originalPath": "/tmp/human-ai-r8-combined-checks/test-engine-ai-hands.js.log",
+      "sha256": "9cd01eb1d7cbf22bbf205c6e2556491c73fddd8cf15d6658a496aad4605e51de",
+      "bytes": 108,
+      "originalBytesCurrentlyEqual": true
+    },
+    {
+      "member": "ten-combined-checks/test-engine-ai-human.js.log",
+      "originalPath": "/tmp/human-ai-r8-combined-checks/test-engine-ai-human.js.log",
+      "sha256": "5b02a8a317a6fe3601a1688027590871d5b2182ba2bf41c27cbd98ef324f99de",
+      "bytes": 414,
+      "originalBytesCurrentlyEqual": true
+    },
+    {
+      "member": "ten-combined-checks/test-engine-ai-humanity.js.log",
+      "originalPath": "/tmp/human-ai-r8-combined-checks/test-engine-ai-humanity.js.log",
+      "sha256": "a67a37b96a3850158a5e96bc97c0d695c0930016d4efb6f55115a92d95d4a831",
+      "bytes": 153,
+      "originalBytesCurrentlyEqual": true
+    },
+    {
+      "member": "ten-combined-checks/test-engine-ai-manual-response-v3.js.log",
+      "originalPath": "/tmp/human-ai-r8-combined-checks/test-engine-ai-manual-response-v3.js.log",
+      "sha256": "d84d66496136784f9c462cdb37bab2e7d5e187edfbbdd1e36a51bc7986a619ee",
+      "bytes": 95,
+      "originalBytesCurrentlyEqual": true
+    },
+    {
+      "member": "ten-combined-checks/test-engine-ai-measurement-streams.js.log",
+      "originalPath": "/tmp/human-ai-r8-combined-checks/test-engine-ai-measurement-streams.js.log",
+      "sha256": "af039e45c4c8e5c97ac07027566520181e0e4c218acb549ad8f5ec3b1820ffcd",
+      "bytes": 141,
+      "originalBytesCurrentlyEqual": true
+    },
+    {
+      "member": "ten-combined-checks/test-engine-ai-pan-release.js.log",
+      "originalPath": "/tmp/human-ai-r8-combined-checks/test-engine-ai-pan-release.js.log",
+      "sha256": "8d622a4c24ca16a32fde545ad218f2e31e71fdad217373dd3b9d2c22b20e0dbf",
+      "bytes": 273,
+      "originalBytesCurrentlyEqual": true
+    },
+    {
+      "member": "ten-combined-checks/test-engine-ai-public-alert-v2.js.log",
+      "originalPath": "/tmp/human-ai-r8-combined-checks/test-engine-ai-public-alert-v2.js.log",
+      "sha256": "4d6488d7c28ba5b779391ea308ee5aaa686d175ed838e6ad7a452c8c36ed262a",
+      "bytes": 165155,
+      "originalBytesCurrentlyEqual": true
+    },
+    {
+      "member": "ten-combined-checks/test-engine-ai-public-alert.js.log",
+      "originalPath": "/tmp/human-ai-r8-combined-checks/test-engine-ai-public-alert.js.log",
+      "sha256": "dfd459fe62002f4c155d99934c3df89af85d57fee5c833e3072f9606d3cfe375",
+      "bytes": 3444,
+      "originalBytesCurrentlyEqual": true
+    },
+    {
+      "member": "ten-combined-checks/test-engine-ai-response.js.log",
+      "originalPath": "/tmp/human-ai-r8-combined-checks/test-engine-ai-response.js.log",
+      "sha256": "5f89c348ec9847cca46830682a70f09824b0040b459690e7821925fbffe9f80c",
+      "bytes": 575,
+      "originalBytesCurrentlyEqual": true
+    },
+    {
+      "member": "three-selection-checks/checks.json",
+      "originalPath": "/tmp/human-ai-r8-final-selection-root/checks.json",
+      "sha256": "28dbbb4cf356f9866f60cd4f59b215b48f4eca6245995fbbe09cb95e80c74829",
+      "bytes": 574,
+      "originalBytesCurrentlyEqual": true
+    },
+    {
+      "member": "three-selection-checks/test-engine-ai-group-reuse.js.log",
+      "originalPath": "/tmp/human-ai-r8-final-selection-root/test-engine-ai-group-reuse.js.log",
+      "sha256": "0d6114fdc52f52f30c20368a25e850e559b24bff0709700d067bae49d95f50eb",
+      "bytes": 102,
+      "originalBytesCurrentlyEqual": true
+    },
+    {
+      "member": "three-selection-checks/test-engine-ai-hands.js.log",
+      "originalPath": "/tmp/human-ai-r8-final-selection-root/test-engine-ai-hands.js.log",
+      "sha256": "9cd01eb1d7cbf22bbf205c6e2556491c73fddd8cf15d6658a496aad4605e51de",
+      "bytes": 108,
+      "originalBytesCurrentlyEqual": true
+    },
+    {
+      "member": "three-selection-checks/test-engine-ai-selection-reuse.js.log",
+      "originalPath": "/tmp/human-ai-r8-final-selection-root/test-engine-ai-selection-reuse.js.log",
+      "sha256": "a395ce02ccbdc5ba16be09873f03f09fe3e51547bbc520c0bb035f6bfec62d6e",
+      "bytes": 90,
+      "originalBytesCurrentlyEqual": true
+    },
+    {
+      "member": "final-six-collector-assertions/declaration.json",
+      "originalPath": "/tmp/human-ai-r8-current-collector-root/declaration.json",
+      "sha256": "334c18a7e75ec4bbf57218e1492dd7d3083a81fcef2bd1203ab4fe0682cccdcd",
+      "bytes": 449,
+      "originalBytesCurrentlyEqual": true
+    },
+    {
+      "member": "final-six-collector-assertions/native-isolation-proof.json",
+      "originalPath": "/tmp/human-ai-r8-current-collector-root/native-isolation-proof.json",
+      "sha256": "01b12f00c390ea681b1eaa58dcf2c6817391bd5e2622c759781bcb8639dc2a8a",
+      "bytes": 2307,
+      "originalBytesCurrentlyEqual": true
+    },
+    {
+      "member": "final-six-collector-assertions/native-isolation.log",
+      "originalPath": "/tmp/human-ai-r8-current-collector-root/native-isolation.log",
+      "sha256": "bd949400a810188127e8cce19edfa5b34a8c0505f0349d222ca0bfd5571bcd9f",
+      "bytes": 1789,
+      "originalBytesCurrentlyEqual": true
+    },
+    {
+      "member": "final-six-collector-assertions/native-isolation.mjs",
+      "originalPath": "/tmp/human-ai-r8-current-collector-root/native-isolation.mjs",
+      "sha256": "66027b620da4df9d62ed1ef376d2cf566e8445363c1738fe8f5f4ba6859242e8",
+      "bytes": 3030,
+      "originalBytesCurrentlyEqual": true
+    },
+    {
+      "member": "final-six-collector-assertions/source-after.json",
+      "originalPath": "/tmp/human-ai-r8-current-collector-root/source-after.json",
+      "sha256": "f87a23b1e07ae25dabc7d9ece6dce19196c20995921694fe09510224a75c3e15",
+      "bytes": 758,
+      "originalBytesCurrentlyEqual": true
+    },
+    {
+      "member": "final-six-collector-assertions/source-before.json",
+      "originalPath": "/tmp/human-ai-r8-current-collector-root/source-before.json",
+      "sha256": "f87a23b1e07ae25dabc7d9ece6dce19196c20995921694fe09510224a75c3e15",
+      "bytes": 758,
+      "originalBytesCurrentlyEqual": true
+    }
+  ],
+  "unresolved": [],
+  "allPayloadsVerified": true
+}

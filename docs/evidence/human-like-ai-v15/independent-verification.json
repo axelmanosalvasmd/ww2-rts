@@ -1,0 +1,6132 @@
+{
+  "status": "PASS",
+  "matches": 120,
+  "seats": 360,
+  "allFrozenSeatMetricsRecomputed": true,
+  "pooledMetricsEqual": true,
+  "allPoliciesDualScoresCensorsPreserved": true,
+  "sourceCheckpointSHA256": "e2d17224047076252b115e6e66e8dc2504aa003b2fc66d9169e9d32ec27c38c1",
+  "incompleteMeasurementSeats": [
+    {
+      "mode": "conquest",
+      "level": "easy",
+      "seed": 1,
+      "slot": 0,
+      "coverage": {
+        "originalRecorded": true,
+        "originalBaselineTicks": [
+          2
+        ],
+        "originalFromMatchStart": false,
+        "nativeEvents": 69,
+        "originalEvents": 52,
+        "observedEvents": 69,
+        "originalEventsWithoutRuntimeAlias": 4
+      }
+    },
+    {
+      "mode": "conquest",
+      "level": "easy",
+      "seed": 1,
+      "slot": 1,
+      "coverage": {
+        "originalRecorded": true,
+        "originalBaselineTicks": [
+          2
+        ],
+        "originalFromMatchStart": false,
+        "nativeEvents": 57,
+        "originalEvents": 47,
+        "observedEvents": 57,
+        "originalEventsWithoutRuntimeAlias": 2
+      }
+    },
+    {
+      "mode": "conquest",
+      "level": "easy",
+      "seed": 1,
+      "slot": 2,
+      "coverage": {
+        "originalRecorded": true,
+        "originalBaselineTicks": [
+          2
+        ],
+        "originalFromMatchStart": false,
+        "nativeEvents": 68,
+        "originalEvents": 59,
+        "observedEvents": 68,
+        "originalEventsWithoutRuntimeAlias": 3
+      }
+    },
+    {
+      "mode": "conquest",
+      "level": "easy",
+      "seed": 2,
+      "slot": 0,
+      "coverage": {
+        "originalRecorded": true,
+        "originalBaselineTicks": [
+          2
+        ],
+        "originalFromMatchStart": false,
+        "nativeEvents": 69,
+        "originalEvents": 52,
+        "observedEvents": 69,
+        "originalEventsWithoutRuntimeAlias": 0
+      }
+    },
+    {
+      "mode": "conquest",
+      "level": "easy",
+      "seed": 2,
+      "slot": 1,
+      "coverage": {
+        "originalRecorded": true,
+        "originalBaselineTicks": [
+          2
+        ],
+        "originalFromMatchStart": false,
+        "nativeEvents": 52,
+        "originalEvents": 42,
+        "observedEvents": 52,
+        "originalEventsWithoutRuntimeAlias": 0
+      }
+    },
+    {
+      "mode": "conquest",
+      "level": "easy",
+      "seed": 2,
+      "slot": 2,
+      "coverage": {
+        "originalRecorded": true,
+        "originalBaselineTicks": [
+          2
+        ],
+        "originalFromMatchStart": false,
+        "nativeEvents": 67,
+        "originalEvents": 50,
+        "observedEvents": 67,
+        "originalEventsWithoutRuntimeAlias": 3
+      }
+    },
+    {
+      "mode": "conquest",
+      "level": "easy",
+      "seed": 3,
+      "slot": 0,
+      "coverage": {
+        "originalRecorded": true,
+        "originalBaselineTicks": [
+          2
+        ],
+        "originalFromMatchStart": false,
+        "nativeEvents": 63,
+        "originalEvents": 52,
+        "observedEvents": 63,
+        "originalEventsWithoutRuntimeAlias": 3
+      }
+    },
+    {
+      "mode": "conquest",
+      "level": "easy",
+      "seed": 3,
+      "slot": 1,
+      "coverage": {
+        "originalRecorded": true,
+        "originalBaselineTicks": [
+          2
+        ],
+        "originalFromMatchStart": false,
+        "nativeEvents": 50,
+        "originalEvents": 39,
+        "observedEvents": 48,
+        "originalEventsWithoutRuntimeAlias": 2
+      }
+    },
+    {
+      "mode": "conquest",
+      "level": "easy",
+      "seed": 3,
+      "slot": 2,
+      "coverage": {
+        "originalRecorded": true,
+        "originalBaselineTicks": [
+          2
+        ],
+        "originalFromMatchStart": false,
+        "nativeEvents": 74,
+        "originalEvents": 59,
+        "observedEvents": 73,
+        "originalEventsWithoutRuntimeAlias": 7
+      }
+    },
+    {
+      "mode": "conquest",
+      "level": "easy",
+      "seed": 4,
+      "slot": 0,
+      "coverage": {
+        "originalRecorded": true,
+        "originalBaselineTicks": [
+          2
+        ],
+        "originalFromMatchStart": false,
+        "nativeEvents": 68,
+        "originalEvents": 57,
+        "observedEvents": 68,
+        "originalEventsWithoutRuntimeAlias": 2
+      }
+    },
+    {
+      "mode": "conquest",
+      "level": "easy",
+      "seed": 4,
+      "slot": 1,
+      "coverage": {
+        "originalRecorded": true,
+        "originalBaselineTicks": [
+          2
+        ],
+        "originalFromMatchStart": false,
+        "nativeEvents": 80,
+        "originalEvents": 66,
+        "observedEvents": 80,
+        "originalEventsWithoutRuntimeAlias": 1
+      }
+    },
+    {
+      "mode": "conquest",
+      "level": "easy",
+      "seed": 4,
+      "slot": 2,
+      "coverage": {
+        "originalRecorded": true,
+        "originalBaselineTicks": [
+          2
+        ],
+        "originalFromMatchStart": false,
+        "nativeEvents": 75,
+        "originalEvents": 61,
+        "observedEvents": 75,
+        "originalEventsWithoutRuntimeAlias": 0
+      }
+    },
+    {
+      "mode": "conquest",
+      "level": "easy",
+      "seed": 5,
+      "slot": 0,
+      "coverage": {
+        "originalRecorded": true,
+        "originalBaselineTicks": [
+          2
+        ],
+        "originalFromMatchStart": false,
+        "nativeEvents": 66,
+        "originalEvents": 51,
+        "observedEvents": 66,
+        "originalEventsWithoutRuntimeAlias": 1
+      }
+    },
+    {
+      "mode": "conquest",
+      "level": "easy",
+      "seed": 5,
+      "slot": 1,
+      "coverage": {
+        "originalRecorded": true,
+        "originalBaselineTicks": [
+          2
+        ],
+        "originalFromMatchStart": false,
+        "nativeEvents": 70,
+        "originalEvents": 52,
+        "observedEvents": 70,
+        "originalEventsWithoutRuntimeAlias": 2
+      }
+    },
+    {
+      "mode": "conquest",
+      "level": "easy",
+      "seed": 5,
+      "slot": 2,
+      "coverage": {
+        "originalRecorded": true,
+        "originalBaselineTicks": [
+          2
+        ],
+        "originalFromMatchStart": false,
+        "nativeEvents": 73,
+        "originalEvents": 52,
+        "observedEvents": 73,
+        "originalEventsWithoutRuntimeAlias": 1
+      }
+    },
+    {
+      "mode": "conquest",
+      "level": "easy",
+      "seed": 6,
+      "slot": 0,
+      "coverage": {
+        "originalRecorded": true,
+        "originalBaselineTicks": [
+          2
+        ],
+        "originalFromMatchStart": false,
+        "nativeEvents": 70,
+        "originalEvents": 58,
+        "observedEvents": 70,
+        "originalEventsWithoutRuntimeAlias": 3
+      }
+    },
+    {
+      "mode": "conquest",
+      "level": "easy",
+      "seed": 6,
+      "slot": 1,
+      "coverage": {
+        "originalRecorded": true,
+        "originalBaselineTicks": [
+          2
+        ],
+        "originalFromMatchStart": false,
+        "nativeEvents": 76,
+        "originalEvents": 63,
+        "observedEvents": 76,
+        "originalEventsWithoutRuntimeAlias": 3
+      }
+    },
+    {
+      "mode": "conquest",
+      "level": "easy",
+      "seed": 6,
+      "slot": 2,
+      "coverage": {
+        "originalRecorded": true,
+        "originalBaselineTicks": [
+          2
+        ],
+        "originalFromMatchStart": false,
+        "nativeEvents": 76,
+        "originalEvents": 63,
+        "observedEvents": 74,
+        "originalEventsWithoutRuntimeAlias": 4
+      }
+    },
+    {
+      "mode": "conquest",
+      "level": "easy",
+      "seed": 7,
+      "slot": 0,
+      "coverage": {
+        "originalRecorded": true,
+        "originalBaselineTicks": [
+          2
+        ],
+        "originalFromMatchStart": false,
+        "nativeEvents": 62,
+        "originalEvents": 52,
+        "observedEvents": 62,
+        "originalEventsWithoutRuntimeAlias": 4
+      }
+    },
+    {
+      "mode": "conquest",
+      "level": "easy",
+      "seed": 7,
+      "slot": 1,
+      "coverage": {
+        "originalRecorded": true,
+        "originalBaselineTicks": [
+          2
+        ],
+        "originalFromMatchStart": false,
+        "nativeEvents": 77,
+        "originalEvents": 64,
+        "observedEvents": 77,
+        "originalEventsWithoutRuntimeAlias": 3
+      }
+    },
+    {
+      "mode": "conquest",
+      "level": "easy",
+      "seed": 7,
+      "slot": 2,
+      "coverage": {
+        "originalRecorded": true,
+        "originalBaselineTicks": [
+          2
+        ],
+        "originalFromMatchStart": false,
+        "nativeEvents": 72,
+        "originalEvents": 54,
+        "observedEvents": 72,
+        "originalEventsWithoutRuntimeAlias": 0
+      }
+    },
+    {
+      "mode": "conquest",
+      "level": "easy",
+      "seed": 8,
+      "slot": 0,
+      "coverage": {
+        "originalRecorded": true,
+        "originalBaselineTicks": [
+          2
+        ],
+        "originalFromMatchStart": false,
+        "nativeEvents": 92,
+        "originalEvents": 71,
+        "observedEvents": 92,
+        "originalEventsWithoutRuntimeAlias": 1
+      }
+    },
+    {
+      "mode": "conquest",
+      "level": "easy",
+      "seed": 8,
+      "slot": 1,
+      "coverage": {
+        "originalRecorded": true,
+        "originalBaselineTicks": [
+          2
+        ],
+        "originalFromMatchStart": false,
+        "nativeEvents": 76,
+        "originalEvents": 61,
+        "observedEvents": 76,
+        "originalEventsWithoutRuntimeAlias": 4
+      }
+    },
+    {
+      "mode": "conquest",
+      "level": "easy",
+      "seed": 8,
+      "slot": 2,
+      "coverage": {
+        "originalRecorded": true,
+        "originalBaselineTicks": [
+          2
+        ],
+        "originalFromMatchStart": false,
+        "nativeEvents": 70,
+        "originalEvents": 62,
+        "observedEvents": 70,
+        "originalEventsWithoutRuntimeAlias": 5
+      }
+    },
+    {
+      "mode": "conquest",
+      "level": "easy",
+      "seed": 9,
+      "slot": 0,
+      "coverage": {
+        "originalRecorded": true,
+        "originalBaselineTicks": [
+          2
+        ],
+        "originalFromMatchStart": false,
+        "nativeEvents": 54,
+        "originalEvents": 45,
+        "observedEvents": 54,
+        "originalEventsWithoutRuntimeAlias": 3
+      }
+    },
+    {
+      "mode": "conquest",
+      "level": "easy",
+      "seed": 9,
+      "slot": 1,
+      "coverage": {
+        "originalRecorded": true,
+        "originalBaselineTicks": [
+          2
+        ],
+        "originalFromMatchStart": false,
+        "nativeEvents": 59,
+        "originalEvents": 49,
+        "observedEvents": 59,
+        "originalEventsWithoutRuntimeAlias": 8
+      }
+    },
+    {
+      "mode": "conquest",
+      "level": "easy",
+      "seed": 9,
+      "slot": 2,
+      "coverage": {
+        "originalRecorded": true,
+        "originalBaselineTicks": [
+          2
+        ],
+        "originalFromMatchStart": false,
+        "nativeEvents": 59,
+        "originalEvents": 45,
+        "observedEvents": 59,
+        "originalEventsWithoutRuntimeAlias": 1
+      }
+    },
+    {
+      "mode": "conquest",
+      "level": "easy",
+      "seed": 10,
+      "slot": 0,
+      "coverage": {
+        "originalRecorded": true,
+        "originalBaselineTicks": [
+          2
+        ],
+        "originalFromMatchStart": false,
+        "nativeEvents": 46,
+        "originalEvents": 39,
+        "observedEvents": 46,
+        "originalEventsWithoutRuntimeAlias": 3
+      }
+    },
+    {
+      "mode": "conquest",
+      "level": "easy",
+      "seed": 10,
+      "slot": 1,
+      "coverage": {
+        "originalRecorded": true,
+        "originalBaselineTicks": [
+          2
+        ],
+        "originalFromMatchStart": false,
+        "nativeEvents": 59,
+        "originalEvents": 45,
+        "observedEvents": 59,
+        "originalEventsWithoutRuntimeAlias": 1
+      }
+    },
+    {
+      "mode": "conquest",
+      "level": "easy",
+      "seed": 10,
+      "slot": 2,
+      "coverage": {
+        "originalRecorded": true,
+        "originalBaselineTicks": [
+          2
+        ],
+        "originalFromMatchStart": false,
+        "nativeEvents": 68,
+        "originalEvents": 51,
+        "observedEvents": 68,
+        "originalEventsWithoutRuntimeAlias": 0
+      }
+    },
+    {
+      "mode": "conquest",
+      "level": "easy",
+      "seed": 11,
+      "slot": 0,
+      "coverage": {
+        "originalRecorded": true,
+        "originalBaselineTicks": [
+          2
+        ],
+        "originalFromMatchStart": false,
+        "nativeEvents": 67,
+        "originalEvents": 52,
+        "observedEvents": 67,
+        "originalEventsWithoutRuntimeAlias": 1
+      }
+    },
+    {
+      "mode": "conquest",
+      "level": "easy",
+      "seed": 11,
+      "slot": 1,
+      "coverage": {
+        "originalRecorded": true,
+        "originalBaselineTicks": [
+          2
+        ],
+        "originalFromMatchStart": false,
+        "nativeEvents": 77,
+        "originalEvents": 57,
+        "observedEvents": 77,
+        "originalEventsWithoutRuntimeAlias": 1
+      }
+    },
+    {
+      "mode": "conquest",
+      "level": "easy",
+      "seed": 11,
+      "slot": 2,
+      "coverage": {
+        "originalRecorded": true,
+        "originalBaselineTicks": [
+          2
+        ],
+        "originalFromMatchStart": false,
+        "nativeEvents": 74,
+        "originalEvents": 63,
+        "observedEvents": 74,
+        "originalEventsWithoutRuntimeAlias": 3
+      }
+    },
+    {
+      "mode": "conquest",
+      "level": "easy",
+      "seed": 12,
+      "slot": 0,
+      "coverage": {
+        "originalRecorded": true,
+        "originalBaselineTicks": [
+          2
+        ],
+        "originalFromMatchStart": false,
+        "nativeEvents": 56,
+        "originalEvents": 38,
+        "observedEvents": 56,
+        "originalEventsWithoutRuntimeAlias": 1
+      }
+    },
+    {
+      "mode": "conquest",
+      "level": "easy",
+      "seed": 12,
+      "slot": 1,
+      "coverage": {
+        "originalRecorded": true,
+        "originalBaselineTicks": [
+          2
+        ],
+        "originalFromMatchStart": false,
+        "nativeEvents": 65,
+        "originalEvents": 50,
+        "observedEvents": 65,
+        "originalEventsWithoutRuntimeAlias": 1
+      }
+    },
+    {
+      "mode": "conquest",
+      "level": "easy",
+      "seed": 12,
+      "slot": 2,
+      "coverage": {
+        "originalRecorded": true,
+        "originalBaselineTicks": [
+          2
+        ],
+        "originalFromMatchStart": false,
+        "nativeEvents": 67,
+        "originalEvents": 47,
+        "observedEvents": 67,
+        "originalEventsWithoutRuntimeAlias": 3
+      }
+    },
+    {
+      "mode": "conquest",
+      "level": "easy",
+      "seed": 13,
+      "slot": 0,
+      "coverage": {
+        "originalRecorded": true,
+        "originalBaselineTicks": [
+          2
+        ],
+        "originalFromMatchStart": false,
+        "nativeEvents": 53,
+        "originalEvents": 40,
+        "observedEvents": 53,
+        "originalEventsWithoutRuntimeAlias": 1
+      }
+    },
+    {
+      "mode": "conquest",
+      "level": "easy",
+      "seed": 13,
+      "slot": 1,
+      "coverage": {
+        "originalRecorded": true,
+        "originalBaselineTicks": [
+          2
+        ],
+        "originalFromMatchStart": false,
+        "nativeEvents": 67,
+        "originalEvents": 53,
+        "observedEvents": 67,
+        "originalEventsWithoutRuntimeAlias": 4
+      }
+    },
+    {
+      "mode": "conquest",
+      "level": "easy",
+      "seed": 13,
+      "slot": 2,
+      "coverage": {
+        "originalRecorded": true,
+        "originalBaselineTicks": [
+          2
+        ],
+        "originalFromMatchStart": false,
+        "nativeEvents": 73,
+        "originalEvents": 57,
+        "observedEvents": 73,
+        "originalEventsWithoutRuntimeAlias": 2
+      }
+    },
+    {
+      "mode": "conquest",
+      "level": "easy",
+      "seed": 14,
+      "slot": 0,
+      "coverage": {
+        "originalRecorded": true,
+        "originalBaselineTicks": [
+          2
+        ],
+        "originalFromMatchStart": false,
+        "nativeEvents": 62,
+        "originalEvents": 50,
+        "observedEvents": 62,
+        "originalEventsWithoutRuntimeAlias": 1
+      }
+    },
+    {
+      "mode": "conquest",
+      "level": "easy",
+      "seed": 14,
+      "slot": 1,
+      "coverage": {
+        "originalRecorded": true,
+        "originalBaselineTicks": [
+          2
+        ],
+        "originalFromMatchStart": false,
+        "nativeEvents": 67,
+        "originalEvents": 56,
+        "observedEvents": 67,
+        "originalEventsWithoutRuntimeAlias": 3
+      }
+    },
+    {
+      "mode": "conquest",
+      "level": "easy",
+      "seed": 14,
+      "slot": 2,
+      "coverage": {
+        "originalRecorded": true,
+        "originalBaselineTicks": [
+          2
+        ],
+        "originalFromMatchStart": false,
+        "nativeEvents": 49,
+        "originalEvents": 41,
+        "observedEvents": 49,
+        "originalEventsWithoutRuntimeAlias": 1
+      }
+    },
+    {
+      "mode": "conquest",
+      "level": "easy",
+      "seed": 15,
+      "slot": 0,
+      "coverage": {
+        "originalRecorded": true,
+        "originalBaselineTicks": [
+          2
+        ],
+        "originalFromMatchStart": false,
+        "nativeEvents": 67,
+        "originalEvents": 58,
+        "observedEvents": 67,
+        "originalEventsWithoutRuntimeAlias": 1
+      }
+    },
+    {
+      "mode": "conquest",
+      "level": "easy",
+      "seed": 15,
+      "slot": 1,
+      "coverage": {
+        "originalRecorded": true,
+        "originalBaselineTicks": [
+          2
+        ],
+        "originalFromMatchStart": false,
+        "nativeEvents": 75,
+        "originalEvents": 56,
+        "observedEvents": 75,
+        "originalEventsWithoutRuntimeAlias": 4
+      }
+    },
+    {
+      "mode": "conquest",
+      "level": "easy",
+      "seed": 15,
+      "slot": 2,
+      "coverage": {
+        "originalRecorded": true,
+        "originalBaselineTicks": [
+          2
+        ],
+        "originalFromMatchStart": false,
+        "nativeEvents": 69,
+        "originalEvents": 59,
+        "observedEvents": 69,
+        "originalEventsWithoutRuntimeAlias": 3
+      }
+    },
+    {
+      "mode": "conquest",
+      "level": "easy",
+      "seed": 16,
+      "slot": 0,
+      "coverage": {
+        "originalRecorded": true,
+        "originalBaselineTicks": [
+          2
+        ],
+        "originalFromMatchStart": false,
+        "nativeEvents": 80,
+        "originalEvents": 67,
+        "observedEvents": 80,
+        "originalEventsWithoutRuntimeAlias": 5
+      }
+    },
+    {
+      "mode": "conquest",
+      "level": "easy",
+      "seed": 16,
+      "slot": 1,
+      "coverage": {
+        "originalRecorded": true,
+        "originalBaselineTicks": [
+          2
+        ],
+        "originalFromMatchStart": false,
+        "nativeEvents": 62,
+        "originalEvents": 49,
+        "observedEvents": 62,
+        "originalEventsWithoutRuntimeAlias": 2
+      }
+    },
+    {
+      "mode": "conquest",
+      "level": "easy",
+      "seed": 16,
+      "slot": 2,
+      "coverage": {
+        "originalRecorded": true,
+        "originalBaselineTicks": [
+          2
+        ],
+        "originalFromMatchStart": false,
+        "nativeEvents": 78,
+        "originalEvents": 62,
+        "observedEvents": 78,
+        "originalEventsWithoutRuntimeAlias": 5
+      }
+    },
+    {
+      "mode": "conquest",
+      "level": "easy",
+      "seed": 17,
+      "slot": 0,
+      "coverage": {
+        "originalRecorded": true,
+        "originalBaselineTicks": [
+          2
+        ],
+        "originalFromMatchStart": false,
+        "nativeEvents": 72,
+        "originalEvents": 55,
+        "observedEvents": 72,
+        "originalEventsWithoutRuntimeAlias": 2
+      }
+    },
+    {
+      "mode": "conquest",
+      "level": "easy",
+      "seed": 17,
+      "slot": 1,
+      "coverage": {
+        "originalRecorded": true,
+        "originalBaselineTicks": [
+          2
+        ],
+        "originalFromMatchStart": false,
+        "nativeEvents": 56,
+        "originalEvents": 45,
+        "observedEvents": 55,
+        "originalEventsWithoutRuntimeAlias": 1
+      }
+    },
+    {
+      "mode": "conquest",
+      "level": "easy",
+      "seed": 17,
+      "slot": 2,
+      "coverage": {
+        "originalRecorded": true,
+        "originalBaselineTicks": [
+          2
+        ],
+        "originalFromMatchStart": false,
+        "nativeEvents": 73,
+        "originalEvents": 62,
+        "observedEvents": 73,
+        "originalEventsWithoutRuntimeAlias": 6
+      }
+    },
+    {
+      "mode": "conquest",
+      "level": "easy",
+      "seed": 18,
+      "slot": 0,
+      "coverage": {
+        "originalRecorded": true,
+        "originalBaselineTicks": [
+          2
+        ],
+        "originalFromMatchStart": false,
+        "nativeEvents": 61,
+        "originalEvents": 45,
+        "observedEvents": 60,
+        "originalEventsWithoutRuntimeAlias": 0
+      }
+    },
+    {
+      "mode": "conquest",
+      "level": "easy",
+      "seed": 18,
+      "slot": 1,
+      "coverage": {
+        "originalRecorded": true,
+        "originalBaselineTicks": [
+          2
+        ],
+        "originalFromMatchStart": false,
+        "nativeEvents": 68,
+        "originalEvents": 56,
+        "observedEvents": 68,
+        "originalEventsWithoutRuntimeAlias": 5
+      }
+    },
+    {
+      "mode": "conquest",
+      "level": "easy",
+      "seed": 18,
+      "slot": 2,
+      "coverage": {
+        "originalRecorded": true,
+        "originalBaselineTicks": [
+          2
+        ],
+        "originalFromMatchStart": false,
+        "nativeEvents": 66,
+        "originalEvents": 52,
+        "observedEvents": 66,
+        "originalEventsWithoutRuntimeAlias": 2
+      }
+    },
+    {
+      "mode": "conquest",
+      "level": "easy",
+      "seed": 19,
+      "slot": 0,
+      "coverage": {
+        "originalRecorded": true,
+        "originalBaselineTicks": [
+          2
+        ],
+        "originalFromMatchStart": false,
+        "nativeEvents": 67,
+        "originalEvents": 52,
+        "observedEvents": 64,
+        "originalEventsWithoutRuntimeAlias": 3
+      }
+    },
+    {
+      "mode": "conquest",
+      "level": "easy",
+      "seed": 19,
+      "slot": 1,
+      "coverage": {
+        "originalRecorded": true,
+        "originalBaselineTicks": [
+          2
+        ],
+        "originalFromMatchStart": false,
+        "nativeEvents": 75,
+        "originalEvents": 64,
+        "observedEvents": 75,
+        "originalEventsWithoutRuntimeAlias": 4
+      }
+    },
+    {
+      "mode": "conquest",
+      "level": "easy",
+      "seed": 19,
+      "slot": 2,
+      "coverage": {
+        "originalRecorded": true,
+        "originalBaselineTicks": [
+          2
+        ],
+        "originalFromMatchStart": false,
+        "nativeEvents": 59,
+        "originalEvents": 54,
+        "observedEvents": 59,
+        "originalEventsWithoutRuntimeAlias": 6
+      }
+    },
+    {
+      "mode": "conquest",
+      "level": "easy",
+      "seed": 20,
+      "slot": 0,
+      "coverage": {
+        "originalRecorded": true,
+        "originalBaselineTicks": [
+          2
+        ],
+        "originalFromMatchStart": false,
+        "nativeEvents": 77,
+        "originalEvents": 60,
+        "observedEvents": 77,
+        "originalEventsWithoutRuntimeAlias": 2
+      }
+    },
+    {
+      "mode": "conquest",
+      "level": "easy",
+      "seed": 20,
+      "slot": 1,
+      "coverage": {
+        "originalRecorded": true,
+        "originalBaselineTicks": [
+          2
+        ],
+        "originalFromMatchStart": false,
+        "nativeEvents": 39,
+        "originalEvents": 31,
+        "observedEvents": 39,
+        "originalEventsWithoutRuntimeAlias": 2
+      }
+    },
+    {
+      "mode": "conquest",
+      "level": "easy",
+      "seed": 20,
+      "slot": 2,
+      "coverage": {
+        "originalRecorded": true,
+        "originalBaselineTicks": [
+          2
+        ],
+        "originalFromMatchStart": false,
+        "nativeEvents": 80,
+        "originalEvents": 65,
+        "observedEvents": 80,
+        "originalEventsWithoutRuntimeAlias": 5
+      }
+    },
+    {
+      "mode": "conquest",
+      "level": "normal",
+      "seed": 1,
+      "slot": 0,
+      "coverage": {
+        "originalRecorded": true,
+        "originalBaselineTicks": [
+          2
+        ],
+        "originalFromMatchStart": false,
+        "nativeEvents": 96,
+        "originalEvents": 83,
+        "observedEvents": 96,
+        "originalEventsWithoutRuntimeAlias": 5
+      }
+    },
+    {
+      "mode": "conquest",
+      "level": "normal",
+      "seed": 1,
+      "slot": 1,
+      "coverage": {
+        "originalRecorded": true,
+        "originalBaselineTicks": [
+          2
+        ],
+        "originalFromMatchStart": false,
+        "nativeEvents": 97,
+        "originalEvents": 83,
+        "observedEvents": 97,
+        "originalEventsWithoutRuntimeAlias": 3
+      }
+    },
+    {
+      "mode": "conquest",
+      "level": "normal",
+      "seed": 1,
+      "slot": 2,
+      "coverage": {
+        "originalRecorded": true,
+        "originalBaselineTicks": [
+          2
+        ],
+        "originalFromMatchStart": false,
+        "nativeEvents": 87,
+        "originalEvents": 82,
+        "observedEvents": 87,
+        "originalEventsWithoutRuntimeAlias": 6
+      }
+    },
+    {
+      "mode": "conquest",
+      "level": "normal",
+      "seed": 2,
+      "slot": 0,
+      "coverage": {
+        "originalRecorded": true,
+        "originalBaselineTicks": [
+          2
+        ],
+        "originalFromMatchStart": false,
+        "nativeEvents": 81,
+        "originalEvents": 67,
+        "observedEvents": 81,
+        "originalEventsWithoutRuntimeAlias": 6
+      }
+    },
+    {
+      "mode": "conquest",
+      "level": "normal",
+      "seed": 2,
+      "slot": 1,
+      "coverage": {
+        "originalRecorded": true,
+        "originalBaselineTicks": [
+          2
+        ],
+        "originalFromMatchStart": false,
+        "nativeEvents": 90,
+        "originalEvents": 76,
+        "observedEvents": 90,
+        "originalEventsWithoutRuntimeAlias": 7
+      }
+    },
+    {
+      "mode": "conquest",
+      "level": "normal",
+      "seed": 2,
+      "slot": 2,
+      "coverage": {
+        "originalRecorded": true,
+        "originalBaselineTicks": [
+          2
+        ],
+        "originalFromMatchStart": false,
+        "nativeEvents": 93,
+        "originalEvents": 81,
+        "observedEvents": 93,
+        "originalEventsWithoutRuntimeAlias": 6
+      }
+    },
+    {
+      "mode": "conquest",
+      "level": "normal",
+      "seed": 3,
+      "slot": 0,
+      "coverage": {
+        "originalRecorded": true,
+        "originalBaselineTicks": [
+          2
+        ],
+        "originalFromMatchStart": false,
+        "nativeEvents": 65,
+        "originalEvents": 55,
+        "observedEvents": 65,
+        "originalEventsWithoutRuntimeAlias": 1
+      }
+    },
+    {
+      "mode": "conquest",
+      "level": "normal",
+      "seed": 3,
+      "slot": 1,
+      "coverage": {
+        "originalRecorded": true,
+        "originalBaselineTicks": [
+          2
+        ],
+        "originalFromMatchStart": false,
+        "nativeEvents": 63,
+        "originalEvents": 52,
+        "observedEvents": 62,
+        "originalEventsWithoutRuntimeAlias": 1
+      }
+    },
+    {
+      "mode": "conquest",
+      "level": "normal",
+      "seed": 3,
+      "slot": 2,
+      "coverage": {
+        "originalRecorded": true,
+        "originalBaselineTicks": [
+          2
+        ],
+        "originalFromMatchStart": false,
+        "nativeEvents": 81,
+        "originalEvents": 68,
+        "observedEvents": 80,
+        "originalEventsWithoutRuntimeAlias": 6
+      }
+    },
+    {
+      "mode": "conquest",
+      "level": "normal",
+      "seed": 4,
+      "slot": 0,
+      "coverage": {
+        "originalRecorded": true,
+        "originalBaselineTicks": [
+          2
+        ],
+        "originalFromMatchStart": false,
+        "nativeEvents": 83,
+        "originalEvents": 73,
+        "observedEvents": 83,
+        "originalEventsWithoutRuntimeAlias": 6
+      }
+    },
+    {
+      "mode": "conquest",
+      "level": "normal",
+      "seed": 4,
+      "slot": 1,
+      "coverage": {
+        "originalRecorded": true,
+        "originalBaselineTicks": [
+          2
+        ],
+        "originalFromMatchStart": false,
+        "nativeEvents": 89,
+        "originalEvents": 81,
+        "observedEvents": 88,
+        "originalEventsWithoutRuntimeAlias": 3
+      }
+    },
+    {
+      "mode": "conquest",
+      "level": "normal",
+      "seed": 4,
+      "slot": 2,
+      "coverage": {
+        "originalRecorded": true,
+        "originalBaselineTicks": [
+          2
+        ],
+        "originalFromMatchStart": false,
+        "nativeEvents": 87,
+        "originalEvents": 75,
+        "observedEvents": 87,
+        "originalEventsWithoutRuntimeAlias": 3
+      }
+    },
+    {
+      "mode": "conquest",
+      "level": "normal",
+      "seed": 5,
+      "slot": 0,
+      "coverage": {
+        "originalRecorded": true,
+        "originalBaselineTicks": [
+          2
+        ],
+        "originalFromMatchStart": false,
+        "nativeEvents": 82,
+        "originalEvents": 73,
+        "observedEvents": 82,
+        "originalEventsWithoutRuntimeAlias": 4
+      }
+    },
+    {
+      "mode": "conquest",
+      "level": "normal",
+      "seed": 5,
+      "slot": 1,
+      "coverage": {
+        "originalRecorded": true,
+        "originalBaselineTicks": [
+          2
+        ],
+        "originalFromMatchStart": false,
+        "nativeEvents": 91,
+        "originalEvents": 83,
+        "observedEvents": 91,
+        "originalEventsWithoutRuntimeAlias": 7
+      }
+    },
+    {
+      "mode": "conquest",
+      "level": "normal",
+      "seed": 5,
+      "slot": 2,
+      "coverage": {
+        "originalRecorded": true,
+        "originalBaselineTicks": [
+          2
+        ],
+        "originalFromMatchStart": false,
+        "nativeEvents": 91,
+        "originalEvents": 81,
+        "observedEvents": 91,
+        "originalEventsWithoutRuntimeAlias": 5
+      }
+    },
+    {
+      "mode": "conquest",
+      "level": "normal",
+      "seed": 6,
+      "slot": 0,
+      "coverage": {
+        "originalRecorded": true,
+        "originalBaselineTicks": [
+          2
+        ],
+        "originalFromMatchStart": false,
+        "nativeEvents": 81,
+        "originalEvents": 73,
+        "observedEvents": 81,
+        "originalEventsWithoutRuntimeAlias": 4
+      }
+    },
+    {
+      "mode": "conquest",
+      "level": "normal",
+      "seed": 6,
+      "slot": 1,
+      "coverage": {
+        "originalRecorded": true,
+        "originalBaselineTicks": [
+          2
+        ],
+        "originalFromMatchStart": false,
+        "nativeEvents": 108,
+        "originalEvents": 95,
+        "observedEvents": 108,
+        "originalEventsWithoutRuntimeAlias": 6
+      }
+    },
+    {
+      "mode": "conquest",
+      "level": "normal",
+      "seed": 6,
+      "slot": 2,
+      "coverage": {
+        "originalRecorded": true,
+        "originalBaselineTicks": [
+          2
+        ],
+        "originalFromMatchStart": false,
+        "nativeEvents": 92,
+        "originalEvents": 78,
+        "observedEvents": 92,
+        "originalEventsWithoutRuntimeAlias": 6
+      }
+    },
+    {
+      "mode": "conquest",
+      "level": "normal",
+      "seed": 7,
+      "slot": 0,
+      "coverage": {
+        "originalRecorded": true,
+        "originalBaselineTicks": [
+          2
+        ],
+        "originalFromMatchStart": false,
+        "nativeEvents": 66,
+        "originalEvents": 56,
+        "observedEvents": 65,
+        "originalEventsWithoutRuntimeAlias": 1
+      }
+    },
+    {
+      "mode": "conquest",
+      "level": "normal",
+      "seed": 7,
+      "slot": 1,
+      "coverage": {
+        "originalRecorded": true,
+        "originalBaselineTicks": [
+          2
+        ],
+        "originalFromMatchStart": false,
+        "nativeEvents": 76,
+        "originalEvents": 66,
+        "observedEvents": 76,
+        "originalEventsWithoutRuntimeAlias": 3
+      }
+    },
+    {
+      "mode": "conquest",
+      "level": "normal",
+      "seed": 7,
+      "slot": 2,
+      "coverage": {
+        "originalRecorded": true,
+        "originalBaselineTicks": [
+          2
+        ],
+        "originalFromMatchStart": false,
+        "nativeEvents": 75,
+        "originalEvents": 65,
+        "observedEvents": 75,
+        "originalEventsWithoutRuntimeAlias": 5
+      }
+    },
+    {
+      "mode": "conquest",
+      "level": "normal",
+      "seed": 8,
+      "slot": 0,
+      "coverage": {
+        "originalRecorded": true,
+        "originalBaselineTicks": [
+          2
+        ],
+        "originalFromMatchStart": false,
+        "nativeEvents": 97,
+        "originalEvents": 87,
+        "observedEvents": 97,
+        "originalEventsWithoutRuntimeAlias": 6
+      }
+    },
+    {
+      "mode": "conquest",
+      "level": "normal",
+      "seed": 8,
+      "slot": 1,
+      "coverage": {
+        "originalRecorded": true,
+        "originalBaselineTicks": [
+          2
+        ],
+        "originalFromMatchStart": false,
+        "nativeEvents": 100,
+        "originalEvents": 86,
+        "observedEvents": 100,
+        "originalEventsWithoutRuntimeAlias": 2
+      }
+    },
+    {
+      "mode": "conquest",
+      "level": "normal",
+      "seed": 8,
+      "slot": 2,
+      "coverage": {
+        "originalRecorded": true,
+        "originalBaselineTicks": [
+          2
+        ],
+        "originalFromMatchStart": false,
+        "nativeEvents": 86,
+        "originalEvents": 75,
+        "observedEvents": 86,
+        "originalEventsWithoutRuntimeAlias": 4
+      }
+    },
+    {
+      "mode": "conquest",
+      "level": "normal",
+      "seed": 9,
+      "slot": 0,
+      "coverage": {
+        "originalRecorded": true,
+        "originalBaselineTicks": [
+          2
+        ],
+        "originalFromMatchStart": false,
+        "nativeEvents": 70,
+        "originalEvents": 65,
+        "observedEvents": 70,
+        "originalEventsWithoutRuntimeAlias": 4
+      }
+    },
+    {
+      "mode": "conquest",
+      "level": "normal",
+      "seed": 9,
+      "slot": 1,
+      "coverage": {
+        "originalRecorded": true,
+        "originalBaselineTicks": [
+          2
+        ],
+        "originalFromMatchStart": false,
+        "nativeEvents": 76,
+        "originalEvents": 66,
+        "observedEvents": 76,
+        "originalEventsWithoutRuntimeAlias": 3
+      }
+    },
+    {
+      "mode": "conquest",
+      "level": "normal",
+      "seed": 9,
+      "slot": 2,
+      "coverage": {
+        "originalRecorded": true,
+        "originalBaselineTicks": [
+          2
+        ],
+        "originalFromMatchStart": false,
+        "nativeEvents": 73,
+        "originalEvents": 66,
+        "observedEvents": 73,
+        "originalEventsWithoutRuntimeAlias": 4
+      }
+    },
+    {
+      "mode": "conquest",
+      "level": "normal",
+      "seed": 10,
+      "slot": 0,
+      "coverage": {
+        "originalRecorded": true,
+        "originalBaselineTicks": [
+          2
+        ],
+        "originalFromMatchStart": false,
+        "nativeEvents": 92,
+        "originalEvents": 78,
+        "observedEvents": 92,
+        "originalEventsWithoutRuntimeAlias": 7
+      }
+    },
+    {
+      "mode": "conquest",
+      "level": "normal",
+      "seed": 10,
+      "slot": 1,
+      "coverage": {
+        "originalRecorded": true,
+        "originalBaselineTicks": [
+          2
+        ],
+        "originalFromMatchStart": false,
+        "nativeEvents": 87,
+        "originalEvents": 75,
+        "observedEvents": 87,
+        "originalEventsWithoutRuntimeAlias": 3
+      }
+    },
+    {
+      "mode": "conquest",
+      "level": "normal",
+      "seed": 10,
+      "slot": 2,
+      "coverage": {
+        "originalRecorded": true,
+        "originalBaselineTicks": [
+          2
+        ],
+        "originalFromMatchStart": false,
+        "nativeEvents": 97,
+        "originalEvents": 83,
+        "observedEvents": 97,
+        "originalEventsWithoutRuntimeAlias": 4
+      }
+    },
+    {
+      "mode": "conquest",
+      "level": "normal",
+      "seed": 11,
+      "slot": 0,
+      "coverage": {
+        "originalRecorded": true,
+        "originalBaselineTicks": [
+          2
+        ],
+        "originalFromMatchStart": false,
+        "nativeEvents": 66,
+        "originalEvents": 56,
+        "observedEvents": 66,
+        "originalEventsWithoutRuntimeAlias": 4
+      }
+    },
+    {
+      "mode": "conquest",
+      "level": "normal",
+      "seed": 11,
+      "slot": 1,
+      "coverage": {
+        "originalRecorded": true,
+        "originalBaselineTicks": [
+          2
+        ],
+        "originalFromMatchStart": false,
+        "nativeEvents": 77,
+        "originalEvents": 64,
+        "observedEvents": 77,
+        "originalEventsWithoutRuntimeAlias": 2
+      }
+    },
+    {
+      "mode": "conquest",
+      "level": "normal",
+      "seed": 11,
+      "slot": 2,
+      "coverage": {
+        "originalRecorded": true,
+        "originalBaselineTicks": [
+          2
+        ],
+        "originalFromMatchStart": false,
+        "nativeEvents": 68,
+        "originalEvents": 57,
+        "observedEvents": 68,
+        "originalEventsWithoutRuntimeAlias": 1
+      }
+    },
+    {
+      "mode": "conquest",
+      "level": "normal",
+      "seed": 12,
+      "slot": 0,
+      "coverage": {
+        "originalRecorded": true,
+        "originalBaselineTicks": [
+          2
+        ],
+        "originalFromMatchStart": false,
+        "nativeEvents": 89,
+        "originalEvents": 76,
+        "observedEvents": 89,
+        "originalEventsWithoutRuntimeAlias": 4
+      }
+    },
+    {
+      "mode": "conquest",
+      "level": "normal",
+      "seed": 12,
+      "slot": 1,
+      "coverage": {
+        "originalRecorded": true,
+        "originalBaselineTicks": [
+          2
+        ],
+        "originalFromMatchStart": false,
+        "nativeEvents": 68,
+        "originalEvents": 57,
+        "observedEvents": 68,
+        "originalEventsWithoutRuntimeAlias": 3
+      }
+    },
+    {
+      "mode": "conquest",
+      "level": "normal",
+      "seed": 12,
+      "slot": 2,
+      "coverage": {
+        "originalRecorded": true,
+        "originalBaselineTicks": [
+          2
+        ],
+        "originalFromMatchStart": false,
+        "nativeEvents": 77,
+        "originalEvents": 71,
+        "observedEvents": 77,
+        "originalEventsWithoutRuntimeAlias": 9
+      }
+    },
+    {
+      "mode": "conquest",
+      "level": "normal",
+      "seed": 13,
+      "slot": 0,
+      "coverage": {
+        "originalRecorded": true,
+        "originalBaselineTicks": [
+          2
+        ],
+        "originalFromMatchStart": false,
+        "nativeEvents": 75,
+        "originalEvents": 66,
+        "observedEvents": 75,
+        "originalEventsWithoutRuntimeAlias": 3
+      }
+    },
+    {
+      "mode": "conquest",
+      "level": "normal",
+      "seed": 13,
+      "slot": 1,
+      "coverage": {
+        "originalRecorded": true,
+        "originalBaselineTicks": [
+          2
+        ],
+        "originalFromMatchStart": false,
+        "nativeEvents": 91,
+        "originalEvents": 82,
+        "observedEvents": 91,
+        "originalEventsWithoutRuntimeAlias": 5
+      }
+    },
+    {
+      "mode": "conquest",
+      "level": "normal",
+      "seed": 13,
+      "slot": 2,
+      "coverage": {
+        "originalRecorded": true,
+        "originalBaselineTicks": [
+          2
+        ],
+        "originalFromMatchStart": false,
+        "nativeEvents": 98,
+        "originalEvents": 89,
+        "observedEvents": 98,
+        "originalEventsWithoutRuntimeAlias": 4
+      }
+    },
+    {
+      "mode": "conquest",
+      "level": "normal",
+      "seed": 14,
+      "slot": 0,
+      "coverage": {
+        "originalRecorded": true,
+        "originalBaselineTicks": [
+          2
+        ],
+        "originalFromMatchStart": false,
+        "nativeEvents": 91,
+        "originalEvents": 80,
+        "observedEvents": 91,
+        "originalEventsWithoutRuntimeAlias": 3
+      }
+    },
+    {
+      "mode": "conquest",
+      "level": "normal",
+      "seed": 14,
+      "slot": 1,
+      "coverage": {
+        "originalRecorded": true,
+        "originalBaselineTicks": [
+          2
+        ],
+        "originalFromMatchStart": false,
+        "nativeEvents": 65,
+        "originalEvents": 56,
+        "observedEvents": 65,
+        "originalEventsWithoutRuntimeAlias": 5
+      }
+    },
+    {
+      "mode": "conquest",
+      "level": "normal",
+      "seed": 14,
+      "slot": 2,
+      "coverage": {
+        "originalRecorded": true,
+        "originalBaselineTicks": [
+          2
+        ],
+        "originalFromMatchStart": false,
+        "nativeEvents": 101,
+        "originalEvents": 89,
+        "observedEvents": 101,
+        "originalEventsWithoutRuntimeAlias": 2
+      }
+    },
+    {
+      "mode": "conquest",
+      "level": "normal",
+      "seed": 15,
+      "slot": 0,
+      "coverage": {
+        "originalRecorded": true,
+        "originalBaselineTicks": [
+          2
+        ],
+        "originalFromMatchStart": false,
+        "nativeEvents": 83,
+        "originalEvents": 70,
+        "observedEvents": 82,
+        "originalEventsWithoutRuntimeAlias": 3
+      }
+    },
+    {
+      "mode": "conquest",
+      "level": "normal",
+      "seed": 15,
+      "slot": 1,
+      "coverage": {
+        "originalRecorded": true,
+        "originalBaselineTicks": [
+          2
+        ],
+        "originalFromMatchStart": false,
+        "nativeEvents": 94,
+        "originalEvents": 79,
+        "observedEvents": 94,
+        "originalEventsWithoutRuntimeAlias": 6
+      }
+    },
+    {
+      "mode": "conquest",
+      "level": "normal",
+      "seed": 15,
+      "slot": 2,
+      "coverage": {
+        "originalRecorded": true,
+        "originalBaselineTicks": [
+          2
+        ],
+        "originalFromMatchStart": false,
+        "nativeEvents": 91,
+        "originalEvents": 75,
+        "observedEvents": 91,
+        "originalEventsWithoutRuntimeAlias": 2
+      }
+    },
+    {
+      "mode": "conquest",
+      "level": "normal",
+      "seed": 16,
+      "slot": 0,
+      "coverage": {
+        "originalRecorded": true,
+        "originalBaselineTicks": [
+          2
+        ],
+        "originalFromMatchStart": false,
+        "nativeEvents": 88,
+        "originalEvents": 79,
+        "observedEvents": 88,
+        "originalEventsWithoutRuntimeAlias": 6
+      }
+    },
+    {
+      "mode": "conquest",
+      "level": "normal",
+      "seed": 16,
+      "slot": 1,
+      "coverage": {
+        "originalRecorded": true,
+        "originalBaselineTicks": [
+          2
+        ],
+        "originalFromMatchStart": false,
+        "nativeEvents": 84,
+        "originalEvents": 76,
+        "observedEvents": 83,
+        "originalEventsWithoutRuntimeAlias": 3
+      }
+    },
+    {
+      "mode": "conquest",
+      "level": "normal",
+      "seed": 16,
+      "slot": 2,
+      "coverage": {
+        "originalRecorded": true,
+        "originalBaselineTicks": [
+          2
+        ],
+        "originalFromMatchStart": false,
+        "nativeEvents": 84,
+        "originalEvents": 78,
+        "observedEvents": 84,
+        "originalEventsWithoutRuntimeAlias": 3
+      }
+    },
+    {
+      "mode": "conquest",
+      "level": "normal",
+      "seed": 17,
+      "slot": 0,
+      "coverage": {
+        "originalRecorded": true,
+        "originalBaselineTicks": [
+          2
+        ],
+        "originalFromMatchStart": false,
+        "nativeEvents": 82,
+        "originalEvents": 72,
+        "observedEvents": 81,
+        "originalEventsWithoutRuntimeAlias": 2
+      }
+    },
+    {
+      "mode": "conquest",
+      "level": "normal",
+      "seed": 17,
+      "slot": 1,
+      "coverage": {
+        "originalRecorded": true,
+        "originalBaselineTicks": [
+          2
+        ],
+        "originalFromMatchStart": false,
+        "nativeEvents": 75,
+        "originalEvents": 66,
+        "observedEvents": 75,
+        "originalEventsWithoutRuntimeAlias": 2
+      }
+    },
+    {
+      "mode": "conquest",
+      "level": "normal",
+      "seed": 17,
+      "slot": 2,
+      "coverage": {
+        "originalRecorded": true,
+        "originalBaselineTicks": [
+          2
+        ],
+        "originalFromMatchStart": false,
+        "nativeEvents": 86,
+        "originalEvents": 73,
+        "observedEvents": 86,
+        "originalEventsWithoutRuntimeAlias": 2
+      }
+    },
+    {
+      "mode": "conquest",
+      "level": "normal",
+      "seed": 18,
+      "slot": 0,
+      "coverage": {
+        "originalRecorded": true,
+        "originalBaselineTicks": [
+          2
+        ],
+        "originalFromMatchStart": false,
+        "nativeEvents": 90,
+        "originalEvents": 80,
+        "observedEvents": 90,
+        "originalEventsWithoutRuntimeAlias": 4
+      }
+    },
+    {
+      "mode": "conquest",
+      "level": "normal",
+      "seed": 18,
+      "slot": 1,
+      "coverage": {
+        "originalRecorded": true,
+        "originalBaselineTicks": [
+          2
+        ],
+        "originalFromMatchStart": false,
+        "nativeEvents": 78,
+        "originalEvents": 71,
+        "observedEvents": 78,
+        "originalEventsWithoutRuntimeAlias": 4
+      }
+    },
+    {
+      "mode": "conquest",
+      "level": "normal",
+      "seed": 18,
+      "slot": 2,
+      "coverage": {
+        "originalRecorded": true,
+        "originalBaselineTicks": [
+          2
+        ],
+        "originalFromMatchStart": false,
+        "nativeEvents": 77,
+        "originalEvents": 67,
+        "observedEvents": 77,
+        "originalEventsWithoutRuntimeAlias": 4
+      }
+    },
+    {
+      "mode": "conquest",
+      "level": "normal",
+      "seed": 19,
+      "slot": 0,
+      "coverage": {
+        "originalRecorded": true,
+        "originalBaselineTicks": [
+          2
+        ],
+        "originalFromMatchStart": false,
+        "nativeEvents": 89,
+        "originalEvents": 80,
+        "observedEvents": 89,
+        "originalEventsWithoutRuntimeAlias": 5
+      }
+    },
+    {
+      "mode": "conquest",
+      "level": "normal",
+      "seed": 19,
+      "slot": 1,
+      "coverage": {
+        "originalRecorded": true,
+        "originalBaselineTicks": [
+          2
+        ],
+        "originalFromMatchStart": false,
+        "nativeEvents": 90,
+        "originalEvents": 76,
+        "observedEvents": 90,
+        "originalEventsWithoutRuntimeAlias": 3
+      }
+    },
+    {
+      "mode": "conquest",
+      "level": "normal",
+      "seed": 19,
+      "slot": 2,
+      "coverage": {
+        "originalRecorded": true,
+        "originalBaselineTicks": [
+          2
+        ],
+        "originalFromMatchStart": false,
+        "nativeEvents": 102,
+        "originalEvents": 91,
+        "observedEvents": 102,
+        "originalEventsWithoutRuntimeAlias": 8
+      }
+    },
+    {
+      "mode": "conquest",
+      "level": "normal",
+      "seed": 20,
+      "slot": 0,
+      "coverage": {
+        "originalRecorded": true,
+        "originalBaselineTicks": [
+          2
+        ],
+        "originalFromMatchStart": false,
+        "nativeEvents": 94,
+        "originalEvents": 77,
+        "observedEvents": 94,
+        "originalEventsWithoutRuntimeAlias": 2
+      }
+    },
+    {
+      "mode": "conquest",
+      "level": "normal",
+      "seed": 20,
+      "slot": 1,
+      "coverage": {
+        "originalRecorded": true,
+        "originalBaselineTicks": [
+          2
+        ],
+        "originalFromMatchStart": false,
+        "nativeEvents": 67,
+        "originalEvents": 63,
+        "observedEvents": 67,
+        "originalEventsWithoutRuntimeAlias": 3
+      }
+    },
+    {
+      "mode": "conquest",
+      "level": "normal",
+      "seed": 20,
+      "slot": 2,
+      "coverage": {
+        "originalRecorded": true,
+        "originalBaselineTicks": [
+          2
+        ],
+        "originalFromMatchStart": false,
+        "nativeEvents": 78,
+        "originalEvents": 71,
+        "observedEvents": 78,
+        "originalEventsWithoutRuntimeAlias": 3
+      }
+    },
+    {
+      "mode": "conquest",
+      "level": "hard",
+      "seed": 1,
+      "slot": 0,
+      "coverage": {
+        "originalRecorded": true,
+        "originalBaselineTicks": [
+          2
+        ],
+        "originalFromMatchStart": false,
+        "nativeEvents": 106,
+        "originalEvents": 92,
+        "observedEvents": 106,
+        "originalEventsWithoutRuntimeAlias": 4
+      }
+    },
+    {
+      "mode": "conquest",
+      "level": "hard",
+      "seed": 1,
+      "slot": 1,
+      "coverage": {
+        "originalRecorded": true,
+        "originalBaselineTicks": [
+          2
+        ],
+        "originalFromMatchStart": false,
+        "nativeEvents": 84,
+        "originalEvents": 74,
+        "observedEvents": 84,
+        "originalEventsWithoutRuntimeAlias": 3
+      }
+    },
+    {
+      "mode": "conquest",
+      "level": "hard",
+      "seed": 1,
+      "slot": 2,
+      "coverage": {
+        "originalRecorded": true,
+        "originalBaselineTicks": [
+          2
+        ],
+        "originalFromMatchStart": false,
+        "nativeEvents": 108,
+        "originalEvents": 103,
+        "observedEvents": 108,
+        "originalEventsWithoutRuntimeAlias": 9
+      }
+    },
+    {
+      "mode": "conquest",
+      "level": "hard",
+      "seed": 2,
+      "slot": 0,
+      "coverage": {
+        "originalRecorded": true,
+        "originalBaselineTicks": [
+          2
+        ],
+        "originalFromMatchStart": false,
+        "nativeEvents": 87,
+        "originalEvents": 77,
+        "observedEvents": 87,
+        "originalEventsWithoutRuntimeAlias": 7
+      }
+    },
+    {
+      "mode": "conquest",
+      "level": "hard",
+      "seed": 2,
+      "slot": 1,
+      "coverage": {
+        "originalRecorded": true,
+        "originalBaselineTicks": [
+          2
+        ],
+        "originalFromMatchStart": false,
+        "nativeEvents": 100,
+        "originalEvents": 94,
+        "observedEvents": 100,
+        "originalEventsWithoutRuntimeAlias": 3
+      }
+    },
+    {
+      "mode": "conquest",
+      "level": "hard",
+      "seed": 2,
+      "slot": 2,
+      "coverage": {
+        "originalRecorded": true,
+        "originalBaselineTicks": [
+          2
+        ],
+        "originalFromMatchStart": false,
+        "nativeEvents": 94,
+        "originalEvents": 85,
+        "observedEvents": 93,
+        "originalEventsWithoutRuntimeAlias": 7
+      }
+    },
+    {
+      "mode": "conquest",
+      "level": "hard",
+      "seed": 3,
+      "slot": 0,
+      "coverage": {
+        "originalRecorded": true,
+        "originalBaselineTicks": [
+          2
+        ],
+        "originalFromMatchStart": false,
+        "nativeEvents": 83,
+        "originalEvents": 76,
+        "observedEvents": 83,
+        "originalEventsWithoutRuntimeAlias": 2
+      }
+    },
+    {
+      "mode": "conquest",
+      "level": "hard",
+      "seed": 3,
+      "slot": 1,
+      "coverage": {
+        "originalRecorded": true,
+        "originalBaselineTicks": [
+          2
+        ],
+        "originalFromMatchStart": false,
+        "nativeEvents": 90,
+        "originalEvents": 86,
+        "observedEvents": 90,
+        "originalEventsWithoutRuntimeAlias": 8
+      }
+    },
+    {
+      "mode": "conquest",
+      "level": "hard",
+      "seed": 3,
+      "slot": 2,
+      "coverage": {
+        "originalRecorded": true,
+        "originalBaselineTicks": [
+          2
+        ],
+        "originalFromMatchStart": false,
+        "nativeEvents": 92,
+        "originalEvents": 76,
+        "observedEvents": 92,
+        "originalEventsWithoutRuntimeAlias": 4
+      }
+    },
+    {
+      "mode": "conquest",
+      "level": "hard",
+      "seed": 4,
+      "slot": 0,
+      "coverage": {
+        "originalRecorded": true,
+        "originalBaselineTicks": [
+          2
+        ],
+        "originalFromMatchStart": false,
+        "nativeEvents": 104,
+        "originalEvents": 96,
+        "observedEvents": 104,
+        "originalEventsWithoutRuntimeAlias": 6
+      }
+    },
+    {
+      "mode": "conquest",
+      "level": "hard",
+      "seed": 4,
+      "slot": 1,
+      "coverage": {
+        "originalRecorded": true,
+        "originalBaselineTicks": [
+          2
+        ],
+        "originalFromMatchStart": false,
+        "nativeEvents": 106,
+        "originalEvents": 97,
+        "observedEvents": 106,
+        "originalEventsWithoutRuntimeAlias": 8
+      }
+    },
+    {
+      "mode": "conquest",
+      "level": "hard",
+      "seed": 4,
+      "slot": 2,
+      "coverage": {
+        "originalRecorded": true,
+        "originalBaselineTicks": [
+          2
+        ],
+        "originalFromMatchStart": false,
+        "nativeEvents": 101,
+        "originalEvents": 87,
+        "observedEvents": 101,
+        "originalEventsWithoutRuntimeAlias": 3
+      }
+    },
+    {
+      "mode": "conquest",
+      "level": "hard",
+      "seed": 5,
+      "slot": 0,
+      "coverage": {
+        "originalRecorded": true,
+        "originalBaselineTicks": [
+          2
+        ],
+        "originalFromMatchStart": false,
+        "nativeEvents": 85,
+        "originalEvents": 72,
+        "observedEvents": 85,
+        "originalEventsWithoutRuntimeAlias": 3
+      }
+    },
+    {
+      "mode": "conquest",
+      "level": "hard",
+      "seed": 5,
+      "slot": 1,
+      "coverage": {
+        "originalRecorded": true,
+        "originalBaselineTicks": [
+          2
+        ],
+        "originalFromMatchStart": false,
+        "nativeEvents": 105,
+        "originalEvents": 95,
+        "observedEvents": 105,
+        "originalEventsWithoutRuntimeAlias": 7
+      }
+    },
+    {
+      "mode": "conquest",
+      "level": "hard",
+      "seed": 5,
+      "slot": 2,
+      "coverage": {
+        "originalRecorded": true,
+        "originalBaselineTicks": [
+          2
+        ],
+        "originalFromMatchStart": false,
+        "nativeEvents": 103,
+        "originalEvents": 93,
+        "observedEvents": 103,
+        "originalEventsWithoutRuntimeAlias": 11
+      }
+    },
+    {
+      "mode": "conquest",
+      "level": "hard",
+      "seed": 6,
+      "slot": 0,
+      "coverage": {
+        "originalRecorded": true,
+        "originalBaselineTicks": [
+          2
+        ],
+        "originalFromMatchStart": false,
+        "nativeEvents": 100,
+        "originalEvents": 91,
+        "observedEvents": 99,
+        "originalEventsWithoutRuntimeAlias": 2
+      }
+    },
+    {
+      "mode": "conquest",
+      "level": "hard",
+      "seed": 6,
+      "slot": 1,
+      "coverage": {
+        "originalRecorded": true,
+        "originalBaselineTicks": [
+          2
+        ],
+        "originalFromMatchStart": false,
+        "nativeEvents": 78,
+        "originalEvents": 72,
+        "observedEvents": 78,
+        "originalEventsWithoutRuntimeAlias": 6
+      }
+    },
+    {
+      "mode": "conquest",
+      "level": "hard",
+      "seed": 6,
+      "slot": 2,
+      "coverage": {
+        "originalRecorded": true,
+        "originalBaselineTicks": [
+          2
+        ],
+        "originalFromMatchStart": false,
+        "nativeEvents": 91,
+        "originalEvents": 83,
+        "observedEvents": 91,
+        "originalEventsWithoutRuntimeAlias": 4
+      }
+    },
+    {
+      "mode": "conquest",
+      "level": "hard",
+      "seed": 7,
+      "slot": 0,
+      "coverage": {
+        "originalRecorded": true,
+        "originalBaselineTicks": [
+          2
+        ],
+        "originalFromMatchStart": false,
+        "nativeEvents": 78,
+        "originalEvents": 71,
+        "observedEvents": 78,
+        "originalEventsWithoutRuntimeAlias": 6
+      }
+    },
+    {
+      "mode": "conquest",
+      "level": "hard",
+      "seed": 7,
+      "slot": 1,
+      "coverage": {
+        "originalRecorded": true,
+        "originalBaselineTicks": [
+          2
+        ],
+        "originalFromMatchStart": false,
+        "nativeEvents": 75,
+        "originalEvents": 63,
+        "observedEvents": 75,
+        "originalEventsWithoutRuntimeAlias": 3
+      }
+    },
+    {
+      "mode": "conquest",
+      "level": "hard",
+      "seed": 7,
+      "slot": 2,
+      "coverage": {
+        "originalRecorded": true,
+        "originalBaselineTicks": [
+          2
+        ],
+        "originalFromMatchStart": false,
+        "nativeEvents": 71,
+        "originalEvents": 65,
+        "observedEvents": 71,
+        "originalEventsWithoutRuntimeAlias": 2
+      }
+    },
+    {
+      "mode": "conquest",
+      "level": "hard",
+      "seed": 8,
+      "slot": 0,
+      "coverage": {
+        "originalRecorded": true,
+        "originalBaselineTicks": [
+          2
+        ],
+        "originalFromMatchStart": false,
+        "nativeEvents": 86,
+        "originalEvents": 76,
+        "observedEvents": 86,
+        "originalEventsWithoutRuntimeAlias": 3
+      }
+    },
+    {
+      "mode": "conquest",
+      "level": "hard",
+      "seed": 8,
+      "slot": 1,
+      "coverage": {
+        "originalRecorded": true,
+        "originalBaselineTicks": [
+          2
+        ],
+        "originalFromMatchStart": false,
+        "nativeEvents": 103,
+        "originalEvents": 93,
+        "observedEvents": 103,
+        "originalEventsWithoutRuntimeAlias": 9
+      }
+    },
+    {
+      "mode": "conquest",
+      "level": "hard",
+      "seed": 8,
+      "slot": 2,
+      "coverage": {
+        "originalRecorded": true,
+        "originalBaselineTicks": [
+          2
+        ],
+        "originalFromMatchStart": false,
+        "nativeEvents": 89,
+        "originalEvents": 77,
+        "observedEvents": 89,
+        "originalEventsWithoutRuntimeAlias": 5
+      }
+    },
+    {
+      "mode": "conquest",
+      "level": "hard",
+      "seed": 9,
+      "slot": 0,
+      "coverage": {
+        "originalRecorded": true,
+        "originalBaselineTicks": [
+          2
+        ],
+        "originalFromMatchStart": false,
+        "nativeEvents": 75,
+        "originalEvents": 68,
+        "observedEvents": 75,
+        "originalEventsWithoutRuntimeAlias": 4
+      }
+    },
+    {
+      "mode": "conquest",
+      "level": "hard",
+      "seed": 9,
+      "slot": 1,
+      "coverage": {
+        "originalRecorded": true,
+        "originalBaselineTicks": [
+          2
+        ],
+        "originalFromMatchStart": false,
+        "nativeEvents": 97,
+        "originalEvents": 86,
+        "observedEvents": 97,
+        "originalEventsWithoutRuntimeAlias": 3
+      }
+    },
+    {
+      "mode": "conquest",
+      "level": "hard",
+      "seed": 9,
+      "slot": 2,
+      "coverage": {
+        "originalRecorded": true,
+        "originalBaselineTicks": [
+          2
+        ],
+        "originalFromMatchStart": false,
+        "nativeEvents": 90,
+        "originalEvents": 78,
+        "observedEvents": 90,
+        "originalEventsWithoutRuntimeAlias": 2
+      }
+    },
+    {
+      "mode": "conquest",
+      "level": "hard",
+      "seed": 10,
+      "slot": 0,
+      "coverage": {
+        "originalRecorded": true,
+        "originalBaselineTicks": [
+          2
+        ],
+        "originalFromMatchStart": false,
+        "nativeEvents": 110,
+        "originalEvents": 101,
+        "observedEvents": 110,
+        "originalEventsWithoutRuntimeAlias": 8
+      }
+    },
+    {
+      "mode": "conquest",
+      "level": "hard",
+      "seed": 10,
+      "slot": 1,
+      "coverage": {
+        "originalRecorded": true,
+        "originalBaselineTicks": [
+          2
+        ],
+        "originalFromMatchStart": false,
+        "nativeEvents": 88,
+        "originalEvents": 81,
+        "observedEvents": 88,
+        "originalEventsWithoutRuntimeAlias": 4
+      }
+    },
+    {
+      "mode": "conquest",
+      "level": "hard",
+      "seed": 10,
+      "slot": 2,
+      "coverage": {
+        "originalRecorded": true,
+        "originalBaselineTicks": [
+          2
+        ],
+        "originalFromMatchStart": false,
+        "nativeEvents": 97,
+        "originalEvents": 87,
+        "observedEvents": 97,
+        "originalEventsWithoutRuntimeAlias": 3
+      }
+    },
+    {
+      "mode": "conquest",
+      "level": "hard",
+      "seed": 11,
+      "slot": 0,
+      "coverage": {
+        "originalRecorded": true,
+        "originalBaselineTicks": [
+          2
+        ],
+        "originalFromMatchStart": false,
+        "nativeEvents": 118,
+        "originalEvents": 101,
+        "observedEvents": 118,
+        "originalEventsWithoutRuntimeAlias": 3
+      }
+    },
+    {
+      "mode": "conquest",
+      "level": "hard",
+      "seed": 11,
+      "slot": 1,
+      "coverage": {
+        "originalRecorded": true,
+        "originalBaselineTicks": [
+          2
+        ],
+        "originalFromMatchStart": false,
+        "nativeEvents": 97,
+        "originalEvents": 87,
+        "observedEvents": 97,
+        "originalEventsWithoutRuntimeAlias": 8
+      }
+    },
+    {
+      "mode": "conquest",
+      "level": "hard",
+      "seed": 11,
+      "slot": 2,
+      "coverage": {
+        "originalRecorded": true,
+        "originalBaselineTicks": [
+          2
+        ],
+        "originalFromMatchStart": false,
+        "nativeEvents": 100,
+        "originalEvents": 89,
+        "observedEvents": 100,
+        "originalEventsWithoutRuntimeAlias": 4
+      }
+    },
+    {
+      "mode": "conquest",
+      "level": "hard",
+      "seed": 12,
+      "slot": 0,
+      "coverage": {
+        "originalRecorded": true,
+        "originalBaselineTicks": [
+          2
+        ],
+        "originalFromMatchStart": false,
+        "nativeEvents": 95,
+        "originalEvents": 85,
+        "observedEvents": 95,
+        "originalEventsWithoutRuntimeAlias": 2
+      }
+    },
+    {
+      "mode": "conquest",
+      "level": "hard",
+      "seed": 12,
+      "slot": 1,
+      "coverage": {
+        "originalRecorded": true,
+        "originalBaselineTicks": [
+          2
+        ],
+        "originalFromMatchStart": false,
+        "nativeEvents": 79,
+        "originalEvents": 68,
+        "observedEvents": 78,
+        "originalEventsWithoutRuntimeAlias": 4
+      }
+    },
+    {
+      "mode": "conquest",
+      "level": "hard",
+      "seed": 12,
+      "slot": 2,
+      "coverage": {
+        "originalRecorded": true,
+        "originalBaselineTicks": [
+          2
+        ],
+        "originalFromMatchStart": false,
+        "nativeEvents": 64,
+        "originalEvents": 54,
+        "observedEvents": 64,
+        "originalEventsWithoutRuntimeAlias": 1
+      }
+    },
+    {
+      "mode": "conquest",
+      "level": "hard",
+      "seed": 13,
+      "slot": 0,
+      "coverage": {
+        "originalRecorded": true,
+        "originalBaselineTicks": [
+          2
+        ],
+        "originalFromMatchStart": false,
+        "nativeEvents": 80,
+        "originalEvents": 70,
+        "observedEvents": 80,
+        "originalEventsWithoutRuntimeAlias": 2
+      }
+    },
+    {
+      "mode": "conquest",
+      "level": "hard",
+      "seed": 13,
+      "slot": 1,
+      "coverage": {
+        "originalRecorded": true,
+        "originalBaselineTicks": [
+          2
+        ],
+        "originalFromMatchStart": false,
+        "nativeEvents": 82,
+        "originalEvents": 76,
+        "observedEvents": 82,
+        "originalEventsWithoutRuntimeAlias": 6
+      }
+    },
+    {
+      "mode": "conquest",
+      "level": "hard",
+      "seed": 13,
+      "slot": 2,
+      "coverage": {
+        "originalRecorded": true,
+        "originalBaselineTicks": [
+          2
+        ],
+        "originalFromMatchStart": false,
+        "nativeEvents": 94,
+        "originalEvents": 84,
+        "observedEvents": 93,
+        "originalEventsWithoutRuntimeAlias": 4
+      }
+    },
+    {
+      "mode": "conquest",
+      "level": "hard",
+      "seed": 14,
+      "slot": 0,
+      "coverage": {
+        "originalRecorded": true,
+        "originalBaselineTicks": [
+          2
+        ],
+        "originalFromMatchStart": false,
+        "nativeEvents": 103,
+        "originalEvents": 90,
+        "observedEvents": 103,
+        "originalEventsWithoutRuntimeAlias": 7
+      }
+    },
+    {
+      "mode": "conquest",
+      "level": "hard",
+      "seed": 14,
+      "slot": 1,
+      "coverage": {
+        "originalRecorded": true,
+        "originalBaselineTicks": [
+          2
+        ],
+        "originalFromMatchStart": false,
+        "nativeEvents": 84,
+        "originalEvents": 75,
+        "observedEvents": 84,
+        "originalEventsWithoutRuntimeAlias": 3
+      }
+    },
+    {
+      "mode": "conquest",
+      "level": "hard",
+      "seed": 14,
+      "slot": 2,
+      "coverage": {
+        "originalRecorded": true,
+        "originalBaselineTicks": [
+          2
+        ],
+        "originalFromMatchStart": false,
+        "nativeEvents": 109,
+        "originalEvents": 92,
+        "observedEvents": 109,
+        "originalEventsWithoutRuntimeAlias": 3
+      }
+    },
+    {
+      "mode": "conquest",
+      "level": "hard",
+      "seed": 15,
+      "slot": 0,
+      "coverage": {
+        "originalRecorded": true,
+        "originalBaselineTicks": [
+          2
+        ],
+        "originalFromMatchStart": false,
+        "nativeEvents": 81,
+        "originalEvents": 75,
+        "observedEvents": 81,
+        "originalEventsWithoutRuntimeAlias": 5
+      }
+    },
+    {
+      "mode": "conquest",
+      "level": "hard",
+      "seed": 15,
+      "slot": 1,
+      "coverage": {
+        "originalRecorded": true,
+        "originalBaselineTicks": [
+          2
+        ],
+        "originalFromMatchStart": false,
+        "nativeEvents": 88,
+        "originalEvents": 79,
+        "observedEvents": 88,
+        "originalEventsWithoutRuntimeAlias": 10
+      }
+    },
+    {
+      "mode": "conquest",
+      "level": "hard",
+      "seed": 15,
+      "slot": 2,
+      "coverage": {
+        "originalRecorded": true,
+        "originalBaselineTicks": [
+          2
+        ],
+        "originalFromMatchStart": false,
+        "nativeEvents": 92,
+        "originalEvents": 83,
+        "observedEvents": 92,
+        "originalEventsWithoutRuntimeAlias": 3
+      }
+    },
+    {
+      "mode": "conquest",
+      "level": "hard",
+      "seed": 16,
+      "slot": 0,
+      "coverage": {
+        "originalRecorded": true,
+        "originalBaselineTicks": [
+          2
+        ],
+        "originalFromMatchStart": false,
+        "nativeEvents": 90,
+        "originalEvents": 72,
+        "observedEvents": 89,
+        "originalEventsWithoutRuntimeAlias": 5
+      }
+    },
+    {
+      "mode": "conquest",
+      "level": "hard",
+      "seed": 16,
+      "slot": 1,
+      "coverage": {
+        "originalRecorded": true,
+        "originalBaselineTicks": [
+          2
+        ],
+        "originalFromMatchStart": false,
+        "nativeEvents": 87,
+        "originalEvents": 79,
+        "observedEvents": 87,
+        "originalEventsWithoutRuntimeAlias": 6
+      }
+    },
+    {
+      "mode": "conquest",
+      "level": "hard",
+      "seed": 16,
+      "slot": 2,
+      "coverage": {
+        "originalRecorded": true,
+        "originalBaselineTicks": [
+          2
+        ],
+        "originalFromMatchStart": false,
+        "nativeEvents": 89,
+        "originalEvents": 77,
+        "observedEvents": 89,
+        "originalEventsWithoutRuntimeAlias": 1
+      }
+    },
+    {
+      "mode": "conquest",
+      "level": "hard",
+      "seed": 17,
+      "slot": 0,
+      "coverage": {
+        "originalRecorded": true,
+        "originalBaselineTicks": [
+          2
+        ],
+        "originalFromMatchStart": false,
+        "nativeEvents": 102,
+        "originalEvents": 89,
+        "observedEvents": 102,
+        "originalEventsWithoutRuntimeAlias": 5
+      }
+    },
+    {
+      "mode": "conquest",
+      "level": "hard",
+      "seed": 17,
+      "slot": 1,
+      "coverage": {
+        "originalRecorded": true,
+        "originalBaselineTicks": [
+          2
+        ],
+        "originalFromMatchStart": false,
+        "nativeEvents": 103,
+        "originalEvents": 93,
+        "observedEvents": 103,
+        "originalEventsWithoutRuntimeAlias": 5
+      }
+    },
+    {
+      "mode": "conquest",
+      "level": "hard",
+      "seed": 17,
+      "slot": 2,
+      "coverage": {
+        "originalRecorded": true,
+        "originalBaselineTicks": [
+          2
+        ],
+        "originalFromMatchStart": false,
+        "nativeEvents": 91,
+        "originalEvents": 83,
+        "observedEvents": 91,
+        "originalEventsWithoutRuntimeAlias": 2
+      }
+    },
+    {
+      "mode": "conquest",
+      "level": "hard",
+      "seed": 18,
+      "slot": 0,
+      "coverage": {
+        "originalRecorded": true,
+        "originalBaselineTicks": [
+          2
+        ],
+        "originalFromMatchStart": false,
+        "nativeEvents": 113,
+        "originalEvents": 102,
+        "observedEvents": 113,
+        "originalEventsWithoutRuntimeAlias": 5
+      }
+    },
+    {
+      "mode": "conquest",
+      "level": "hard",
+      "seed": 18,
+      "slot": 1,
+      "coverage": {
+        "originalRecorded": true,
+        "originalBaselineTicks": [
+          2
+        ],
+        "originalFromMatchStart": false,
+        "nativeEvents": 125,
+        "originalEvents": 112,
+        "observedEvents": 125,
+        "originalEventsWithoutRuntimeAlias": 6
+      }
+    },
+    {
+      "mode": "conquest",
+      "level": "hard",
+      "seed": 18,
+      "slot": 2,
+      "coverage": {
+        "originalRecorded": true,
+        "originalBaselineTicks": [
+          2
+        ],
+        "originalFromMatchStart": false,
+        "nativeEvents": 93,
+        "originalEvents": 82,
+        "observedEvents": 93,
+        "originalEventsWithoutRuntimeAlias": 7
+      }
+    },
+    {
+      "mode": "conquest",
+      "level": "hard",
+      "seed": 19,
+      "slot": 0,
+      "coverage": {
+        "originalRecorded": true,
+        "originalBaselineTicks": [
+          2
+        ],
+        "originalFromMatchStart": false,
+        "nativeEvents": 95,
+        "originalEvents": 87,
+        "observedEvents": 95,
+        "originalEventsWithoutRuntimeAlias": 3
+      }
+    },
+    {
+      "mode": "conquest",
+      "level": "hard",
+      "seed": 19,
+      "slot": 1,
+      "coverage": {
+        "originalRecorded": true,
+        "originalBaselineTicks": [
+          2
+        ],
+        "originalFromMatchStart": false,
+        "nativeEvents": 94,
+        "originalEvents": 81,
+        "observedEvents": 94,
+        "originalEventsWithoutRuntimeAlias": 5
+      }
+    },
+    {
+      "mode": "conquest",
+      "level": "hard",
+      "seed": 19,
+      "slot": 2,
+      "coverage": {
+        "originalRecorded": true,
+        "originalBaselineTicks": [
+          2
+        ],
+        "originalFromMatchStart": false,
+        "nativeEvents": 116,
+        "originalEvents": 105,
+        "observedEvents": 116,
+        "originalEventsWithoutRuntimeAlias": 7
+      }
+    },
+    {
+      "mode": "conquest",
+      "level": "hard",
+      "seed": 20,
+      "slot": 0,
+      "coverage": {
+        "originalRecorded": true,
+        "originalBaselineTicks": [
+          2
+        ],
+        "originalFromMatchStart": false,
+        "nativeEvents": 109,
+        "originalEvents": 96,
+        "observedEvents": 109,
+        "originalEventsWithoutRuntimeAlias": 6
+      }
+    },
+    {
+      "mode": "conquest",
+      "level": "hard",
+      "seed": 20,
+      "slot": 1,
+      "coverage": {
+        "originalRecorded": true,
+        "originalBaselineTicks": [
+          2
+        ],
+        "originalFromMatchStart": false,
+        "nativeEvents": 87,
+        "originalEvents": 73,
+        "observedEvents": 86,
+        "originalEventsWithoutRuntimeAlias": 1
+      }
+    },
+    {
+      "mode": "conquest",
+      "level": "hard",
+      "seed": 20,
+      "slot": 2,
+      "coverage": {
+        "originalRecorded": true,
+        "originalBaselineTicks": [
+          2
+        ],
+        "originalFromMatchStart": false,
+        "nativeEvents": 93,
+        "originalEvents": 79,
+        "observedEvents": 93,
+        "originalEventsWithoutRuntimeAlias": 3
+      }
+    },
+    {
+      "mode": "classic",
+      "level": "easy",
+      "seed": 1,
+      "slot": 0,
+      "coverage": {
+        "originalRecorded": true,
+        "originalBaselineTicks": [
+          2
+        ],
+        "originalFromMatchStart": false,
+        "nativeEvents": 55,
+        "originalEvents": 43,
+        "observedEvents": 55,
+        "originalEventsWithoutRuntimeAlias": 0
+      }
+    },
+    {
+      "mode": "classic",
+      "level": "easy",
+      "seed": 1,
+      "slot": 1,
+      "coverage": {
+        "originalRecorded": true,
+        "originalBaselineTicks": [
+          2
+        ],
+        "originalFromMatchStart": false,
+        "nativeEvents": 83,
+        "originalEvents": 67,
+        "observedEvents": 81,
+        "originalEventsWithoutRuntimeAlias": 7
+      }
+    },
+    {
+      "mode": "classic",
+      "level": "easy",
+      "seed": 1,
+      "slot": 2,
+      "coverage": {
+        "originalRecorded": true,
+        "originalBaselineTicks": [
+          2
+        ],
+        "originalFromMatchStart": false,
+        "nativeEvents": 53,
+        "originalEvents": 46,
+        "observedEvents": 53,
+        "originalEventsWithoutRuntimeAlias": 2
+      }
+    },
+    {
+      "mode": "classic",
+      "level": "easy",
+      "seed": 2,
+      "slot": 0,
+      "coverage": {
+        "originalRecorded": true,
+        "originalBaselineTicks": [
+          2
+        ],
+        "originalFromMatchStart": false,
+        "nativeEvents": 61,
+        "originalEvents": 48,
+        "observedEvents": 59,
+        "originalEventsWithoutRuntimeAlias": 3
+      }
+    },
+    {
+      "mode": "classic",
+      "level": "easy",
+      "seed": 2,
+      "slot": 1,
+      "coverage": {
+        "originalRecorded": true,
+        "originalBaselineTicks": [
+          2
+        ],
+        "originalFromMatchStart": false,
+        "nativeEvents": 49,
+        "originalEvents": 33,
+        "observedEvents": 49,
+        "originalEventsWithoutRuntimeAlias": 1
+      }
+    },
+    {
+      "mode": "classic",
+      "level": "easy",
+      "seed": 2,
+      "slot": 2,
+      "coverage": {
+        "originalRecorded": true,
+        "originalBaselineTicks": [
+          2
+        ],
+        "originalFromMatchStart": false,
+        "nativeEvents": 66,
+        "originalEvents": 54,
+        "observedEvents": 66,
+        "originalEventsWithoutRuntimeAlias": 7
+      }
+    },
+    {
+      "mode": "classic",
+      "level": "easy",
+      "seed": 3,
+      "slot": 0,
+      "coverage": {
+        "originalRecorded": true,
+        "originalBaselineTicks": [
+          2
+        ],
+        "originalFromMatchStart": false,
+        "nativeEvents": 65,
+        "originalEvents": 52,
+        "observedEvents": 65,
+        "originalEventsWithoutRuntimeAlias": 7
+      }
+    },
+    {
+      "mode": "classic",
+      "level": "easy",
+      "seed": 3,
+      "slot": 1,
+      "coverage": {
+        "originalRecorded": true,
+        "originalBaselineTicks": [
+          2
+        ],
+        "originalFromMatchStart": false,
+        "nativeEvents": 55,
+        "originalEvents": 48,
+        "observedEvents": 55,
+        "originalEventsWithoutRuntimeAlias": 3
+      }
+    },
+    {
+      "mode": "classic",
+      "level": "easy",
+      "seed": 3,
+      "slot": 2,
+      "coverage": {
+        "originalRecorded": true,
+        "originalBaselineTicks": [
+          2
+        ],
+        "originalFromMatchStart": false,
+        "nativeEvents": 47,
+        "originalEvents": 39,
+        "observedEvents": 45,
+        "originalEventsWithoutRuntimeAlias": 2
+      }
+    },
+    {
+      "mode": "classic",
+      "level": "easy",
+      "seed": 4,
+      "slot": 0,
+      "coverage": {
+        "originalRecorded": true,
+        "originalBaselineTicks": [
+          2
+        ],
+        "originalFromMatchStart": false,
+        "nativeEvents": 37,
+        "originalEvents": 29,
+        "observedEvents": 37,
+        "originalEventsWithoutRuntimeAlias": 0
+      }
+    },
+    {
+      "mode": "classic",
+      "level": "easy",
+      "seed": 4,
+      "slot": 1,
+      "coverage": {
+        "originalRecorded": true,
+        "originalBaselineTicks": [
+          2
+        ],
+        "originalFromMatchStart": false,
+        "nativeEvents": 53,
+        "originalEvents": 44,
+        "observedEvents": 52,
+        "originalEventsWithoutRuntimeAlias": 0
+      }
+    },
+    {
+      "mode": "classic",
+      "level": "easy",
+      "seed": 4,
+      "slot": 2,
+      "coverage": {
+        "originalRecorded": true,
+        "originalBaselineTicks": [
+          2
+        ],
+        "originalFromMatchStart": false,
+        "nativeEvents": 43,
+        "originalEvents": 34,
+        "observedEvents": 42,
+        "originalEventsWithoutRuntimeAlias": 1
+      }
+    },
+    {
+      "mode": "classic",
+      "level": "easy",
+      "seed": 5,
+      "slot": 0,
+      "coverage": {
+        "originalRecorded": true,
+        "originalBaselineTicks": [
+          2
+        ],
+        "originalFromMatchStart": false,
+        "nativeEvents": 54,
+        "originalEvents": 50,
+        "observedEvents": 54,
+        "originalEventsWithoutRuntimeAlias": 6
+      }
+    },
+    {
+      "mode": "classic",
+      "level": "easy",
+      "seed": 5,
+      "slot": 1,
+      "coverage": {
+        "originalRecorded": true,
+        "originalBaselineTicks": [
+          2
+        ],
+        "originalFromMatchStart": false,
+        "nativeEvents": 80,
+        "originalEvents": 69,
+        "observedEvents": 80,
+        "originalEventsWithoutRuntimeAlias": 2
+      }
+    },
+    {
+      "mode": "classic",
+      "level": "easy",
+      "seed": 5,
+      "slot": 2,
+      "coverage": {
+        "originalRecorded": true,
+        "originalBaselineTicks": [
+          2
+        ],
+        "originalFromMatchStart": false,
+        "nativeEvents": 63,
+        "originalEvents": 56,
+        "observedEvents": 63,
+        "originalEventsWithoutRuntimeAlias": 1
+      }
+    },
+    {
+      "mode": "classic",
+      "level": "easy",
+      "seed": 6,
+      "slot": 0,
+      "coverage": {
+        "originalRecorded": true,
+        "originalBaselineTicks": [
+          2
+        ],
+        "originalFromMatchStart": false,
+        "nativeEvents": 36,
+        "originalEvents": 32,
+        "observedEvents": 36,
+        "originalEventsWithoutRuntimeAlias": 2
+      }
+    },
+    {
+      "mode": "classic",
+      "level": "easy",
+      "seed": 6,
+      "slot": 1,
+      "coverage": {
+        "originalRecorded": true,
+        "originalBaselineTicks": [
+          2
+        ],
+        "originalFromMatchStart": false,
+        "nativeEvents": 35,
+        "originalEvents": 30,
+        "observedEvents": 35,
+        "originalEventsWithoutRuntimeAlias": 0
+      }
+    },
+    {
+      "mode": "classic",
+      "level": "easy",
+      "seed": 6,
+      "slot": 2,
+      "coverage": {
+        "originalRecorded": true,
+        "originalBaselineTicks": [
+          2
+        ],
+        "originalFromMatchStart": false,
+        "nativeEvents": 62,
+        "originalEvents": 50,
+        "observedEvents": 62,
+        "originalEventsWithoutRuntimeAlias": 5
+      }
+    },
+    {
+      "mode": "classic",
+      "level": "easy",
+      "seed": 7,
+      "slot": 0,
+      "coverage": {
+        "originalRecorded": true,
+        "originalBaselineTicks": [
+          2
+        ],
+        "originalFromMatchStart": false,
+        "nativeEvents": 42,
+        "originalEvents": 33,
+        "observedEvents": 41,
+        "originalEventsWithoutRuntimeAlias": 2
+      }
+    },
+    {
+      "mode": "classic",
+      "level": "easy",
+      "seed": 7,
+      "slot": 1,
+      "coverage": {
+        "originalRecorded": true,
+        "originalBaselineTicks": [
+          2
+        ],
+        "originalFromMatchStart": false,
+        "nativeEvents": 62,
+        "originalEvents": 54,
+        "observedEvents": 61,
+        "originalEventsWithoutRuntimeAlias": 5
+      }
+    },
+    {
+      "mode": "classic",
+      "level": "easy",
+      "seed": 7,
+      "slot": 2,
+      "coverage": {
+        "originalRecorded": true,
+        "originalBaselineTicks": [
+          2
+        ],
+        "originalFromMatchStart": false,
+        "nativeEvents": 49,
+        "originalEvents": 38,
+        "observedEvents": 48,
+        "originalEventsWithoutRuntimeAlias": 1
+      }
+    },
+    {
+      "mode": "classic",
+      "level": "easy",
+      "seed": 8,
+      "slot": 0,
+      "coverage": {
+        "originalRecorded": true,
+        "originalBaselineTicks": [
+          2
+        ],
+        "originalFromMatchStart": false,
+        "nativeEvents": 60,
+        "originalEvents": 55,
+        "observedEvents": 60,
+        "originalEventsWithoutRuntimeAlias": 7
+      }
+    },
+    {
+      "mode": "classic",
+      "level": "easy",
+      "seed": 8,
+      "slot": 1,
+      "coverage": {
+        "originalRecorded": true,
+        "originalBaselineTicks": [
+          2
+        ],
+        "originalFromMatchStart": false,
+        "nativeEvents": 53,
+        "originalEvents": 45,
+        "observedEvents": 52,
+        "originalEventsWithoutRuntimeAlias": 3
+      }
+    },
+    {
+      "mode": "classic",
+      "level": "easy",
+      "seed": 8,
+      "slot": 2,
+      "coverage": {
+        "originalRecorded": true,
+        "originalBaselineTicks": [
+          2
+        ],
+        "originalFromMatchStart": false,
+        "nativeEvents": 38,
+        "originalEvents": 29,
+        "observedEvents": 38,
+        "originalEventsWithoutRuntimeAlias": 0
+      }
+    },
+    {
+      "mode": "classic",
+      "level": "easy",
+      "seed": 9,
+      "slot": 0,
+      "coverage": {
+        "originalRecorded": true,
+        "originalBaselineTicks": [
+          2
+        ],
+        "originalFromMatchStart": false,
+        "nativeEvents": 44,
+        "originalEvents": 38,
+        "observedEvents": 44,
+        "originalEventsWithoutRuntimeAlias": 2
+      }
+    },
+    {
+      "mode": "classic",
+      "level": "easy",
+      "seed": 9,
+      "slot": 1,
+      "coverage": {
+        "originalRecorded": true,
+        "originalBaselineTicks": [
+          2
+        ],
+        "originalFromMatchStart": false,
+        "nativeEvents": 54,
+        "originalEvents": 45,
+        "observedEvents": 52,
+        "originalEventsWithoutRuntimeAlias": 2
+      }
+    },
+    {
+      "mode": "classic",
+      "level": "easy",
+      "seed": 9,
+      "slot": 2,
+      "coverage": {
+        "originalRecorded": true,
+        "originalBaselineTicks": [
+          2
+        ],
+        "originalFromMatchStart": false,
+        "nativeEvents": 62,
+        "originalEvents": 53,
+        "observedEvents": 62,
+        "originalEventsWithoutRuntimeAlias": 1
+      }
+    },
+    {
+      "mode": "classic",
+      "level": "easy",
+      "seed": 10,
+      "slot": 0,
+      "coverage": {
+        "originalRecorded": true,
+        "originalBaselineTicks": [
+          2
+        ],
+        "originalFromMatchStart": false,
+        "nativeEvents": 49,
+        "originalEvents": 42,
+        "observedEvents": 49,
+        "originalEventsWithoutRuntimeAlias": 3
+      }
+    },
+    {
+      "mode": "classic",
+      "level": "easy",
+      "seed": 10,
+      "slot": 1,
+      "coverage": {
+        "originalRecorded": true,
+        "originalBaselineTicks": [
+          2
+        ],
+        "originalFromMatchStart": false,
+        "nativeEvents": 57,
+        "originalEvents": 47,
+        "observedEvents": 56,
+        "originalEventsWithoutRuntimeAlias": 1
+      }
+    },
+    {
+      "mode": "classic",
+      "level": "easy",
+      "seed": 10,
+      "slot": 2,
+      "coverage": {
+        "originalRecorded": true,
+        "originalBaselineTicks": [
+          2
+        ],
+        "originalFromMatchStart": false,
+        "nativeEvents": 52,
+        "originalEvents": 44,
+        "observedEvents": 51,
+        "originalEventsWithoutRuntimeAlias": 4
+      }
+    },
+    {
+      "mode": "classic",
+      "level": "normal",
+      "seed": 1,
+      "slot": 0,
+      "coverage": {
+        "originalRecorded": true,
+        "originalBaselineTicks": [
+          2
+        ],
+        "originalFromMatchStart": false,
+        "nativeEvents": 47,
+        "originalEvents": 39,
+        "observedEvents": 47,
+        "originalEventsWithoutRuntimeAlias": 2
+      }
+    },
+    {
+      "mode": "classic",
+      "level": "normal",
+      "seed": 1,
+      "slot": 1,
+      "coverage": {
+        "originalRecorded": true,
+        "originalBaselineTicks": [
+          2
+        ],
+        "originalFromMatchStart": false,
+        "nativeEvents": 64,
+        "originalEvents": 57,
+        "observedEvents": 64,
+        "originalEventsWithoutRuntimeAlias": 3
+      }
+    },
+    {
+      "mode": "classic",
+      "level": "normal",
+      "seed": 1,
+      "slot": 2,
+      "coverage": {
+        "originalRecorded": true,
+        "originalBaselineTicks": [
+          2
+        ],
+        "originalFromMatchStart": false,
+        "nativeEvents": 65,
+        "originalEvents": 58,
+        "observedEvents": 65,
+        "originalEventsWithoutRuntimeAlias": 1
+      }
+    },
+    {
+      "mode": "classic",
+      "level": "normal",
+      "seed": 2,
+      "slot": 0,
+      "coverage": {
+        "originalRecorded": true,
+        "originalBaselineTicks": [
+          2
+        ],
+        "originalFromMatchStart": false,
+        "nativeEvents": 49,
+        "originalEvents": 40,
+        "observedEvents": 49,
+        "originalEventsWithoutRuntimeAlias": 1
+      }
+    },
+    {
+      "mode": "classic",
+      "level": "normal",
+      "seed": 2,
+      "slot": 1,
+      "coverage": {
+        "originalRecorded": true,
+        "originalBaselineTicks": [
+          2
+        ],
+        "originalFromMatchStart": false,
+        "nativeEvents": 63,
+        "originalEvents": 60,
+        "observedEvents": 63,
+        "originalEventsWithoutRuntimeAlias": 4
+      }
+    },
+    {
+      "mode": "classic",
+      "level": "normal",
+      "seed": 2,
+      "slot": 2,
+      "coverage": {
+        "originalRecorded": true,
+        "originalBaselineTicks": [
+          2
+        ],
+        "originalFromMatchStart": false,
+        "nativeEvents": 57,
+        "originalEvents": 51,
+        "observedEvents": 57,
+        "originalEventsWithoutRuntimeAlias": 1
+      }
+    },
+    {
+      "mode": "classic",
+      "level": "normal",
+      "seed": 3,
+      "slot": 0,
+      "coverage": {
+        "originalRecorded": true,
+        "originalBaselineTicks": [
+          2
+        ],
+        "originalFromMatchStart": false,
+        "nativeEvents": 83,
+        "originalEvents": 76,
+        "observedEvents": 82,
+        "originalEventsWithoutRuntimeAlias": 7
+      }
+    },
+    {
+      "mode": "classic",
+      "level": "normal",
+      "seed": 3,
+      "slot": 1,
+      "coverage": {
+        "originalRecorded": true,
+        "originalBaselineTicks": [
+          2
+        ],
+        "originalFromMatchStart": false,
+        "nativeEvents": 57,
+        "originalEvents": 48,
+        "observedEvents": 57,
+        "originalEventsWithoutRuntimeAlias": 0
+      }
+    },
+    {
+      "mode": "classic",
+      "level": "normal",
+      "seed": 3,
+      "slot": 2,
+      "coverage": {
+        "originalRecorded": true,
+        "originalBaselineTicks": [
+          2
+        ],
+        "originalFromMatchStart": false,
+        "nativeEvents": 71,
+        "originalEvents": 64,
+        "observedEvents": 70,
+        "originalEventsWithoutRuntimeAlias": 8
+      }
+    },
+    {
+      "mode": "classic",
+      "level": "normal",
+      "seed": 4,
+      "slot": 0,
+      "coverage": {
+        "originalRecorded": true,
+        "originalBaselineTicks": [
+          2
+        ],
+        "originalFromMatchStart": false,
+        "nativeEvents": 72,
+        "originalEvents": 61,
+        "observedEvents": 72,
+        "originalEventsWithoutRuntimeAlias": 2
+      }
+    },
+    {
+      "mode": "classic",
+      "level": "normal",
+      "seed": 4,
+      "slot": 1,
+      "coverage": {
+        "originalRecorded": true,
+        "originalBaselineTicks": [
+          2
+        ],
+        "originalFromMatchStart": false,
+        "nativeEvents": 90,
+        "originalEvents": 86,
+        "observedEvents": 90,
+        "originalEventsWithoutRuntimeAlias": 4
+      }
+    },
+    {
+      "mode": "classic",
+      "level": "normal",
+      "seed": 4,
+      "slot": 2,
+      "coverage": {
+        "originalRecorded": true,
+        "originalBaselineTicks": [
+          2
+        ],
+        "originalFromMatchStart": false,
+        "nativeEvents": 70,
+        "originalEvents": 67,
+        "observedEvents": 70,
+        "originalEventsWithoutRuntimeAlias": 5
+      }
+    },
+    {
+      "mode": "classic",
+      "level": "normal",
+      "seed": 5,
+      "slot": 0,
+      "coverage": {
+        "originalRecorded": true,
+        "originalBaselineTicks": [
+          2
+        ],
+        "originalFromMatchStart": false,
+        "nativeEvents": 46,
+        "originalEvents": 39,
+        "observedEvents": 46,
+        "originalEventsWithoutRuntimeAlias": 2
+      }
+    },
+    {
+      "mode": "classic",
+      "level": "normal",
+      "seed": 5,
+      "slot": 1,
+      "coverage": {
+        "originalRecorded": true,
+        "originalBaselineTicks": [
+          2
+        ],
+        "originalFromMatchStart": false,
+        "nativeEvents": 43,
+        "originalEvents": 38,
+        "observedEvents": 43,
+        "originalEventsWithoutRuntimeAlias": 4
+      }
+    },
+    {
+      "mode": "classic",
+      "level": "normal",
+      "seed": 5,
+      "slot": 2,
+      "coverage": {
+        "originalRecorded": true,
+        "originalBaselineTicks": [
+          2
+        ],
+        "originalFromMatchStart": false,
+        "nativeEvents": 63,
+        "originalEvents": 56,
+        "observedEvents": 63,
+        "originalEventsWithoutRuntimeAlias": 3
+      }
+    },
+    {
+      "mode": "classic",
+      "level": "normal",
+      "seed": 6,
+      "slot": 0,
+      "coverage": {
+        "originalRecorded": true,
+        "originalBaselineTicks": [
+          2
+        ],
+        "originalFromMatchStart": false,
+        "nativeEvents": 71,
+        "originalEvents": 61,
+        "observedEvents": 71,
+        "originalEventsWithoutRuntimeAlias": 1
+      }
+    },
+    {
+      "mode": "classic",
+      "level": "normal",
+      "seed": 6,
+      "slot": 1,
+      "coverage": {
+        "originalRecorded": true,
+        "originalBaselineTicks": [
+          2
+        ],
+        "originalFromMatchStart": false,
+        "nativeEvents": 48,
+        "originalEvents": 43,
+        "observedEvents": 48,
+        "originalEventsWithoutRuntimeAlias": 3
+      }
+    },
+    {
+      "mode": "classic",
+      "level": "normal",
+      "seed": 6,
+      "slot": 2,
+      "coverage": {
+        "originalRecorded": true,
+        "originalBaselineTicks": [
+          2
+        ],
+        "originalFromMatchStart": false,
+        "nativeEvents": 62,
+        "originalEvents": 54,
+        "observedEvents": 62,
+        "originalEventsWithoutRuntimeAlias": 3
+      }
+    },
+    {
+      "mode": "classic",
+      "level": "normal",
+      "seed": 7,
+      "slot": 0,
+      "coverage": {
+        "originalRecorded": true,
+        "originalBaselineTicks": [
+          2
+        ],
+        "originalFromMatchStart": false,
+        "nativeEvents": 47,
+        "originalEvents": 43,
+        "observedEvents": 47,
+        "originalEventsWithoutRuntimeAlias": 4
+      }
+    },
+    {
+      "mode": "classic",
+      "level": "normal",
+      "seed": 7,
+      "slot": 1,
+      "coverage": {
+        "originalRecorded": true,
+        "originalBaselineTicks": [
+          2
+        ],
+        "originalFromMatchStart": false,
+        "nativeEvents": 67,
+        "originalEvents": 60,
+        "observedEvents": 67,
+        "originalEventsWithoutRuntimeAlias": 4
+      }
+    },
+    {
+      "mode": "classic",
+      "level": "normal",
+      "seed": 7,
+      "slot": 2,
+      "coverage": {
+        "originalRecorded": true,
+        "originalBaselineTicks": [
+          2
+        ],
+        "originalFromMatchStart": false,
+        "nativeEvents": 50,
+        "originalEvents": 44,
+        "observedEvents": 50,
+        "originalEventsWithoutRuntimeAlias": 2
+      }
+    },
+    {
+      "mode": "classic",
+      "level": "normal",
+      "seed": 8,
+      "slot": 0,
+      "coverage": {
+        "originalRecorded": true,
+        "originalBaselineTicks": [
+          2
+        ],
+        "originalFromMatchStart": false,
+        "nativeEvents": 83,
+        "originalEvents": 73,
+        "observedEvents": 83,
+        "originalEventsWithoutRuntimeAlias": 0
+      }
+    },
+    {
+      "mode": "classic",
+      "level": "normal",
+      "seed": 8,
+      "slot": 1,
+      "coverage": {
+        "originalRecorded": true,
+        "originalBaselineTicks": [
+          2
+        ],
+        "originalFromMatchStart": false,
+        "nativeEvents": 66,
+        "originalEvents": 59,
+        "observedEvents": 66,
+        "originalEventsWithoutRuntimeAlias": 5
+      }
+    },
+    {
+      "mode": "classic",
+      "level": "normal",
+      "seed": 8,
+      "slot": 2,
+      "coverage": {
+        "originalRecorded": true,
+        "originalBaselineTicks": [
+          2
+        ],
+        "originalFromMatchStart": false,
+        "nativeEvents": 63,
+        "originalEvents": 54,
+        "observedEvents": 63,
+        "originalEventsWithoutRuntimeAlias": 4
+      }
+    },
+    {
+      "mode": "classic",
+      "level": "normal",
+      "seed": 9,
+      "slot": 0,
+      "coverage": {
+        "originalRecorded": true,
+        "originalBaselineTicks": [
+          2
+        ],
+        "originalFromMatchStart": false,
+        "nativeEvents": 35,
+        "originalEvents": 33,
+        "observedEvents": 35,
+        "originalEventsWithoutRuntimeAlias": 4
+      }
+    },
+    {
+      "mode": "classic",
+      "level": "normal",
+      "seed": 9,
+      "slot": 1,
+      "coverage": {
+        "originalRecorded": true,
+        "originalBaselineTicks": [
+          2
+        ],
+        "originalFromMatchStart": false,
+        "nativeEvents": 69,
+        "originalEvents": 62,
+        "observedEvents": 69,
+        "originalEventsWithoutRuntimeAlias": 7
+      }
+    },
+    {
+      "mode": "classic",
+      "level": "normal",
+      "seed": 9,
+      "slot": 2,
+      "coverage": {
+        "originalRecorded": true,
+        "originalBaselineTicks": [
+          2
+        ],
+        "originalFromMatchStart": false,
+        "nativeEvents": 85,
+        "originalEvents": 80,
+        "observedEvents": 85,
+        "originalEventsWithoutRuntimeAlias": 6
+      }
+    },
+    {
+      "mode": "classic",
+      "level": "normal",
+      "seed": 10,
+      "slot": 0,
+      "coverage": {
+        "originalRecorded": true,
+        "originalBaselineTicks": [
+          2
+        ],
+        "originalFromMatchStart": false,
+        "nativeEvents": 65,
+        "originalEvents": 59,
+        "observedEvents": 65,
+        "originalEventsWithoutRuntimeAlias": 6
+      }
+    },
+    {
+      "mode": "classic",
+      "level": "normal",
+      "seed": 10,
+      "slot": 1,
+      "coverage": {
+        "originalRecorded": true,
+        "originalBaselineTicks": [
+          2
+        ],
+        "originalFromMatchStart": false,
+        "nativeEvents": 54,
+        "originalEvents": 46,
+        "observedEvents": 53,
+        "originalEventsWithoutRuntimeAlias": 3
+      }
+    },
+    {
+      "mode": "classic",
+      "level": "normal",
+      "seed": 10,
+      "slot": 2,
+      "coverage": {
+        "originalRecorded": true,
+        "originalBaselineTicks": [
+          2
+        ],
+        "originalFromMatchStart": false,
+        "nativeEvents": 56,
+        "originalEvents": 46,
+        "observedEvents": 56,
+        "originalEventsWithoutRuntimeAlias": 0
+      }
+    },
+    {
+      "mode": "classic",
+      "level": "hard",
+      "seed": 1,
+      "slot": 0,
+      "coverage": {
+        "originalRecorded": true,
+        "originalBaselineTicks": [
+          2
+        ],
+        "originalFromMatchStart": false,
+        "nativeEvents": 67,
+        "originalEvents": 64,
+        "observedEvents": 67,
+        "originalEventsWithoutRuntimeAlias": 4
+      }
+    },
+    {
+      "mode": "classic",
+      "level": "hard",
+      "seed": 1,
+      "slot": 1,
+      "coverage": {
+        "originalRecorded": true,
+        "originalBaselineTicks": [
+          2
+        ],
+        "originalFromMatchStart": false,
+        "nativeEvents": 66,
+        "originalEvents": 61,
+        "observedEvents": 66,
+        "originalEventsWithoutRuntimeAlias": 2
+      }
+    },
+    {
+      "mode": "classic",
+      "level": "hard",
+      "seed": 1,
+      "slot": 2,
+      "coverage": {
+        "originalRecorded": true,
+        "originalBaselineTicks": [
+          2
+        ],
+        "originalFromMatchStart": false,
+        "nativeEvents": 61,
+        "originalEvents": 54,
+        "observedEvents": 61,
+        "originalEventsWithoutRuntimeAlias": 2
+      }
+    },
+    {
+      "mode": "classic",
+      "level": "hard",
+      "seed": 2,
+      "slot": 0,
+      "coverage": {
+        "originalRecorded": true,
+        "originalBaselineTicks": [
+          2
+        ],
+        "originalFromMatchStart": false,
+        "nativeEvents": 78,
+        "originalEvents": 71,
+        "observedEvents": 78,
+        "originalEventsWithoutRuntimeAlias": 6
+      }
+    },
+    {
+      "mode": "classic",
+      "level": "hard",
+      "seed": 2,
+      "slot": 1,
+      "coverage": {
+        "originalRecorded": true,
+        "originalBaselineTicks": [
+          2
+        ],
+        "originalFromMatchStart": false,
+        "nativeEvents": 67,
+        "originalEvents": 60,
+        "observedEvents": 67,
+        "originalEventsWithoutRuntimeAlias": 2
+      }
+    },
+    {
+      "mode": "classic",
+      "level": "hard",
+      "seed": 2,
+      "slot": 2,
+      "coverage": {
+        "originalRecorded": true,
+        "originalBaselineTicks": [
+          2
+        ],
+        "originalFromMatchStart": false,
+        "nativeEvents": 65,
+        "originalEvents": 62,
+        "observedEvents": 65,
+        "originalEventsWithoutRuntimeAlias": 1
+      }
+    },
+    {
+      "mode": "classic",
+      "level": "hard",
+      "seed": 3,
+      "slot": 0,
+      "coverage": {
+        "originalRecorded": true,
+        "originalBaselineTicks": [
+          2
+        ],
+        "originalFromMatchStart": false,
+        "nativeEvents": 79,
+        "originalEvents": 69,
+        "observedEvents": 79,
+        "originalEventsWithoutRuntimeAlias": 3
+      }
+    },
+    {
+      "mode": "classic",
+      "level": "hard",
+      "seed": 3,
+      "slot": 1,
+      "coverage": {
+        "originalRecorded": true,
+        "originalBaselineTicks": [
+          2
+        ],
+        "originalFromMatchStart": false,
+        "nativeEvents": 58,
+        "originalEvents": 51,
+        "observedEvents": 58,
+        "originalEventsWithoutRuntimeAlias": 1
+      }
+    },
+    {
+      "mode": "classic",
+      "level": "hard",
+      "seed": 3,
+      "slot": 2,
+      "coverage": {
+        "originalRecorded": true,
+        "originalBaselineTicks": [
+          2
+        ],
+        "originalFromMatchStart": false,
+        "nativeEvents": 58,
+        "originalEvents": 52,
+        "observedEvents": 57,
+        "originalEventsWithoutRuntimeAlias": 4
+      }
+    },
+    {
+      "mode": "classic",
+      "level": "hard",
+      "seed": 4,
+      "slot": 0,
+      "coverage": {
+        "originalRecorded": true,
+        "originalBaselineTicks": [
+          2
+        ],
+        "originalFromMatchStart": false,
+        "nativeEvents": 72,
+        "originalEvents": 69,
+        "observedEvents": 72,
+        "originalEventsWithoutRuntimeAlias": 3
+      }
+    },
+    {
+      "mode": "classic",
+      "level": "hard",
+      "seed": 4,
+      "slot": 1,
+      "coverage": {
+        "originalRecorded": true,
+        "originalBaselineTicks": [
+          2
+        ],
+        "originalFromMatchStart": false,
+        "nativeEvents": 81,
+        "originalEvents": 73,
+        "observedEvents": 81,
+        "originalEventsWithoutRuntimeAlias": 2
+      }
+    },
+    {
+      "mode": "classic",
+      "level": "hard",
+      "seed": 4,
+      "slot": 2,
+      "coverage": {
+        "originalRecorded": true,
+        "originalBaselineTicks": [
+          2
+        ],
+        "originalFromMatchStart": false,
+        "nativeEvents": 69,
+        "originalEvents": 60,
+        "observedEvents": 69,
+        "originalEventsWithoutRuntimeAlias": 4
+      }
+    },
+    {
+      "mode": "classic",
+      "level": "hard",
+      "seed": 5,
+      "slot": 0,
+      "coverage": {
+        "originalRecorded": true,
+        "originalBaselineTicks": [
+          2
+        ],
+        "originalFromMatchStart": false,
+        "nativeEvents": 76,
+        "originalEvents": 80,
+        "observedEvents": 76,
+        "originalEventsWithoutRuntimeAlias": 12
+      }
+    },
+    {
+      "mode": "classic",
+      "level": "hard",
+      "seed": 5,
+      "slot": 1,
+      "coverage": {
+        "originalRecorded": true,
+        "originalBaselineTicks": [
+          2
+        ],
+        "originalFromMatchStart": false,
+        "nativeEvents": 52,
+        "originalEvents": 46,
+        "observedEvents": 52,
+        "originalEventsWithoutRuntimeAlias": 5
+      }
+    },
+    {
+      "mode": "classic",
+      "level": "hard",
+      "seed": 5,
+      "slot": 2,
+      "coverage": {
+        "originalRecorded": true,
+        "originalBaselineTicks": [
+          2
+        ],
+        "originalFromMatchStart": false,
+        "nativeEvents": 80,
+        "originalEvents": 80,
+        "observedEvents": 80,
+        "originalEventsWithoutRuntimeAlias": 7
+      }
+    },
+    {
+      "mode": "classic",
+      "level": "hard",
+      "seed": 6,
+      "slot": 0,
+      "coverage": {
+        "originalRecorded": true,
+        "originalBaselineTicks": [
+          2
+        ],
+        "originalFromMatchStart": false,
+        "nativeEvents": 79,
+        "originalEvents": 69,
+        "observedEvents": 79,
+        "originalEventsWithoutRuntimeAlias": 2
+      }
+    },
+    {
+      "mode": "classic",
+      "level": "hard",
+      "seed": 6,
+      "slot": 1,
+      "coverage": {
+        "originalRecorded": true,
+        "originalBaselineTicks": [
+          2
+        ],
+        "originalFromMatchStart": false,
+        "nativeEvents": 80,
+        "originalEvents": 70,
+        "observedEvents": 80,
+        "originalEventsWithoutRuntimeAlias": 3
+      }
+    },
+    {
+      "mode": "classic",
+      "level": "hard",
+      "seed": 6,
+      "slot": 2,
+      "coverage": {
+        "originalRecorded": true,
+        "originalBaselineTicks": [
+          2
+        ],
+        "originalFromMatchStart": false,
+        "nativeEvents": 79,
+        "originalEvents": 70,
+        "observedEvents": 79,
+        "originalEventsWithoutRuntimeAlias": 3
+      }
+    },
+    {
+      "mode": "classic",
+      "level": "hard",
+      "seed": 7,
+      "slot": 0,
+      "coverage": {
+        "originalRecorded": true,
+        "originalBaselineTicks": [
+          2
+        ],
+        "originalFromMatchStart": false,
+        "nativeEvents": 58,
+        "originalEvents": 52,
+        "observedEvents": 58,
+        "originalEventsWithoutRuntimeAlias": 1
+      }
+    },
+    {
+      "mode": "classic",
+      "level": "hard",
+      "seed": 7,
+      "slot": 1,
+      "coverage": {
+        "originalRecorded": true,
+        "originalBaselineTicks": [
+          2
+        ],
+        "originalFromMatchStart": false,
+        "nativeEvents": 69,
+        "originalEvents": 60,
+        "observedEvents": 69,
+        "originalEventsWithoutRuntimeAlias": 2
+      }
+    },
+    {
+      "mode": "classic",
+      "level": "hard",
+      "seed": 7,
+      "slot": 2,
+      "coverage": {
+        "originalRecorded": true,
+        "originalBaselineTicks": [
+          2
+        ],
+        "originalFromMatchStart": false,
+        "nativeEvents": 63,
+        "originalEvents": 54,
+        "observedEvents": 63,
+        "originalEventsWithoutRuntimeAlias": 4
+      }
+    },
+    {
+      "mode": "classic",
+      "level": "hard",
+      "seed": 8,
+      "slot": 0,
+      "coverage": {
+        "originalRecorded": true,
+        "originalBaselineTicks": [
+          2
+        ],
+        "originalFromMatchStart": false,
+        "nativeEvents": 105,
+        "originalEvents": 102,
+        "observedEvents": 105,
+        "originalEventsWithoutRuntimeAlias": 16
+      }
+    },
+    {
+      "mode": "classic",
+      "level": "hard",
+      "seed": 8,
+      "slot": 1,
+      "coverage": {
+        "originalRecorded": true,
+        "originalBaselineTicks": [
+          2
+        ],
+        "originalFromMatchStart": false,
+        "nativeEvents": 75,
+        "originalEvents": 64,
+        "observedEvents": 75,
+        "originalEventsWithoutRuntimeAlias": 0
+      }
+    },
+    {
+      "mode": "classic",
+      "level": "hard",
+      "seed": 8,
+      "slot": 2,
+      "coverage": {
+        "originalRecorded": true,
+        "originalBaselineTicks": [
+          2
+        ],
+        "originalFromMatchStart": false,
+        "nativeEvents": 81,
+        "originalEvents": 78,
+        "observedEvents": 81,
+        "originalEventsWithoutRuntimeAlias": 8
+      }
+    },
+    {
+      "mode": "classic",
+      "level": "hard",
+      "seed": 9,
+      "slot": 0,
+      "coverage": {
+        "originalRecorded": true,
+        "originalBaselineTicks": [
+          2
+        ],
+        "originalFromMatchStart": false,
+        "nativeEvents": 53,
+        "originalEvents": 44,
+        "observedEvents": 53,
+        "originalEventsWithoutRuntimeAlias": 1
+      }
+    },
+    {
+      "mode": "classic",
+      "level": "hard",
+      "seed": 9,
+      "slot": 1,
+      "coverage": {
+        "originalRecorded": true,
+        "originalBaselineTicks": [
+          2
+        ],
+        "originalFromMatchStart": false,
+        "nativeEvents": 87,
+        "originalEvents": 78,
+        "observedEvents": 87,
+        "originalEventsWithoutRuntimeAlias": 4
+      }
+    },
+    {
+      "mode": "classic",
+      "level": "hard",
+      "seed": 9,
+      "slot": 2,
+      "coverage": {
+        "originalRecorded": true,
+        "originalBaselineTicks": [
+          2
+        ],
+        "originalFromMatchStart": false,
+        "nativeEvents": 115,
+        "originalEvents": 101,
+        "observedEvents": 115,
+        "originalEventsWithoutRuntimeAlias": 3
+      }
+    },
+    {
+      "mode": "classic",
+      "level": "hard",
+      "seed": 10,
+      "slot": 0,
+      "coverage": {
+        "originalRecorded": true,
+        "originalBaselineTicks": [
+          2
+        ],
+        "originalFromMatchStart": false,
+        "nativeEvents": 78,
+        "originalEvents": 69,
+        "observedEvents": 78,
+        "originalEventsWithoutRuntimeAlias": 0
+      }
+    },
+    {
+      "mode": "classic",
+      "level": "hard",
+      "seed": 10,
+      "slot": 1,
+      "coverage": {
+        "originalRecorded": true,
+        "originalBaselineTicks": [
+          2
+        ],
+        "originalFromMatchStart": false,
+        "nativeEvents": 59,
+        "originalEvents": 48,
+        "observedEvents": 58,
+        "originalEventsWithoutRuntimeAlias": 0
+      }
+    },
+    {
+      "mode": "classic",
+      "level": "hard",
+      "seed": 10,
+      "slot": 2,
+      "coverage": {
+        "originalRecorded": true,
+        "originalBaselineTicks": [
+          2
+        ],
+        "originalFromMatchStart": false,
+        "nativeEvents": 69,
+        "originalEvents": 65,
+        "observedEvents": 69,
+        "originalEventsWithoutRuntimeAlias": 4
+      }
+    },
+    {
+      "mode": "world",
+      "level": "easy",
+      "seed": 1,
+      "slot": 0,
+      "coverage": {
+        "originalRecorded": true,
+        "originalBaselineTicks": [
+          2
+        ],
+        "originalFromMatchStart": false,
+        "nativeEvents": 17,
+        "originalEvents": 13,
+        "observedEvents": 17,
+        "originalEventsWithoutRuntimeAlias": 0
+      }
+    },
+    {
+      "mode": "world",
+      "level": "easy",
+      "seed": 1,
+      "slot": 1,
+      "coverage": {
+        "originalRecorded": true,
+        "originalBaselineTicks": [
+          2
+        ],
+        "originalFromMatchStart": false,
+        "nativeEvents": 19,
+        "originalEvents": 16,
+        "observedEvents": 19,
+        "originalEventsWithoutRuntimeAlias": 1
+      }
+    },
+    {
+      "mode": "world",
+      "level": "easy",
+      "seed": 1,
+      "slot": 2,
+      "coverage": {
+        "originalRecorded": true,
+        "originalBaselineTicks": [
+          2
+        ],
+        "originalFromMatchStart": false,
+        "nativeEvents": 19,
+        "originalEvents": 14,
+        "observedEvents": 19,
+        "originalEventsWithoutRuntimeAlias": 0
+      }
+    },
+    {
+      "mode": "world",
+      "level": "easy",
+      "seed": 2,
+      "slot": 0,
+      "coverage": {
+        "originalRecorded": true,
+        "originalBaselineTicks": [
+          2
+        ],
+        "originalFromMatchStart": false,
+        "nativeEvents": 6,
+        "originalEvents": 6,
+        "observedEvents": 6,
+        "originalEventsWithoutRuntimeAlias": 0
+      }
+    },
+    {
+      "mode": "world",
+      "level": "easy",
+      "seed": 2,
+      "slot": 1,
+      "coverage": {
+        "originalRecorded": true,
+        "originalBaselineTicks": [
+          2
+        ],
+        "originalFromMatchStart": false,
+        "nativeEvents": 16,
+        "originalEvents": 14,
+        "observedEvents": 16,
+        "originalEventsWithoutRuntimeAlias": 0
+      }
+    },
+    {
+      "mode": "world",
+      "level": "easy",
+      "seed": 2,
+      "slot": 2,
+      "coverage": {
+        "originalRecorded": true,
+        "originalBaselineTicks": [
+          2
+        ],
+        "originalFromMatchStart": false,
+        "nativeEvents": 7,
+        "originalEvents": 7,
+        "observedEvents": 7,
+        "originalEventsWithoutRuntimeAlias": 0
+      }
+    },
+    {
+      "mode": "world",
+      "level": "easy",
+      "seed": 3,
+      "slot": 0,
+      "coverage": {
+        "originalRecorded": true,
+        "originalBaselineTicks": [
+          2
+        ],
+        "originalFromMatchStart": false,
+        "nativeEvents": 9,
+        "originalEvents": 8,
+        "observedEvents": 9,
+        "originalEventsWithoutRuntimeAlias": 0
+      }
+    },
+    {
+      "mode": "world",
+      "level": "easy",
+      "seed": 3,
+      "slot": 1,
+      "coverage": {
+        "originalRecorded": true,
+        "originalBaselineTicks": [
+          2
+        ],
+        "originalFromMatchStart": false,
+        "nativeEvents": 13,
+        "originalEvents": 11,
+        "observedEvents": 13,
+        "originalEventsWithoutRuntimeAlias": 0
+      }
+    },
+    {
+      "mode": "world",
+      "level": "easy",
+      "seed": 3,
+      "slot": 2,
+      "coverage": {
+        "originalRecorded": true,
+        "originalBaselineTicks": [
+          2
+        ],
+        "originalFromMatchStart": false,
+        "nativeEvents": 22,
+        "originalEvents": 18,
+        "observedEvents": 22,
+        "originalEventsWithoutRuntimeAlias": 0
+      }
+    },
+    {
+      "mode": "world",
+      "level": "easy",
+      "seed": 4,
+      "slot": 0,
+      "coverage": {
+        "originalRecorded": true,
+        "originalBaselineTicks": [
+          2
+        ],
+        "originalFromMatchStart": false,
+        "nativeEvents": 27,
+        "originalEvents": 22,
+        "observedEvents": 27,
+        "originalEventsWithoutRuntimeAlias": 0
+      }
+    },
+    {
+      "mode": "world",
+      "level": "easy",
+      "seed": 4,
+      "slot": 1,
+      "coverage": {
+        "originalRecorded": true,
+        "originalBaselineTicks": [
+          2
+        ],
+        "originalFromMatchStart": false,
+        "nativeEvents": 13,
+        "originalEvents": 12,
+        "observedEvents": 13,
+        "originalEventsWithoutRuntimeAlias": 1
+      }
+    },
+    {
+      "mode": "world",
+      "level": "easy",
+      "seed": 4,
+      "slot": 2,
+      "coverage": {
+        "originalRecorded": true,
+        "originalBaselineTicks": [
+          2
+        ],
+        "originalFromMatchStart": false,
+        "nativeEvents": 19,
+        "originalEvents": 14,
+        "observedEvents": 19,
+        "originalEventsWithoutRuntimeAlias": 0
+      }
+    },
+    {
+      "mode": "world",
+      "level": "easy",
+      "seed": 5,
+      "slot": 0,
+      "coverage": {
+        "originalRecorded": true,
+        "originalBaselineTicks": [
+          2
+        ],
+        "originalFromMatchStart": false,
+        "nativeEvents": 14,
+        "originalEvents": 12,
+        "observedEvents": 14,
+        "originalEventsWithoutRuntimeAlias": 0
+      }
+    },
+    {
+      "mode": "world",
+      "level": "easy",
+      "seed": 5,
+      "slot": 1,
+      "coverage": {
+        "originalRecorded": true,
+        "originalBaselineTicks": [
+          2
+        ],
+        "originalFromMatchStart": false,
+        "nativeEvents": 6,
+        "originalEvents": 6,
+        "observedEvents": 6,
+        "originalEventsWithoutRuntimeAlias": 0
+      }
+    },
+    {
+      "mode": "world",
+      "level": "easy",
+      "seed": 5,
+      "slot": 2,
+      "coverage": {
+        "originalRecorded": true,
+        "originalBaselineTicks": [
+          2
+        ],
+        "originalFromMatchStart": false,
+        "nativeEvents": 18,
+        "originalEvents": 13,
+        "observedEvents": 18,
+        "originalEventsWithoutRuntimeAlias": 0
+      }
+    },
+    {
+      "mode": "world",
+      "level": "easy",
+      "seed": 6,
+      "slot": 0,
+      "coverage": {
+        "originalRecorded": true,
+        "originalBaselineTicks": [
+          2
+        ],
+        "originalFromMatchStart": false,
+        "nativeEvents": 6,
+        "originalEvents": 6,
+        "observedEvents": 6,
+        "originalEventsWithoutRuntimeAlias": 0
+      }
+    },
+    {
+      "mode": "world",
+      "level": "easy",
+      "seed": 6,
+      "slot": 1,
+      "coverage": {
+        "originalRecorded": true,
+        "originalBaselineTicks": [
+          2
+        ],
+        "originalFromMatchStart": false,
+        "nativeEvents": 22,
+        "originalEvents": 19,
+        "observedEvents": 22,
+        "originalEventsWithoutRuntimeAlias": 1
+      }
+    },
+    {
+      "mode": "world",
+      "level": "easy",
+      "seed": 6,
+      "slot": 2,
+      "coverage": {
+        "originalRecorded": true,
+        "originalBaselineTicks": [
+          2
+        ],
+        "originalFromMatchStart": false,
+        "nativeEvents": 25,
+        "originalEvents": 20,
+        "observedEvents": 25,
+        "originalEventsWithoutRuntimeAlias": 0
+      }
+    },
+    {
+      "mode": "world",
+      "level": "easy",
+      "seed": 7,
+      "slot": 0,
+      "coverage": {
+        "originalRecorded": true,
+        "originalBaselineTicks": [
+          2
+        ],
+        "originalFromMatchStart": false,
+        "nativeEvents": 14,
+        "originalEvents": 12,
+        "observedEvents": 14,
+        "originalEventsWithoutRuntimeAlias": 0
+      }
+    },
+    {
+      "mode": "world",
+      "level": "easy",
+      "seed": 7,
+      "slot": 1,
+      "coverage": {
+        "originalRecorded": true,
+        "originalBaselineTicks": [
+          2
+        ],
+        "originalFromMatchStart": false,
+        "nativeEvents": 25,
+        "originalEvents": 20,
+        "observedEvents": 25,
+        "originalEventsWithoutRuntimeAlias": 0
+      }
+    },
+    {
+      "mode": "world",
+      "level": "easy",
+      "seed": 7,
+      "slot": 2,
+      "coverage": {
+        "originalRecorded": true,
+        "originalBaselineTicks": [
+          2
+        ],
+        "originalFromMatchStart": false,
+        "nativeEvents": 15,
+        "originalEvents": 10,
+        "observedEvents": 15,
+        "originalEventsWithoutRuntimeAlias": 0
+      }
+    },
+    {
+      "mode": "world",
+      "level": "easy",
+      "seed": 8,
+      "slot": 0,
+      "coverage": {
+        "originalRecorded": true,
+        "originalBaselineTicks": [
+          2
+        ],
+        "originalFromMatchStart": false,
+        "nativeEvents": 7,
+        "originalEvents": 7,
+        "observedEvents": 7,
+        "originalEventsWithoutRuntimeAlias": 0
+      }
+    },
+    {
+      "mode": "world",
+      "level": "easy",
+      "seed": 8,
+      "slot": 1,
+      "coverage": {
+        "originalRecorded": true,
+        "originalBaselineTicks": [
+          2
+        ],
+        "originalFromMatchStart": false,
+        "nativeEvents": 13,
+        "originalEvents": 10,
+        "observedEvents": 13,
+        "originalEventsWithoutRuntimeAlias": 0
+      }
+    },
+    {
+      "mode": "world",
+      "level": "easy",
+      "seed": 8,
+      "slot": 2,
+      "coverage": {
+        "originalRecorded": true,
+        "originalBaselineTicks": [
+          2
+        ],
+        "originalFromMatchStart": false,
+        "nativeEvents": 9,
+        "originalEvents": 7,
+        "observedEvents": 9,
+        "originalEventsWithoutRuntimeAlias": 0
+      }
+    },
+    {
+      "mode": "world",
+      "level": "easy",
+      "seed": 9,
+      "slot": 0,
+      "coverage": {
+        "originalRecorded": true,
+        "originalBaselineTicks": [
+          2
+        ],
+        "originalFromMatchStart": false,
+        "nativeEvents": 24,
+        "originalEvents": 21,
+        "observedEvents": 24,
+        "originalEventsWithoutRuntimeAlias": 0
+      }
+    },
+    {
+      "mode": "world",
+      "level": "easy",
+      "seed": 9,
+      "slot": 1,
+      "coverage": {
+        "originalRecorded": true,
+        "originalBaselineTicks": [
+          2
+        ],
+        "originalFromMatchStart": false,
+        "nativeEvents": 10,
+        "originalEvents": 9,
+        "observedEvents": 10,
+        "originalEventsWithoutRuntimeAlias": 0
+      }
+    },
+    {
+      "mode": "world",
+      "level": "easy",
+      "seed": 9,
+      "slot": 2,
+      "coverage": {
+        "originalRecorded": true,
+        "originalBaselineTicks": [
+          2
+        ],
+        "originalFromMatchStart": false,
+        "nativeEvents": 6,
+        "originalEvents": 6,
+        "observedEvents": 6,
+        "originalEventsWithoutRuntimeAlias": 0
+      }
+    },
+    {
+      "mode": "world",
+      "level": "easy",
+      "seed": 10,
+      "slot": 0,
+      "coverage": {
+        "originalRecorded": true,
+        "originalBaselineTicks": [
+          2
+        ],
+        "originalFromMatchStart": false,
+        "nativeEvents": 5,
+        "originalEvents": 5,
+        "observedEvents": 5,
+        "originalEventsWithoutRuntimeAlias": 0
+      }
+    },
+    {
+      "mode": "world",
+      "level": "easy",
+      "seed": 10,
+      "slot": 1,
+      "coverage": {
+        "originalRecorded": true,
+        "originalBaselineTicks": [
+          2
+        ],
+        "originalFromMatchStart": false,
+        "nativeEvents": 11,
+        "originalEvents": 9,
+        "observedEvents": 10,
+        "originalEventsWithoutRuntimeAlias": 0
+      }
+    },
+    {
+      "mode": "world",
+      "level": "easy",
+      "seed": 10,
+      "slot": 2,
+      "coverage": {
+        "originalRecorded": true,
+        "originalBaselineTicks": [
+          2
+        ],
+        "originalFromMatchStart": false,
+        "nativeEvents": 16,
+        "originalEvents": 13,
+        "observedEvents": 16,
+        "originalEventsWithoutRuntimeAlias": 0
+      }
+    },
+    {
+      "mode": "world",
+      "level": "normal",
+      "seed": 1,
+      "slot": 0,
+      "coverage": {
+        "originalRecorded": true,
+        "originalBaselineTicks": [
+          2
+        ],
+        "originalFromMatchStart": false,
+        "nativeEvents": 8,
+        "originalEvents": 8,
+        "observedEvents": 8,
+        "originalEventsWithoutRuntimeAlias": 0
+      }
+    },
+    {
+      "mode": "world",
+      "level": "normal",
+      "seed": 1,
+      "slot": 1,
+      "coverage": {
+        "originalRecorded": true,
+        "originalBaselineTicks": [
+          2
+        ],
+        "originalFromMatchStart": false,
+        "nativeEvents": 8,
+        "originalEvents": 8,
+        "observedEvents": 8,
+        "originalEventsWithoutRuntimeAlias": 0
+      }
+    },
+    {
+      "mode": "world",
+      "level": "normal",
+      "seed": 1,
+      "slot": 2,
+      "coverage": {
+        "originalRecorded": true,
+        "originalBaselineTicks": [
+          2
+        ],
+        "originalFromMatchStart": false,
+        "nativeEvents": 22,
+        "originalEvents": 21,
+        "observedEvents": 22,
+        "originalEventsWithoutRuntimeAlias": 2
+      }
+    },
+    {
+      "mode": "world",
+      "level": "normal",
+      "seed": 2,
+      "slot": 0,
+      "coverage": {
+        "originalRecorded": true,
+        "originalBaselineTicks": [
+          2
+        ],
+        "originalFromMatchStart": false,
+        "nativeEvents": 17,
+        "originalEvents": 14,
+        "observedEvents": 16,
+        "originalEventsWithoutRuntimeAlias": 0
+      }
+    },
+    {
+      "mode": "world",
+      "level": "normal",
+      "seed": 2,
+      "slot": 1,
+      "coverage": {
+        "originalRecorded": true,
+        "originalBaselineTicks": [
+          2
+        ],
+        "originalFromMatchStart": false,
+        "nativeEvents": 18,
+        "originalEvents": 17,
+        "observedEvents": 18,
+        "originalEventsWithoutRuntimeAlias": 1
+      }
+    },
+    {
+      "mode": "world",
+      "level": "normal",
+      "seed": 2,
+      "slot": 2,
+      "coverage": {
+        "originalRecorded": true,
+        "originalBaselineTicks": [
+          2
+        ],
+        "originalFromMatchStart": false,
+        "nativeEvents": 13,
+        "originalEvents": 12,
+        "observedEvents": 13,
+        "originalEventsWithoutRuntimeAlias": 0
+      }
+    },
+    {
+      "mode": "world",
+      "level": "normal",
+      "seed": 3,
+      "slot": 0,
+      "coverage": {
+        "originalRecorded": true,
+        "originalBaselineTicks": [
+          2
+        ],
+        "originalFromMatchStart": false,
+        "nativeEvents": 12,
+        "originalEvents": 10,
+        "observedEvents": 11,
+        "originalEventsWithoutRuntimeAlias": 0
+      }
+    },
+    {
+      "mode": "world",
+      "level": "normal",
+      "seed": 3,
+      "slot": 1,
+      "coverage": {
+        "originalRecorded": true,
+        "originalBaselineTicks": [
+          2
+        ],
+        "originalFromMatchStart": false,
+        "nativeEvents": 20,
+        "originalEvents": 19,
+        "observedEvents": 20,
+        "originalEventsWithoutRuntimeAlias": 1
+      }
+    },
+    {
+      "mode": "world",
+      "level": "normal",
+      "seed": 3,
+      "slot": 2,
+      "coverage": {
+        "originalRecorded": true,
+        "originalBaselineTicks": [
+          2
+        ],
+        "originalFromMatchStart": false,
+        "nativeEvents": 12,
+        "originalEvents": 11,
+        "observedEvents": 12,
+        "originalEventsWithoutRuntimeAlias": 0
+      }
+    },
+    {
+      "mode": "world",
+      "level": "normal",
+      "seed": 4,
+      "slot": 0,
+      "coverage": {
+        "originalRecorded": true,
+        "originalBaselineTicks": [
+          2
+        ],
+        "originalFromMatchStart": false,
+        "nativeEvents": 17,
+        "originalEvents": 15,
+        "observedEvents": 17,
+        "originalEventsWithoutRuntimeAlias": 0
+      }
+    },
+    {
+      "mode": "world",
+      "level": "normal",
+      "seed": 4,
+      "slot": 1,
+      "coverage": {
+        "originalRecorded": true,
+        "originalBaselineTicks": [
+          2
+        ],
+        "originalFromMatchStart": false,
+        "nativeEvents": 21,
+        "originalEvents": 19,
+        "observedEvents": 21,
+        "originalEventsWithoutRuntimeAlias": 2
+      }
+    },
+    {
+      "mode": "world",
+      "level": "normal",
+      "seed": 4,
+      "slot": 2,
+      "coverage": {
+        "originalRecorded": true,
+        "originalBaselineTicks": [
+          2
+        ],
+        "originalFromMatchStart": false,
+        "nativeEvents": 19,
+        "originalEvents": 18,
+        "observedEvents": 19,
+        "originalEventsWithoutRuntimeAlias": 0
+      }
+    },
+    {
+      "mode": "world",
+      "level": "normal",
+      "seed": 5,
+      "slot": 0,
+      "coverage": {
+        "originalRecorded": true,
+        "originalBaselineTicks": [
+          2
+        ],
+        "originalFromMatchStart": false,
+        "nativeEvents": 13,
+        "originalEvents": 12,
+        "observedEvents": 13,
+        "originalEventsWithoutRuntimeAlias": 0
+      }
+    },
+    {
+      "mode": "world",
+      "level": "normal",
+      "seed": 5,
+      "slot": 1,
+      "coverage": {
+        "originalRecorded": true,
+        "originalBaselineTicks": [
+          2
+        ],
+        "originalFromMatchStart": false,
+        "nativeEvents": 28,
+        "originalEvents": 25,
+        "observedEvents": 28,
+        "originalEventsWithoutRuntimeAlias": 0
+      }
+    },
+    {
+      "mode": "world",
+      "level": "normal",
+      "seed": 5,
+      "slot": 2,
+      "coverage": {
+        "originalRecorded": true,
+        "originalBaselineTicks": [
+          2
+        ],
+        "originalFromMatchStart": false,
+        "nativeEvents": 31,
+        "originalEvents": 28,
+        "observedEvents": 31,
+        "originalEventsWithoutRuntimeAlias": 0
+      }
+    },
+    {
+      "mode": "world",
+      "level": "normal",
+      "seed": 6,
+      "slot": 0,
+      "coverage": {
+        "originalRecorded": true,
+        "originalBaselineTicks": [
+          2
+        ],
+        "originalFromMatchStart": false,
+        "nativeEvents": 17,
+        "originalEvents": 15,
+        "observedEvents": 17,
+        "originalEventsWithoutRuntimeAlias": 0
+      }
+    },
+    {
+      "mode": "world",
+      "level": "normal",
+      "seed": 6,
+      "slot": 1,
+      "coverage": {
+        "originalRecorded": true,
+        "originalBaselineTicks": [
+          2
+        ],
+        "originalFromMatchStart": false,
+        "nativeEvents": 11,
+        "originalEvents": 10,
+        "observedEvents": 11,
+        "originalEventsWithoutRuntimeAlias": 0
+      }
+    },
+    {
+      "mode": "world",
+      "level": "normal",
+      "seed": 6,
+      "slot": 2,
+      "coverage": {
+        "originalRecorded": true,
+        "originalBaselineTicks": [
+          2
+        ],
+        "originalFromMatchStart": false,
+        "nativeEvents": 22,
+        "originalEvents": 21,
+        "observedEvents": 22,
+        "originalEventsWithoutRuntimeAlias": 0
+      }
+    },
+    {
+      "mode": "world",
+      "level": "normal",
+      "seed": 7,
+      "slot": 0,
+      "coverage": {
+        "originalRecorded": true,
+        "originalBaselineTicks": [
+          2
+        ],
+        "originalFromMatchStart": false,
+        "nativeEvents": 14,
+        "originalEvents": 13,
+        "observedEvents": 14,
+        "originalEventsWithoutRuntimeAlias": 0
+      }
+    },
+    {
+      "mode": "world",
+      "level": "normal",
+      "seed": 7,
+      "slot": 1,
+      "coverage": {
+        "originalRecorded": true,
+        "originalBaselineTicks": [
+          2
+        ],
+        "originalFromMatchStart": false,
+        "nativeEvents": 26,
+        "originalEvents": 24,
+        "observedEvents": 26,
+        "originalEventsWithoutRuntimeAlias": 1
+      }
+    },
+    {
+      "mode": "world",
+      "level": "normal",
+      "seed": 7,
+      "slot": 2,
+      "coverage": {
+        "originalRecorded": true,
+        "originalBaselineTicks": [
+          2
+        ],
+        "originalFromMatchStart": false,
+        "nativeEvents": 10,
+        "originalEvents": 9,
+        "observedEvents": 10,
+        "originalEventsWithoutRuntimeAlias": 0
+      }
+    },
+    {
+      "mode": "world",
+      "level": "normal",
+      "seed": 8,
+      "slot": 0,
+      "coverage": {
+        "originalRecorded": true,
+        "originalBaselineTicks": [
+          2
+        ],
+        "originalFromMatchStart": false,
+        "nativeEvents": 13,
+        "originalEvents": 12,
+        "observedEvents": 13,
+        "originalEventsWithoutRuntimeAlias": 0
+      }
+    },
+    {
+      "mode": "world",
+      "level": "normal",
+      "seed": 8,
+      "slot": 1,
+      "coverage": {
+        "originalRecorded": true,
+        "originalBaselineTicks": [
+          2
+        ],
+        "originalFromMatchStart": false,
+        "nativeEvents": 21,
+        "originalEvents": 20,
+        "observedEvents": 21,
+        "originalEventsWithoutRuntimeAlias": 1
+      }
+    },
+    {
+      "mode": "world",
+      "level": "normal",
+      "seed": 8,
+      "slot": 2,
+      "coverage": {
+        "originalRecorded": true,
+        "originalBaselineTicks": [
+          2
+        ],
+        "originalFromMatchStart": false,
+        "nativeEvents": 24,
+        "originalEvents": 22,
+        "observedEvents": 24,
+        "originalEventsWithoutRuntimeAlias": 0
+      }
+    },
+    {
+      "mode": "world",
+      "level": "normal",
+      "seed": 9,
+      "slot": 0,
+      "coverage": {
+        "originalRecorded": true,
+        "originalBaselineTicks": [
+          2
+        ],
+        "originalFromMatchStart": false,
+        "nativeEvents": 9,
+        "originalEvents": 8,
+        "observedEvents": 9,
+        "originalEventsWithoutRuntimeAlias": 0
+      }
+    },
+    {
+      "mode": "world",
+      "level": "normal",
+      "seed": 9,
+      "slot": 1,
+      "coverage": {
+        "originalRecorded": true,
+        "originalBaselineTicks": [
+          2
+        ],
+        "originalFromMatchStart": false,
+        "nativeEvents": 14,
+        "originalEvents": 13,
+        "observedEvents": 14,
+        "originalEventsWithoutRuntimeAlias": 0
+      }
+    },
+    {
+      "mode": "world",
+      "level": "normal",
+      "seed": 9,
+      "slot": 2,
+      "coverage": {
+        "originalRecorded": true,
+        "originalBaselineTicks": [
+          2
+        ],
+        "originalFromMatchStart": false,
+        "nativeEvents": 24,
+        "originalEvents": 20,
+        "observedEvents": 23,
+        "originalEventsWithoutRuntimeAlias": 0
+      }
+    },
+    {
+      "mode": "world",
+      "level": "normal",
+      "seed": 10,
+      "slot": 0,
+      "coverage": {
+        "originalRecorded": true,
+        "originalBaselineTicks": [
+          2
+        ],
+        "originalFromMatchStart": false,
+        "nativeEvents": 21,
+        "originalEvents": 19,
+        "observedEvents": 21,
+        "originalEventsWithoutRuntimeAlias": 0
+      }
+    },
+    {
+      "mode": "world",
+      "level": "normal",
+      "seed": 10,
+      "slot": 1,
+      "coverage": {
+        "originalRecorded": true,
+        "originalBaselineTicks": [
+          2
+        ],
+        "originalFromMatchStart": false,
+        "nativeEvents": 26,
+        "originalEvents": 22,
+        "observedEvents": 26,
+        "originalEventsWithoutRuntimeAlias": 1
+      }
+    },
+    {
+      "mode": "world",
+      "level": "normal",
+      "seed": 10,
+      "slot": 2,
+      "coverage": {
+        "originalRecorded": true,
+        "originalBaselineTicks": [
+          2
+        ],
+        "originalFromMatchStart": false,
+        "nativeEvents": 21,
+        "originalEvents": 19,
+        "observedEvents": 21,
+        "originalEventsWithoutRuntimeAlias": 0
+      }
+    },
+    {
+      "mode": "world",
+      "level": "hard",
+      "seed": 1,
+      "slot": 0,
+      "coverage": {
+        "originalRecorded": true,
+        "originalBaselineTicks": [
+          2
+        ],
+        "originalFromMatchStart": false,
+        "nativeEvents": 28,
+        "originalEvents": 25,
+        "observedEvents": 28,
+        "originalEventsWithoutRuntimeAlias": 0
+      }
+    },
+    {
+      "mode": "world",
+      "level": "hard",
+      "seed": 1,
+      "slot": 1,
+      "coverage": {
+        "originalRecorded": true,
+        "originalBaselineTicks": [
+          2
+        ],
+        "originalFromMatchStart": false,
+        "nativeEvents": 19,
+        "originalEvents": 17,
+        "observedEvents": 19,
+        "originalEventsWithoutRuntimeAlias": 0
+      }
+    },
+    {
+      "mode": "world",
+      "level": "hard",
+      "seed": 1,
+      "slot": 2,
+      "coverage": {
+        "originalRecorded": true,
+        "originalBaselineTicks": [
+          2
+        ],
+        "originalFromMatchStart": false,
+        "nativeEvents": 19,
+        "originalEvents": 18,
+        "observedEvents": 19,
+        "originalEventsWithoutRuntimeAlias": 0
+      }
+    },
+    {
+      "mode": "world",
+      "level": "hard",
+      "seed": 2,
+      "slot": 0,
+      "coverage": {
+        "originalRecorded": true,
+        "originalBaselineTicks": [
+          2
+        ],
+        "originalFromMatchStart": false,
+        "nativeEvents": 16,
+        "originalEvents": 15,
+        "observedEvents": 16,
+        "originalEventsWithoutRuntimeAlias": 0
+      }
+    },
+    {
+      "mode": "world",
+      "level": "hard",
+      "seed": 2,
+      "slot": 1,
+      "coverage": {
+        "originalRecorded": true,
+        "originalBaselineTicks": [
+          2
+        ],
+        "originalFromMatchStart": false,
+        "nativeEvents": 19,
+        "originalEvents": 18,
+        "observedEvents": 19,
+        "originalEventsWithoutRuntimeAlias": 0
+      }
+    },
+    {
+      "mode": "world",
+      "level": "hard",
+      "seed": 2,
+      "slot": 2,
+      "coverage": {
+        "originalRecorded": true,
+        "originalBaselineTicks": [
+          2
+        ],
+        "originalFromMatchStart": false,
+        "nativeEvents": 26,
+        "originalEvents": 24,
+        "observedEvents": 26,
+        "originalEventsWithoutRuntimeAlias": 0
+      }
+    },
+    {
+      "mode": "world",
+      "level": "hard",
+      "seed": 3,
+      "slot": 0,
+      "coverage": {
+        "originalRecorded": true,
+        "originalBaselineTicks": [
+          2
+        ],
+        "originalFromMatchStart": false,
+        "nativeEvents": 11,
+        "originalEvents": 7,
+        "observedEvents": 10,
+        "originalEventsWithoutRuntimeAlias": 0
+      }
+    },
+    {
+      "mode": "world",
+      "level": "hard",
+      "seed": 3,
+      "slot": 1,
+      "coverage": {
+        "originalRecorded": true,
+        "originalBaselineTicks": [
+          2
+        ],
+        "originalFromMatchStart": false,
+        "nativeEvents": 21,
+        "originalEvents": 20,
+        "observedEvents": 21,
+        "originalEventsWithoutRuntimeAlias": 1
+      }
+    },
+    {
+      "mode": "world",
+      "level": "hard",
+      "seed": 3,
+      "slot": 2,
+      "coverage": {
+        "originalRecorded": true,
+        "originalBaselineTicks": [
+          2
+        ],
+        "originalFromMatchStart": false,
+        "nativeEvents": 21,
+        "originalEvents": 20,
+        "observedEvents": 21,
+        "originalEventsWithoutRuntimeAlias": 0
+      }
+    },
+    {
+      "mode": "world",
+      "level": "hard",
+      "seed": 4,
+      "slot": 0,
+      "coverage": {
+        "originalRecorded": true,
+        "originalBaselineTicks": [
+          2
+        ],
+        "originalFromMatchStart": false,
+        "nativeEvents": 18,
+        "originalEvents": 16,
+        "observedEvents": 18,
+        "originalEventsWithoutRuntimeAlias": 0
+      }
+    },
+    {
+      "mode": "world",
+      "level": "hard",
+      "seed": 4,
+      "slot": 1,
+      "coverage": {
+        "originalRecorded": true,
+        "originalBaselineTicks": [
+          2
+        ],
+        "originalFromMatchStart": false,
+        "nativeEvents": 27,
+        "originalEvents": 25,
+        "observedEvents": 27,
+        "originalEventsWithoutRuntimeAlias": 0
+      }
+    },
+    {
+      "mode": "world",
+      "level": "hard",
+      "seed": 4,
+      "slot": 2,
+      "coverage": {
+        "originalRecorded": true,
+        "originalBaselineTicks": [
+          2
+        ],
+        "originalFromMatchStart": false,
+        "nativeEvents": 38,
+        "originalEvents": 33,
+        "observedEvents": 38,
+        "originalEventsWithoutRuntimeAlias": 0
+      }
+    },
+    {
+      "mode": "world",
+      "level": "hard",
+      "seed": 5,
+      "slot": 0,
+      "coverage": {
+        "originalRecorded": true,
+        "originalBaselineTicks": [
+          2
+        ],
+        "originalFromMatchStart": false,
+        "nativeEvents": 22,
+        "originalEvents": 20,
+        "observedEvents": 22,
+        "originalEventsWithoutRuntimeAlias": 0
+      }
+    },
+    {
+      "mode": "world",
+      "level": "hard",
+      "seed": 5,
+      "slot": 1,
+      "coverage": {
+        "originalRecorded": true,
+        "originalBaselineTicks": [
+          2
+        ],
+        "originalFromMatchStart": false,
+        "nativeEvents": 27,
+        "originalEvents": 24,
+        "observedEvents": 27,
+        "originalEventsWithoutRuntimeAlias": 0
+      }
+    },
+    {
+      "mode": "world",
+      "level": "hard",
+      "seed": 5,
+      "slot": 2,
+      "coverage": {
+        "originalRecorded": true,
+        "originalBaselineTicks": [
+          2
+        ],
+        "originalFromMatchStart": false,
+        "nativeEvents": 22,
+        "originalEvents": 21,
+        "observedEvents": 22,
+        "originalEventsWithoutRuntimeAlias": 0
+      }
+    },
+    {
+      "mode": "world",
+      "level": "hard",
+      "seed": 6,
+      "slot": 0,
+      "coverage": {
+        "originalRecorded": true,
+        "originalBaselineTicks": [
+          2
+        ],
+        "originalFromMatchStart": false,
+        "nativeEvents": 16,
+        "originalEvents": 15,
+        "observedEvents": 16,
+        "originalEventsWithoutRuntimeAlias": 0
+      }
+    },
+    {
+      "mode": "world",
+      "level": "hard",
+      "seed": 6,
+      "slot": 1,
+      "coverage": {
+        "originalRecorded": true,
+        "originalBaselineTicks": [
+          2
+        ],
+        "originalFromMatchStart": false,
+        "nativeEvents": 28,
+        "originalEvents": 25,
+        "observedEvents": 28,
+        "originalEventsWithoutRuntimeAlias": 0
+      }
+    },
+    {
+      "mode": "world",
+      "level": "hard",
+      "seed": 6,
+      "slot": 2,
+      "coverage": {
+        "originalRecorded": true,
+        "originalBaselineTicks": [
+          2
+        ],
+        "originalFromMatchStart": false,
+        "nativeEvents": 15,
+        "originalEvents": 13,
+        "observedEvents": 15,
+        "originalEventsWithoutRuntimeAlias": 0
+      }
+    },
+    {
+      "mode": "world",
+      "level": "hard",
+      "seed": 7,
+      "slot": 0,
+      "coverage": {
+        "originalRecorded": true,
+        "originalBaselineTicks": [
+          2
+        ],
+        "originalFromMatchStart": false,
+        "nativeEvents": 19,
+        "originalEvents": 17,
+        "observedEvents": 19,
+        "originalEventsWithoutRuntimeAlias": 0
+      }
+    },
+    {
+      "mode": "world",
+      "level": "hard",
+      "seed": 7,
+      "slot": 1,
+      "coverage": {
+        "originalRecorded": true,
+        "originalBaselineTicks": [
+          2
+        ],
+        "originalFromMatchStart": false,
+        "nativeEvents": 18,
+        "originalEvents": 17,
+        "observedEvents": 18,
+        "originalEventsWithoutRuntimeAlias": 0
+      }
+    },
+    {
+      "mode": "world",
+      "level": "hard",
+      "seed": 7,
+      "slot": 2,
+      "coverage": {
+        "originalRecorded": true,
+        "originalBaselineTicks": [
+          2
+        ],
+        "originalFromMatchStart": false,
+        "nativeEvents": 15,
+        "originalEvents": 12,
+        "observedEvents": 15,
+        "originalEventsWithoutRuntimeAlias": 0
+      }
+    },
+    {
+      "mode": "world",
+      "level": "hard",
+      "seed": 8,
+      "slot": 0,
+      "coverage": {
+        "originalRecorded": true,
+        "originalBaselineTicks": [
+          2
+        ],
+        "originalFromMatchStart": false,
+        "nativeEvents": 15,
+        "originalEvents": 13,
+        "observedEvents": 14,
+        "originalEventsWithoutRuntimeAlias": 0
+      }
+    },
+    {
+      "mode": "world",
+      "level": "hard",
+      "seed": 8,
+      "slot": 1,
+      "coverage": {
+        "originalRecorded": true,
+        "originalBaselineTicks": [
+          2
+        ],
+        "originalFromMatchStart": false,
+        "nativeEvents": 29,
+        "originalEvents": 26,
+        "observedEvents": 29,
+        "originalEventsWithoutRuntimeAlias": 0
+      }
+    },
+    {
+      "mode": "world",
+      "level": "hard",
+      "seed": 8,
+      "slot": 2,
+      "coverage": {
+        "originalRecorded": true,
+        "originalBaselineTicks": [
+          2
+        ],
+        "originalFromMatchStart": false,
+        "nativeEvents": 25,
+        "originalEvents": 24,
+        "observedEvents": 25,
+        "originalEventsWithoutRuntimeAlias": 0
+      }
+    },
+    {
+      "mode": "world",
+      "level": "hard",
+      "seed": 9,
+      "slot": 0,
+      "coverage": {
+        "originalRecorded": true,
+        "originalBaselineTicks": [
+          2
+        ],
+        "originalFromMatchStart": false,
+        "nativeEvents": 17,
+        "originalEvents": 15,
+        "observedEvents": 17,
+        "originalEventsWithoutRuntimeAlias": 0
+      }
+    },
+    {
+      "mode": "world",
+      "level": "hard",
+      "seed": 9,
+      "slot": 1,
+      "coverage": {
+        "originalRecorded": true,
+        "originalBaselineTicks": [
+          2
+        ],
+        "originalFromMatchStart": false,
+        "nativeEvents": 22,
+        "originalEvents": 22,
+        "observedEvents": 22,
+        "originalEventsWithoutRuntimeAlias": 1
+      }
+    },
+    {
+      "mode": "world",
+      "level": "hard",
+      "seed": 9,
+      "slot": 2,
+      "coverage": {
+        "originalRecorded": true,
+        "originalBaselineTicks": [
+          2
+        ],
+        "originalFromMatchStart": false,
+        "nativeEvents": 37,
+        "originalEvents": 33,
+        "observedEvents": 37,
+        "originalEventsWithoutRuntimeAlias": 1
+      }
+    },
+    {
+      "mode": "world",
+      "level": "hard",
+      "seed": 10,
+      "slot": 0,
+      "coverage": {
+        "originalRecorded": true,
+        "originalBaselineTicks": [
+          2
+        ],
+        "originalFromMatchStart": false,
+        "nativeEvents": 16,
+        "originalEvents": 16,
+        "observedEvents": 16,
+        "originalEventsWithoutRuntimeAlias": 1
+      }
+    },
+    {
+      "mode": "world",
+      "level": "hard",
+      "seed": 10,
+      "slot": 1,
+      "coverage": {
+        "originalRecorded": true,
+        "originalBaselineTicks": [
+          2
+        ],
+        "originalFromMatchStart": false,
+        "nativeEvents": 19,
+        "originalEvents": 18,
+        "observedEvents": 19,
+        "originalEventsWithoutRuntimeAlias": 0
+      }
+    },
+    {
+      "mode": "world",
+      "level": "hard",
+      "seed": 10,
+      "slot": 2,
+      "coverage": {
+        "originalRecorded": true,
+        "originalBaselineTicks": [
+          2
+        ],
+        "originalFromMatchStart": false,
+        "nativeEvents": 16,
+        "originalEvents": 15,
+        "observedEvents": 16,
+        "originalEventsWithoutRuntimeAlias": 0
+      }
+    }
+  ],
+  "earlyEndedMatches": []
+}

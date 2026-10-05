@@ -1,0 +1,72 @@
+{
+  "copiedAtUTC": "2026-10-04T18:39:15.186333+00:00",
+  "qualification": "OriginalV17fullsuitefails stale-WebSocket-framecomparison(actual12 vsprior10)afterallAI modulespassed, source/HEAD/archive/runtime unchanged andall110checksvalid. Root fixeswaitforcurrentemittedbeatonly; nativefocusedtrafficprivacyandactual live-truth/live-covercontrolsPASS, exacttick/positions/rotation/coverageassertionsand10s/30s/180sdeadlinesunchanged. No gameplay changes. Fullregressionmustpassbeforecommit.",
+  "files": [
+    {
+      "source": "/tmp/ai-v17-full-before.json",
+      "destination": "docs/evidence/human-like-ai-v17-full-failure/ai-v17-full-before.json",
+      "bytes": 340789,
+      "sha256": "7eb7fbe7d3725fab23db25025361a24a55679eb46458bcda39fc513d5eea4ac1"
+    },
+    {
+      "source": "/tmp/ai-v17-full-after.json",
+      "destination": "docs/evidence/human-like-ai-v17-full-failure/ai-v17-full-after.json",
+      "bytes": 340037,
+      "sha256": "06443fa5e9557f846c768089a7d62b03943b59732db67e28c7467f00e91b3f3f"
+    },
+    {
+      "source": "/tmp/human-ai-v17-full-verification.json",
+      "destination": "docs/evidence/human-like-ai-v17-full-failure/human-ai-v17-full-verification.json",
+      "bytes": 7210,
+      "sha256": "b68d719bedea8756437762bc184bc7390a53ddacba6fe4f2becd922620df54d7"
+    },
+    {
+      "source": "/tmp/human-ai-v17-full-test.log",
+      "destination": "docs/evidence/human-like-ai-v17-full-failure/human-ai-v17-full-test.log",
+      "bytes": 34003,
+      "sha256": "3e4e60a2316dd36f36ec134b3af0b325ad37147f7834ef184272af7654860a0e"
+    },
+    {
+      "source": "/tmp/human-ai-v17-full-predeclared.json",
+      "destination": "docs/evidence/human-like-ai-v17-full-failure/human-ai-v17-full-predeclared.json",
+      "bytes": 19756,
+      "sha256": "9f0854097f34bb216f0bd7c324f0e763a476f688459a7f237f319b83c0adf162"
+    },
+    {
+      "source": "/tmp/human-ai-v17-full-launch.json",
+      "destination": "docs/evidence/human-like-ai-v17-full-failure/human-ai-v17-full-launch.json",
+      "bytes": 962,
+      "sha256": "30f1e1f8f177149d02bd7cdce5e92f619499a120a44b007abb31b04a1c1fb7bb"
+    },
+    {
+      "source": "/tmp/human-ai-v17-full-completion.json",
+      "destination": "docs/evidence/human-like-ai-v17-full-failure/human-ai-v17-full-completion.json",
+      "bytes": 94,
+      "sha256": "a66a4374a340e226ce3fbb3529aab3a4e0367f419f17175f5c8574829f48f33d"
+    },
+    {
+      "source": "/tmp/human-ai-v17-full-checks.jsonl",
+      "destination": "docs/evidence/human-like-ai-v17-full-failure/human-ai-v17-full-checks.jsonl",
+      "bytes": 51571,
+      "sha256": "f0ec2a5c60d298acf49289660026ff40c40447e5a4bbf3fcebe29d44c7890399"
+    },
+    {
+      "source": "/tmp/human-ai-v17-full-finalize.py",
+      "destination": "docs/evidence/human-like-ai-v17-full-failure/human-ai-v17-full-finalize.py",
+      "bytes": 24168,
+      "sha256": "384d99df2d0bd98cb1e7e3b4971d7b529b770a76e5c2239a968ded563ad4c8f0"
+    },
+    {
+      "source": "/tmp/human-ai-v17-full-preregistration-draft.json",
+      "destination": "docs/evidence/human-like-ai-v17-full-failure/human-ai-v17-full-preregistration-draft.json",
+      "bytes": 12702,
+      "sha256": "c4b4e89b71cc7dad856e6289cccaf5ada1e03b73c059834763fb78c03bd6ac17"
+    },
+    {
+      "source": "/tmp/ai-v17-root-traffic-current-frame.log",
+      "destination": "docs/evidence/human-like-ai-v17-full-failure/ai-v17-root-traffic-current-frame.log",
+      "bytes": 1560,
+      "sha256": "2416550e1b3b9b4e36cab0929754027504b4c77c4958945c7ea69e41d882c7b1"
+    }
+  ]
+}

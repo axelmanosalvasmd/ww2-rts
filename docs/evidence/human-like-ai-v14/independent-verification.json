@@ -1,0 +1,24 @@
+{
+  "status": "PASS",
+  "sourceCheckpointSHA256": "7c87de19ed1196044efbabad0d63bb8774d52acdd35e7695efac053a1f7c74a9",
+  "exactOriginalPairs": 120,
+  "seats": 360,
+  "allRawArchivesChecked": 120,
+  "allPrivateRecordingFromMatchStart": true,
+  "samePopulationAcrossPrimaryExplicitBothPolicies": true,
+  "privateFrames": 16845,
+  "nativeInputRows": 42574,
+  "nativeEventRows": 19748,
+  "nativeCommandRows": 12560,
+  "fullArchive": {
+    "format": "gzip",
+    "path": "final120-full.json.gz",
+    "sha256": "f73890986df3502ac1e2b69e18a71ee22a7c563715abc746331437f026ab30e5",
+    "bytes": 16775131,
+    "uncompressedSHA256": "714cb8bbabc54607e9c4d95cd13848e09b8a7a6677154d6374d86f22f9998ca2",
+    "uncompressedBytes": 429134109,
+    "method": "Exact streamed full report bytes, assembled from independently verified full raw match JSON archives; never serialized or parsed as one campaign-sized string."
+  },
+  "sourceFilesUnchanged": 43,
+  "oracleAndProvenanceRecorded": true
+}

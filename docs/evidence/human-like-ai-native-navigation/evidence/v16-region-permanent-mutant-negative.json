@@ -1,0 +1,6 @@
+{
+  "globalRegionBypassStaleRejected": "PASS",
+  "reason": "replacing public flags without advancing the region version retains the cached rejection\n+ actual - expected\n\n+ [\n+   [\n+     3,\n+     1\n+   ],\n+   [\n+     5,\n+     1\n+   ]\n+ ]\n- []\n",
+  "globalRegionBypassHoleRejected": "PASS",
+  "holeReason": "public sparse heights retain the full-map rejection\n+ actual - expected\n\n+ [\n+   [\n+     3,\n+     3\n+   ]\n+ ]\n- []\n"
+}

@@ -1,0 +1,3 @@
+512x512 rifle: warm median 0.17 ms, p95 5.16 ms, peak 47 expansions
+512x512 tank: warm median 0.08 ms, p95 0.33 ms, peak 47 expansions
+Passed 8 focused pathfinding scenarios and bounded large-map searches.

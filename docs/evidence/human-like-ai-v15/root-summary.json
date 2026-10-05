@@ -1,0 +1,1265 @@
+{
+  "checkpoint": [
+    "e2d17224047076252b115e6e66e8dc2504aa003b2fc66d9169e9d32ec27c38c1"
+  ],
+  "sourceQualification": "Frozen V15. Later camera, fog and prospective collector changes are outside this evidence.",
+  "matches": 120,
+  "seats": 360,
+  "seconds": 180,
+  "groups": {
+    "conquest/easy": {
+      "matches": 20,
+      "seats": 60,
+      "bounds": {
+        "screen": [
+          0.9,
+          1.4
+        ],
+        "off": [
+          3,
+          6
+        ],
+        "apm": [
+          20,
+          35
+        ],
+        "peak": 60,
+        "opening": [
+          4,
+          8
+        ]
+      },
+      "originalRequiredFirstCompletedKMSeconds": null,
+      "originalRequiredKMStatus": "not-evaluable: original measurement incomplete from match start",
+      "physicalAPM60SeatMeanMedian": 27.333,
+      "physicalAPM60Status": "within-original-band",
+      "peak10Max": 60,
+      "peak10Status": "within-original-cap",
+      "firstOrder": {
+        "count": 60,
+        "mean": 5.994,
+        "min": 4.05,
+        "p10": 4.445,
+        "median": 6.1,
+        "p90": 7.705,
+        "p95": 7.85,
+        "max": 7.95
+      },
+      "firstOrderStatus": "all-within-original-band",
+      "maxCommandsPerTick": 1,
+      "quarterSecondLocalityStatus": "within-original-cap",
+      "floorStatus": "within-original-floor",
+      "openingByFaction": {
+        "USA": {
+          "firstAcceptedFamily": {
+            "matches": 20,
+            "counts": {
+              "\"infantry\"": 7,
+              "\"antiTank\"": 4,
+              "\"mortar\"": 5,
+              "\"machineGun\"": 4
+            },
+            "distinct": 4,
+            "mostCommonShare": 0.35
+          },
+          "acceptedFamilySequence": {
+            "matches": 20,
+            "counts": {
+              "[\"infantry\",\"infantry\"]": 6,
+              "[\"antiTank\"]": 4,
+              "[\"mortar\"]": 4,
+              "[\"machineGun\"]": 3,
+              "[\"mortar\",\"infantry\"]": 1,
+              "[\"machineGun\",\"infantry\"]": 1,
+              "[\"infantry\",\"infantry\",\"machineGun\"]": 1
+            },
+            "distinct": 7,
+            "mostCommonShare": 0.3
+          },
+          "meaningfulFirstFamilies": 4,
+          "meaningfulFamilySequences": 7,
+          "gate": {
+            "firstFamilyDiagnosticStatus": "pass",
+            "familySequenceStatus": "pass"
+          },
+          "coordinateNoveltyUsed": false
+        },
+        "Germany": {
+          "firstAcceptedFamily": {
+            "matches": 20,
+            "counts": {
+              "\"infantry\"": 9,
+              "\"machineGun\"": 3,
+              "\"mortar\"": 5,
+              "\"antiTank\"": 3
+            },
+            "distinct": 4,
+            "mostCommonShare": 0.45
+          },
+          "acceptedFamilySequence": {
+            "matches": 20,
+            "counts": {
+              "[\"infantry\",\"infantry\"]": 9,
+              "[\"machineGun\"]": 2,
+              "[\"mortar\"]": 5,
+              "[\"antiTank\"]": 3,
+              "[\"machineGun\",\"infantry\"]": 1
+            },
+            "distinct": 5,
+            "mostCommonShare": 0.45
+          },
+          "meaningfulFirstFamilies": 4,
+          "meaningfulFamilySequences": 5,
+          "gate": {
+            "firstFamilyDiagnosticStatus": "pass",
+            "familySequenceStatus": "pass"
+          },
+          "coordinateNoveltyUsed": false
+        },
+        "USSR": {
+          "firstAcceptedFamily": {
+            "matches": 20,
+            "counts": {
+              "\"infantry\"": 9,
+              "\"machineGun\"": 5,
+              "\"mortar\"": 3,
+              "\"antiTank\"": 3
+            },
+            "distinct": 4,
+            "mostCommonShare": 0.45
+          },
+          "acceptedFamilySequence": {
+            "matches": 20,
+            "counts": {
+              "[\"infantry\",\"infantry\"]": 7,
+              "[\"machineGun\"]": 4,
+              "[\"machineGun\",\"infantry\",\"infantry\"]": 1,
+              "[\"mortar\"]": 3,
+              "[\"antiTank\",\"infantry\"]": 1,
+              "[\"antiTank\"]": 2,
+              "[\"infantry\",\"infantry\",\"infantry\"]": 2
+            },
+            "distinct": 7,
+            "mostCommonShare": 0.35
+          },
+          "meaningfulFirstFamilies": 4,
+          "meaningfulFamilySequences": 7,
+          "gate": {
+            "firstFamilyDiagnosticStatus": "pass",
+            "familySequenceStatus": "pass"
+          },
+          "coordinateNoveltyUsed": false
+        }
+      },
+      "incompleteSeats": 60,
+      "observedRequiredFirstAction": {
+        "samples": 333,
+        "observed": 173,
+        "censored": 160,
+        "medianSeconds": 4.8,
+        "medianIdentifiable": true,
+        "method": "Kaplan-Meier survival with completed responses counted before censoring at tied times. Recording-end censoring assumes no informative loss of follow-up. A null median means the observed curve did not reach 0.5."
+      }
+    },
+    "conquest/normal": {
+      "matches": 20,
+      "seats": 60,
+      "bounds": {
+        "screen": [
+          0.5,
+          0.8
+        ],
+        "off": [
+          1.5,
+          3
+        ],
+        "apm": [
+          40,
+          70
+        ],
+        "peak": 120,
+        "opening": [
+          3,
+          6
+        ]
+      },
+      "originalRequiredFirstCompletedKMSeconds": 2.1,
+      "originalRequiredKMStatus": "not-evaluable: original measurement incomplete from match start",
+      "physicalAPM60SeatMeanMedian": 40.5,
+      "physicalAPM60Status": "within-original-band",
+      "peak10Max": 120,
+      "peak10Status": "within-original-cap",
+      "firstOrder": {
+        "count": 60,
+        "mean": 4.5,
+        "min": 3.05,
+        "p10": 3.345,
+        "median": 4.575,
+        "p90": 5.8,
+        "p95": 5.9,
+        "max": 5.95
+      },
+      "firstOrderStatus": "all-within-original-band",
+      "maxCommandsPerTick": 1,
+      "quarterSecondLocalityStatus": "within-original-cap",
+      "floorStatus": "within-original-floor",
+      "openingByFaction": {
+        "USA": {
+          "firstAcceptedFamily": {
+            "matches": 20,
+            "counts": {
+              "\"infantry\"": 7,
+              "\"antiTank\"": 4,
+              "\"mortar\"": 5,
+              "\"machineGun\"": 4
+            },
+            "distinct": 4,
+            "mostCommonShare": 0.35
+          },
+          "acceptedFamilySequence": {
+            "matches": 20,
+            "counts": {
+              "[\"infantry\",\"infantry\"]": 6,
+              "[\"antiTank\"]": 4,
+              "[\"mortar\",\"infantry\"]": 2,
+              "[\"machineGun\"]": 2,
+              "[\"machineGun\",\"infantry\"]": 2,
+              "[\"mortar\"]": 3,
+              "[\"infantry\",\"infantry\",\"infantry\"]": 1
+            },
+            "distinct": 7,
+            "mostCommonShare": 0.3
+          },
+          "meaningfulFirstFamilies": 4,
+          "meaningfulFamilySequences": 7,
+          "gate": {
+            "firstFamilyDiagnosticStatus": "pass",
+            "familySequenceStatus": "pass"
+          },
+          "coordinateNoveltyUsed": false
+        },
+        "Germany": {
+          "firstAcceptedFamily": {
+            "matches": 20,
+            "counts": {
+              "\"infantry\"": 9,
+              "\"machineGun\"": 3,
+              "\"mortar\"": 5,
+              "\"antiTank\"": 3
+            },
+            "distinct": 4,
+            "mostCommonShare": 0.45
+          },
+          "acceptedFamilySequence": {
+            "matches": 20,
+            "counts": {
+              "[\"infantry\",\"infantry\"]": 7,
+              "[\"machineGun\"]": 1,
+              "[\"mortar\",\"infantry\"]": 2,
+              "[\"infantry\",\"infantry\",\"infantry\"]": 2,
+              "[\"machineGun\",\"infantry\"]": 2,
+              "[\"mortar\"]": 3,
+              "[\"antiTank\"]": 2,
+              "[\"antiTank\",\"infantry\"]": 1
+            },
+            "distinct": 8,
+            "mostCommonShare": 0.35
+          },
+          "meaningfulFirstFamilies": 4,
+          "meaningfulFamilySequences": 8,
+          "gate": {
+            "firstFamilyDiagnosticStatus": "pass",
+            "familySequenceStatus": "pass"
+          },
+          "coordinateNoveltyUsed": false
+        },
+        "USSR": {
+          "firstAcceptedFamily": {
+            "matches": 20,
+            "counts": {
+              "\"infantry\"": 9,
+              "\"machineGun\"": 5,
+              "\"mortar\"": 3,
+              "\"antiTank\"": 3
+            },
+            "distinct": 4,
+            "mostCommonShare": 0.45
+          },
+          "acceptedFamilySequence": {
+            "matches": 20,
+            "counts": {
+              "[\"infantry\",\"infantry\",\"infantry\"]": 6,
+              "[\"machineGun\",\"infantry\"]": 5,
+              "[\"infantry\",\"infantry\"]": 2,
+              "[\"mortar\",\"infantry\"]": 2,
+              "[\"antiTank\"]": 2,
+              "[\"mortar\"]": 1,
+              "[\"infantry\",\"infantry\",\"infantry\",\"infantry\"]": 1,
+              "[\"antiTank\",\"infantry\"]": 1
+            },
+            "distinct": 8,
+            "mostCommonShare": 0.3
+          },
+          "meaningfulFirstFamilies": 4,
+          "meaningfulFamilySequences": 8,
+          "gate": {
+            "firstFamilyDiagnosticStatus": "pass",
+            "familySequenceStatus": "pass"
+          },
+          "coordinateNoveltyUsed": false
+        }
+      },
+      "incompleteSeats": 60,
+      "observedRequiredFirstAction": {
+        "samples": 398,
+        "observed": 235,
+        "censored": 163,
+        "medianSeconds": 1.55,
+        "medianIdentifiable": true,
+        "method": "Kaplan-Meier survival with completed responses counted before censoring at tied times. Recording-end censoring assumes no informative loss of follow-up. A null median means the observed curve did not reach 0.5."
+      }
+    },
+    "conquest/hard": {
+      "matches": 20,
+      "seats": 60,
+      "bounds": {
+        "screen": [
+          0.3,
+          0.45
+        ],
+        "off": [
+          0.8,
+          1.6
+        ],
+        "apm": [
+          80,
+          120
+        ],
+        "peak": 200,
+        "opening": [
+          2,
+          4
+        ]
+      },
+      "originalRequiredFirstCompletedKMSeconds": null,
+      "originalRequiredKMStatus": "not-evaluable: original measurement incomplete from match start",
+      "physicalAPM60SeatMeanMedian": 55.167,
+      "physicalAPM60Status": "outside-original-band",
+      "peak10Max": 168,
+      "peak10Status": "within-original-cap",
+      "firstOrder": {
+        "count": 60,
+        "mean": 3.017,
+        "min": 2.2,
+        "p10": 2.295,
+        "median": 3.05,
+        "p90": 3.855,
+        "p95": 3.95,
+        "max": 4
+      },
+      "firstOrderStatus": "all-within-original-band",
+      "maxCommandsPerTick": 1,
+      "quarterSecondLocalityStatus": "within-original-cap",
+      "floorStatus": "within-original-floor",
+      "openingByFaction": {
+        "USA": {
+          "firstAcceptedFamily": {
+            "matches": 20,
+            "counts": {
+              "\"infantry\"": 7,
+              "\"antiTank\"": 4,
+              "\"mortar\"": 5,
+              "\"machineGun\"": 4
+            },
+            "distinct": 4,
+            "mostCommonShare": 0.35
+          },
+          "acceptedFamilySequence": {
+            "matches": 20,
+            "counts": {
+              "[\"infantry\",\"infantry\"]": 3,
+              "[\"antiTank\"]": 2,
+              "[\"mortar\",\"infantry\"]": 5,
+              "[\"machineGun\",\"infantry\"]": 4,
+              "[\"infantry\",\"machineGun\"]": 1,
+              "[\"infantry\",\"infantry\",\"infantry\"]": 2,
+              "[\"antiTank\",\"infantry\"]": 2,
+              "[\"infantry\",\"infantry\",\"machineGun\"]": 1
+            },
+            "distinct": 8,
+            "mostCommonShare": 0.25
+          },
+          "meaningfulFirstFamilies": 4,
+          "meaningfulFamilySequences": 8,
+          "gate": {
+            "firstFamilyDiagnosticStatus": "pass",
+            "familySequenceStatus": "pass"
+          },
+          "coordinateNoveltyUsed": false
+        },
+        "Germany": {
+          "firstAcceptedFamily": {
+            "matches": 20,
+            "counts": {
+              "\"infantry\"": 9,
+              "\"machineGun\"": 3,
+              "\"mortar\"": 5,
+              "\"antiTank\"": 3
+            },
+            "distinct": 4,
+            "mostCommonShare": 0.45
+          },
+          "acceptedFamilySequence": {
+            "matches": 20,
+            "counts": {
+              "[\"infantry\",\"infantry\"]": 7,
+              "[\"machineGun\",\"infantry\"]": 3,
+              "[\"mortar\",\"infantry\"]": 2,
+              "[\"infantry\",\"infantry\",\"infantry\"]": 1,
+              "[\"infantry\",\"machineGun\"]": 1,
+              "[\"mortar\"]": 3,
+              "[\"antiTank\",\"infantry\"]": 1,
+              "[\"antiTank\"]": 2
+            },
+            "distinct": 8,
+            "mostCommonShare": 0.35
+          },
+          "meaningfulFirstFamilies": 4,
+          "meaningfulFamilySequences": 8,
+          "gate": {
+            "firstFamilyDiagnosticStatus": "pass",
+            "familySequenceStatus": "pass"
+          },
+          "coordinateNoveltyUsed": false
+        },
+        "USSR": {
+          "firstAcceptedFamily": {
+            "matches": 20,
+            "counts": {
+              "\"infantry\"": 9,
+              "\"machineGun\"": 5,
+              "\"mortar\"": 3,
+              "\"antiTank\"": 3
+            },
+            "distinct": 4,
+            "mostCommonShare": 0.45
+          },
+          "acceptedFamilySequence": {
+            "matches": 20,
+            "counts": {
+              "[\"infantry\",\"infantry\",\"infantry\",\"infantry\"]": 2,
+              "[\"infantry\",\"infantry\",\"infantry\"]": 4,
+              "[\"machineGun\",\"infantry\",\"infantry\"]": 1,
+              "[\"infantry\",\"infantry\",\"machineGun\"]": 2,
+              "[\"machineGun\",\"infantry\"]": 3,
+              "[\"mortar\"]": 1,
+              "[\"antiTank\",\"infantry\"]": 1,
+              "[\"mortar\",\"infantry\"]": 2,
+              "[\"antiTank\",\"machineGun\"]": 1,
+              "[\"antiTank\"]": 1,
+              "[\"infantry\",\"infantry\"]": 1,
+              "[\"machineGun\"]": 1
+            },
+            "distinct": 12,
+            "mostCommonShare": 0.2
+          },
+          "meaningfulFirstFamilies": 4,
+          "meaningfulFamilySequences": 12,
+          "gate": {
+            "firstFamilyDiagnosticStatus": "pass",
+            "familySequenceStatus": "pass"
+          },
+          "coordinateNoveltyUsed": false
+        }
+      },
+      "incompleteSeats": 60,
+      "observedRequiredFirstAction": {
+        "samples": 378,
+        "observed": 195,
+        "censored": 183,
+        "medianSeconds": 8.25,
+        "medianIdentifiable": true,
+        "method": "Kaplan-Meier survival with completed responses counted before censoring at tied times. Recording-end censoring assumes no informative loss of follow-up. A null median means the observed curve did not reach 0.5."
+      }
+    },
+    "classic/easy": {
+      "matches": 10,
+      "seats": 30,
+      "bounds": {
+        "screen": [
+          0.9,
+          1.4
+        ],
+        "off": [
+          3,
+          6
+        ],
+        "apm": [
+          20,
+          35
+        ],
+        "peak": 60,
+        "opening": [
+          4,
+          8
+        ]
+      },
+      "originalRequiredFirstCompletedKMSeconds": null,
+      "originalRequiredKMStatus": "not-evaluable: original measurement incomplete from match start",
+      "physicalAPM60SeatMeanMedian": 27,
+      "physicalAPM60Status": "within-original-band",
+      "peak10Max": 60,
+      "peak10Status": "within-original-cap",
+      "firstOrder": {
+        "count": 30,
+        "mean": 5.908,
+        "min": 4.25,
+        "p10": 4.585,
+        "median": 6.05,
+        "p90": 7.52,
+        "p95": 7.728,
+        "max": 7.95
+      },
+      "firstOrderStatus": "all-within-original-band",
+      "maxCommandsPerTick": 1,
+      "quarterSecondLocalityStatus": "within-original-cap",
+      "floorStatus": "within-original-floor",
+      "openingByFaction": {
+        "USA": {
+          "firstAcceptedFamily": {
+            "matches": 10,
+            "counts": {
+              "\"engineer\"": 10
+            },
+            "distinct": 1,
+            "mostCommonShare": 1
+          },
+          "acceptedFamilySequence": {
+            "matches": 10,
+            "counts": {
+              "[\"engineer\",\"infantry\",\"infantry\"]": 7,
+              "[\"engineer\",\"infantry\",\"engineer\"]": 1,
+              "[\"engineer\"]": 2
+            },
+            "distinct": 3,
+            "mostCommonShare": 0.7
+          },
+          "meaningfulFirstFamilies": 1,
+          "meaningfulFamilySequences": 3,
+          "gate": {
+            "status": "not-evaluable: fewer than20seeds"
+          },
+          "coordinateNoveltyUsed": false
+        },
+        "Germany": {
+          "firstAcceptedFamily": {
+            "matches": 10,
+            "counts": {
+              "\"engineer\"": 10
+            },
+            "distinct": 1,
+            "mostCommonShare": 1
+          },
+          "acceptedFamilySequence": {
+            "matches": 10,
+            "counts": {
+              "[\"engineer\"]": 3,
+              "[\"engineer\",\"infantry\"]": 5,
+              "[\"engineer\",\"infantry\",\"infantry\"]": 2
+            },
+            "distinct": 3,
+            "mostCommonShare": 0.5
+          },
+          "meaningfulFirstFamilies": 1,
+          "meaningfulFamilySequences": 3,
+          "gate": {
+            "status": "not-evaluable: fewer than20seeds"
+          },
+          "coordinateNoveltyUsed": false
+        },
+        "USSR": {
+          "firstAcceptedFamily": {
+            "matches": 10,
+            "counts": {
+              "\"engineer\"": 10
+            },
+            "distinct": 1,
+            "mostCommonShare": 1
+          },
+          "acceptedFamilySequence": {
+            "matches": 10,
+            "counts": {
+              "[\"engineer\",\"infantry\"]": 3,
+              "[\"engineer\",\"infantry\",\"infantry\"]": 5,
+              "[\"engineer\"]": 2
+            },
+            "distinct": 3,
+            "mostCommonShare": 0.5
+          },
+          "meaningfulFirstFamilies": 1,
+          "meaningfulFamilySequences": 3,
+          "gate": {
+            "status": "not-evaluable: fewer than20seeds"
+          },
+          "coordinateNoveltyUsed": false
+        }
+      },
+      "incompleteSeats": 30,
+      "observedRequiredFirstAction": {
+        "samples": 64,
+        "observed": 25,
+        "censored": 39,
+        "medianSeconds": null,
+        "medianIdentifiable": false,
+        "method": "Kaplan-Meier survival with completed responses counted before censoring at tied times. Recording-end censoring assumes no informative loss of follow-up. A null median means the observed curve did not reach 0.5."
+      }
+    },
+    "classic/normal": {
+      "matches": 10,
+      "seats": 30,
+      "bounds": {
+        "screen": [
+          0.5,
+          0.8
+        ],
+        "off": [
+          1.5,
+          3
+        ],
+        "apm": [
+          40,
+          70
+        ],
+        "peak": 120,
+        "opening": [
+          3,
+          6
+        ]
+      },
+      "originalRequiredFirstCompletedKMSeconds": null,
+      "originalRequiredKMStatus": "not-evaluable: original measurement incomplete from match start",
+      "physicalAPM60SeatMeanMedian": 38.334,
+      "physicalAPM60Status": "outside-original-band",
+      "peak10Max": 120,
+      "peak10Status": "within-original-cap",
+      "firstOrder": {
+        "count": 30,
+        "mean": 4.435,
+        "min": 3.2,
+        "p10": 3.44,
+        "median": 4.525,
+        "p90": 5.665,
+        "p95": 5.828,
+        "max": 5.95
+      },
+      "firstOrderStatus": "all-within-original-band",
+      "maxCommandsPerTick": 1,
+      "quarterSecondLocalityStatus": "within-original-cap",
+      "floorStatus": "within-original-floor",
+      "openingByFaction": {
+        "USA": {
+          "firstAcceptedFamily": {
+            "matches": 10,
+            "counts": {
+              "\"engineer\"": 10
+            },
+            "distinct": 1,
+            "mostCommonShare": 1
+          },
+          "acceptedFamilySequence": {
+            "matches": 10,
+            "counts": {
+              "[\"engineer\",\"infantry\",\"infantry\"]": 7,
+              "[\"engineer\",\"infantry\"]": 3
+            },
+            "distinct": 2,
+            "mostCommonShare": 0.7
+          },
+          "meaningfulFirstFamilies": 1,
+          "meaningfulFamilySequences": 2,
+          "gate": {
+            "status": "not-evaluable: fewer than20seeds"
+          },
+          "coordinateNoveltyUsed": false
+        },
+        "Germany": {
+          "firstAcceptedFamily": {
+            "matches": 10,
+            "counts": {
+              "\"engineer\"": 10
+            },
+            "distinct": 1,
+            "mostCommonShare": 1
+          },
+          "acceptedFamilySequence": {
+            "matches": 10,
+            "counts": {
+              "[\"engineer\",\"infantry\"]": 3,
+              "[\"engineer\",\"infantry\",\"infantry\"]": 7
+            },
+            "distinct": 2,
+            "mostCommonShare": 0.7
+          },
+          "meaningfulFirstFamilies": 1,
+          "meaningfulFamilySequences": 2,
+          "gate": {
+            "status": "not-evaluable: fewer than20seeds"
+          },
+          "coordinateNoveltyUsed": false
+        },
+        "USSR": {
+          "firstAcceptedFamily": {
+            "matches": 10,
+            "counts": {
+              "\"engineer\"": 10
+            },
+            "distinct": 1,
+            "mostCommonShare": 1
+          },
+          "acceptedFamilySequence": {
+            "matches": 10,
+            "counts": {
+              "[\"engineer\",\"infantry\",\"infantry\"]": 7,
+              "[\"engineer\",\"infantry\"]": 3
+            },
+            "distinct": 2,
+            "mostCommonShare": 0.7
+          },
+          "meaningfulFirstFamilies": 1,
+          "meaningfulFamilySequences": 2,
+          "gate": {
+            "status": "not-evaluable: fewer than20seeds"
+          },
+          "coordinateNoveltyUsed": false
+        }
+      },
+      "incompleteSeats": 30,
+      "observedRequiredFirstAction": {
+        "samples": 73,
+        "observed": 35,
+        "censored": 38,
+        "medianSeconds": 11.5,
+        "medianIdentifiable": true,
+        "method": "Kaplan-Meier survival with completed responses counted before censoring at tied times. Recording-end censoring assumes no informative loss of follow-up. A null median means the observed curve did not reach 0.5."
+      }
+    },
+    "classic/hard": {
+      "matches": 10,
+      "seats": 30,
+      "bounds": {
+        "screen": [
+          0.3,
+          0.45
+        ],
+        "off": [
+          0.8,
+          1.6
+        ],
+        "apm": [
+          80,
+          120
+        ],
+        "peak": 200,
+        "opening": [
+          2,
+          4
+        ]
+      },
+      "originalRequiredFirstCompletedKMSeconds": 2.4,
+      "originalRequiredKMStatus": "not-evaluable: original measurement incomplete from match start",
+      "physicalAPM60SeatMeanMedian": 52.167,
+      "physicalAPM60Status": "outside-original-band",
+      "peak10Max": 192,
+      "peak10Status": "within-original-cap",
+      "firstOrder": {
+        "count": 30,
+        "mean": 2.972,
+        "min": 2.2,
+        "p10": 2.3,
+        "median": 3.025,
+        "p90": 3.76,
+        "p95": 3.878,
+        "max": 4
+      },
+      "firstOrderStatus": "all-within-original-band",
+      "maxCommandsPerTick": 1,
+      "quarterSecondLocalityStatus": "within-original-cap",
+      "floorStatus": "within-original-floor",
+      "openingByFaction": {
+        "USA": {
+          "firstAcceptedFamily": {
+            "matches": 10,
+            "counts": {
+              "\"engineer\"": 10
+            },
+            "distinct": 1,
+            "mostCommonShare": 1
+          },
+          "acceptedFamilySequence": {
+            "matches": 10,
+            "counts": {
+              "[\"engineer\",\"infantry\",\"infantry\"]": 7,
+              "[\"engineer\",\"infantry\"]": 3
+            },
+            "distinct": 2,
+            "mostCommonShare": 0.7
+          },
+          "meaningfulFirstFamilies": 1,
+          "meaningfulFamilySequences": 2,
+          "gate": {
+            "status": "not-evaluable: fewer than20seeds"
+          },
+          "coordinateNoveltyUsed": false
+        },
+        "Germany": {
+          "firstAcceptedFamily": {
+            "matches": 10,
+            "counts": {
+              "\"engineer\"": 10
+            },
+            "distinct": 1,
+            "mostCommonShare": 1
+          },
+          "acceptedFamilySequence": {
+            "matches": 10,
+            "counts": {
+              "[\"engineer\",\"infantry\",\"infantry\"]": 7,
+              "[\"engineer\",\"infantry\"]": 3
+            },
+            "distinct": 2,
+            "mostCommonShare": 0.7
+          },
+          "meaningfulFirstFamilies": 1,
+          "meaningfulFamilySequences": 2,
+          "gate": {
+            "status": "not-evaluable: fewer than20seeds"
+          },
+          "coordinateNoveltyUsed": false
+        },
+        "USSR": {
+          "firstAcceptedFamily": {
+            "matches": 10,
+            "counts": {
+              "\"engineer\"": 10
+            },
+            "distinct": 1,
+            "mostCommonShare": 1
+          },
+          "acceptedFamilySequence": {
+            "matches": 10,
+            "counts": {
+              "[\"engineer\",\"infantry\",\"infantry\"]": 8,
+              "[\"engineer\",\"infantry\"]": 2
+            },
+            "distinct": 2,
+            "mostCommonShare": 0.8
+          },
+          "meaningfulFirstFamilies": 1,
+          "meaningfulFamilySequences": 2,
+          "gate": {
+            "status": "not-evaluable: fewer than20seeds"
+          },
+          "coordinateNoveltyUsed": false
+        }
+      },
+      "incompleteSeats": 30,
+      "observedRequiredFirstAction": {
+        "samples": 95,
+        "observed": 54,
+        "censored": 41,
+        "medianSeconds": 2.7,
+        "medianIdentifiable": true,
+        "method": "Kaplan-Meier survival with completed responses counted before censoring at tied times. Recording-end censoring assumes no informative loss of follow-up. A null median means the observed curve did not reach 0.5."
+      }
+    },
+    "world/easy": {
+      "matches": 10,
+      "seats": 30,
+      "bounds": {
+        "screen": [
+          0.9,
+          1.4
+        ],
+        "off": [
+          3,
+          6
+        ],
+        "apm": [
+          20,
+          35
+        ],
+        "peak": 60,
+        "opening": [
+          4,
+          8
+        ]
+      },
+      "originalRequiredFirstCompletedKMSeconds": null,
+      "originalRequiredKMStatus": "not-evaluable: original measurement incomplete from match start",
+      "physicalAPM60SeatMeanMedian": 31.333,
+      "physicalAPM60Status": "within-original-band",
+      "peak10Max": 60,
+      "peak10Status": "within-original-cap",
+      "firstOrder": {
+        "count": 30,
+        "mean": 6,
+        "min": 4.25,
+        "p10": 4.645,
+        "median": 6.15,
+        "p90": 7.52,
+        "p95": 7.728,
+        "max": 7.95
+      },
+      "firstOrderStatus": "all-within-original-band",
+      "maxCommandsPerTick": 1,
+      "quarterSecondLocalityStatus": "within-original-cap",
+      "floorStatus": "within-original-floor",
+      "openingByFaction": {
+        "USA": {
+          "firstAcceptedFamily": {
+            "matches": 10,
+            "counts": {
+              "\"infantry\"": 10
+            },
+            "distinct": 1,
+            "mostCommonShare": 1
+          },
+          "acceptedFamilySequence": {
+            "matches": 10,
+            "counts": {
+              "[\"infantry\",\"infantry\"]": 9,
+              "[\"infantry\"]": 1
+            },
+            "distinct": 2,
+            "mostCommonShare": 0.9
+          },
+          "meaningfulFirstFamilies": 1,
+          "meaningfulFamilySequences": 2,
+          "gate": {
+            "status": "not-evaluable: fewer than20seeds"
+          },
+          "coordinateNoveltyUsed": false
+        },
+        "Germany": {
+          "firstAcceptedFamily": {
+            "matches": 10,
+            "counts": {
+              "\"infantry\"": 10
+            },
+            "distinct": 1,
+            "mostCommonShare": 1
+          },
+          "acceptedFamilySequence": {
+            "matches": 10,
+            "counts": {
+              "[\"infantry\",\"infantry\"]": 8,
+              "[\"infantry\",\"infantry\",\"infantry\"]": 1,
+              "[\"infantry\"]": 1
+            },
+            "distinct": 3,
+            "mostCommonShare": 0.8
+          },
+          "meaningfulFirstFamilies": 1,
+          "meaningfulFamilySequences": 3,
+          "gate": {
+            "status": "not-evaluable: fewer than20seeds"
+          },
+          "coordinateNoveltyUsed": false
+        },
+        "USSR": {
+          "firstAcceptedFamily": {
+            "matches": 10,
+            "counts": {
+              "\"infantry\"": 10
+            },
+            "distinct": 1,
+            "mostCommonShare": 1
+          },
+          "acceptedFamilySequence": {
+            "matches": 10,
+            "counts": {
+              "[\"infantry\",\"infantry\"]": 7,
+              "[\"infantry\"]": 3
+            },
+            "distinct": 2,
+            "mostCommonShare": 0.7
+          },
+          "meaningfulFirstFamilies": 1,
+          "meaningfulFamilySequences": 2,
+          "gate": {
+            "status": "not-evaluable: fewer than20seeds"
+          },
+          "coordinateNoveltyUsed": false
+        }
+      },
+      "incompleteSeats": 30,
+      "observedRequiredFirstAction": {
+        "samples": 14,
+        "observed": 5,
+        "censored": 9,
+        "medianSeconds": null,
+        "medianIdentifiable": false,
+        "method": "Kaplan-Meier survival with completed responses counted before censoring at tied times. Recording-end censoring assumes no informative loss of follow-up. A null median means the observed curve did not reach 0.5."
+      }
+    },
+    "world/normal": {
+      "matches": 10,
+      "seats": 30,
+      "bounds": {
+        "screen": [
+          0.5,
+          0.8
+        ],
+        "off": [
+          1.5,
+          3
+        ],
+        "apm": [
+          40,
+          70
+        ],
+        "peak": 120,
+        "opening": [
+          3,
+          6
+        ]
+      },
+      "originalRequiredFirstCompletedKMSeconds": 0.8,
+      "originalRequiredKMStatus": "not-evaluable: original measurement incomplete from match start",
+      "physicalAPM60SeatMeanMedian": 39.833,
+      "physicalAPM60Status": "outside-original-band",
+      "peak10Max": 120,
+      "peak10Status": "within-original-cap",
+      "firstOrder": {
+        "count": 30,
+        "mean": 4.47,
+        "min": 3.2,
+        "p10": 3.44,
+        "median": 4.625,
+        "p90": 5.665,
+        "p95": 5.828,
+        "max": 5.95
+      },
+      "firstOrderStatus": "all-within-original-band",
+      "maxCommandsPerTick": 1,
+      "quarterSecondLocalityStatus": "within-original-cap",
+      "floorStatus": "within-original-floor",
+      "openingByFaction": {
+        "USA": {
+          "firstAcceptedFamily": {
+            "matches": 10,
+            "counts": {
+              "\"engineer\"": 10
+            },
+            "distinct": 1,
+            "mostCommonShare": 1
+          },
+          "acceptedFamilySequence": {
+            "matches": 10,
+            "counts": {
+              "[\"engineer\",\"infantry\"]": 4,
+              "[\"engineer\",\"infantry\",\"infantry\",\"infantry\"]": 1,
+              "[\"engineer\",\"infantry\",\"infantry\"]": 5
+            },
+            "distinct": 3,
+            "mostCommonShare": 0.5
+          },
+          "meaningfulFirstFamilies": 1,
+          "meaningfulFamilySequences": 3,
+          "gate": {
+            "status": "not-evaluable: fewer than20seeds"
+          },
+          "coordinateNoveltyUsed": false
+        },
+        "Germany": {
+          "firstAcceptedFamily": {
+            "matches": 10,
+            "counts": {
+              "\"engineer\"": 10
+            },
+            "distinct": 1,
+            "mostCommonShare": 1
+          },
+          "acceptedFamilySequence": {
+            "matches": 10,
+            "counts": {
+              "[\"engineer\",\"infantry\",\"infantry\"]": 6,
+              "[\"engineer\",\"infantry\"]": 4
+            },
+            "distinct": 2,
+            "mostCommonShare": 0.6
+          },
+          "meaningfulFirstFamilies": 1,
+          "meaningfulFamilySequences": 2,
+          "gate": {
+            "status": "not-evaluable: fewer than20seeds"
+          },
+          "coordinateNoveltyUsed": false
+        },
+        "USSR": {
+          "firstAcceptedFamily": {
+            "matches": 10,
+            "counts": {
+              "\"engineer\"": 10
+            },
+            "distinct": 1,
+            "mostCommonShare": 1
+          },
+          "acceptedFamilySequence": {
+            "matches": 10,
+            "counts": {
+              "[\"engineer\",\"infantry\"]": 6,
+              "[\"engineer\",\"infantry\",\"infantry\"]": 4
+            },
+            "distinct": 2,
+            "mostCommonShare": 0.6
+          },
+          "meaningfulFirstFamilies": 1,
+          "meaningfulFamilySequences": 2,
+          "gate": {
+            "status": "not-evaluable: fewer than20seeds"
+          },
+          "coordinateNoveltyUsed": false
+        }
+      },
+      "incompleteSeats": 30,
+      "observedRequiredFirstAction": {
+        "samples": 15,
+        "observed": 8,
+        "censored": 7,
+        "medianSeconds": 0.8,
+        "medianIdentifiable": true,
+        "method": "Kaplan-Meier survival with completed responses counted before censoring at tied times. Recording-end censoring assumes no informative loss of follow-up. A null median means the observed curve did not reach 0.5."
+      }
+    },
+    "world/hard": {
+      "matches": 10,
+      "seats": 30,
+      "bounds": {
+        "screen": [
+          0.3,
+          0.45
+        ],
+        "off": [
+          0.8,
+          1.6
+        ],
+        "apm": [
+          80,
+          120
+        ],
+        "peak": 200,
+        "opening": [
+          2,
+          4
+        ]
+      },
+      "originalRequiredFirstCompletedKMSeconds": 11.25,
+      "originalRequiredKMStatus": "not-evaluable: original measurement incomplete from match start",
+      "physicalAPM60SeatMeanMedian": 52.5,
+      "physicalAPM60Status": "outside-original-band",
+      "peak10Max": 198,
+      "peak10Status": "within-original-cap",
+      "firstOrder": {
+        "count": 30,
+        "mean": 2.98,
+        "min": 2.25,
+        "p10": 2.35,
+        "median": 3.025,
+        "p90": 3.76,
+        "p95": 3.878,
+        "max": 4
+      },
+      "firstOrderStatus": "all-within-original-band",
+      "maxCommandsPerTick": 1,
+      "quarterSecondLocalityStatus": "within-original-cap",
+      "floorStatus": "within-original-floor",
+      "openingByFaction": {
+        "USA": {
+          "firstAcceptedFamily": {
+            "matches": 10,
+            "counts": {
+              "\"engineer\"": 10
+            },
+            "distinct": 1,
+            "mostCommonShare": 1
+          },
+          "acceptedFamilySequence": {
+            "matches": 10,
+            "counts": {
+              "[\"engineer\",\"infantry\",\"infantry\"]": 9,
+              "[\"engineer\",\"infantry\",\"infantry\",\"infantry\"]": 1
+            },
+            "distinct": 2,
+            "mostCommonShare": 0.9
+          },
+          "meaningfulFirstFamilies": 1,
+          "meaningfulFamilySequences": 2,
+          "gate": {
+            "status": "not-evaluable: fewer than20seeds"
+          },
+          "coordinateNoveltyUsed": false
+        },
+        "Germany": {
+          "firstAcceptedFamily": {
+            "matches": 10,
+            "counts": {
+              "\"engineer\"": 10
+            },
+            "distinct": 1,
+            "mostCommonShare": 1
+          },
+          "acceptedFamilySequence": {
+            "matches": 10,
+            "counts": {
+              "[\"engineer\",\"infantry\",\"infantry\"]": 10
+            },
+            "distinct": 1,
+            "mostCommonShare": 1
+          },
+          "meaningfulFirstFamilies": 1,
+          "meaningfulFamilySequences": 1,
+          "gate": {
+            "status": "not-evaluable: fewer than20seeds"
+          },
+          "coordinateNoveltyUsed": false
+        },
+        "USSR": {
+          "firstAcceptedFamily": {
+            "matches": 10,
+            "counts": {
+              "\"engineer\"": 10
+            },
+            "distinct": 1,
+            "mostCommonShare": 1
+          },
+          "acceptedFamilySequence": {
+            "matches": 10,
+            "counts": {
+              "[\"engineer\",\"infantry\",\"infantry\"]": 8,
+              "[\"engineer\",\"infantry\",\"infantry\",\"infantry\"]": 1,
+              "[\"engineer\",\"infantry\"]": 1
+            },
+            "distinct": 3,
+            "mostCommonShare": 0.8
+          },
+          "meaningfulFirstFamilies": 1,
+          "meaningfulFamilySequences": 3,
+          "gate": {
+            "status": "not-evaluable: fewer than20seeds"
+          },
+          "coordinateNoveltyUsed": false
+        }
+      },
+      "incompleteSeats": 30,
+      "observedRequiredFirstAction": {
+        "samples": 19,
+        "observed": 10,
+        "censored": 9,
+        "medianSeconds": 11.25,
+        "medianIdentifiable": true,
+        "method": "Kaplan-Meier survival with completed responses counted before censoring at tied times. Recording-end censoring assumes no informative loss of follow-up. A null median means the observed curve did not reach 0.5."
+      }
+    }
+  }
+}

@@ -1,0 +1,5 @@
+[project]
+name = "ww2-rts-mcp-for-blender"
+version = "0.1.0"
+requires-python = ">=3.10"
+dependencies = ["mcp-for-blender==2.1.3"]

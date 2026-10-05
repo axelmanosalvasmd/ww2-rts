@@ -1,0 +1,360 @@
+{
+  "checkpoint": "3bac0c0923bcfe622dac10a8b76783d090eaf249a4c54e3e9a89a305c9e51ae9",
+  "rawSHA256": "c37d9e114ceadf2f871ce5e2975dfbf40ef8919f362211dcbf59218653225fdd",
+  "seconds": 180,
+  "commandsMatch": true,
+  "inputsMatch": true,
+  "required": [
+    {
+      "creation": {
+        "id": "observed-screen:818:9",
+        "kind": "screen-contact",
+        "tick": 818,
+        "observationTick": 818,
+        "source": "screen",
+        "onScreen": true,
+        "x": 155,
+        "z": 83,
+        "targetId": 12,
+        "provenance": "entered-screen",
+        "observedDanger": {
+          "nearbyOwnUnits": [
+            3,
+            14
+          ],
+          "idleOwnUnits": [
+            3
+          ]
+        }
+      },
+      "reason": "idle-combat-contact",
+      "manualUnits": [
+        3
+      ],
+      "answer": null
+    },
+    {
+      "creation": {
+        "id": "observed-screen:897:10",
+        "kind": "screen-contact",
+        "tick": 897,
+        "observationTick": 896,
+        "source": "screen",
+        "onScreen": true,
+        "x": 81,
+        "z": 13,
+        "targetId": 8,
+        "provenance": "entered-screen",
+        "observedDanger": {
+          "nearbyOwnUnits": [
+            2,
+            11
+          ],
+          "idleOwnUnits": [
+            2,
+            11
+          ]
+        }
+      },
+      "reason": "idle-combat-contact",
+      "manualUnits": [
+        2,
+        11
+      ],
+      "answer": {
+        "firstActionTick": 961,
+        "acceptedCommandTick": 978
+      }
+    },
+    {
+      "creation": {
+        "id": "observed-screen:897:11",
+        "kind": "screen-contact",
+        "tick": 897,
+        "observationTick": 896,
+        "source": "screen",
+        "onScreen": true,
+        "x": 81.4,
+        "z": 15.4,
+        "targetId": 15,
+        "provenance": "entered-screen",
+        "observedDanger": {
+          "nearbyOwnUnits": [
+            2,
+            11
+          ],
+          "idleOwnUnits": [
+            2,
+            11
+          ]
+        }
+      },
+      "reason": "idle-combat-contact",
+      "manualUnits": [
+        2,
+        11
+      ],
+      "answer": {
+        "firstActionTick": 961,
+        "acceptedCommandTick": 978
+      }
+    },
+    {
+      "creation": {
+        "id": "observed-screen:1585:19",
+        "kind": "screen-contact",
+        "tick": 1585,
+        "observationTick": 1584,
+        "source": "screen",
+        "onScreen": true,
+        "x": 115,
+        "z": 61.4,
+        "targetId": 8,
+        "provenance": "entered-screen",
+        "observedDanger": {
+          "nearbyOwnUnits": [
+            14
+          ],
+          "idleOwnUnits": [
+            14
+          ]
+        }
+      },
+      "reason": "idle-combat-contact",
+      "manualUnits": [
+        14
+      ],
+      "answer": {
+        "firstActionTick": 1673,
+        "acceptedCommandTick": 1687
+      }
+    },
+    {
+      "creation": {
+        "id": "observed-screen:1594:20",
+        "kind": "screen-contact",
+        "tick": 1594,
+        "observationTick": 1594,
+        "source": "screen",
+        "onScreen": true,
+        "x": 111,
+        "z": 69,
+        "targetId": 7,
+        "provenance": "entered-screen",
+        "observedDanger": {
+          "nearbyOwnUnits": [
+            3,
+            14
+          ],
+          "idleOwnUnits": [
+            14
+          ]
+        }
+      },
+      "reason": "idle-combat-contact",
+      "manualUnits": [
+        14
+      ],
+      "answer": {
+        "firstActionTick": 1673,
+        "acceptedCommandTick": 1687
+      }
+    },
+    {
+      "creation": {
+        "id": "observed-screen:2464:28",
+        "kind": "screen-damage",
+        "tick": 2464,
+        "observationTick": 2464,
+        "source": "screen",
+        "onScreen": true,
+        "x": 123.8,
+        "z": 84.1,
+        "unitId": 11,
+        "amount": 40,
+        "episode": "11:9",
+        "episodeTick": 2452,
+        "provenance": "heavy-damage",
+        "observedDanger": {
+          "healthShare": 0.5,
+          "lossShare": 0.4,
+          "healthBand": "hurt",
+          "suppressionBand": "suppressed",
+          "retreatRisk": false,
+          "alreadyRetreating": false,
+          "alreadyEngaged": false,
+          "autoRetreatCovered": false
+        }
+      },
+      "reason": "public-heavy-or-risk-damage",
+      "manualUnits": [
+        11
+      ],
+      "answer": null
+    },
+    {
+      "creation": {
+        "id": "observed-screen:2464:29",
+        "kind": "screen-damage",
+        "tick": 2464,
+        "observationTick": 2464,
+        "source": "screen",
+        "onScreen": true,
+        "x": 125.6,
+        "z": 85.4,
+        "unitId": 17,
+        "amount": 30,
+        "episode": "17:10",
+        "episodeTick": 2464,
+        "provenance": "heavy-damage",
+        "observedDanger": {
+          "healthShare": 0.7,
+          "lossShare": 0.3,
+          "healthBand": "healthy",
+          "suppressionBand": "suppressed",
+          "retreatRisk": false,
+          "alreadyRetreating": false,
+          "alreadyEngaged": false,
+          "autoRetreatCovered": false
+        }
+      },
+      "reason": "public-heavy-or-risk-damage",
+      "manualUnits": [
+        17
+      ],
+      "answer": null
+    },
+    {
+      "creation": {
+        "id": "observed-screen:2839:37",
+        "kind": "screen-contact",
+        "tick": 2839,
+        "observationTick": 2838,
+        "source": "screen",
+        "onScreen": true,
+        "x": 116.4,
+        "z": 69.1,
+        "targetId": 8,
+        "provenance": "entered-screen",
+        "observedDanger": {
+          "nearbyOwnUnits": [
+            1,
+            2,
+            3,
+            17,
+            21
+          ],
+          "idleOwnUnits": [
+            3
+          ]
+        }
+      },
+      "reason": "idle-combat-contact",
+      "manualUnits": [
+        3
+      ],
+      "answer": null
+    }
+  ],
+  "causalProposalDelays": [
+    {
+      "creationTick": 897,
+      "proposals": [
+        {
+          "tick": 907,
+          "slot": 0,
+          "concern": "stimulus:observed-screen:897:10",
+          "proposed": {
+            "t": "amove",
+            "orders": [
+              [
+                2,
+                81,
+                13
+              ],
+              [
+                11,
+                81,
+                13
+              ]
+            ]
+          }
+        },
+        {
+          "tick": 937,
+          "slot": 0,
+          "concern": "stimulus:observed-screen:897:10",
+          "proposed": {
+            "t": "amove",
+            "orders": [
+              [
+                2,
+                81.9,
+                11.3
+              ],
+              [
+                11,
+                81.9,
+                11.3
+              ]
+            ]
+          }
+        }
+      ],
+      "firstQueueTick": 937,
+      "firstInputTick": 961
+    },
+    {
+      "creationTick": 1585,
+      "proposals": [
+        {
+          "tick": 1595,
+          "slot": 0,
+          "concern": "stimulus:observed-screen:1585:19",
+          "proposed": {
+            "t": "amove",
+            "orders": [
+              [
+                14,
+                115,
+                61.4
+              ]
+            ]
+          }
+        },
+        {
+          "tick": 1625,
+          "slot": 0,
+          "concern": "stimulus:observed-screen:1585:19",
+          "proposed": {
+            "t": "amove",
+            "orders": [
+              [
+                14,
+                115,
+                61.4
+              ]
+            ]
+          }
+        },
+        {
+          "tick": 1668,
+          "slot": 0,
+          "concern": "stimulus:observed-screen:1594:20",
+          "proposed": {
+            "t": "amove",
+            "orders": [
+              [
+                14,
+                111,
+                69
+              ]
+            ]
+          }
+        }
+      ],
+      "firstQueueTick": 1668,
+      "firstInputTick": 1673
+    }
+  ]
+}

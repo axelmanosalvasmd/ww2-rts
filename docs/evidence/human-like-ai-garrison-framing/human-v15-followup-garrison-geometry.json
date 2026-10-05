@@ -1,0 +1,147 @@
+{
+  "camera": {
+    "x": 63.95989188197758,
+    "z": 114.88339091961933,
+    "yaw": 1.035376784858271,
+    "distance": 60
+  },
+  "actor": {
+    "id": 2,
+    "type": "rifle",
+    "owner": 0,
+    "x": 83.2,
+    "z": 125.8,
+    "rot": -2.5,
+    "aim": -2.5,
+    "hp": 70,
+    "supp": 0,
+    "targetId": 0,
+    "cover": 0,
+    "cd": null,
+    "flags": 24576,
+    "veterancy": 0,
+    "built": 1,
+    "path": [],
+    "orders": [],
+    "attackId": 0,
+    "retreating": false,
+    "buff": 0,
+    "ap": false,
+    "reinf": 0,
+    "dig": null,
+    "garrison": -1,
+    "amove": null,
+    "build": 0,
+    "enter": -1,
+    "fireAt": -1,
+    "nade": null,
+    "entrench": null,
+    "holdFire": false,
+    "holdPos": false,
+    "autoRetreat": true,
+    "auto": true,
+    "orderPlan": {
+      "kind": 0,
+      "x": 0,
+      "z": 0
+    },
+    "moveOutcome": "completed",
+    "moveOutcomeTick": 334,
+    "hpBasis": "world-bar",
+    "suppSource": "world-bar",
+    "suppressionBand": "normal",
+    "healthBand": "healthy",
+    "firstStillAt": 29.8,
+    "lastSeen": 30.3,
+    "lastScreenTick": 606,
+    "screenSeen": true,
+    "confidence": 1,
+    "hpSource": "world-bar",
+    "hpObservedTick": 606,
+    "exactHPKnown": false,
+    "cdKnown": false,
+    "cdState": "stale-hud",
+    "cdObservedTick": 74,
+    "lastHUD": {
+      "type": "rifle",
+      "ids": [
+        2
+      ],
+      "hp": 100,
+      "maxHp": 100,
+      "ability": {
+        "id": "grenade",
+        "anyReady": true,
+        "cooldownSeconds": 0,
+        "allAuto": true,
+        "usable": true,
+        "reason": null
+      },
+      "observedTick": 74
+    }
+  },
+  "house": {
+    "x": 87,
+    "z": 121
+  },
+  "onScreen": {
+    "actor": true,
+    "house": false
+  },
+  "geometryChecks": [
+    {
+      "shift": {
+        "x": 0,
+        "z": 0
+      },
+      "actor": true,
+      "house": false,
+      "queued": false
+    },
+    {
+      "shift": {
+        "x": 4,
+        "z": 0
+      },
+      "actor": true,
+      "house": true,
+      "queued": true
+    },
+    {
+      "shift": {
+        "x": 8,
+        "z": 0
+      },
+      "actor": true,
+      "house": true,
+      "queued": true
+    },
+    {
+      "shift": {
+        "x": 12,
+        "z": 0
+      },
+      "actor": true,
+      "house": true,
+      "queued": true
+    },
+    {
+      "shift": {
+        "x": 4,
+        "z": 4
+      },
+      "actor": true,
+      "house": true,
+      "queued": true
+    },
+    {
+      "shift": {
+        "x": 8,
+        "z": 4
+      },
+      "actor": true,
+      "house": true,
+      "queued": true
+    }
+  ]
+}

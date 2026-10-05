@@ -1,0 +1,470 @@
+[
+  {
+    "source": "/tmp/r6-repeat-intent/REVIEW.md",
+    "destination": "docs/evidence/human-like-ai-r6-fixes/repeat-arrival/REVIEW.md",
+    "bytes": 5144,
+    "sha256": "4cbcfda4791dcacf4c5cd0e0810101c270ce82c3a2bd378eac5f32df1c1381a5"
+  },
+  {
+    "source": "/tmp/r6-repeat-intent/accepted-destination-intent.patch",
+    "destination": "docs/evidence/human-like-ai-r6-fixes/repeat-arrival/accepted-destination-intent.patch",
+    "bytes": 3528,
+    "sha256": "ed904ba8c5269e79d97f8b7967b19a678f0204e51d46136890b0a6be26593021"
+  },
+  {
+    "source": "/tmp/r6-repeat-intent/proof.json",
+    "destination": "docs/evidence/human-like-ai-r6-fixes/repeat-arrival/proof.json",
+    "bytes": 1764,
+    "sha256": "912bfc0bbfe2d49aea070a4fc88850a1c26206d342fcc512a3d692f4199363a1"
+  },
+  {
+    "source": "/tmp/r6-repeat-intent/reported-chain-shapes.json",
+    "destination": "docs/evidence/human-like-ai-r6-fixes/repeat-arrival/reported-chain-shapes.json",
+    "bytes": 3287,
+    "sha256": "af1c7c488d921116c90dc852e14a2c7ed55ab83a13b51e4fe6803dedc51b121e"
+  },
+  {
+    "source": "/tmp/r6-repeat-intent/v15-proposed-replay-final.json",
+    "destination": "docs/evidence/human-like-ai-r6-fixes/repeat-arrival/v15-proposed-replay-final.json",
+    "bytes": 81688,
+    "sha256": "641c04acb57438591eba9e8d3f096ec5b24bc2b805571f6072f4c44e663c86b7"
+  },
+  {
+    "source": "/tmp/r6-repeat-intent/v15-proposed-replay.json",
+    "destination": "docs/evidence/human-like-ai-r6-fixes/repeat-arrival/v15-proposed-replay.json",
+    "bytes": 81205,
+    "sha256": "667d8748fc334bf3f1c08243f5ce50a05f753e22cbb0d9ca45356fd9a359a3df"
+  },
+  {
+    "source": "/tmp/r6-repeat-intent/v15-replay.json",
+    "destination": "docs/evidence/human-like-ai-r6-fixes/repeat-arrival/v15-replay.json",
+    "bytes": 106559,
+    "sha256": "0cb5df0bbcfa8076e96f4cb6ea3a1adf3760c69c6218e86b808f6f908cb43e33"
+  },
+  {
+    "source": "/tmp/r6-repeat-intent/v15-unpatched-attempt.json",
+    "destination": "docs/evidence/human-like-ai-r6-fixes/repeat-arrival/v15-unpatched-attempt.json",
+    "bytes": 106561,
+    "sha256": "09509db656dd5d4242c2262a963ad60479aae53c31d2e84791b1a0b137b5ca62"
+  },
+  {
+    "source": "/tmp/r6-repeat-intent/causal-orders-after.log",
+    "destination": "docs/evidence/human-like-ai-r6-fixes/repeat-arrival/causal-orders-after.log",
+    "bytes": 141,
+    "sha256": "91828dc2685d7395a15c305151f677d35b694b880ffc2c73b56e8b30d6bf5a4e"
+  },
+  {
+    "source": "/tmp/r6-repeat-intent/commitment-after.log",
+    "destination": "docs/evidence/human-like-ai-r6-fixes/repeat-arrival/commitment-after.log",
+    "bytes": 608,
+    "sha256": "3e08dba2ca4ae5685d2007876ac3c9352d41b23c77e66d909d3aa884364dd94b"
+  },
+  {
+    "source": "/tmp/r6-repeat-intent/commitment-before.log",
+    "destination": "docs/evidence/human-like-ai-r6-fixes/repeat-arrival/commitment-before.log",
+    "bytes": 606,
+    "sha256": "1e315ca19f041615d9d85a8c708499acffa812392b1d55bba4e84bae1857df49"
+  },
+  {
+    "source": "/tmp/r6-repeat-intent/debug-merged.log",
+    "destination": "docs/evidence/human-like-ai-r6-fixes/repeat-arrival/debug-merged.log",
+    "bytes": 2855,
+    "sha256": "c3f7357977269d8bc0b89bde83d7f82319fc7b211dc71437ad3e9e9c105322b8"
+  },
+  {
+    "source": "/tmp/r6-repeat-intent/debug-partial.log",
+    "destination": "docs/evidence/human-like-ai-r6-fixes/repeat-arrival/debug-partial.log",
+    "bytes": 1539,
+    "sha256": "d80f7ea80cd8769d3a4e9c97854cb9dd58a34450ffd5af54f375ff74bcfc689a"
+  },
+  {
+    "source": "/tmp/r6-repeat-intent/fixture-after.log",
+    "destination": "docs/evidence/human-like-ai-r6-fixes/repeat-arrival/fixture-after.log",
+    "bytes": 568,
+    "sha256": "92712b3e415e2cd6bb32ea609e21e009d394ef1770cf9d3a59f3cce22e02849e"
+  },
+  {
+    "source": "/tmp/r6-repeat-intent/fixture-before.log",
+    "destination": "docs/evidence/human-like-ai-r6-fixes/repeat-arrival/fixture-before.log",
+    "bytes": 657,
+    "sha256": "532ab6f3f77ef96abc712f37b365d7f477128d275de12918ddfdef6663fc736f"
+  },
+  {
+    "source": "/tmp/r6-repeat-intent/fixture-debug.log",
+    "destination": "docs/evidence/human-like-ai-r6-fixes/repeat-arrival/fixture-debug.log",
+    "bytes": 1176,
+    "sha256": "15f30ec210ddc862493c76f0fe34e6b3e96ee7e7b2eb524f10db1488da007f9a"
+  },
+  {
+    "source": "/tmp/r6-repeat-intent/v15-proposed-replay-final.log",
+    "destination": "docs/evidence/human-like-ai-r6-fixes/repeat-arrival/v15-proposed-replay-final.log",
+    "bytes": 733,
+    "sha256": "cc7de3a1c7209dfec4fab4249df5d757675c9a6b86aefb2c8d723ac974f9bae7"
+  },
+  {
+    "source": "/tmp/r6-repeat-intent/v15-proposed-replay.log",
+    "destination": "docs/evidence/human-like-ai-r6-fixes/repeat-arrival/v15-proposed-replay.log",
+    "bytes": 710,
+    "sha256": "cb955e8e4a5328f6517d56a3c67ac245296d9b175db12e0280501b9a6cb809d6"
+  },
+  {
+    "source": "/tmp/r6-repeat-intent/v15-replay.log",
+    "destination": "docs/evidence/human-like-ai-r6-fixes/repeat-arrival/v15-replay.log",
+    "bytes": 10149,
+    "sha256": "667f10313d43a43e268c119ea40f34a8642a2f7d24f0c077644490d44ed89b7e"
+  },
+  {
+    "source": "/tmp/r6-repeat-intent/v15-unpatched-attempt.log",
+    "destination": "docs/evidence/human-like-ai-r6-fixes/repeat-arrival/v15-unpatched-attempt.log",
+    "bytes": 10149,
+    "sha256": "667f10313d43a43e268c119ea40f34a8642a2f7d24f0c077644490d44ed89b7e"
+  },
+  {
+    "source": "/tmp/r6-repeat-intent/replay-seed12.mjs",
+    "destination": "docs/evidence/human-like-ai-r6-fixes/repeat-arrival/replay-seed12.mjs",
+    "bytes": 2370,
+    "sha256": "0aef3f0e327e25d863be2153ec28cd48927f4b96b93fe8a1f8d3135a1d70bbee"
+  },
+  {
+    "source": "/tmp/r6-repeat-intent/test-engine-ai-accepted-destinations.js",
+    "destination": "docs/evidence/human-like-ai-r6-fixes/repeat-arrival/test-engine-ai-accepted-destinations.js",
+    "bytes": 7989,
+    "sha256": "85fc81c2a08cd9af9907a4e0dc78a78292904f17bafc5c95fd8df181f2bea450"
+  },
+  {
+    "source": "/tmp/human-local-engineer-manifest.json",
+    "destination": "docs/evidence/human-like-ai-r6-fixes/local-engineer/human-local-engineer-manifest.json",
+    "bytes": 3555,
+    "sha256": "2a70e9fe270c1b9561daf34211ef7ea63522a41a04e48f95c547f4578bf4a279"
+  },
+  {
+    "source": "/tmp/human-local-engineer-paid-proof.json",
+    "destination": "docs/evidence/human-like-ai-r6-fixes/local-engineer/human-local-engineer-paid-proof.json",
+    "bytes": 27630,
+    "sha256": "9a0237f67e2d36dd142067b56f40b06e2b6704420ed5c59b34f754a3e5ebb201"
+  },
+  {
+    "source": "/tmp/human-local-engineer-baseline-final.log",
+    "destination": "docs/evidence/human-like-ai-r6-fixes/local-engineer/human-local-engineer-baseline-final.log",
+    "bytes": 600,
+    "sha256": "dbd574998ed545109101f9ad65bbc0827ec54bc79ad94f40beaac324098e2290"
+  },
+  {
+    "source": "/tmp/human-local-engineer-baseline-test.log",
+    "destination": "docs/evidence/human-like-ai-r6-fixes/local-engineer/human-local-engineer-baseline-test.log",
+    "bytes": 721,
+    "sha256": "328a51e96e182e5d83aafe5a36bd921f4fc33f26be1522b99b16bc2e31fea7e1"
+  },
+  {
+    "source": "/tmp/human-local-engineer-candidate-test.log",
+    "destination": "docs/evidence/human-like-ai-r6-fixes/local-engineer/human-local-engineer-candidate-test.log",
+    "bytes": 3295,
+    "sha256": "e87bcf55430e6f5c038881b7f363115127ca5f8d471c7c1617e43aebe83e395b"
+  },
+  {
+    "source": "/tmp/human-local-engineer-depot-failure.log",
+    "destination": "docs/evidence/human-like-ai-r6-fixes/local-engineer/human-local-engineer-depot-failure.log",
+    "bytes": 6893,
+    "sha256": "06ca0a71ea77096d68968af92c49a039d9c87ac157a833c2320b298b534cbc33"
+  },
+  {
+    "source": "/tmp/human-local-engineer-depot-stop.log",
+    "destination": "docs/evidence/human-like-ai-r6-fixes/local-engineer/human-local-engineer-depot-stop.log",
+    "bytes": 8128,
+    "sha256": "1ba8646684ed92b6deaf70c44f846ade3d2671dc8cec9c22eca2474459d1d673"
+  },
+  {
+    "source": "/tmp/human-local-engineer-final-guards-first.log",
+    "destination": "docs/evidence/human-like-ai-r6-fixes/local-engineer/human-local-engineer-final-guards-first.log",
+    "bytes": 633,
+    "sha256": "33e724caed044143bca286582ab3eb3a9b7299da4d70f3d935f214f80c0081b0"
+  },
+  {
+    "source": "/tmp/human-local-engineer-final-guards-second.log",
+    "destination": "docs/evidence/human-like-ai-r6-fixes/local-engineer/human-local-engineer-final-guards-second.log",
+    "bytes": 813,
+    "sha256": "e5e357a110968017d54da9df771a50570f88c95efc87350f36c7e0e24ff6d33c"
+  },
+  {
+    "source": "/tmp/human-local-engineer-final-guards-third.log",
+    "destination": "docs/evidence/human-like-ai-r6-fixes/local-engineer/human-local-engineer-final-guards-third.log",
+    "bytes": 72,
+    "sha256": "d894d6e9b9a0aafaa129e69fa1a7779f7d28b37cd9796958139c1bd704a2ea7f"
+  },
+  {
+    "source": "/tmp/human-local-engineer-final-with-site.log",
+    "destination": "docs/evidence/human-like-ai-r6-fixes/local-engineer/human-local-engineer-final-with-site.log",
+    "bytes": 75,
+    "sha256": "4e2c17350a6d79bbd9331654fc41a81c2dff8fa4fe26bcb6a6c885bcbc01afb7"
+  },
+  {
+    "source": "/tmp/human-local-engineer-final.log",
+    "destination": "docs/evidence/human-like-ai-r6-fixes/local-engineer/human-local-engineer-final.log",
+    "bytes": 75,
+    "sha256": "4e2c17350a6d79bbd9331654fc41a81c2dff8fa4fe26bcb6a6c885bcbc01afb7"
+  },
+  {
+    "source": "/tmp/human-local-engineer-review.md",
+    "destination": "docs/evidence/human-like-ai-r6-fixes/local-engineer/human-local-engineer-review.md",
+    "bytes": 5570,
+    "sha256": "233450ab9a3097297655f05e5ecb45b7c5481a36a9b78d63381a76420bedbe16"
+  },
+  {
+    "source": "/tmp/human-local-idle-engineer-test.patch",
+    "destination": "docs/evidence/human-like-ai-r6-fixes/local-engineer/human-local-idle-engineer-test.patch",
+    "bytes": 7192,
+    "sha256": "1057bf1a3edf9e25617f31ffcd4d91b1b5eafb131a2b58047f71618081a05d7f"
+  },
+  {
+    "source": "/tmp/human-local-idle-engineer.patch",
+    "destination": "docs/evidence/human-like-ai-r6-fixes/local-engineer/human-local-idle-engineer.patch",
+    "bytes": 5466,
+    "sha256": "95dbd7c565a20a153e03a0c6330cddbe960daa63a9660f27440cebcb255e36e7"
+  },
+  {
+    "source": "/tmp/r6-attended-danger/REVIEW.md",
+    "destination": "docs/evidence/human-like-ai-r6-fixes/attended-danger/REVIEW.md",
+    "bytes": 3855,
+    "sha256": "9f2db6dfacb55f7a399cd96595b2435872e210b8f5f393b11632ff392b4bc91c"
+  },
+  {
+    "source": "/tmp/r6-attended-danger/attended-danger.patch",
+    "destination": "docs/evidence/human-like-ai-r6-fixes/attended-danger/attended-danger.patch",
+    "bytes": 4287,
+    "sha256": "ef23a9ed5493e64ce613a1208e8c75a55e547a67749ed6db6144cd552c4b1b92"
+  },
+  {
+    "source": "/tmp/r6-attended-danger/hashes.json",
+    "destination": "docs/evidence/human-like-ai-r6-fixes/attended-danger/hashes.json",
+    "bytes": 1288,
+    "sha256": "ac3a3c168b9d2599007b128828a937658146d10acad7caecb6a7738324f9283f"
+  },
+  {
+    "source": "/tmp/r6-attended-danger/before-negative.log",
+    "destination": "docs/evidence/human-like-ai-r6-fixes/attended-danger/before-negative.log",
+    "bytes": 597,
+    "sha256": "d0b46810871d53cddc8462ca4b143cadd494f447047b02dd5c8998eac8f96cb3"
+  },
+  {
+    "source": "/tmp/r6-attended-danger/causal-final.log",
+    "destination": "docs/evidence/human-like-ai-r6-fixes/attended-danger/causal-final.log",
+    "bytes": 141,
+    "sha256": "91828dc2685d7395a15c305151f677d35b694b880ffc2c73b56e8b30d6bf5a4e"
+  },
+  {
+    "source": "/tmp/r6-attended-danger/causal-release-proposal.log",
+    "destination": "docs/evidence/human-like-ai-r6-fixes/attended-danger/causal-release-proposal.log",
+    "bytes": 141,
+    "sha256": "91828dc2685d7395a15c305151f677d35b694b880ffc2c73b56e8b30d6bf5a4e"
+  },
+  {
+    "source": "/tmp/r6-attended-danger/focused-exact-attended.log",
+    "destination": "docs/evidence/human-like-ai-r6-fixes/attended-danger/focused-exact-attended.log",
+    "bytes": 234,
+    "sha256": "31ad665dd4be9733a97f39ea8d8376788e4013828d5eb6b918775c0968b4590d"
+  },
+  {
+    "source": "/tmp/r6-attended-danger/focused-final.log",
+    "destination": "docs/evidence/human-like-ai-r6-fixes/attended-danger/focused-final.log",
+    "bytes": 234,
+    "sha256": "31ad665dd4be9733a97f39ea8d8376788e4013828d5eb6b918775c0968b4590d"
+  },
+  {
+    "source": "/tmp/r6-attended-danger/focused-outcomes.log",
+    "destination": "docs/evidence/human-like-ai-r6-fixes/attended-danger/focused-outcomes.log",
+    "bytes": 234,
+    "sha256": "31ad665dd4be9733a97f39ea8d8376788e4013828d5eb6b918775c0968b4590d"
+  },
+  {
+    "source": "/tmp/r6-attended-danger/focused-release-proposal.log",
+    "destination": "docs/evidence/human-like-ai-r6-fixes/attended-danger/focused-release-proposal.log",
+    "bytes": 234,
+    "sha256": "31ad665dd4be9733a97f39ea8d8376788e4013828d5eb6b918775c0968b4590d"
+  },
+  {
+    "source": "/tmp/r6-attended-danger/focused-v2.log",
+    "destination": "docs/evidence/human-like-ai-r6-fixes/attended-danger/focused-v2.log",
+    "bytes": 586,
+    "sha256": "6b8991d3d12b771119b8008c2428e06515f8a9cf0ae1c835b04430d66800b3a5"
+  },
+  {
+    "source": "/tmp/r6-attended-danger/focused-v3.log",
+    "destination": "docs/evidence/human-like-ai-r6-fixes/attended-danger/focused-v3.log",
+    "bytes": 668,
+    "sha256": "5f461a1bf01de3741aeceabf183c627f37426c512e01f28465c549c676a6f126"
+  },
+  {
+    "source": "/tmp/r6-attended-danger/focused-v4.log",
+    "destination": "docs/evidence/human-like-ai-r6-fixes/attended-danger/focused-v4.log",
+    "bytes": 625,
+    "sha256": "75e5e88674c3383c60b1240d93dbfc15a1a2a257aa551fb77eae3965dc8f704c"
+  },
+  {
+    "source": "/tmp/r6-attended-danger/focused-v5.log",
+    "destination": "docs/evidence/human-like-ai-r6-fixes/attended-danger/focused-v5.log",
+    "bytes": 947,
+    "sha256": "d4b862a8939f20e08113b77a2ce8ec9699223a9e02aebc889d9312eaab208fcf"
+  },
+  {
+    "source": "/tmp/r6-attended-danger/focused-v6.log",
+    "destination": "docs/evidence/human-like-ai-r6-fixes/attended-danger/focused-v6.log",
+    "bytes": 684,
+    "sha256": "4b62189f815c4314fb2d9ae057fc95dd8206346686fa5319246944a121064d23"
+  },
+  {
+    "source": "/tmp/r6-attended-danger/focused-v7.log",
+    "destination": "docs/evidence/human-like-ai-r6-fixes/attended-danger/focused-v7.log",
+    "bytes": 717,
+    "sha256": "c6747c43df905648db9ef6b3bb42b1f75f9b384dc61844fd485f38bd0cfbc95a"
+  },
+  {
+    "source": "/tmp/r6-attended-danger/focused-v8.log",
+    "destination": "docs/evidence/human-like-ai-r6-fixes/attended-danger/focused-v8.log",
+    "bytes": 234,
+    "sha256": "31ad665dd4be9733a97f39ea8d8376788e4013828d5eb6b918775c0968b4590d"
+  },
+  {
+    "source": "/tmp/r6-attended-danger/focused.log",
+    "destination": "docs/evidence/human-like-ai-r6-fixes/attended-danger/focused.log",
+    "bytes": 596,
+    "sha256": "16d544109de78233c62487fe47e5dc1dfd116df7e24995be85825aaf35f23bcc"
+  },
+  {
+    "source": "/tmp/r6-attended-danger/full-human-release-proposal.log",
+    "destination": "docs/evidence/human-like-ai-r6-fixes/attended-danger/full-human-release-proposal.log",
+    "bytes": 413,
+    "sha256": "cd21a8eceb0c6440b079c2ffa2df61b8b9555c893bf4e764cd993c384d84235a"
+  },
+  {
+    "source": "/tmp/r6-attended-danger/full-human.log",
+    "destination": "docs/evidence/human-like-ai-r6-fixes/attended-danger/full-human.log",
+    "bytes": 413,
+    "sha256": "74fd0af86edc3a157d6836a32522eb7e3372cda764c4cab7c79246b6795d4bdd"
+  },
+  {
+    "source": "/tmp/r6-attended-danger/response-final.log",
+    "destination": "docs/evidence/human-like-ai-r6-fixes/attended-danger/response-final.log",
+    "bytes": 576,
+    "sha256": "166fe6cacdb9a9b72c84ed79f1fe2165529e99f8a913b195c91cd5797a2faa87"
+  },
+  {
+    "source": "/tmp/r6-attended-danger/response-release-proposal.log",
+    "destination": "docs/evidence/human-like-ai-r6-fixes/attended-danger/response-release-proposal.log",
+    "bytes": 576,
+    "sha256": "166fe6cacdb9a9b72c84ed79f1fe2165529e99f8a913b195c91cd5797a2faa87"
+  },
+  {
+    "source": "/tmp/r6-attended-danger/tactical-existing.log",
+    "destination": "docs/evidence/human-like-ai-r6-fixes/attended-danger/tactical-existing.log",
+    "bytes": 99,
+    "sha256": "ed84f1135c8c1d8816978c5ba892f2bef0645c16e51e953bf5649da82622e32b"
+  },
+  {
+    "source": "/tmp/r6-attended-danger/tactical-final.log",
+    "destination": "docs/evidence/human-like-ai-r6-fixes/attended-danger/tactical-final.log",
+    "bytes": 99,
+    "sha256": "ed84f1135c8c1d8816978c5ba892f2bef0645c16e51e953bf5649da82622e32b"
+  },
+  {
+    "source": "/tmp/r6-attended-danger/tactical-release-proposal.log",
+    "destination": "docs/evidence/human-like-ai-r6-fixes/attended-danger/tactical-release-proposal.log",
+    "bytes": 99,
+    "sha256": "ed84f1135c8c1d8816978c5ba892f2bef0645c16e51e953bf5649da82622e32b"
+  },
+  {
+    "source": "/tmp/r6-attended-danger/after/test-engine-ai-attended-danger.js",
+    "destination": "docs/evidence/human-like-ai-r6-fixes/attended-danger/test-engine-ai-attended-danger.js",
+    "bytes": 10239,
+    "sha256": "f09952d8a6c3aee851bc85fb17692c6963531c3074d6ecb0ac48f9cd3f4174d5"
+  },
+  {
+    "source": "/tmp/r6-root-consolidated-controller.log",
+    "destination": "docs/evidence/human-like-ai-r6-fixes/root-consolidated/r6-root-consolidated-controller.log",
+    "bytes": 0,
+    "sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+  },
+  {
+    "source": "/tmp/r6-root-consolidated-launch.json",
+    "destination": "docs/evidence/human-like-ai-r6-fixes/root-consolidated/r6-root-consolidated-launch.json",
+    "bytes": 193,
+    "sha256": "ffd142a7594829d56a80027474fbfe476b36b36017a7f97089cdd78be52443e9"
+  },
+  {
+    "source": "/tmp/r6-root-consolidated-progress.json",
+    "destination": "docs/evidence/human-like-ai-r6-fixes/root-consolidated/r6-root-consolidated-progress.json",
+    "bytes": 2847,
+    "sha256": "3ef27d790cf23c6a90cbffb612a9659341f34c2d8e4ad13ea58052eb8a331acb"
+  },
+  {
+    "source": "/tmp/r6-root-consolidated-result.json",
+    "destination": "docs/evidence/human-like-ai-r6-fixes/root-consolidated/r6-root-consolidated-result.json",
+    "bytes": 2874,
+    "sha256": "2a7c6f4caa7c0b9427c76f102cb3060d01734c5fd6166eb2faf053306c716a3c"
+  },
+  {
+    "source": "/tmp/r6-root-consolidated-test-engine-ai-accepted-destinations.js.log",
+    "destination": "docs/evidence/human-like-ai-r6-fixes/root-consolidated/r6-root-consolidated-test-engine-ai-accepted-destinations.js.log",
+    "bytes": 568,
+    "sha256": "92712b3e415e2cd6bb32ea609e21e009d394ef1770cf9d3a59f3cce22e02849e"
+  },
+  {
+    "source": "/tmp/r6-root-consolidated-test-engine-ai-attended-danger.js.log",
+    "destination": "docs/evidence/human-like-ai-r6-fixes/root-consolidated/r6-root-consolidated-test-engine-ai-attended-danger.js.log",
+    "bytes": 234,
+    "sha256": "31ad665dd4be9733a97f39ea8d8376788e4013828d5eb6b918775c0968b4590d"
+  },
+  {
+    "source": "/tmp/r6-root-consolidated-test-engine-ai-causal-orders.js.log",
+    "destination": "docs/evidence/human-like-ai-r6-fixes/root-consolidated/r6-root-consolidated-test-engine-ai-causal-orders.js.log",
+    "bytes": 141,
+    "sha256": "91828dc2685d7395a15c305151f677d35b694b880ffc2c73b56e8b30d6bf5a4e"
+  },
+  {
+    "source": "/tmp/r6-root-consolidated-test-engine-ai-local-engineer.js.log",
+    "destination": "docs/evidence/human-like-ai-r6-fixes/root-consolidated/r6-root-consolidated-test-engine-ai-local-engineer.js.log",
+    "bytes": 75,
+    "sha256": "4e2c17350a6d79bbd9331654fc41a81c2dff8fa4fe26bcb6a6c885bcbc01afb7"
+  },
+  {
+    "source": "/tmp/r6-root-consolidated-test-engine-ai-response.js.log",
+    "destination": "docs/evidence/human-like-ai-r6-fixes/root-consolidated/r6-root-consolidated-test-engine-ai-response.js.log",
+    "bytes": 576,
+    "sha256": "166fe6cacdb9a9b72c84ed79f1fe2165529e99f8a913b195c91cd5797a2faa87"
+  },
+  {
+    "source": "/tmp/r6-root-consolidated-test-engine-ai-selected-hud.js.log",
+    "destination": "docs/evidence/human-like-ai-r6-fixes/root-consolidated/r6-root-consolidated-test-engine-ai-selected-hud.js.log",
+    "bytes": 113,
+    "sha256": "4e5a4b0568eabff6cee08f48283b9b886c3ca1f06522c7aa2fe45047502ed19b"
+  },
+  {
+    "source": "/tmp/r6-root-consolidated-test-engine-ai-tactical-reaction.js.log",
+    "destination": "docs/evidence/human-like-ai-r6-fixes/root-consolidated/r6-root-consolidated-test-engine-ai-tactical-reaction.js.log",
+    "bytes": 99,
+    "sha256": "ed84f1135c8c1d8816978c5ba892f2bef0645c16e51e953bf5649da82622e32b"
+  },
+  {
+    "source": "/tmp/r6-root-consolidated.py",
+    "destination": "docs/evidence/human-like-ai-r6-fixes/root-consolidated/r6-root-consolidated.py",
+    "bytes": 1450,
+    "sha256": "63b6b6bffb5db71456df4c23e6cc5445470808f89c2d07a4227d33fe05e05c88"
+  },
+  {
+    "source": "/tmp/human-ai-v16-commitment-support-scene-proof.json",
+    "destination": "docs/evidence/human-like-ai-r6-fixes/commitment-fixture/human-ai-v16-commitment-support-scene-proof.json",
+    "bytes": 2270,
+    "sha256": "34d9e5df275fd108b6adf53ff46422cb8137781d513ac5f29557bd7428ff51f1"
+  },
+  {
+    "source": "/tmp/human-ai-v16-commitment-support-scene-review.md",
+    "destination": "docs/evidence/human-like-ai-r6-fixes/commitment-fixture/human-ai-v16-commitment-support-scene-review.md",
+    "bytes": 3230,
+    "sha256": "91c52329f8845d7550f4bd45743d27c3e7e35e69b906ae39f3702eaf6f128a58"
+  },
+  {
+    "source": "/tmp/human-ai-v16-commitment-support-scene.patch",
+    "destination": "docs/evidence/human-like-ai-r6-fixes/commitment-fixture/human-ai-v16-commitment-support-scene.patch",
+    "bytes": 879,
+    "sha256": "4fad7216bcaac6f276b19e82722d27904ca9b660e9b6167e291380f978c180b2"
+  }
+]

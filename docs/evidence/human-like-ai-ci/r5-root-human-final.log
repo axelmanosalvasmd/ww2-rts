@@ -1,0 +1,5 @@
+easy: first command 4.5s, 21 commands, 65 physical inputs over 120s
+normal: first command 3.4s, 32 commands, 96 physical inputs over 120s
+hard: first command 2.7s, 47 commands, 142 physical inputs over 120s
+Default commander action-level camera detail invariance and on-camera negative control passed.
+Full human commander opening, physical inputs, reaction floor, locality, APM, determinism and handover passed.

@@ -1,0 +1,197 @@
+{
+  "at": "2026-10-04T14:49:37.818Z",
+  "sourceSHA256": {
+    "tools/bench-engine.mjs": "4e84f2b7f86009b9ee47585bc6fc592b50defc2cea0cc1d9cc484ed85d0568be",
+    "server.js": "16004b2b7f3cd427d3fb61750a6a2788f9fe0e7bd8a22c92b4cd01d486677e57",
+    "tickmeter.js": "4687535fa1d155e88648610230edda26df2fc60eb2bae017240a0020b2ce0d92",
+    "shared/ai-attention.js": "2b1f22635d43a11c40715c7859520a5eb4fc862d557ee7efb09ceb89425d92b5",
+    "shared/ai-commander.js": "48a3f5014aa52b0b86e616515a176890bf3908d4495025cc35763a97eaba55d4",
+    "shared/ai-hands.js": "69eb15070dbf3e3839f4a264bc24d5010033f6d745bc1cf53ba285fc362323d6",
+    "shared/ai-mind.js": "18bb411cb1d057ce8cffe0b042c21f64b71238ae157b584242df206d708e6b92",
+    "shared/ai-perception.js": "75b5f4877b5c4509a762028c880b45691a7c9e8d1923a7815e026f2174d33c9c",
+    "shared/ai-persona.js": "34de5882046129d2000e5502e354123786f3ad7b7133f31e93863dcc36ba66cf",
+    "shared/ai-priority.js": "6b5d5a8a22968209fe03c8235648a859b36919b9eafd44cd390a8252ab6b3542",
+    "shared/ai-rng.js": "2d2f95266eda45ec4fa4862cb01079fc8464a98d8c88fa97ca89b54a5d6f8b90",
+    "shared/ai-view.js": "ca4c85c25ea800eb43f33977b3c02f3989a8eebc60142f88e52740b3d422ae59",
+    "shared/ai.js": "1e601a848c53b1d31493d3fff18648ead11721d5c4a389a50ea1a14aa691a2e0",
+    "shared/alert-events.js": "df5f0ae98145034e6893ce0b70c2df8938a2d786cc8de37a1fbbc1a9c8b634b0",
+    "shared/command-feedback.js": "e851bb8f7e48291bd75f09be66fdeecbe7dca68dcc82c839c5c033083ce77a07",
+    "shared/debris-motion.js": "d6a0f330f958ec6d78cfcc7f95b209aa5c099369576bf15dfd1c84770287b3b4",
+    "shared/formation.js": "265fa63c8c72588f6c8f67057921fd4daa88f96e9d823faa2e41ba10a7dba005",
+    "shared/grid.js": "30b0a5d67d99e54548d189374684e6b28863ecb7bf92de5221359e5c24fc5afc",
+    "shared/human-input.js": "dec728db485690620e527f912fa2a0b491f545c5bbdaafc4dc25fd1e425763ff",
+    "shared/local-traffic.js": "abad3f6ba310783c3620cec8d599df90dac38bb74eed6509be7d19a8af1490f6",
+    "shared/navigation.js": "c277c12f86c9990e281ae28a703dc374126aa1c737d9dc94a300f8d99c898472",
+    "shared/projectiles.js": "ded50f3bcd60cf79238d5dba48236d54e33b2b8032f704813118d1419708ccd7",
+    "shared/scenarios.js": "93f6cda90224a805cc97f42418b2dc11c49e3ea80654b66e0036de55f9b9ba97",
+    "shared/sim.js": "20d8f1d1e9f14f8a2178cbc8b30e1732ac5afc367632400081ca393048aaac51",
+    "shared/story.js": "fa33e53e61a7d636959dd1d1916d7b5c3359db72b523dc730b16ceab525d170f",
+    "shared/structures.js": "933b100a9a4c19a0285f5b137cd29b46e44271776f031045a537009e0176e5a2",
+    "shared/tutorial.js": "3aaa5e6affd936dae0ae4741d5173eee5d006132a1705d4b553097d3d8fabf42",
+    "shared/vehicle-motion.js": "05bd1e985a91b3268065a0a84ec4b9aee2c1079aafc4054c38a70677dfb1493b",
+    "shared/weather.js": "faad682d6e40fdc6629533f684e1caeec5c9ae49e26e9922651773727c0bc1e5",
+    "shared/world-conquest.js": "1c251e6d340586d7fb367d4f47938d5898f5239824dac46f054880a3d897aeef",
+    "shared/world-landforms.js": "ecb6916db6785484f8bb813f7745c8c48ccea370f084fea290ff736edc968e34",
+    "shared/world-layers.js": "f51f34b99946192107ada9a7077d787761c1a9cb6b1e316d7b7e243dd273bb22",
+    "shared/world-roads.js": "5fb243b63fa9e2c082135b5b093ee753e8a92c197a076d78067e53f08f1885db",
+    "shared/world-territories.js": "bb33a449d7f2c4d657dbceab8dbd0171eb8ccaa7494cedf9e18707822d8f717f",
+    "maps/king-of-the-hill.json": "69e0ac471f65043ff32119c819e859b58cda2291bcec984a415cbbd875eaffe8",
+    "maps/the-great-bridge.json": "50145f185bef8a946d582c639bb8fa93f22002b711065bb3a1874649157c7c48",
+    "maps/six-fronts.json": "247228c85e88e76879b4117fd07f143ff38820d93e8a8129175312b3bd376255",
+    "maps/test-arena.json": "44eca010e3c08ecc4a01abfe3c4092415aa5fe25dbd77879978c7ee34a2cc9af"
+  },
+  "seed": 3936341,
+  "requestedTicks": 1000,
+  "selectedCases": [
+    "ai"
+  ],
+  "aiCommander": {
+    "file": "file:///tmp/human-ai-perf-v15-frozen/tools/legacy-ai/ai.js",
+    "sourceSHA256": "49575f9089365e13592a804b852b8eeec8c1dcc96bd64d236eaf3757904bcf4d",
+    "humanCommander": false,
+    "phaseScope": "whole AI phase per simulation tick, including delivered-view observation and hands advancement"
+  },
+  "runtime": "v24.21.0",
+  "runtimeFlags": [],
+  "platform": "linux",
+  "arch": "x64",
+  "hardware": {
+    "model": "12th Gen Intel(R) Core(TM) i5-12400",
+    "logicalCPUs": 12,
+    "memoryBytes": 33329643520
+  },
+  "cases": [
+    {
+      "name": "ai",
+      "kind": "direct simulation",
+      "fixture": {
+        "map": "six-fronts",
+        "players": 6,
+        "seed": 3936341,
+        "options": {
+          "mode": "conquest",
+          "army": "massive",
+          "weather": false,
+          "supply": false
+        },
+        "commands": []
+      },
+      "ticks": 1000,
+      "warmupTicksExcluded": 10,
+      "startupMilliseconds": {
+        "ai": 0,
+        "countedSeparatelyFromLatencyDistribution": true,
+        "excludedFromWarmLatencyDistribution": true
+      },
+      "initialUnits": 18,
+      "finalUnits": 58,
+      "finalStateSHA256": "42b30fc17fbbf65066bace62c440d796217c2380d4369e26d1957fe739c5a374",
+      "stateHashComparableAcrossRuns": true,
+      "milliseconds": {
+        "tick": {
+          "count": 990,
+          "p50": 3.511,
+          "p95": 15.818,
+          "p99": 30.407,
+          "max": 69.356,
+          "mean": 5.262
+        },
+        "step": {
+          "count": 990,
+          "p50": 0.833,
+          "p95": 5.343,
+          "p99": 10.121,
+          "max": 30.405,
+          "mean": 1.652
+        },
+        "ai": {
+          "count": 990,
+          "p50": 0.257,
+          "p95": 9.501,
+          "p99": 17.478,
+          "max": 61.818,
+          "mean": 2.339
+        },
+        "snapshot": {
+          "count": 495,
+          "p50": 1.962,
+          "p95": 6.586,
+          "p99": 10.424,
+          "max": 24.777,
+          "mean": 2.542
+        }
+      },
+      "microseconds": {},
+      "snapshotBytes": {
+        "count": 3000,
+        "p50": 2053,
+        "p95": 6903,
+        "p99": 10281,
+        "max": 16236,
+        "mean": 2789.647
+      },
+      "payloadSample": [
+        {
+          "tick": 2,
+          "seat": 0,
+          "bytes": 940,
+          "sha256": "bdcb8e5cce14a6c1fa51954f9cda851e70ef7cf643e56b47dd577e74dc5719bc"
+        },
+        {
+          "tick": 502,
+          "seat": 0,
+          "bytes": 5595,
+          "sha256": "ca1ec60232ab26eebdc37ccdc08b6eb5cf2bf72aea307cee7e45a32cb8b39b51"
+        },
+        {
+          "tick": 1000,
+          "seat": 5,
+          "bytes": 5284,
+          "sha256": "dd8f2673000fed1d8676241c79d3e9778adf01dbd4f74ee11f7d9eb486366838"
+        }
+      ],
+      "events": {
+        "shotEvents": 3084,
+        "changedCells": 1262,
+        "aiThinkCalls": 149
+      },
+      "stateCounts": {
+        "flights": 5,
+        "falling": 0,
+        "movingWrecks": 0,
+        "activeDebrisBodies": 0,
+        "settled": 23,
+        "currentSalvos": 0,
+        "currentStrikes": 0,
+        "settledWrecks": 0,
+        "rubbleCells": 23
+      },
+      "peakStateCounts": {
+        "flights": 34,
+        "falling": 4,
+        "movingWrecks": 0,
+        "activeDebrisBodies": 4,
+        "settled": 23,
+        "currentSalvos": 0,
+        "currentStrikes": 5,
+        "settledWrecks": 0,
+        "rubbleCells": 23
+      },
+      "memoryBytes": {
+        "rss": 406212608,
+        "heapTotal": 236609536,
+        "heapUsed": 65935440,
+        "external": 15200152,
+        "arrayBuffers": 12492064
+      },
+      "paths": {
+        "calls": 284,
+        "deferred": 0,
+        "failed": 0,
+        "dropped": 0,
+        "expansions": 9753,
+        "regionRejected": 0
+      }
+    }
+  ]
+}

@@ -1,0 +1,9 @@
+# Original R8 full-suite failure and remaining-child checks
+
+The literal ROOT node test.js run exited1 naturally after270.68 seconds. It failed test-engine-ai-inspection.js at line110: the immutable causal descriptor assertion. The complete native log, completion and exit receipts, controller, launch records, original and initial preparation protocols, source manifests and19 periodic checks remain unchanged. The recorded681 locked source files were equal before and after, with no archive or runtime changes. The source registered99 original children and retained the original180000ms child timeouts. The failure prevented the later children from running inside that full invocation.
+
+ROOT then ran all61 still-unexecuted original child tests once on the same recorded source. Those separate results retain59 passes and two failures: inspection-priority selected actor7 while actor8 was expected, and accepted-destinations failed the changed-formation-membership assertion. All61 complete logs, the exact declaration and unchanged final source map are included. These checks do not convert the failed full suite into a pass.
+
+The archive includes the original failing fixture, all61 remaining fixtures and their recorded runtime dependencies from the read-only full source archive. Its manifest checks each copied source byte against that archived original and the recorded source hashes. The complete large source archive is not duplicated. Source AI685c1787, commander16538e56, handsd209f686 and collector5aaf8866 predates the forthcoming genuine inspection correction. Any later source needs its own checks and cannot inherit these outcomes.
+
+No test, simulation, signal or scorer was executed during packaging. All first failures and preparation history remain intact. Verification.json reports copy integrity only.

@@ -1,0 +1,22 @@
+{
+  "exit": "EXIT_CODE=1",
+  "exitCode": 1,
+  "filesBefore": 763,
+  "filesAfter": 763,
+  "hashesIdentical": true,
+  "headIdentical": true,
+  "changed": [],
+  "archiveSourcesMatch": true,
+  "observedSourceChanges": [],
+  "historicalManifestsUnchanged": true,
+  "fileManifestDigest": "e2c442455fce4b87ca304f88402213430a79753c47ad1ae507cc1502b1dd715d",
+  "beforeManifestSHA256": "f2a118140ee11e43e7cec9d91ee0e8e69bab35a436abb4a6046f661f95e7519a",
+  "afterManifestSHA256": "b5401112b40b5a8566845b71c19db7f29c6a876ff9ec73abbc095989305606a2",
+  "predeclaredProtocolSHA256": "e08c77c2050134763be7e45d632c30c1283493adb00a87fede6261f5d0e1a0ea",
+  "logSHA256": "7c08d99e29f59d741be1ff82cf62ae11156032d6cdbb3fb39d080dab1e5b6a11",
+  "logBytes": 5588,
+  "launchRecordSHA256": "ff82a4d1266ff701e7a7fcb9581316ffabc39a8a27b66b70676103cfd791a317",
+  "startedAtUnix": 1791125475.8352408,
+  "finalizedAtUnix": 1791125670.114624,
+  "passes": false
+}

@@ -1,0 +1,98 @@
+[
+  {
+    "source": "/tmp/human-garrison-framing-baseline-existing.json",
+    "destination": "docs/evidence/human-like-ai-garrison-framing/human-garrison-framing-baseline-existing.json",
+    "bytes": 6209,
+    "sha256": "a67c1da33d104abb16f5a4c8c463eddbb361de231f5b5bec1eb24184b1b44dd6"
+  },
+  {
+    "source": "/tmp/human-garrison-framing-baseline.log",
+    "destination": "docs/evidence/human-like-ai-garrison-framing/human-garrison-framing-baseline.log",
+    "bytes": 597,
+    "sha256": "35a5eb6c0d11dec09409855ed4faf03e8152fc7e0dd05c607a781ae83fe1a397"
+  },
+  {
+    "source": "/tmp/human-garrison-framing-candidate-existing.json",
+    "destination": "docs/evidence/human-like-ai-garrison-framing/human-garrison-framing-candidate-existing.json",
+    "bytes": 6209,
+    "sha256": "a67c1da33d104abb16f5a4c8c463eddbb361de231f5b5bec1eb24184b1b44dd6"
+  },
+  {
+    "source": "/tmp/human-garrison-framing-controls-first.log",
+    "destination": "docs/evidence/human-like-ai-garrison-framing/human-garrison-framing-controls-first.log",
+    "bytes": 8565,
+    "sha256": "df769dd9b0ab8aa051c055a6bcb96cdbd22a31133471b14423120582cc826478"
+  },
+  {
+    "source": "/tmp/human-garrison-framing-final-first.log",
+    "destination": "docs/evidence/human-like-ai-garrison-framing/human-garrison-framing-final-first.log",
+    "bytes": 15099,
+    "sha256": "d3e184b01675fe8f491f53794a36c1bcaa96d18279f47e908978266fdf1903e1"
+  },
+  {
+    "source": "/tmp/human-garrison-framing-final.log",
+    "destination": "docs/evidence/human-like-ai-garrison-framing/human-garrison-framing-final.log",
+    "bytes": 51,
+    "sha256": "e07c60c2d142055cfedaf041772deb0250db4fa54efaa3e77b64c3c2eff06e01"
+  },
+  {
+    "source": "/tmp/human-garrison-framing-first-native.log",
+    "destination": "docs/evidence/human-like-ai-garrison-framing/human-garrison-framing-first-native.log",
+    "bytes": 2387,
+    "sha256": "1cdca32654af2aa7d4ce47941c82d0da2ea0590c125973841b41e9fb639c0121"
+  },
+  {
+    "source": "/tmp/human-garrison-framing-ground-first.log",
+    "destination": "docs/evidence/human-like-ai-garrison-framing/human-garrison-framing-ground-first.log",
+    "bytes": 609,
+    "sha256": "501b0d447fd39e5ba71634eecd801fa64ad0b1eef9e42e022a1c10d810d12c8d"
+  },
+  {
+    "source": "/tmp/human-garrison-framing-manifest.json",
+    "destination": "docs/evidence/human-like-ai-garrison-framing/human-garrison-framing-manifest.json",
+    "bytes": 2519,
+    "sha256": "1eccbf89f792f69f05931fccbcee0a22829840af6b95a907b0aa6953d27dd7be"
+  },
+  {
+    "source": "/tmp/human-garrison-framing-native-proof.json",
+    "destination": "docs/evidence/human-like-ai-garrison-framing/human-garrison-framing-native-proof.json",
+    "bytes": 15048,
+    "sha256": "1cbdb34ceebeb6f8c0a1346fefe44cf1bad0767a6605690731923540ab3022b8"
+  },
+  {
+    "source": "/tmp/human-garrison-framing-review.md",
+    "destination": "docs/evidence/human-like-ai-garrison-framing/human-garrison-framing-review.md",
+    "bytes": 4871,
+    "sha256": "fcee1e32cda86627f0ed7ddc4a84163b025c17a01e7c6966d2f3534e6a774748"
+  },
+  {
+    "source": "/tmp/human-garrison-framing-single-cell.log",
+    "destination": "docs/evidence/human-like-ai-garrison-framing/human-garrison-framing-single-cell.log",
+    "bytes": 2622,
+    "sha256": "6911c26b5da1e05f455f25275e0c10729b9cf434e125ac494bca1106ffa97214"
+  },
+  {
+    "source": "/tmp/human-garrison-framing-test.patch",
+    "destination": "docs/evidence/human-like-ai-garrison-framing/human-garrison-framing-test.patch",
+    "bytes": 6665,
+    "sha256": "33edc1ac64cfd1c9ccaf4f972e35541ce66e4894594ccca039ce949d69c9cf22"
+  },
+  {
+    "source": "/tmp/human-garrison-framing.patch",
+    "destination": "docs/evidence/human-like-ai-garrison-framing/human-garrison-framing.patch",
+    "bytes": 1203,
+    "sha256": "57021380b9ca9ff1dabc13038f7738313f56285634486b72e453ca2d0b5f8506"
+  },
+  {
+    "source": "/tmp/human-v15-followup-garrison-geometry.json",
+    "destination": "docs/evidence/human-like-ai-garrison-framing/human-v15-followup-garrison-geometry.json",
+    "bytes": 2541,
+    "sha256": "d75c62ac866a2cf4ea863feb8cdad99972fe488fca9726cc95b828d38cfb71dd"
+  },
+  {
+    "source": "/tmp/r6-root-garrison-framing.log",
+    "destination": "docs/evidence/human-like-ai-garrison-framing/r6-root-garrison-framing.log",
+    "bytes": 51,
+    "sha256": "e07c60c2d142055cfedaf041772deb0250db4fa54efaa3e77b64c3c2eff06e01"
+  }
+]

@@ -1,0 +1,24 @@
+{
+  "copiedAtUTC": "2026-10-04T20:22:31Z",
+  "scope": "Historical V16 fixed Conquest population and interim review. Later source changes are not certified. No acceptance gate closed.",
+  "entries": [
+    {
+      "source": "/tmp/human-ai-v16-conquest-direct-gates.mjs",
+      "file": "human-ai-v16-conquest-direct-gates.mjs",
+      "bytes": 14773,
+      "sha256": "c48291a5a9c8927c692b5fcd7aab7b611a18d5c74c9173c88c55392dc10144c9"
+    },
+    {
+      "source": "/tmp/human-ai-final-v16/independent-conquest-direct-gates.json",
+      "file": "independent-conquest-direct-gates.json",
+      "bytes": 16750,
+      "sha256": "38e5d9fadc7759db28a1bf9eec54ead1e446081a2ae470e1ef21ab670d030d44"
+    },
+    {
+      "source": "/tmp/human-ai-v16-campaign-predeclared.json",
+      "file": "human-ai-v16-campaign-predeclared.json",
+      "bytes": 5483,
+      "sha256": "8bbfa898772c3a0b9013fcb015638f7ba8e1ca52e7bb624ae98da0b6abcb3818"
+    }
+  ]
+}

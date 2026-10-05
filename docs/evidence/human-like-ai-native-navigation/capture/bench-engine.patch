@@ -1,0 +1,16 @@
+--- a/tools/bench-engine.mjs
++++ b/tools/bench-engine.mjs
+@@ -1,3 +1,5 @@
++import {serialize} from 'node:v8';
++globalThis.__graphFixtures=[];
+ // Reproducible, bounded engine workloads. Run with node tools/bench-engine.mjs --ticks 160.
+ import assert from 'node:assert/strict';
+ import { createHash } from 'node:crypto';
+@@ -491,6 +493,7 @@
+   profileComponents && !(name === 'collapse' && typeof sim.damageWorldSection !== 'function')
+     ? await withCpuProfile(() => simulationCase(name)) : await simulationCase(name));
+ if (selectedCases.some(name => serverCases.includes(name))) report.cases.push(...(await serverCase()).filter(item => selectedCases.includes(item.name)));
++await writeFile('/tmp/ai-v16-graph-fixtures.bin',serialize(globalThis.__graphFixtures));
+ await writeFile(output, JSON.stringify(report, null, 2) + '\n');
+ for (const item of report.cases) {
+   if (item.supported === false) { console.log(`${item.name}: unsupported (${item.reason})`); continue; }

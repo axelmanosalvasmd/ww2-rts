@@ -1,0 +1,155 @@
+{
+  "verifiedAt": 1791163497.5690565,
+  "verifier": "ROOT independently compared each archived payload against its physical original",
+  "archiveSHA256": "7241aaf90f4b40d0a96ea9bdfd784b4f6af8c9dbe385ed793ae97e71d8612bc8",
+  "members": [
+    {
+      "member": "protocol.json",
+      "originalPath": "/tmp/human-ai-r8-selection-lab/protocol.json",
+      "bytes": 604,
+      "sha256": "d31f9612ae32686d798d75134a20c7d8813a6dff3b577b29c9d0866ac9fe48a4",
+      "byteMatch": true
+    },
+    {
+      "member": "source-hashes.json",
+      "originalPath": "/tmp/human-ai-r8-selection-lab/source-hashes.json",
+      "bytes": 459,
+      "sha256": "7b266019d5197593179acf7c884d8b5e40d2b86655dc317b33c5efd48889725b",
+      "byteMatch": true
+    },
+    {
+      "member": "final-hashes.json",
+      "originalPath": "/tmp/human-ai-r8-selection-lab/final-hashes.json",
+      "bytes": 751,
+      "sha256": "b6b981109bda3a7e55d934532c12de7cb6c5c9f637b384377a69f2c5fa148102",
+      "byteMatch": true
+    },
+    {
+      "member": "REVIEW.md",
+      "originalPath": "/tmp/human-ai-r8-selection-lab/REVIEW.md",
+      "bytes": 4609,
+      "sha256": "9effcc7585d8f1503cf2f5dc6ed3259231206d52dd7ffb9e2aca11d887e05683",
+      "byteMatch": true
+    },
+    {
+      "member": "native.mjs",
+      "originalPath": "/tmp/human-ai-r8-selection-lab/native.mjs",
+      "bytes": 5034,
+      "sha256": "579b83879087d1e62265edcdf3b6d7c246e7ad901dd15ea50a6d69b32704cc8f",
+      "byteMatch": true
+    },
+    {
+      "member": "native.json",
+      "originalPath": "/tmp/human-ai-r8-selection-lab/native.json",
+      "bytes": 67162,
+      "sha256": "6d5c35358584d10531d9579dccc65f24f74a06dcdc94cf0cb5aa725c0a17b89d",
+      "byteMatch": true
+    },
+    {
+      "member": "native.log",
+      "originalPath": "/tmp/human-ai-r8-selection-lab/native.log",
+      "bytes": 120,
+      "sha256": "d447cd8d75cc8f1b406f0b119257f68de5c2f45eb7dd95b35fc98c53cf38eea9",
+      "byteMatch": true
+    },
+    {
+      "member": "native-initial.log",
+      "originalPath": "/tmp/human-ai-r8-selection-lab/native-initial.log",
+      "bytes": 634,
+      "sha256": "28090578cb0fa735c9523cc9dc9cc2c350780b9d51620f137d1848bb14433c18",
+      "byteMatch": true
+    },
+    {
+      "member": "native-second.log",
+      "originalPath": "/tmp/human-ai-r8-selection-lab/native-second.log",
+      "bytes": 634,
+      "sha256": "7cc0bdec6f7371444f76c6ac2bf070902b579c16bd678d52897b61239e1b0a78",
+      "byteMatch": true
+    },
+    {
+      "member": "native-hud-baseline-diagnostic.log",
+      "originalPath": "/tmp/human-ai-r8-selection-lab/native-hud-baseline-diagnostic.log",
+      "bytes": 1408,
+      "sha256": "e19141781c739b73a786a8d1f18f501fcd497cbddc503fdeca8a79275156146c",
+      "byteMatch": true
+    },
+    {
+      "member": "native-exact-setup-diagnostic.log",
+      "originalPath": "/tmp/human-ai-r8-selection-lab/native-exact-setup-diagnostic.log",
+      "bytes": 5213,
+      "sha256": "7b012c5e2a05bc8b6cd7735603b2d4a93f5bb193f89b30f35ad9d62d2bab6712",
+      "byteMatch": true
+    },
+    {
+      "member": "native-initial-reconstructed.mjs",
+      "originalPath": "/tmp/human-ai-r8-selection-lab/native-initial-reconstructed.mjs",
+      "bytes": 4701,
+      "sha256": "65498398578e5118ba1189cb3d06ac185b881cb5e395c3a97d037e42cde32d9c",
+      "byteMatch": true
+    },
+    {
+      "member": "shared/ai-hands.js",
+      "originalPath": "/tmp/human-ai-r8-selection-lab/shared/ai-hands.js",
+      "bytes": 68386,
+      "sha256": "fa922d91055b52b7b70258a3cb6264c9552b2c07ae663f79a5dc87f310e8be11",
+      "byteMatch": true
+    },
+    {
+      "member": "shared/ai-hands-before.js",
+      "originalPath": "/tmp/human-ai-r8-selection-lab/shared/ai-hands-before.js",
+      "bytes": 67889,
+      "sha256": "277cf75623b9432612db94e0356cfe098695214625605ac130e6984789211c4b",
+      "byteMatch": true
+    },
+    {
+      "member": "original-artifact-manifest.json",
+      "originalPath": "/tmp/human-ai-r8-selection-lab/original-artifact-manifest.json",
+      "bytes": 1847,
+      "sha256": "05052a071bb8614dc1e41b8c838a3f34b29cf3be656ff7250215388b0b69114e",
+      "byteMatch": true
+    },
+    {
+      "member": "PORTABLE.md",
+      "originalPath": "/tmp/human-ai-r8-selection-lab/PORTABLE.md",
+      "bytes": 2117,
+      "sha256": "c420af4fb9b6f1673519e07702a7782e4c7038612149e22a1aff166846e70ecf",
+      "byteMatch": true
+    },
+    {
+      "member": "test-engine-ai-selection-reuse.js",
+      "originalPath": "/tmp/human-ai-r8-selection-lab/test-engine-ai-selection-reuse.js",
+      "bytes": 6636,
+      "sha256": "25c42c0def6d8d08cb553f972b7ed9261983c396a1a9b86a1d16f4c8facb12e1",
+      "byteMatch": true
+    },
+    {
+      "member": "portable-test.log",
+      "originalPath": "/tmp/human-ai-r8-selection-lab/portable-test.log",
+      "bytes": 90,
+      "sha256": "a395ce02ccbdc5ba16be09873f03f09fe3e51547bbc520c0bb035f6bfec62d6e",
+      "byteMatch": true
+    },
+    {
+      "member": "portable-artifact-manifest.json",
+      "originalPath": "/tmp/human-ai-r8-selection-lab/portable-artifact-manifest.json",
+      "bytes": 2389,
+      "sha256": "a6600ebfa410f8e3f738dac9035b308015543a6f9dc8ebbd380578f11c036abb",
+      "byteMatch": true
+    },
+    {
+      "member": "human-ai-r8-selection.patch",
+      "originalPath": "/tmp/human-ai-r8-selection.patch",
+      "bytes": 1818,
+      "sha256": "6624c1021e39119308f3e4cb6106a1e3c1049ae98c2b38997d1c40d7ec278b7c",
+      "byteMatch": true
+    },
+    {
+      "member": "human-ai-r8-selection-portable-test.patch",
+      "originalPath": "/tmp/human-ai-r8-selection-portable-test.patch",
+      "bytes": 6771,
+      "sha256": "777b13b4116299b159f6e3af387ce1e944b67f97d299ae73991a0037b5c5a2fa",
+      "byteMatch": true
+    }
+  ],
+  "qualification": "Reconstructed initial script is declared reconstruction; proof sourcepredatesearlyrelease, portablecurrentRoot passed separately."
+}

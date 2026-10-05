@@ -1,0 +1,11 @@
+--- a/shared/ai.js
++++ b/shared/ai.js
+@@ -850,7 +850,7 @@
+   // A suppressed heavy hit can justify going home without guessing an unseen shooter's position.
+   const attendedUnseenHitRetreat = u => {
+     const def = UNITS[u.type], fraction = u.hp / (def.models * def.hpPer);
+-    if (!opts.human || classic || opts.concern?.kind !== 'combat' || opts.concern.event !== 'screen-damage'
++    if (!opts.human || classic || atBase(u) || opts.concern?.kind !== 'combat' || opts.concern.event !== 'screen-damage'
+       || opts.concern.unitId !== u.id || !view.screenIds.has(u.id) || !def.infantry || !armedContactActor(u)
+       || ANTI_ARMOR.has(u.type) || u.retreating || u.garrison >= 0 || u.cover === 2 || u.holdPos || u.targetId || u.attackId
+       || !u.amove && !u.path.length || u.orders.length || u.nade || u.dig || u.build || u.entrench

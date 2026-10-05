@@ -1,0 +1,42 @@
+{
+  "seed": 12,
+  "level": "normal",
+  "mode": "Conquest",
+  "seconds": 120,
+  "slot": 2,
+  "actor": 16,
+  "beforeTicks": [
+    2281,
+    2301,
+    2305,
+    2310,
+    2339,
+    2343,
+    2347,
+    2351,
+    2356,
+    2381
+  ],
+  "afterTicks": [
+    2281
+  ],
+  "nativeCommandPrefixUnchanged": true,
+  "physicalInputsThroughFirstClickUnchanged": true,
+  "beforeSeatNativeCommands": 67,
+  "afterSeatNativeCommands": 57,
+  "beforeSeatPhysicalInputs": 85,
+  "afterSeatPhysicalInputs": 75,
+  "caution": "Only this exact native replay was run. Later unrelated commands and inputs can change as redundant movement actions disappear; do not interpret these counts as a campaign APM estimate.",
+  "sha256": {
+    "root-before/shared/ai-commander.js": "27ea7d5b6a05c29e01c1ee1aa630d2d9e486242f364273e7ab1d863b5ae87617",
+    "root-proposed/shared/ai-commander.js": "83abe696eb9c13ad7cbd5d4fa104dfbbbdbca3ad00fb222fa4bf9925128a1d2d",
+    "v15-before/shared/ai-commander.js": "48a3f5014aa52b0b86e616515a176890bf3908d4495025cc35763a97eaba55d4",
+    "v15-proposed/shared/ai-commander.js": "e2773c606a58778dc59962e4067ee16d7500e7b1519ac62722bbe585bcd888aa",
+    "accepted-destination-intent.patch": "ed904ba8c5269e79d97f8b7967b19a678f0204e51d46136890b0a6be26593021",
+    "test-engine-ai-accepted-destinations.js": "85fc81c2a08cd9af9907a4e0dc78a78292904f17bafc5c95fd8df181f2bea450",
+    "replay-seed12.mjs": "0aef3f0e327e25d863be2153ec28cd48927f4b96b93fe8a1f8d3135a1d70bbee",
+    "v15-replay.json": "0cb5df0bbcfa8076e96f4cb6ea3a1adf3760c69c6218e86b808f6f908cb43e33",
+    "v15-proposed-replay-final.json": "641c04acb57438591eba9e8d3f096ec5b24bc2b805571f6072f4c44e663c86b7",
+    "reported-chain-shapes.json": "af1c7c488d921116c90dc852e14a2c7ed55ab83a13b51e4fe6803dedc51b121e"
+  }
+}

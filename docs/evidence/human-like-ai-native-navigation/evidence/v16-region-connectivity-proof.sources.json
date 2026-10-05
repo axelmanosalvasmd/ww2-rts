@@ -1,0 +1,24 @@
+{
+  "sources": [
+    {
+      "path": "/tmp/human-ai-perf-v16-frozen/shared/navigation.js",
+      "bytes": 19838,
+      "sha256": "c277c12f86c9990e281ae28a703dc374126aa1c737d9dc94a300f8d99c898472"
+    },
+    {
+      "path": "/tmp/human-ai-perf-v16-frozen/shared/sim.js",
+      "bytes": 349680,
+      "sha256": "5bedd607250c8171ed053e6200a643ce7f57a55c2549e0b515d80fcdffac832b"
+    }
+  ],
+  "script": {
+    "path": "/tmp/v16-region-connectivity-proof.mjs",
+    "bytes": 3589,
+    "sha256": "697349d7225eac20ff914527226251fe1e3934c69a1896f3fc785c084b027d05"
+  },
+  "execution": {
+    "command": "taskset -c 1 nice -n 19 node /tmp/v16-region-connectivity-proof.mjs",
+    "cpu": 1,
+    "nice": 19
+  }
+}

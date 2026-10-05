@@ -1,0 +1,173 @@
+{
+  "scope": "Scratch atBase-only correction; no root edits, scorer or campaign.",
+  "priorProposal": "prior-proposal/",
+  "minimalCorrection": "already-at-home-correction.patch",
+  "originalRealHomeFailure": {
+    "eventTick": 404,
+    "mp": 0,
+    "healthShare": 0.7,
+    "distanceFromOwnSpawn": 0.8999999999999999,
+    "marchGoal": {
+      "x": 60,
+      "z": 63
+    },
+    "acceptedRetreat": {
+      "tick": 430,
+      "command": {
+        "t": "retreat",
+        "ids": [
+          7
+        ]
+      }
+    },
+    "artifact": "native-already-at-home-before.json"
+  },
+  "finalHomeNegatives": [
+    {
+      "level": "easy",
+      "response": null,
+      "marchGoal": {
+        "x": 60,
+        "z": 63
+      },
+      "mpAtHit": 0,
+      "distanceAtHit": 0.8999999999999999
+    },
+    {
+      "level": "normal",
+      "response": null,
+      "marchGoal": {
+        "x": 60,
+        "z": 63
+      },
+      "mpAtHit": 0,
+      "distanceAtHit": 0.8999999999999999
+    },
+    {
+      "level": "hard",
+      "response": null,
+      "marchGoal": {
+        "x": 60,
+        "z": 63
+      },
+      "mpAtHit": 0,
+      "distanceAtHit": 0.8999999999999999
+    }
+  ],
+  "reducedSuppressionIsIntentional": [
+    {
+      "level": "easy",
+      "eventTick": 404,
+      "creationBand": "suppressed",
+      "lossShare": 0.3,
+      "healthShare": 0.7,
+      "acceptedTick": 430
+    },
+    {
+      "level": "normal",
+      "eventTick": 404,
+      "creationBand": "suppressed",
+      "lossShare": 0.3,
+      "healthShare": 0.7,
+      "acceptedTick": 420
+    },
+    {
+      "level": "hard",
+      "eventTick": 404,
+      "creationBand": "suppressed",
+      "lossShare": 0.3,
+      "healthShare": 0.7,
+      "acceptedTick": 415
+    }
+  ],
+  "fullRecoveryNegatives": [
+    {
+      "level": "easy",
+      "response": null
+    },
+    {
+      "level": "normal",
+      "response": null
+    },
+    {
+      "level": "hard",
+      "response": null
+    }
+  ],
+  "nativeSeed1": {
+    "baselineExact": true,
+    "inputsBefore2464Equal": true,
+    "allSeatCommandsBefore2464Equal": true,
+    "nativeOutputEqualPriorProposal": {
+      "commands": true,
+      "inputs": true
+    },
+    "response": [
+      {
+        "tick": 2490,
+        "slot": 0,
+        "command": {
+          "t": "retreat",
+          "ids": [
+            17
+          ]
+        },
+        "planned": {
+          "t": "retreat",
+          "ids": [
+            17
+          ]
+        },
+        "actor16": {
+          "x": 133.48723299222368,
+          "z": 114.99510787986026,
+          "path": 0
+        },
+        "accepted": true
+      }
+    ],
+    "firstSelectionTick": 2486,
+    "currentSuppressionAtPlanning2474": [
+      {
+        "id": 11,
+        "targetId": 8,
+        "actualSuppression": 46.000000000000014,
+        "publicEstimatedSuppression": 45,
+        "publicSuppressionBand": "normal"
+      },
+      {
+        "id": 17,
+        "targetId": 0,
+        "actualSuppression": 46.000000000000014,
+        "publicEstimatedSuppression": 45,
+        "publicSuppressionBand": "normal"
+      }
+    ]
+  },
+  "rejectedCurrentBandExperiment": {
+    "source": "strict-current-band-frozen-ai.js",
+    "replay": "strict-current-band-replay.json",
+    "reason": "Creation cue remains legitimate during recovery. Requiring current suppressed/pinned posture removes the seed1 response; no replacement threshold is fitted.",
+    "currentSource": "strict-current-band-ai.js"
+  },
+  "plannerCases": 105,
+  "nativePositiveScenes": 6,
+  "nativeNegativeScenes": 7,
+  "hashes": {
+    "unseen-heavy-hit-retreat.patch": "70ddb092c37f1ce410162a407ee042ea8c7563397be00bd689787fbaad5e4a91",
+    "already-at-home-correction.patch": "d97ca4a77b41ac9631d7aefe83cccc4ffa8444fdd0ed0345e620ba961b4f310a",
+    "test-engine-ai-unseen-hit.js": "73657bb54e0b36ee535939cebd405df46c5f2c3bc9fb631719e0cf787feabe95",
+    "baseline.json": "a323ccf580ca4d61f42fbde3a1b17115f269ea3b5a2713c3d9375f4b058aeac6",
+    "candidate-final.json": "d7098cdd5ca3a864f02c38077353c9573469d96bf795256edef5a63433f5758d",
+    "strict-current-band-ai.js": "e7eb7cc4a80f218d04444a185e3b6b1be05c750dfbc3be53e873002ed0fadeaa",
+    "strict-current-band-replay.json": "4ff79da3824f29b7f8ca9abaf37f5cb8b1a48c8148bc0b2b20846547c74448e4",
+    "strict-current-band-frozen-ai.js": "08f2bbb4419b13f6ddeb1cb8fbe8a99dbf1baf90d2545c4fbefa02f992ce8563"
+  },
+  "checks": {
+    "proposedPermanentFixture": 0,
+    "tacticalReaction": 0,
+    "attendedDanger": 0,
+    "commitment": 0,
+    "patchApplyCheck": 0
+  }
+}

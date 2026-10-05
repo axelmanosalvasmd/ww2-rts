@@ -1,0 +1,21 @@
+// Export raw naval parts and apply the Blender Lab authoring pass serially.
+import { spawnSync } from 'node:child_process';
+import { mkdir, writeFile } from 'node:fs/promises';
+import { dirname, resolve } from 'node:path';
+import { fileURLToPath } from 'node:url';
+const root = resolve(dirname(fileURLToPath(import.meta.url)), '../..');
+const args = process.argv.slice(2), option = (key, fallback) => { const i = args.indexOf(key); return i < 0 ? fallback : args[i + 1]; };
+const source = resolve(option('--source', `${root}/.cache/blender-mcp/naval-source.json`));
+const output = resolve(option('--output', `${root}/.cache/blender-mcp/naval-finished-data.mjs`));
+const settings = { width: Number(option('--width', '0.035')), segments: Number(option('--segments', '2')), bevel_degrees: 65, crease_degrees: 55, material_ids: [0, 1, 9] };
+if (!Number.isFinite(settings.width) || settings.width <= 0 || settings.width > 0.15) throw new Error('Bevel width must be between 0 and 0.15');
+if (![1, 2, 3].includes(settings.segments)) throw new Error('Bevel segments must be 1, 2 or 3');
+const python = JSON.stringify;
+const script = `${root}/tools/blender/finish-naval.py`;
+const code = `finish_source=${python(source)}\nfinish_output=${python(output)}\nfinish_settings=${JSON.stringify(settings)}\n__name__='__main__'\n__file__=${python(script)}\nexec(compile(open(${python(script)}).read(), ${python(script)}, 'exec'))`;
+const argumentsPath = `${root}/.cache/blender-mcp/naval-finish-args.json`;
+await mkdir(dirname(argumentsPath), { recursive: true });
+await writeFile(argumentsPath, JSON.stringify({ code }));
+const run = spawnSync('/bin/bash', [`${root}/tools/blender/mcp/call.sh`, 'lab', '--tool', 'execute_blender_code', '--args-file', argumentsPath, '--output', `${root}/.cache/blender-mcp/naval-finish-mcp-result.json`], { cwd: root, stdio: 'inherit' });
+if (run.status !== 0) process.exit(run.status ?? 1);
+console.log(JSON.stringify({ output, report: resolve(dirname(source), output.split('/').pop().replace(/\.[^.]+$/, '.report.json')) }));

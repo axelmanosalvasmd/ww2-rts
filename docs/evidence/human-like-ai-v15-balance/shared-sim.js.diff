@@ -1,0 +1,44 @@
+--- corrected-before/shared/sim.js
++++ v15/shared/sim.js
+@@ -1226,7 +1226,7 @@
+       infantryRegionVersion: 0, vehicleRegionVersion: 0, navalRegionVersion: 0, terrainVersion: 0, navigationChanges: [], initialTerrain: { chars, height } };
+     for (let c = 0; c < N; c++) view.cellHp[c] = maxHp(view, c);
+     state = { view, rows: new Map(), version: 0, initial: g.initialTerrain }; recipients.set(slot, state);
+-    updateObservedWalls(view, flags.keys());
++    updateObservedWalls(view, flags.keys(), true);
+   }
+   const { view, rows } = state, changed = [];
+   // Authored terrain is the baseline. Only the rows this recipient remembers can change it.
+@@ -1256,7 +1256,31 @@
+   view.wx = g.wx; view.tick = g.tick; view.reveal = g.reveal;
+   return view;
+ }
+-function updateObservedWalls(view, changed) {
++function updateObservedWalls(view, changed, full = false) {
++  // Boolean horizontal and vertical dilation matches the clipped 3x3 neighborhood.
++  if (full) {
++    const W = view.w, H = view.h, flags = view.flags, horizontal = new Uint8Array(W * H);
++    for (let y = 0; y < H; y++) {
++      const row = y * W;
++      let previous = 0, current = (flags[row] & (MOVE | SIGHT)) === (MOVE | SIGHT) ? 1 : 0;
++      for (let x = 0; x < W; x++) {
++        const cell = row + x;
++        const next = x + 1 < W && (flags[cell + 1] & (MOVE | SIGHT)) === (MOVE | SIGHT) ? 1 : 0;
++        horizontal[cell] = previous | current | next;
++        previous = current; current = next;
++      }
++    }
++    for (let y = 0; y < H; y++) {
++      const row = y * W;
++      for (let x = 0; x < W; x++) {
++        const cell = row + x;
++        view.worldNearWalls[cell] = horizontal[cell]
++          | (y > 0 ? horizontal[cell - W] : 0)
++          | (y + 1 < H ? horizontal[cell + W] : 0);
++      }
++    }
++    return;
++  }
+   const affected = new Set(), W = view.w;
+   for (const c of changed) {
+     const x = c % W, y = Math.floor(c / W);

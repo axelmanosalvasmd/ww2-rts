@@ -1,0 +1,20 @@
+{
+  "at": "2026-10-04T19:37:17.875998+00:00",
+  "sources": {
+    "shared/sim.js": "7bc57ac179b4982bdb94b469ce029e2e2178567fcb23fa1756476a17f791f018",
+    "shared/ai.js": "ba501eb77b3ec2e5e772314889de8a8bc919cc9f9c405b55ba555728c2eb975c",
+    "shared/ai-commander.js": "19112a1e4c94da72d62564d940497d38cf7e93e3086c9bde3db9c29d088703df",
+    "tools/ai-humanity.mjs": "7c80a300e54bf42b2bc495f0efcfd25321738e4c82b5fdad98112ea787e1a05e",
+    "tools/hash-json-native.mjs": "84d9f9c2273071831d86fe88e4244bda6013c762412ef837a5dc4c90a08e41c5",
+    "tools/json-stream.mjs": "34f01a09d4996f356a3dafc61084aae27a4bf18cd8e6b63b2fda9e95c5168798",
+    "test-ai-humanity-storage.js": "b50d2668f43161b5ce79feb6b165724e89f7ec221ff0a0754a58b0369c62753b"
+  },
+  "tests": [
+    {
+      "test": "test-ai-humanity-storage.js",
+      "exit": 0,
+      "sha256": "ade7effe309dd182561684f584cdb1ee630047c6155b89d21c38034cd92a35ba",
+      "bytes": 265
+    }
+  ]
+}

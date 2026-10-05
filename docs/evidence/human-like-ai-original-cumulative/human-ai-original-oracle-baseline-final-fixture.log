@@ -1,0 +1,63 @@
+node:internal/modules/run_main:107
+    triggerUncaughtException(
+    ^
+
+AssertionError [ERR_ASSERTION]: the external collector records the cumulative history owned by its actual private detector
++ actual - expected
+
++ []
+- [
+-   {
+-     amount: 1,
+-     episode: '7:1',
+-     episodeTick: 2,
+-     id: 'screen:2:1',
+-     kind: 'screen-damage',
+-     observationTick: 2,
+-     onScreen: true,
+-     provenance: 'retreat-risk-crossing',
+-     responsePolicy: 'screen-v1',
+-     responseReason: 'retreat-risk-crossing',
+-     responseRequired: true,
+-     responseUnits: [
+-       7
+-     ],
+-     source: 'screen',
+-     tick: 2,
+-     unitId: 7,
+-     x: 41,
+-     z: 41
+-   }
+- ]
+
+    at run (file:///tmp/human-ai-original-oracle-cumulative/test-engine-ai-measurement-streams.js:158:12)
+    at file:///tmp/human-ai-original-oracle-cumulative/test-engine-ai-measurement-streams.js:180:19 {
+  generatedMessage: false,
+  code: 'ERR_ASSERTION',
+  actual: [],
+  expected: [
+    {
+      id: 'screen:2:1',
+      kind: 'screen-damage',
+      tick: 2,
+      observationTick: 2,
+      source: 'screen',
+      onScreen: true,
+      x: 41,
+      z: 41,
+      unitId: 7,
+      amount: 1,
+      episode: '7:1',
+      episodeTick: 2,
+      provenance: 'retreat-risk-crossing',
+      responseRequired: true,
+      responseReason: 'retreat-risk-crossing',
+      responsePolicy: 'screen-v1',
+      responseUnits: [ 7 ]
+    }
+  ],
+  operator: 'deepStrictEqual',
+  diff: 'simple'
+}
+
+Node.js v24.21.0

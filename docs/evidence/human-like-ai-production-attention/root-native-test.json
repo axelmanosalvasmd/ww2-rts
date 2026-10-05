@@ -1,0 +1,22 @@
+{
+  "command": "taskset -c 4 node test-engine-ai-production-attention.js",
+  "exitCode": 0,
+  "output": {
+    "test": "production attention",
+    "authoredNativePairs": 3,
+    "constructionViewControls": 2,
+    "publicBudget": true,
+    "lateHurt": true,
+    "affordableRecruitmentAndHomeDeployment": true,
+    "physicalFloorsAndMotor": true
+  },
+  "sourceSHA256": {
+    "shared/ai.js": "2e01129543e4095b95bdbb693f89ce278a810796528718fac192436ac7bf9f21",
+    "shared/ai-hands.js": "8bd373c3afb8261bf8ca2a53f24512522b91f0ddc6568eaa61dbf7039684b9a3",
+    "shared/ai-attention.js": "07c48dbdcc92f326eeb52222518f274dcf05a4d746dfd474126d932ed05ca7ba",
+    "shared/sim.js": "7bc57ac179b4982bdb94b469ce029e2e2178567fcb23fa1756476a17f791f018",
+    "tools/ai-lab-runner.mjs": "01020a610e714ca538ca12b81c03652d77bba31d7a99ea696aec786b97c34ea2",
+    "test-engine-ai-production-attention.js": "1d4bea468044defbb6b1a4550747e7b2f78926136e86001d1653e9787baae169"
+  },
+  "qualification": "Actual root tool invocation completed with exit0. Historical scratch traces predate root AP and stance changes. The current permanent native fixture passes on their combined source. This is focused evidence, not a numeric population pass."
+}

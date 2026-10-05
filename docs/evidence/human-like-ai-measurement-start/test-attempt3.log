@@ -1,0 +1,9 @@
+file:///tmp/human-ai-oracle-tick0-proposal/test-adapter.mjs:84
+  const raw = Buffer.from(JSON.stringify({ mode, level, off, original, measured, mutated }));
+                               ^
+
+RangeError: Invalid string length
+    at JSON.stringify (<anonymous>)
+    at file:///tmp/human-ai-oracle-tick0-proposal/test-adapter.mjs:84:32
+
+Node.js v24.21.0

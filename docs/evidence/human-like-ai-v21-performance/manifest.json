@@ -1,0 +1,411 @@
+{
+  "schema": "ww2-native-evidence-copy-v1",
+  "originals": [
+    {
+      "originalPath": "/tmp/human-ai-final-performance-protocol-v21.json",
+      "member": "protocol-and-pause/human-ai-final-performance-protocol-v21.json",
+      "bytes": 42823,
+      "sha256": "80286ca8aebee68aa5746f7af66011f0b94443b2eb3a9f86ec877f3c9cb51df3"
+    },
+    {
+      "originalPath": "/tmp/human-ai-final-performance-protocol-v21.py",
+      "member": "protocol-and-pause/human-ai-final-performance-protocol-v21.py",
+      "bytes": 23324,
+      "sha256": "0c2e5fc1ac71379f3e3fb29d535ff2a21403957ca009c356e595b285739b6007"
+    },
+    {
+      "originalPath": "/tmp/human-ai-performance-v21-predeclared.json",
+      "member": "protocol-and-pause/human-ai-performance-v21-predeclared.json",
+      "bytes": 51647,
+      "sha256": "abdbc38de14da1e4df04029793fc8d7e772a956cc34ce0968ef8dd2a17699dec"
+    },
+    {
+      "originalPath": "/tmp/human-ai-performance-v21-preregistration-draft.json",
+      "member": "protocol-and-pause/human-ai-performance-v21-preregistration-draft.json",
+      "bytes": 29275,
+      "sha256": "c844fb319e7d6ad0c2c4febbbf244aa81a22706da7379e6dac2839c301edce3a"
+    },
+    {
+      "originalPath": "/tmp/human-ai-performance-v21-authorization.json",
+      "member": "protocol-and-pause/human-ai-performance-v21-authorization.json",
+      "bytes": 989,
+      "sha256": "4744d4a530a44ef678e8d9edf5fd49aa62d3d039746695e51693be8ca8ac54cf"
+    },
+    {
+      "originalPath": "/tmp/human-ai-performance-v21-pause-journal.jsonl",
+      "member": "protocol-and-pause/human-ai-performance-v21-pause-journal.jsonl",
+      "bytes": 3541,
+      "sha256": "de308220670746ee8ed0104895d1339b74cd291c76f365c731e68edffeeb7f75"
+    },
+    {
+      "originalPath": "/tmp/human-ai-performance-v21-pause-plan.json",
+      "member": "protocol-and-pause/human-ai-performance-v21-pause-plan.json",
+      "bytes": 6690,
+      "sha256": "87f3ea55268257ee311a665a8e67cedbc69abbb84ca854baaa37cc0e2d57c3b3"
+    },
+    {
+      "originalPath": "/tmp/human-ai-performance-v21-quiet-lease.json",
+      "member": "protocol-and-pause/human-ai-performance-v21-quiet-lease.json",
+      "bytes": 166,
+      "sha256": "37ba38b73c08c7204125d1a756bda6db52c7dbd64e727d97672e7ea227126a7b"
+    },
+    {
+      "originalPath": "/tmp/human-ai-v21-quiet-wrapper.py",
+      "member": "protocol-and-pause/human-ai-v21-quiet-wrapper.py",
+      "bytes": 11097,
+      "sha256": "ec05b16783300397a72331b8b35fde1b93ab62385ffb64a8e42d1e8a2555c1a8"
+    },
+    {
+      "originalPath": "/tmp/human-ai-bench-v21-before.json",
+      "member": "four-native-rows/human-ai-bench-v21-before.json",
+      "bytes": 7599,
+      "sha256": "bbcaa443f0fcfcdcb53fc9cf1bd49de8d3b36a7cb0acbe42aa378efd630835ff"
+    },
+    {
+      "originalPath": "/tmp/human-ai-bench-v21-before.log",
+      "member": "four-native-rows/human-ai-bench-v21-before.log",
+      "bytes": 94,
+      "sha256": "bd1af1102cfcc475d4834725425999a2e1587ff076e2aeab5bed8048f398d496"
+    },
+    {
+      "originalPath": "/tmp/human-ai-bench-v21-after.json",
+      "member": "four-native-rows/human-ai-bench-v21-after.json",
+      "bytes": 7602,
+      "sha256": "96364b9061d7731cba5cdd22c6b766def8a78d27745cd29117359b33793e6f0d"
+    },
+    {
+      "originalPath": "/tmp/human-ai-bench-v21-after.log",
+      "member": "four-native-rows/human-ai-bench-v21-after.log",
+      "bytes": 93,
+      "sha256": "cec38c7b6b100ab825540c18f83d925adfd7d8f1eb86d93a887b87b144ee8d44"
+    },
+    {
+      "originalPath": "/tmp/human-ai-bench-v21-before-counts.json",
+      "member": "four-native-rows/human-ai-bench-v21-before-counts.json",
+      "bytes": 7727,
+      "sha256": "7737b218d55a3f9d2459aaeb292ffb3331c141ba330d2291661a4f37b42fad39"
+    },
+    {
+      "originalPath": "/tmp/human-ai-bench-v21-before-counts.log",
+      "member": "four-native-rows/human-ai-bench-v21-before-counts.log",
+      "bytes": 101,
+      "sha256": "a21795465b75e5439c75a39c7916d495f694c027b17beec2ee4b150297c2f061"
+    },
+    {
+      "originalPath": "/tmp/human-ai-bench-v21-after-counts.json",
+      "member": "four-native-rows/human-ai-bench-v21-after-counts.json",
+      "bytes": 7733,
+      "sha256": "37e909c523c47a5273ce7af95897fc725fc6acd06bb4a07f7906426298a696b9"
+    },
+    {
+      "originalPath": "/tmp/human-ai-bench-v21-after-counts.log",
+      "member": "four-native-rows/human-ai-bench-v21-after-counts.log",
+      "bytes": 100,
+      "sha256": "e31691333e0ac3a9f6ff2fd4d6d0426d57941b37a9d40e3181b08b046db90ece"
+    },
+    {
+      "originalPath": "/tmp/human-ai-perf-v21-frozen/client/keys.js",
+      "member": "frozen-benchmark-source/client/keys.js",
+      "bytes": 7361,
+      "sha256": "867e3105b7e4665f8a313c2ab46e23fc3df9407f2163fd6862bb537a01ecd276"
+    },
+    {
+      "originalPath": "/tmp/human-ai-perf-v21-frozen/maps/king-of-the-hill.json",
+      "member": "frozen-benchmark-source/maps/king-of-the-hill.json",
+      "bytes": 36005,
+      "sha256": "69e0ac471f65043ff32119c819e859b58cda2291bcec984a415cbbd875eaffe8"
+    },
+    {
+      "originalPath": "/tmp/human-ai-perf-v21-frozen/maps/six-fronts.json",
+      "member": "frozen-benchmark-source/maps/six-fronts.json",
+      "bytes": 47514,
+      "sha256": "247228c85e88e76879b4117fd07f143ff38820d93e8a8129175312b3bd376255"
+    },
+    {
+      "originalPath": "/tmp/human-ai-perf-v21-frozen/maps/test-arena.json",
+      "member": "frozen-benchmark-source/maps/test-arena.json",
+      "bytes": 7178,
+      "sha256": "44eca010e3c08ecc4a01abfe3c4092415aa5fe25dbd77879978c7ee34a2cc9af"
+    },
+    {
+      "originalPath": "/tmp/human-ai-perf-v21-frozen/maps/the-great-bridge.json",
+      "member": "frozen-benchmark-source/maps/the-great-bridge.json",
+      "bytes": 26359,
+      "sha256": "50145f185bef8a946d582c639bb8fa93f22002b711065bb3a1874649157c7c48"
+    },
+    {
+      "originalPath": "/tmp/human-ai-perf-v21-frozen/package.json",
+      "member": "frozen-benchmark-source/package.json",
+      "bytes": 211,
+      "sha256": "38b34423b2e37b851381576f5dd67d9103d951ab7c7ddcf5cacb4112507b34db"
+    },
+    {
+      "originalPath": "/tmp/human-ai-perf-v21-frozen/server.js",
+      "member": "frozen-benchmark-source/server.js",
+      "bytes": 44801,
+      "sha256": "16004b2b7f3cd427d3fb61750a6a2788f9fe0e7bd8a22c92b4cd01d486677e57"
+    },
+    {
+      "originalPath": "/tmp/human-ai-perf-v21-frozen/shared/ai-attention.js",
+      "member": "frozen-benchmark-source/shared/ai-attention.js",
+      "bytes": 27980,
+      "sha256": "07c48dbdcc92f326eeb52222518f274dcf05a4d746dfd474126d932ed05ca7ba"
+    },
+    {
+      "originalPath": "/tmp/human-ai-perf-v21-frozen/shared/ai-commander.js",
+      "member": "frozen-benchmark-source/shared/ai-commander.js",
+      "bytes": 30709,
+      "sha256": "19112a1e4c94da72d62564d940497d38cf7e93e3086c9bde3db9c29d088703df"
+    },
+    {
+      "originalPath": "/tmp/human-ai-perf-v21-frozen/shared/ai-hands.js",
+      "member": "frozen-benchmark-source/shared/ai-hands.js",
+      "bytes": 63608,
+      "sha256": "8bd373c3afb8261bf8ca2a53f24512522b91f0ddc6568eaa61dbf7039684b9a3"
+    },
+    {
+      "originalPath": "/tmp/human-ai-perf-v21-frozen/shared/ai-mind.js",
+      "member": "frozen-benchmark-source/shared/ai-mind.js",
+      "bytes": 19553,
+      "sha256": "18bb411cb1d057ce8cffe0b042c21f64b71238ae157b584242df206d708e6b92"
+    },
+    {
+      "originalPath": "/tmp/human-ai-perf-v21-frozen/shared/ai-perception.js",
+      "member": "frozen-benchmark-source/shared/ai-perception.js",
+      "bytes": 34765,
+      "sha256": "50e611a932728940c5047a61bf4fd7554c696f93880d7907a952d8b39fdcf3fd"
+    },
+    {
+      "originalPath": "/tmp/human-ai-perf-v21-frozen/shared/ai-persona.js",
+      "member": "frozen-benchmark-source/shared/ai-persona.js",
+      "bytes": 3586,
+      "sha256": "34de5882046129d2000e5502e354123786f3ad7b7133f31e93863dcc36ba66cf"
+    },
+    {
+      "originalPath": "/tmp/human-ai-perf-v21-frozen/shared/ai-priority.js",
+      "member": "frozen-benchmark-source/shared/ai-priority.js",
+      "bytes": 5884,
+      "sha256": "6b5d5a8a22968209fe03c8235648a859b36919b9eafd44cd390a8252ab6b3542"
+    },
+    {
+      "originalPath": "/tmp/human-ai-perf-v21-frozen/shared/ai-rng.js",
+      "member": "frozen-benchmark-source/shared/ai-rng.js",
+      "bytes": 641,
+      "sha256": "2d2f95266eda45ec4fa4862cb01079fc8464a98d8c88fa97ca89b54a5d6f8b90"
+    },
+    {
+      "originalPath": "/tmp/human-ai-perf-v21-frozen/shared/ai-view.js",
+      "member": "frozen-benchmark-source/shared/ai-view.js",
+      "bytes": 13935,
+      "sha256": "4466958fc4b8e7a5d2f2bcb8dc3814e27c817a7480b0c765aa6ee2a98cbc87f7"
+    },
+    {
+      "originalPath": "/tmp/human-ai-perf-v21-frozen/shared/ai.js",
+      "member": "frozen-benchmark-source/shared/ai.js",
+      "bytes": 91781,
+      "sha256": "c99be94a933f5c122d8ba7f32750f1a4bff66bf2875c8f3ec8e86322eb3d7e43"
+    },
+    {
+      "originalPath": "/tmp/human-ai-perf-v21-frozen/shared/alert-events.js",
+      "member": "frozen-benchmark-source/shared/alert-events.js",
+      "bytes": 8219,
+      "sha256": "df5f0ae98145034e6893ce0b70c2df8938a2d786cc8de37a1fbbc1a9c8b634b0"
+    },
+    {
+      "originalPath": "/tmp/human-ai-perf-v21-frozen/shared/command-feedback.js",
+      "member": "frozen-benchmark-source/shared/command-feedback.js",
+      "bytes": 303,
+      "sha256": "e851bb8f7e48291bd75f09be66fdeecbe7dca68dcc82c839c5c033083ce77a07"
+    },
+    {
+      "originalPath": "/tmp/human-ai-perf-v21-frozen/shared/debris-motion.js",
+      "member": "frozen-benchmark-source/shared/debris-motion.js",
+      "bytes": 4384,
+      "sha256": "d6a0f330f958ec6d78cfcc7f95b209aa5c099369576bf15dfd1c84770287b3b4"
+    },
+    {
+      "originalPath": "/tmp/human-ai-perf-v21-frozen/shared/formation.js",
+      "member": "frozen-benchmark-source/shared/formation.js",
+      "bytes": 4865,
+      "sha256": "265fa63c8c72588f6c8f67057921fd4daa88f96e9d823faa2e41ba10a7dba005"
+    },
+    {
+      "originalPath": "/tmp/human-ai-perf-v21-frozen/shared/grid.js",
+      "member": "frozen-benchmark-source/shared/grid.js",
+      "bytes": 2873,
+      "sha256": "30b0a5d67d99e54548d189374684e6b28863ecb7bf92de5221359e5c24fc5afc"
+    },
+    {
+      "originalPath": "/tmp/human-ai-perf-v21-frozen/shared/human-input.js",
+      "member": "frozen-benchmark-source/shared/human-input.js",
+      "bytes": 7966,
+      "sha256": "dec728db485690620e527f912fa2a0b491f545c5bbdaafc4dc25fd1e425763ff"
+    },
+    {
+      "originalPath": "/tmp/human-ai-perf-v21-frozen/shared/local-traffic.js",
+      "member": "frozen-benchmark-source/shared/local-traffic.js",
+      "bytes": 7408,
+      "sha256": "abad3f6ba310783c3620cec8d599df90dac38bb74eed6509be7d19a8af1490f6"
+    },
+    {
+      "originalPath": "/tmp/human-ai-perf-v21-frozen/shared/navigation.js",
+      "member": "frozen-benchmark-source/shared/navigation.js",
+      "bytes": 19838,
+      "sha256": "c277c12f86c9990e281ae28a703dc374126aa1c737d9dc94a300f8d99c898472"
+    },
+    {
+      "originalPath": "/tmp/human-ai-perf-v21-frozen/shared/projectiles.js",
+      "member": "frozen-benchmark-source/shared/projectiles.js",
+      "bytes": 7769,
+      "sha256": "ded50f3bcd60cf79238d5dba48236d54e33b2b8032f704813118d1419708ccd7"
+    },
+    {
+      "originalPath": "/tmp/human-ai-perf-v21-frozen/shared/scenarios.js",
+      "member": "frozen-benchmark-source/shared/scenarios.js",
+      "bytes": 16044,
+      "sha256": "93f6cda90224a805cc97f42418b2dc11c49e3ea80654b66e0036de55f9b9ba97"
+    },
+    {
+      "originalPath": "/tmp/human-ai-perf-v21-frozen/shared/sim.js",
+      "member": "frozen-benchmark-source/shared/sim.js",
+      "bytes": 355291,
+      "sha256": "5e5f4c2d43d048be36d94f0cbcc68fb974c812fc8ab7e071cddb0a59079d89fa"
+    },
+    {
+      "originalPath": "/tmp/human-ai-perf-v21-frozen/shared/story.js",
+      "member": "frozen-benchmark-source/shared/story.js",
+      "bytes": 3738,
+      "sha256": "fa33e53e61a7d636959dd1d1916d7b5c3359db72b523dc730b16ceab525d170f"
+    },
+    {
+      "originalPath": "/tmp/human-ai-perf-v21-frozen/shared/structures.js",
+      "member": "frozen-benchmark-source/shared/structures.js",
+      "bytes": 4029,
+      "sha256": "933b100a9a4c19a0285f5b137cd29b46e44271776f031045a537009e0176e5a2"
+    },
+    {
+      "originalPath": "/tmp/human-ai-perf-v21-frozen/shared/tutorial.js",
+      "member": "frozen-benchmark-source/shared/tutorial.js",
+      "bytes": 6342,
+      "sha256": "3aaa5e6affd936dae0ae4741d5173eee5d006132a1705d4b553097d3d8fabf42"
+    },
+    {
+      "originalPath": "/tmp/human-ai-perf-v21-frozen/shared/vehicle-motion.js",
+      "member": "frozen-benchmark-source/shared/vehicle-motion.js",
+      "bytes": 12185,
+      "sha256": "05bd1e985a91b3268065a0a84ec4b9aee2c1079aafc4054c38a70677dfb1493b"
+    },
+    {
+      "originalPath": "/tmp/human-ai-perf-v21-frozen/shared/weather.js",
+      "member": "frozen-benchmark-source/shared/weather.js",
+      "bytes": 7228,
+      "sha256": "faad682d6e40fdc6629533f684e1caeec5c9ae49e26e9922651773727c0bc1e5"
+    },
+    {
+      "originalPath": "/tmp/human-ai-perf-v21-frozen/shared/world-conquest.js",
+      "member": "frozen-benchmark-source/shared/world-conquest.js",
+      "bytes": 7203,
+      "sha256": "1c251e6d340586d7fb367d4f47938d5898f5239824dac46f054880a3d897aeef"
+    },
+    {
+      "originalPath": "/tmp/human-ai-perf-v21-frozen/shared/world-landforms.js",
+      "member": "frozen-benchmark-source/shared/world-landforms.js",
+      "bytes": 6645,
+      "sha256": "ecb6916db6785484f8bb813f7745c8c48ccea370f084fea290ff736edc968e34"
+    },
+    {
+      "originalPath": "/tmp/human-ai-perf-v21-frozen/shared/world-layers.js",
+      "member": "frozen-benchmark-source/shared/world-layers.js",
+      "bytes": 6770,
+      "sha256": "f51f34b99946192107ada9a7077d787761c1a9cb6b1e316d7b7e243dd273bb22"
+    },
+    {
+      "originalPath": "/tmp/human-ai-perf-v21-frozen/shared/world-roads.js",
+      "member": "frozen-benchmark-source/shared/world-roads.js",
+      "bytes": 6491,
+      "sha256": "5fb243b63fa9e2c082135b5b093ee753e8a92c197a076d78067e53f08f1885db"
+    },
+    {
+      "originalPath": "/tmp/human-ai-perf-v21-frozen/shared/world-territories.js",
+      "member": "frozen-benchmark-source/shared/world-territories.js",
+      "bytes": 4110,
+      "sha256": "bb33a449d7f2c4d657dbceab8dbd0171eb8ccaa7494cedf9e18707822d8f717f"
+    },
+    {
+      "originalPath": "/tmp/human-ai-perf-v21-frozen/tickmeter.js",
+      "member": "frozen-benchmark-source/tickmeter.js",
+      "bytes": 2198,
+      "sha256": "4687535fa1d155e88648610230edda26df2fc60eb2bae017240a0020b2ce0d92"
+    },
+    {
+      "originalPath": "/tmp/human-ai-perf-v21-frozen/tools/ai-screen-v1-oracle-provenance.json",
+      "member": "frozen-benchmark-source/tools/ai-screen-v1-oracle-provenance.json",
+      "bytes": 576,
+      "sha256": "7d6de7111625c96649ab2d80e3d2cb7cb4510a3dc6ec407dfc85ba3e0a797400"
+    },
+    {
+      "originalPath": "/tmp/human-ai-perf-v21-frozen/tools/ai-screen-v1-oracle.js",
+      "member": "frozen-benchmark-source/tools/ai-screen-v1-oracle.js",
+      "bytes": 28180,
+      "sha256": "6b3894b551f3bf9151372b048b2efc77ffc86a6a173d0871278b27417358b398"
+    },
+    {
+      "originalPath": "/tmp/human-ai-perf-v21-frozen/tools/bench-engine-counts.mjs",
+      "member": "frozen-benchmark-source/tools/bench-engine-counts.mjs",
+      "bytes": 32486,
+      "sha256": "9dfbfe81f500da9298058f286405925a85345c5c372efb4ce583c137ada0691c"
+    },
+    {
+      "originalPath": "/tmp/human-ai-perf-v21-frozen/tools/bench-engine.mjs",
+      "member": "frozen-benchmark-source/tools/bench-engine.mjs",
+      "bytes": 32433,
+      "sha256": "4e84f2b7f86009b9ee47585bc6fc592b50defc2cea0cc1d9cc484ed85d0568be"
+    },
+    {
+      "originalPath": "/tmp/human-ai-perf-v21-frozen/tools/bench.mjs",
+      "member": "frozen-benchmark-source/tools/bench.mjs",
+      "bytes": 8183,
+      "sha256": "0c026604acaba5ec8f477080b83a948e901d4724c8bf06d325d334a1b244b49d"
+    },
+    {
+      "originalPath": "/tmp/human-ai-perf-v21-frozen/tools/json-stream.mjs",
+      "member": "frozen-benchmark-source/tools/json-stream.mjs",
+      "bytes": 9588,
+      "sha256": "34f01a09d4996f356a3dafc61084aae27a4bf18cd8e6b63b2fda9e95c5168798"
+    },
+    {
+      "originalPath": "/tmp/human-ai-perf-v21-frozen/tools/legacy-ai/ai-mind.js",
+      "member": "frozen-benchmark-source/tools/legacy-ai/ai-mind.js",
+      "bytes": 17983,
+      "sha256": "c2941813a4fb6d655a50b579270e5887723cfc42ea18c9d767735904c78c2d54"
+    },
+    {
+      "originalPath": "/tmp/human-ai-perf-v21-frozen/tools/legacy-ai/ai-view.js",
+      "member": "frozen-benchmark-source/tools/legacy-ai/ai-view.js",
+      "bytes": 11525,
+      "sha256": "c8e5332611ec5d18d5f7b0ab9093c30df5006a6f566c106a312a64900be17d5f"
+    },
+    {
+      "originalPath": "/tmp/human-ai-perf-v21-frozen/tools/legacy-ai/ai.js",
+      "member": "frozen-benchmark-source/tools/legacy-ai/ai.js",
+      "bytes": 64127,
+      "sha256": "49575f9089365e13592a804b852b8eeec8c1dcc96bd64d236eaf3757904bcf4d"
+    },
+    {
+      "originalPath": "/tmp/human-ai-perf-v21-frozen/tools/legacy-ai/provenance.json",
+      "member": "frozen-benchmark-source/tools/legacy-ai/provenance.json",
+      "bytes": 1048,
+      "sha256": "dc60cceedaf44362e4ee8042b204544f3e9e0e312abf831218af827a2105e55e"
+    }
+  ],
+  "copiedOriginalBytes": 1370500,
+  "copyAssertions": {
+    "actualRows": 4,
+    "allRowsExitZero": true,
+    "overallOriginalResult": "FAIL",
+    "exactP95Failed": true,
+    "countInstrumentationOnlyFinalStats": true,
+    "executedRunnerAndWrapperBindingsVerified": true
+  },
+  "packagingExecution": "Copying, compression and byte-integrity checks only. No simulation, test, scoring run, staging or commit."
+}

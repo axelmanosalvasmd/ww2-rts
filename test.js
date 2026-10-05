@@ -47,8 +47,14 @@ const settledRubble = (g, cells, message) => {
   const { execFileSync } = await import('node:child_process');
   for (const file of ['test-world-waterways.js', 'test-world-multiple-rivers.js', 'test-world-generation.js', 'test-world-territories.js',
     'test-world-conquest.js', 'test-world-teams.js', 'test-world-acceptance.js', 'test-world-observation.js', 'test-world-movement.js', 'test-world-river.js',
-    'test-engine-controls.js', 'test-engine-world.js', 'test-engine-movement.js', 'test-engine-observed-walls.js', 'test-movement-lab.js', 'test-engine-projectiles.js', 'test-engine-scenarios.js', 'test-engine-ai.js', 'test-engine-ai-callers.js', 'test-engine-ai-hands.js', 'test-engine-ai-perception.js', 'test-engine-ai-human.js', 'test-engine-ai-response.js', 'test-engine-ai-effect-visibility.js', 'test-engine-ai-persona.js', 'test-engine-ai-humanity.js', 'test-engine-ai-humanity-multievent.js', 'test-engine-ai-commitment.js', 'test-engine-ai-coherence.js', 'test-engine-ai-overlay.js', 'test-human-input.js', 'test-engine-acceptance.js', 'test-engine-presentation.mjs',
-    'test-ai-terrain-delivery.js', 'test-engine-ai-workload.js', 'test-engine-ai-selected-hud.js', 'test-engine-ai-inspection.js', 'test-engine-spectators.js', 'test-engine-scenario-start.js', 'test-engine-breaches.mjs', 'test-engine-authoring.js', 'test-engine-vehicle-pose.mjs', 'test-engine-ai-privacy.js', 'test-engine-localization.mjs',
+    'test-engine-controls.js', 'test-engine-world.js', 'test-engine-movement.js', 'test-engine-observed-walls.js', 'test-movement-lab.js', 'test-engine-projectiles.js', 'test-engine-scenarios.js', 'test-engine-ai.js', 'test-engine-ai-callers.js', 'test-engine-ai-hands.js', 'test-engine-ai-perception.js', 'test-engine-ai-human.js', 'test-engine-ai-response.js', 'test-engine-ai-public-alert.js', 'test-engine-ai-effect-visibility.js', 'test-engine-ai-persona.js', 'test-engine-ai-humanity.js', 'test-engine-ai-humanity-multievent.js', 'test-engine-ai-commitment.js', 'test-engine-ai-coherence.js', 'test-engine-ai-overlay.js', 'test-human-input.js', 'test-engine-acceptance.js', 'test-engine-presentation.mjs',
+    'test-ai-terrain-delivery.js', 'test-engine-ai-workload.js', 'test-engine-ai-selected-hud.js', 'test-engine-ai-inspection.js', 'test-engine-ai-priority.js', 'test-engine-ai-inspection-priority.js', 'test-engine-ai-observed-events.js', 'test-engine-ai-measurement-streams.js', 'test-engine-ai-tactical-reaction.js', 'test-engine-ai-attention-yield.js', 'test-engine-ai-attention-area.js', 'test-engine-ai-behavior-cues.js', 'test-engine-ai-bridge-repair.js', 'test-engine-ai-decision-capture.js', 'test-engine-ai-causal-orders.js', 'test-engine-ai-pointer-tracking.js', 'test-engine-ai-group-reuse.js', 'test-engine-ai-minimap-parity.js', 'test-ai-humanity-storage.js', 'test-engine-spectators.js', 'test-engine-scenario-start.js', 'test-server-start-order.js', 'test-engine-breaches.mjs', 'test-engine-authoring.js', 'test-engine-vehicle-pose.mjs', 'test-engine-ai-privacy.js', 'test-engine-localization.mjs',
+    'test-engine-ai-public-start.js', 'test-engine-ai-opening-saving.js', 'test-engine-ai-purchase-receipts.js', 'test-engine-ai-producer-substitution.js', 'test-engine-ai-engineer-shortage.js', 'test-engine-ai-formation-selection.js', 'test-engine-ai-measurement-start.js',
+    'test-engine-ai-local-engineer.js', 'test-engine-ai-accepted-destinations.js', 'test-engine-ai-attended-danger.js', 'test-engine-ai-attended-guard.js', 'test-engine-ai-guard-ability-choice.js',
+    'test-engine-ai-garrison-framing.js', 'test-engine-ai-hesitation.js', 'test-engine-ai-unseen-hit.js', 'test-engine-ai-manual-response-policy.js',
+    'test-engine-ai-manual-response-v3.js', 'test-engine-ai-manual-response-isolation.js', 'test-ai-lab.js', 'test-engine-ai-ap-vehicles.js', 'test-engine-ai-stale-stance.js', 'test-engine-ai-production-attention.js', 'test-engine-ai-cover-opportunity.js', 'test-engine-ai-stationary-armor-hit.js', 'test-engine-ai-automatic-armor-hit.js',
+    'test-client-terrain-transition.mjs', 'test-engine-ai-point-fog.js', 'test-ai-km-boundary.mjs',
+    'test-engine-ai-diagonal-pan.js', 'test-engine-ai-pan-release.js', 'test-engine-ai-selection-reuse.js', 'test-engine-ai-idle-guard-attention.js', 'test-engine-ai-fortification-cover.js', 'test-engine-ai-purpose.js', 'test-engine-ai-public-alert-v2.js',
     'test-engine-debris.js', 'test-engine-traffic-privacy.js', 'test-engine-horde-queue.js']) {
     execFileSync(process.execPath, [file], { cwd: import.meta.dirname, stdio: 'inherit', timeout: 180000 });
   }
@@ -4632,15 +4638,21 @@ const aiMap = () => ({ w: 80, h: 80, rows: Array(80).fill('.'.repeat(80)),
 }
 // Preserve the direct planner's capture deadline at its original staggered 40-tick cadence.
 {
-  const g = createGame(JSON.parse(readFileSync('maps/default.json', 'utf8')), ['a', 'b', 'c']);
-  let capturedAt = 0;
-  for (let i = 0; i < 20 * 180 && !capturedAt && g.winner === null; i++) {
-    for (let s = 0; s < 3; s++) if ((g.tick + s * 13) % 40 === 0) think(g, s, { decisionOnly: true });
-    step(g);
-    if (g.points.every(p => p.owner >= 0)) capturedAt = g.tick / 20;
-  }
-  assert.ok(capturedAt > 0 && capturedAt < 180, 'AI decision layer takes every point within 3 minutes');
-  console.log(`AI decision-layer capture: every point taken at ${Math.round(capturedAt)}s`);
+  // Seed 10 retains a former native capture miss covered by the forty-seed regression.
+  const originalCaptureRandom = Math.random;
+  let captureSeed = 10;
+  Math.random = () => { captureSeed = Math.imul(captureSeed, 1664525) + 1013904223 | 0; return (captureSeed >>> 0) / 4294967296; };
+  try {
+    const g = createGame(JSON.parse(readFileSync('maps/default.json', 'utf8')), ['a', 'b', 'c']);
+    let capturedAt = 0;
+    for (let i = 0; i < 20 * 180 && !capturedAt && g.winner === null; i++) {
+      for (let s = 0; s < 3; s++) if ((g.tick + s * 13) % 40 === 0) think(g, s, { decisionOnly: true });
+      step(g);
+      if (g.points.every(p => p.owner >= 0)) capturedAt = g.tick / 20;
+    }
+    assert.ok(capturedAt > 0 && capturedAt < 180, 'AI decision layer takes every point within 3 minutes');
+    console.log(`AI decision-layer capture: every point taken at ${Math.round(capturedAt)}s`);
+  } finally { Math.random = originalCaptureRandom; }
 }
 
 // Three human commanders play a full match through physical inputs and delivered observations.
@@ -4696,6 +4708,8 @@ const aiMap = () => ({ w: 80, h: 80, rows: Array(80).fill('.'.repeat(80)),
       tickGameplayAI(g, s, options[s]);
       assert.equal(seats[s].pending, null, 'every submitted command has its physical input record before the next tick');
     }
+    // Match the server's delivery epoch after every seat has used the current observation.
+    if (g.tick % 2 === 0) { g.shots = []; g.newCells = []; }
     step(g);
     if (!firstCaptureAt && g.points.some(p => p.owner >= 0)) firstCaptureAt = g.tick / 20;
     if (!capturedAt && g.points.every(p => p.owner >= 0)) capturedAt = g.tick / 20;
@@ -5817,12 +5831,16 @@ for (const lookupFinished of [false, true]) {
       assert.ok(room.state === 'play' && !room.pause && room.players.every(p => !p.ai), 'a spectator cannot leave for a player, end or pause the match');
       assert.ok(!last(invite, 'deny'), 'the orders of a spectator are dropped without an answer');
       await h.tick(); assert.equal(room.game.tick, tick + 1, 'the match runs on');
-      await ben.close(); await ana.send({ t: 'end' });
+      await ben.close();
+      const beforeEnd = invite.messages.length; await ana.send({ t: 'end' });
+      await invite.wait('lobby', message => message.state === 'lobby', beforeEnd);
       assert.equal(last(invite, 'lobby').state, 'lobby', 'the spectator is back in the lobby with everyone');
-      await invite.send({ t: 'sit' });
+      const beforeSit = invite.messages.length; await invite.send({ t: 'sit' });
+      await invite.wait('lobby', message => message.state === 'lobby' && message.spectator === false, beforeSit);
       assert.equal(last(invite, 'lobby').spectator, false, 'a spectator can take a seat in the lobby');
       assert.equal(room.players.length, 2, 'the disconnected match seat was freed for the invite');
-      await invite.send({ t: 'spectate' });
+      const beforeSpectate = invite.messages.length; await invite.send({ t: 'spectate' });
+      await invite.wait('lobby', message => message.state === 'lobby' && message.spectator === true && message.you === -1, beforeSpectate);
       assert.deepEqual([room.players.length, room.spectators.length, last(invite, 'lobby').you], [1, 1, -1], 'a seated player can step back to watch');
     });
     // An all-AI room: the host steps back to watch, still hosts, and the room lives while a spectator is connected.
@@ -7419,18 +7437,25 @@ for (const lookupFinished of [false, true]) {
   assert.ok(g.height.every(l => l >= 0), 'the computer player fills the hole in');
   assert.ok(holder.hp > 0);
 
-  const rows = empty.map((row, y) => row.slice(0, 9) + (y >= 9 && y <= 11 ? '===' : 'WWW') + row.slice(12)), r = fresh(rows);
-  r.players.forEach((p, slot) => (p.spawn = { x: slot ? 37 : 3, z: 3 }));
-  r.players[0].mp = 5000; r.points = [];
-  const sapper = put(r, 0, 'rifle', 13, 21), tank = { x: 5, z: 21, type: 'tank' };
-  tickGameplayAI(r, 0); // first observation records the bridge before the opening pause
-  r.players[1].mp = 5000;
-  assert.equal(command(r, 1, { t: 'support', kind: 'dive', x: 21, z: 21 }), undefined);
-  for (let i = 0; i < 20 * 15 && r.chars[10 * r.w + 10] === '='; i++) step(r);
-  assert.equal(r.chars[10 * r.w + 10], 'W', 'the bridge is blown');
-  for (let i = 0; i < 20 * 60 && !findPath(r, tank, { x: 35, z: 21 }).length; i++) { tickGameplayAI(r, 0); step(r); }
-  assert.ok(findPath(r, tank, { x: 35, z: 21 }).length, 'the computer player rebuilds the bridge');
-  assert.ok(sapper.hp > 0);
+  const rows = empty.map((row, y) => row.slice(0, 9) + (y >= 9 && y <= 11 ? '===' : 'WWW') + row.slice(12));
+  // LCG seed 23 gives matchSeed 1052188298, a former hidden-span repair failure covered in the forty-seed regression.
+  const originalBridgeRandom = Math.random;
+  let bridgeSeed = 23;
+  Math.random = () => { bridgeSeed = Math.imul(bridgeSeed, 1664525) + 1013904223 | 0; return (bridgeSeed >>> 0) / 4294967296; };
+  try {
+    const r = fresh(rows);
+    r.players.forEach((p, slot) => (p.spawn = { x: slot ? 37 : 3, z: 3 }));
+    r.players[0].mp = 5000; r.points = [];
+    const sapper = put(r, 0, 'rifle', 13, 21), tank = { x: 5, z: 21, type: 'tank' };
+    tickGameplayAI(r, 0); // first observation records the bridge before the opening pause
+    r.players[1].mp = 5000;
+    assert.equal(command(r, 1, { t: 'support', kind: 'dive', x: 21, z: 21 }), undefined);
+    for (let i = 0; i < 20 * 15 && r.chars[10 * r.w + 10] === '='; i++) step(r);
+    assert.equal(r.chars[10 * r.w + 10], 'W', 'the bridge is blown');
+    for (let i = 0; i < 20 * 60 && !findPath(r, tank, { x: 35, z: 21 }).length; i++) { tickGameplayAI(r, 0); step(r); }
+    assert.ok(findPath(r, tank, { x: 35, z: 21 }).length, 'the computer player rebuilds the bridge');
+    assert.ok(sapper.hp > 0);
+  } finally { Math.random = originalBridgeRandom; }
 }
 
 // ---------- woods, mine clearing, halftracks, medics, the Field Hospital and supply lines ----------

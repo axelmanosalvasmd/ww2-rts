@@ -1,0 +1,82 @@
+{
+  scope: 'CPU10 nice19 isolated actual captured fogTerrain builds. Diagnostic only, not an acceptance benchmark. Two untimed paired warmups, then all twelve fixed alternating paired trials retained.',
+  fixtures: 42,
+  ticks: [ 322, 422, 430, 542, 762, 982 ],
+  equality: true,
+  beforeMedianMS: 6.842054999999846,
+  afterMedianMS: 5.643561499999919,
+  rows: [
+    {
+      trial: 0,
+      order: [Array],
+      beforeMS: 6.921382999999878,
+      afterMS: 5.624437999999827
+    },
+    {
+      trial: 1,
+      order: [Array],
+      afterMS: 5.607150999999931,
+      beforeMS: 6.827338999999938
+    },
+    {
+      trial: 2,
+      order: [Array],
+      beforeMS: 6.804529000000002,
+      afterMS: 5.643831999999975
+    },
+    {
+      trial: 3,
+      order: [Array],
+      afterMS: 10.595706999999948,
+      beforeMS: 6.809441000000106
+    },
+    {
+      trial: 4,
+      order: [Array],
+      beforeMS: 6.814687999999933,
+      afterMS: 5.768215000000055
+    },
+    {
+      trial: 5,
+      order: [Array],
+      afterMS: 5.582452999999987,
+      beforeMS: 6.839932999999746
+    },
+    {
+      trial: 6,
+      order: [Array],
+      beforeMS: 6.936072999999851,
+      afterMS: 5.735458999999992
+    },
+    {
+      trial: 7,
+      order: [Array],
+      afterMS: 5.56229600000006,
+      beforeMS: 7.161340000000109
+    },
+    {
+      trial: 8,
+      order: [Array],
+      beforeMS: 6.844176999999945,
+      afterMS: 5.643290999999863
+    },
+    {
+      trial: 9,
+      order: [Array],
+      afterMS: 5.5879439999998795,
+      beforeMS: 6.8280399999998735
+    },
+    {
+      trial: 10,
+      order: [Array],
+      beforeMS: 6.89876699999968,
+      afterMS: 5.646276999999827
+    },
+    {
+      trial: 11,
+      order: [Array],
+      afterMS: 5.687692999999854,
+      beforeMS: 7.045685999999932
+    }
+  ]
+}

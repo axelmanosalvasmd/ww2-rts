@@ -1,0 +1,19 @@
+# R6 attended local danger proposal
+
+This proposal changes only shared/ai.js in the temporary after tree. The original moving dangerDestination function remains verbatim. Its destination is still preferred. A new fallback covers a currently attended combat actor that is visibly hurt under a currently visible armed vehicle, or has an actual recent observed heavy hit with suppression. It uses ordinary movement through existing commitment, selection, pointer, reaction and accepted-command paths.
+
+The fallback requires an exact named attended actor or the actor of the exact attended screen-damage event. It excludes anti-tank roles, unarmed/support actors, garrisoned, retreating, digging, building, entrenching, entering, firing an ability, and throwing actors. Existing busy workers remain excluded by the original movement loop. A useful current infantry fight above half health or an actual nearby friendly grenade retains its hold. Only known visible passable local destinations within the existing 4 to 24 metre search bounds qualify. The destination must escape visible weapon reach, enter the actual minimum-range dead zone, or gain known cover without moving toward any visible armed threat. An existing qualifying destination is retained.
+
+## Historical evidence and limits
+
+The archived Normal Conquest seed1 slot2 rifle8 was stationary at 40 percent health while the tank was visibly 23.2 metres away. The original danger function required a nonempty path, so this scene was outside its response class. The proposed native fixture establishes this missing response with actual selection, accepted movement and subsequent physical escape.
+
+Hard seed2 rifle5 had a close infantry threat and heavy suppression, but a neighboring grenade may be a useful already held response. The proposal deliberately protects an actual neighboring grenade and useful existing infantry fighting. It does not claim this historical record must produce another action. Hard seed7 rifle17 had off-screen threats and automatic retreat protection, so it remains excluded. These are historical source-backed observations, not replayed current-seed outcomes. No campaign prevalence or success rate is claimed.
+
+## Portable proof
+
+Copy after/test-engine-ai-attended-danger.js to the repository root and register it in test.js. It imports only relative production modules and does not write files. Its native Normal armor and Hard suppressed-hit fixtures create their actual injury event at tick308. Native moves are accepted at tick353 and tick348 respectively. The input retains eventTick308 and the original immutable event descriptor. Actual path movement reaches cover or leaves the watched tank reach. Ordinary pointer error and formation placement remain enabled.
+
+The fixture also covers healthy, garrisoned, retreating, busy, held-grenade, off-screen, remembered-only, wrong-attended, no-safe-destination, no-cue, already-covered, neighboring-grenade and anti-tank controls. Diagnostic response labels do not affect actions. The original source fails the stationary positive assertion. Existing tactical, full-human, response and causal-order suites pass. The release-proposal log files correspond to the final candidate; hashes.json records exact source hashes.
+
+All trials ran as bounded component diagnostics on CPU10 at nice19. No acceptance benchmark, campaign, production edit, staging or commit was performed. Earlier failed scratch logs remain in this directory. They exposed fixture setup issues, including undelivered manually changed cover, an invalid faction purchase and the real rocket minimum-range escape. Assertions now exercise authored delivered cover, legal native purchases and actual weapon semantics. No timing band, numerical reaction/APM budget, engine health/stat/economy threshold, grading predicate or measurement endpoint changed.

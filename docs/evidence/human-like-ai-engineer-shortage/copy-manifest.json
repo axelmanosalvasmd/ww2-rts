@@ -1,0 +1,17 @@
+{
+  "candidate.patch": {
+    "source": "/tmp/human-ai-v15-engineer-shortage-candidate/candidate.patch",
+    "bytes": 2500,
+    "sha256": "442465851d41849dbd9436da7d1c994d424ed430b5b0eb86415f832b3615e3ee"
+  },
+  "test-engine-ai-engineer-shortage.js": {
+    "source": "/tmp/human-ai-v15-engineer-shortage-candidate/test-engine-ai-engineer-shortage.js",
+    "bytes": 9319,
+    "sha256": "7686db7ee2c96709b780362d0e8595a9b5c9034ec5f137a88cdf2d83585c0edd"
+  },
+  "native-before-after-proof.json": {
+    "source": "/tmp/human-ai-v15-engineer-shortage-candidate/native-before-after-proof.json",
+    "bytes": 78619,
+    "sha256": "25f1771c45a30d3588747b87a3abf139af6683c1d664ce8a9c975c210c2bbb8f"
+  }
+}

@@ -1,0 +1,11 @@
+{
+  "pid": 1568713,
+  "startedUnix": 1791135304.1173975,
+  "command": [
+    "python3",
+    "/tmp/human-ai-final-performance-protocol-v16.py",
+    "--run-after-root-freeze"
+  ],
+  "outerTimeout": null,
+  "sourceRuntimeStable": true
+}

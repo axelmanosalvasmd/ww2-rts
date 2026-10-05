@@ -1,0 +1,74 @@
+--- a/test-engine-ai-response.js
++++ b/test-engine-ai-response.js
+@@ -102,6 +102,8 @@
+   for (const event of f.originalDamage) assert.deepEqual(scoredInput.responseEvents.find(link => link.id === event.id), event,
+     'the external original score retains complete original eligibility descriptors through native creation aliases');
+   assert.equal(f.scoring.originalOracle.explicitLinked.requiredScreenPopulation.acceptedCommand.answered, 2);
++  assert.equal(f.inputs.filter(input => input.tick >= 100 && input.kind.startsWith('camera-')).length, 0,
++    'a currently on-screen damage response pays no unnecessary camera gesture');
+   if (kind === 'retreat') assert.ok(f.own.slice(0, 2).every(unit => unit.retreating), 'the selected group actually enters retreat');
+   else assert.ok(f.g.strikes.some(strike => strike.kind === 'smoke'), 'the physical support click creates the authoritative strike');
+ }
+@@ -233,7 +235,8 @@
+   console.log(`Living group recall: accepted pair moves ${moves[0].tick}/${moves[1].tick}, binding ${binding.tick}, switch ${switched.tick}, recall ${recall.tick}, accepted survivor move ${moves[2].tick}.`);
+ }
+ 
+-for (const interrupted of [false, true]) {
++for (const approach of ['normal', 'pending-emergency', 'expired-concern']) {
++  const interrupted = approach !== 'normal';
+   const f = fixture(), state = f.memory.human, remote = f.own[2], targetId = `idle:${remote.id}`, oldDeadline = 80;
+   remote.hp *= .8;
+   // A previously chosen visit is near its deadline when the hands become free to begin its camera trip.
+@@ -244,7 +247,7 @@
+     current: { id: targetId, kind: 'idle', unitId: remote.id, x: remote.x, z: remote.z, urgency: 35 } };
+   state.ownStill = new Map(f.own.map(unit => [unit.id, { x: unit.x, z: unit.z, since: -100 }]));
+   let view, emergencyTick, departure, proposed = false;
+-  const plans = [];
++  const plans = [], cameraTimeline = []; let creation, expiredOnce = false;
+   for (let tick = 75; tick < 400; tick++) {
+     f.g.tick = tick;
+     const active = state.hands.active;
+@@ -256,11 +259,17 @@
+       cmd => {
+         const result = command(f.g, 0, cmd); f.results.push({ tick, cmd: structuredClone(cmd), result }); return result;
+       }, (observed, _slot, opts, _memory, send) => {
+-        plans.push({ tick, concern: opts.concern.id, remote: structuredClone(observed.units.get(remote.id)) });
++        plans.push({ tick, concern: opts.concern.id, remote: structuredClone(observed.units.get(remote.id)),
++          victim: structuredClone(observed.units.get(f.own[0].id)) });
+         if (proposed) return;
+         if (interrupted && emergencyTick != null) proposed = send({ t: 'retreat', ids: [f.own[0].id] }) === undefined;
+         else if (opts.concern.id === targetId) proposed = send({ t: 'stance', ids: [remote.id], key: 'holdFire', on: false }) === undefined;
+       });
++    cameraTimeline.push({ tick, camera: { ...state.camera }, historicalOnScreen: state.concern?.eventOnScreen,
++      currentlyOnScreen: onScreen(f.own[0], state.camera, view), pendingEmergency: !!state.pendingEmergency });
++    creation ??= structuredClone(state.events?.find(event => event.kind === 'screen-damage' && event.tick === emergencyTick));
++    if (approach === 'expired-concern' && !expiredOnce && f.inputs.some(input => input.kind === 'camera-pan') && !state.hands.active && !f.results.length)
++      { state.concern.until = tick; expiredOnce = true; } // Reselect once after the same actual interrupted held input finishes.
+     if (!departure && state.cameraVisit) departure = { tick, id: state.concern.id, until: state.concern.until };
+     if (f.results.length) break;
+   }
+@@ -272,6 +281,24 @@
+     assert.equal(f.results[0]?.cmd.t, 'retreat', 'the stronger emergency receives the actual physical response');
+     assert.equal(f.results[0]?.result, undefined);
+     assert.ok(f.results[0].tick - emergencyTick >= 4, 'the replacement emergency response respects the causal floor');
++    const cameras = f.inputs.filter(input => input.kind.startsWith('camera-'));
++    assert.equal(cameras[0].input.code, 'KeyD', 'the original held horizontal pan is still paid to completion');
++    assert.equal(cameras[0].inputStartedTick, 76); assert.equal(cameras[0].tick, 96);
++    assert.equal(cameras[0].motorTicks, 20, 'emergency does not truncate the already held physical input');
++    assert.ok(cameraTimeline.some(frame => frame.historicalOnScreen === true && !frame.currentlyOnScreen),
++      'a genuinely on-screen creation becomes off-screen after the paid held pan');
++    assert.ok(cameras.some(input => input.tick > cameras[0].tick && onScreen(f.own[0], input.camera, view)),
++      'a later paid camera return makes the intended victim currently clickable');
++    assert.ok(creation?.onScreen && creation.source === 'screen' && creation.tick === emergencyTick,
++      'the actual immutable creation descriptor keeps its historical screen truth and clock');
++    assert.deepEqual(state.events.find(event => event.id === creation.id), creation,
++      'returning the camera does not rewrite the creation descriptor');
++    assert.ok(plans.every(plan => plan.victim.screenSeen && !plan.victim.inventoryOnly),
++      'no emergency planning pass repeatedly proposes a physical response from an off-screen inventory actor');
++    const returned = cameras.find(input => input.tick > cameras[0].tick && onScreen(f.own[0], input.camera, view));
++    assert.ok(plans.some(plan => plan.tick > returned.tick), 'return arrival pays fresh deliberation before planning');
++    console.log(`Interrupted camera ${approach}: cue ${emergencyTick}, held finish ${cameras[0].tick}, paid return ${returned.tick}, native accepted retreat ${f.results[0].tick}.`);
++
+   } else {
+     const cameras = f.inputs.filter(input => input.kind.startsWith('camera-'));
+     assert.equal(cameras.length, 2, 'the diagonal visit completes through two necessary orthogonal pans without camera churn');

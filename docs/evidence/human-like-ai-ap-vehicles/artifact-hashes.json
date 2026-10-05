@@ -1,0 +1,22 @@
+{
+  "ai-candidate.js": {
+    "sha256": "2e01129543e4095b95bdbb693f89ce278a810796528718fac192436ac7bf9f21",
+    "bytes": 87523
+  },
+  "test-engine-ai-ap-vehicles.js": {
+    "sha256": "33c6174f07be1a80a9e5c53fcbf3d522ed7d6bb3a9ffc095f378d0b63dfdcd30",
+    "bytes": 6229
+  },
+  "proposal.patch": {
+    "sha256": "b898b29cbb808780f45055f58e41fcea537d26ffb5999042b656f2ab55b5dc72",
+    "bytes": 7200
+  },
+  "native-portable-proof.json": {
+    "sha256": "67e3ed2177e8c5b0bca94dd7ebf1cb26a28fa22123738a16579062dd5c487771",
+    "bytes": 9150270
+  },
+  "portable-final.log": {
+    "sha256": "4c5426ae9b625f2c3e72ee355291047c3a0e16d0cba7ea78e88a28b1a3e0fce0",
+    "bytes": 91
+  }
+}

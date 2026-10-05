@@ -1,0 +1,64 @@
+--- a/shared/ai.js
++++ b/shared/ai.js
+@@ -348,7 +348,14 @@
+   const economyVisit = !opts.human || ['production', 'expansion'].includes(opts.concern?.kind);
+   const engineerFocus = all.filter(u => u.type === 'engineer' && (!opts.human || (observation.screenIds.has(u.id)
+     && (opts.concern?.unitId == null || opts.concern.unitId === u.id))));
+-  const reserve = classic && economyVisit ? (rush.length ? 0 : 1)
++  const localEngineerVisit = opts.human && opts.concern?.kind === 'idle' && engineerFocus.length === 1
++    && opts.concern.unitId === engineerFocus[0].id
++    && !['bridgeCrew', 'fillCrew', 'demineCrew'].some(key => mem[key]?.has(engineerFocus[0].id))
++    && !engineerFocus[0].inventoryOnly && !engineerFocus[0].path.length && !engineerFocus[0].orders.length
++    && !engineerFocus[0].retreating && !engineerFocus[0].targetId && !engineerFocus[0].build && !engineerFocus[0].dig
++    && !engineerFocus[0].attackId && !engineerFocus[0].amove && !engineerFocus[0].entrench && !engineerFocus[0].nade
++    && engineerFocus[0].garrison < 0 && engineerFocus[0].enter < 0 && engineerFocus[0].fireAt < 0;
++  const reserve = classic && (economyVisit || localEngineerVisit) ? (rush.length ? 0 : 1)
+     * buildEconomy(view, slot, engineerFocus, counters && seenArmor > 0, mem, submit, opts.concern) : 0;
+   // Classic: only what my finished buildings can train
+   const trains = (t) => !classic || grid.ownedBy(slot).some(b => b.built >= 1 && UNITS[b.type].makes?.includes(t));
+@@ -1037,15 +1044,17 @@
+     if (!has('barracks') && ['barracks', 'motorpool'].includes(mem.human.persona.economy)) next = 'barracks';
+     else if (mem.human.persona.economy === 'motorpool' && has('barracks', true) && !has('motorpool')) next = 'motorpool';
+   }
++  const local = concern?.kind === 'idle';
++  const localWork = (u, at) => !local || d(u, at) <= 24 && view.sees(at);
+   const ids = new Set(engineers.map(u => u.id));
+   for (const id of mem.node.keys()) if (!view.units.has(id)) mem.node.delete(id);
+   const taken = new Set(engineers.map(u => mem.node.get(u.id)).filter(n => n !== undefined));
+   for (const u of engineers) {
+     if (u.retreating || u.build) continue;
+-    const fix = own.filter(b => !b.inventoryOnly && (b.built < 1 || b.hp < UNITS[b.type].hpPer * 0.7)).sort((a, b) => d(u, a) - d(u, b))[0];
++    const fix = own.filter(b => !b.inventoryOnly && localWork(u, b) && (b.built < 1 || b.hp < UNITS[b.type].hpPer * 0.7)).sort((a, b) => d(u, a) - d(u, b))[0];
+     if (fix && d(u, fix) < 60) { submit({ t: 'assist', ids: [u.id], id: fix.id }); continue; }
+     if (next === 'depot') {
+-      const pick = free.map(n => ({ n, i: view.nodes.indexOf(n) })).filter(({ i }) => !taken.has(i) || mem.node.get(u.id) === i).sort((a, b) => d(u, a.n) - worthOf(a.n) * 20 - (d(u, b.n) - worthOf(b.n) * 20))[0]; // richer nodes are worth a walk
++      const pick = free.map(n => ({ n, i: view.nodes.indexOf(n) })).filter(({ n, i }) => localWork(u, n) && (!taken.has(i) || mem.node.get(u.id) === i)).sort((a, b) => d(u, a.n) - worthOf(a.n) * 20 - (d(u, b.n) - worthOf(b.n) * 20))[0]; // richer nodes are worth a walk
+       if (!pick) continue;
+       mem.node.set(u.id, pick.i); taken.add(pick.i);
+       if (me.mp >= UNITS.depot.cost && view.sees(pick.n)) submit({ t: 'build', ids: [u.id], kind: 'depot', x: pick.n.x, z: pick.n.z });
+@@ -1053,7 +1062,7 @@
+     } else if (next) {
+       // behind the HQ's front: a little toward the map center, off to one side
+       const a = Math.atan2(cz - hq.z, cx - hq.x) + ({ barracks: 0.9, motorpool: -0.9, airfield: Math.PI, flakpos: (random(mem.rng) - 0.5) * 2 }[next] ?? 0), spot = siteNear(view.mode?.kind === 'world' ? { ...view, players: view.players.filter(p => p.spawn) } : view, hq.x + Math.cos(a) * 16, hq.z + Math.sin(a) * 16, UNITS[next].size);
+-      if (spot && ownedGround(view, me.team, spot) && me.mp >= UNITS[next].cost) submit({ t: 'build', ids: [u.id], kind: next, x: spot.x, z: spot.z });
++      if (spot && localWork(u, spot) && ownedGround(view, me.team, spot) && me.mp >= UNITS[next].cost) submit({ t: 'build', ids: [u.id], kind: next, x: spot.x, z: spot.z });
+     }
+   }
+   return next && next !== 'depot' ? UNITS[next].cost : 0;
+--- a/shared/ai-commander.js
++++ b/shared/ai-commander.js
+@@ -386,8 +386,13 @@
+     const idleActor = concern.kind === 'idle' && view.units.get(concern.unitId);
+     const localMaintenance = fortification(cmd) && idleActor && ids.includes(idleActor.id)
+       && at && distance(at, idleActor) <= 24;
++    const workTarget = cmd.t === 'assist' ? view.units.get(cmd.id) : at;
++    const localEngineerWork = ['build', 'assist'].includes(cmd.t) && idleActor?.type === 'engineer'
++      && ids.length === 1 && ids[0] === idleActor.id && !idleActor.inventoryOnly
++      && view.screenIds.has(idleActor.id) && workTarget && distance(workTarget, idleActor) <= 24
++      && view.sees(workTarget) && (cmd.t !== 'assist' || workTarget.owner === slot);
+     if ((economy(cmd) || fortification(cmd)) && !['production', 'expansion'].includes(concern.kind)
+-      && !localMaintenance) return 'attention';
++      && !localMaintenance && !localEngineerWork) return 'attention';
+     if (cmd.t === 'support' && !['combat', 'support'].includes(concern.kind)) return 'attention';
+     if (['ability', 'attack', 'fireat', 'retreat'].includes(cmd.t) && concern.kind === 'production') return 'attention';
+     if (concern.kind === 'idle' && !ids.includes(concern.unitId)) return 'attention';

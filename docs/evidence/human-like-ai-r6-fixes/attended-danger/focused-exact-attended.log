@@ -1,0 +1,3 @@
+armor: hit308, event308, accepted native move353
+cover: hit308, event308, accepted native move348
+Attended stationary armor and suppressed-hit cover: native actions, observed destinations, protected negatives and creation floors PASS

@@ -1,0 +1,10 @@
+{
+  "status": "PASS",
+  "independentRootByteVerification": true,
+  "archive": "human-ai-browser-current-final-bundle.tar.gz",
+  "bytes": 88175774,
+  "sha256": "cc021350e9b336b444b6bf8857cf5fff5ae81610c0297ff2899d744af15390ba",
+  "members": 60,
+  "originalPayloadCompared": true,
+  "qualification": "ActualNormalbrowserEndandrestartproof. Oldbc677beforeexact-sparseoptimization, privateMPandpreciseorderlatencyunknown."
+}

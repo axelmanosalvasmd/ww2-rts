@@ -1,0 +1,14 @@
+--- shared/ai-commander.js
++++ shared/ai-commander.js
+@@ -266,7 +266,10 @@
+       for (const event of events) if (commandServesObservedEvent(cmd, event, view, slot))
+         (state.answeredEvents ??= new Set()).add(event.id);
+     }
+-    if (result === undefined && cmd.t === 'buy') state.buys++;
++    if (result === undefined && cmd.t === 'buy') {
++      state.buys++;
++      state.lastAcceptedBuyTick = tick;
++    }
+     if (movement(cmd)) state.didOrder = true;
+     return result;
+   });

@@ -1,0 +1,9 @@
+{
+  "status": "PASS",
+  "independentRootByteVerification": true,
+  "archive": "human-ai-transient-delivery-evidence.tar.gz",
+  "bytes": 192386,
+  "sha256": "589b8a7d7c3dc36b338e1b267bf34758971b3a175b44687c2cda88d9bfd09356",
+  "members": 11,
+  "qualification": "Native transient-lifetime controls and preserved2233 assertions. No fullsuite/time-saving claim."
+}

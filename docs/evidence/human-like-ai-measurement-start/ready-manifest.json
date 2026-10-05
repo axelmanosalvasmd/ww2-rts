@@ -1,0 +1,53 @@
+{
+  "createdAt": "2026-10-04T15:55:00.657738+00:00",
+  "status": "ReadyForRootReviewNoProductionAdoption",
+  "nativeRuntimeArchive": "/tmp/human-ai-v15-full-source",
+  "nativeRuntimeCheckpointSHA256": "e2d17224047076252b115e6e66e8dc2504aa003b2fc66d9169e9d32ec27c38c1",
+  "candidateIntegratedRuntimeCheckpointSHA256": "dcff9bf2d8708ade51ec92e356b76648cba90e187a7ffa60453e3f6405e06c71",
+  "files": {
+    "collector.patch": {
+      "bytes": 5192,
+      "sha256": "ca815e080ba69ce824a2018793a51e751a80314676c18c0879d62258c3a6eaa7"
+    },
+    "ai-humanity-candidate.mjs": {
+      "bytes": 87740,
+      "sha256": "2625df0cd6963e91831b457213aa3e036eb327313881407cab60734de228bac4"
+    },
+    "test-engine-ai-measurement-start.js": {
+      "bytes": 12193,
+      "sha256": "46b52431fee02b1d49dc6eed279af84f01bca65e0cf4ae89cd6f96d06c8bcd9b"
+    },
+    "portable-verification/verification.json": {
+      "bytes": 6228,
+      "sha256": "9ff2ceef6a34d407b8ce6097df83a697617e8760bcbbf8efe75e63456ed2e1e4"
+    },
+    "world-cache-witness.json": {
+      "bytes": 13430,
+      "sha256": "6b428e5ecff6f69e2b5d7ba8bea1bc1701673117dd37b99f0760d90c12b780a9"
+    },
+    "integrated-smoke.json": {
+      "bytes": 1613476,
+      "sha256": "cd63b7fa450794cfc565c44c30e03d4fc8efa152ba85562603fb4c35b62ab751"
+    },
+    "default-portable-test.log": {
+      "bytes": 907,
+      "sha256": "c70442fe618e31fc35f58ac9ab3bda7143a4460a3218abc74a6a699ed3f60dc6"
+    },
+    "review-ready.md": {
+      "bytes": 3426,
+      "sha256": "1e872607b2d1871660fd7d3e36541a460bf131889decb4c4495b5b5aa22dc686"
+    }
+  },
+  "defaultProofDirectory": "/tmp/ww2-oracle-start-OSAZ4Z",
+  "defaultResourceProof": {
+    "elapsedSeconds": 73.85,
+    "maximumRSSKiB": 2449048,
+    "rawBytes": 3571505,
+    "gzipBytes": 168918
+  },
+  "fullPortableEvidence": {
+    "elapsedSeconds": 187.8543701171875,
+    "rawBytes": 690060369,
+    "gzipBytes": 10460580
+  }
+}

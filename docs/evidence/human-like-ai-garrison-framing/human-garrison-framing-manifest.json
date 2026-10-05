@@ -1,0 +1,80 @@
+{
+  "shared/ai.js": {
+    "root": {
+      "bytes": 84599,
+      "sha256": "038bba2d8b69ee158f6cf6014a3ba6a245441d16c27b2376715027dbee3e82ed"
+    },
+    "candidate": {
+      "bytes": 84599,
+      "sha256": "038bba2d8b69ee158f6cf6014a3ba6a245441d16c27b2376715027dbee3e82ed"
+    }
+  },
+  "shared/ai-commander.js": {
+    "root": {
+      "bytes": 30002,
+      "sha256": "145ebe7f589fd6daf09db41865d237d4f5fe69c3b0cbb6ff1a2f839e21ff1527"
+    },
+    "candidate": {
+      "bytes": 30216,
+      "sha256": "214cfdf199c02afbba40a2958a8df05a95c3588f4bd0d1cc08c5bcbe6dc9ae01"
+    }
+  },
+  "shared/ai-hands.js": {
+    "root": {
+      "bytes": 62704,
+      "sha256": "69eb15070dbf3e3839f4a264bc24d5010033f6d745bc1cf53ba285fc362323d6"
+    },
+    "candidate": {
+      "bytes": 62704,
+      "sha256": "69eb15070dbf3e3839f4a264bc24d5010033f6d745bc1cf53ba285fc362323d6"
+    }
+  },
+  "shared/ai-perception.js": {
+    "root": {
+      "bytes": 34168,
+      "sha256": "75b5f4877b5c4509a762028c880b45691a7c9e8d1923a7815e026f2174d33c9c"
+    },
+    "candidate": {
+      "bytes": 34168,
+      "sha256": "75b5f4877b5c4509a762028c880b45691a7c9e8d1923a7815e026f2174d33c9c"
+    }
+  },
+  "shared/sim.js": {
+    "root": {
+      "bytes": 349680,
+      "sha256": "5bedd607250c8171ed053e6200a643ce7f57a55c2549e0b515d80fcdffac832b"
+    },
+    "candidate": {
+      "bytes": 349680,
+      "sha256": "5bedd607250c8171ed053e6200a643ce7f57a55c2549e0b515d80fcdffac832b"
+    }
+  },
+  "/tmp/human-garrison-framing.patch": {
+    "bytes": 1203,
+    "sha256": "57021380b9ca9ff1dabc13038f7738313f56285634486b72e453ca2d0b5f8506"
+  },
+  "/tmp/human-garrison-framing-test.patch": {
+    "bytes": 6665,
+    "sha256": "33edc1ac64cfd1c9ccaf4f972e35541ce66e4894594ccca039ce949d69c9cf22"
+  },
+  "/tmp/human-garrison-framing-native-proof.json": {
+    "bytes": 15048,
+    "sha256": "1cbdb34ceebeb6f8c0a1346fefe44cf1bad0767a6605690731923540ab3022b8"
+  },
+  "/tmp/human-garrison-framing-final.log": {
+    "bytes": 51,
+    "sha256": "e07c60c2d142055cfedaf041772deb0250db4fa54efaa3e77b64c3c2eff06e01"
+  },
+  "/tmp/human-garrison-framing-review.md": {
+    "bytes": 4871,
+    "sha256": "fcee1e32cda86627f0ed7ddc4a84163b025c17a01e7c6966d2f3534e6a774748"
+  },
+  "/tmp/human-garrison-framing-baseline-existing.json": {
+    "bytes": 6209,
+    "sha256": "a67c1da33d104abb16f5a4c8c463eddbb361de231f5b5bec1eb24184b1b44dd6"
+  },
+  "/tmp/human-garrison-framing-candidate-existing.json": {
+    "bytes": 6209,
+    "sha256": "a67c1da33d104abb16f5a4c8c463eddbb361de231f5b5bec1eb24184b1b44dd6"
+  }
+}

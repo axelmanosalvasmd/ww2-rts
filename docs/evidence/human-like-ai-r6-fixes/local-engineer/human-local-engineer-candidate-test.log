@@ -1,0 +1,19 @@
+{"variant":"positive","commands":[{"tick":55,"cmd":{"t":"assist","ids":[3],"id":7},"result":null,"actorPath":0,"actorBuild":0,"mpBefore":8.117999999999995,"mpAfter":8.117999999999995}],"inputs":[{"tick":51,"kind":"select-click","camera":{"x":35,"z":45,"yaw":0,"distance":60},"selected":1,"concern":"idle:3","ids":[3],"target":{"x":35,"z":45},"cycle":1,"concernKind":"idle","concernTarget":{"x":35,"z":45},"concernUnitId":3,"responseActorIds":[3],"responseTarget":null,"responseEvents":[],"input":{"button":0,"shift":false},"pointer":{"from":{"x":960,"y":540},"to":{"x":960.0295570664915,"y":524.8100126113827},"distance":15.190016145038545,"width":64,"seconds":0.08997103220835248},"inputStartedTick":49,"motorTicks":2,"queuedTick":1,"reactionStartTick":0},{"tick":55,"kind":"rightclick","camera":{"x":35,"z":45,"yaw":0,"distance":60},"selected":1,"concern":"idle:3","ids":[3],"target":{"x":45,"z":45},"cycle":1,"concernKind":"idle","concernTarget":{"x":35,"z":45},"concernUnitId":3,"responseActorIds":[3],"responseTarget":null,"responseEvents":[],"input":{"button":2},"pointer":{"from":{"x":960.0295570664915,"y":524.8100126113827},"to":{"x":1198.3221812441157,"y":527.937928625785},"distance":238.31315237739517,"width":120,"seconds":0.1725821286615978},"inputStartedTick":51,"motorTicks":4,"queuedTick":1,"reactionStartTick":0,"command":{"t":"assist","ids":[3],"id":7}},{"tick":80,"kind":"camera-minimap","camera":{"x":137.04626646326332,"z":140.3332008681316,"yaw":0,"distance":60},"selected":1,"concern":"scouting","ids":[3],"target":{"x":137.04626646326332,"z":140.3332008681316},"cycle":2,"concernKind":"scouting","concernTarget":{"x":141,"z":141},"method":"minimap","input":{"button":0},"pointer":{"from":{"x":1198.3221812441157,"y":527.937928625785},"to":{"x":1855.4813676470062,"y":1018.793372036978},"distance":820.2421975246749,"width":9.5,"seconds":0.48915846923113304},"inputStartedTick":70,"motorTicks":10,"queuedTick":69,"reactionStartTick":69}],"idleWork":[{"tick":55,"kind":"rightclick","camera":{"x":35,"z":45,"yaw":0,"distance":60},"selected":1,"concern":"idle:3","ids":[3],"target":{"x":45,"z":45},"cycle":1,"concernKind":"idle","concernTarget":{"x":35,"z":45},"concernUnitId":3,"responseActorIds":[3],"responseTarget":null,"responseEvents":[],"input":{"button":2},"pointer":{"from":{"x":960.0295570664915,"y":524.8100126113827},"to":{"x":1198.3221812441157,"y":527.937928625785},"distance":238.31315237739517,"width":120,"seconds":0.1725821286615978},"inputStartedTick":51,"motorTicks":4,"queuedTick":1,"reactionStartTick":0,"command":{"t":"assist","ids":[3],"id":7}}],"nativeDepots":[],"siteBuilt":0.613333333333334,"builtBefore":0,"engineerId":3,"engineerBuild":7}
+node:internal/modules/run_main:107
+    triggerUncaughtException(
+    ^
+
+AssertionError [ERR_ASSERTION]: named idle engineer builds at a native nearby unclaimed resource node
+    at file:///tmp/human-local-engineer-candidate/test-local-idle-engineer.js:39:43
+    at ModuleJob.run (node:internal/modules/esm/module_job:561:25)
+    at async node:internal/modules/esm/loader:647:26
+    at async asyncRunEntryPointWithESMLoader (node:internal/modules/run_main:101:5) {
+  generatedMessage: false,
+  code: 'ERR_ASSERTION',
+  actual: false,
+  expected: true,
+  operator: '==',
+  diff: 'simple'
+}
+
+Node.js v24.21.0

@@ -1,0 +1,51 @@
+--- a/test-engine-ai-response.js
++++ b/test-engine-ai-response.js
+@@ -196,28 +196,41 @@
+       cmd => {
+         const result = command(f.g, 0, cmd);
+         f.results.push({ tick: f.g.tick, cmd: structuredClone(cmd), result }); return result;
+-      }, (_view, _slot, _opts, _memory, send) => {
++      }, (observed, _slot, _opts, _memory, send) => {
+         const moves = f.results.filter(row => row.result === undefined && row.cmd.orders?.some(order => order[0] === actor.id));
+         const switched = f.results.some(row => row.result === undefined && row.cmd.t === 'stance' && row.cmd.ids.includes(other.id));
+         if (!moves.length) send({ t: 'move', orders: [[actor.id, 95, 80], [member.id, 97, 80]] });
+-        else if (!switched) send({ t: 'stance', ids: [other.id], key: 'holdFire', on: false });
+-        else if (moves.length === 1) send({ t: 'move', orders: [[actor.id, 100, 80]] });
+-      });
+-    if (!died && f.results.some(row => row.result === undefined && row.cmd.orders?.length === 2)) {
++        else if (moves.length === 1 && moves[0].cmd.orders.every(order => {
++          const unit = observed.units.get(order[0]);
++          return unit?.screenSeen && Math.hypot(unit.x - order[1], unit.z - order[2]) <= 2;
++        })) send({ t: 'move', orders: [[actor.id, 107, 80], [member.id, 109, 80]] });
++        else if (died && !switched) send({ t: 'stance', ids: [other.id], key: 'holdFire', on: false });
++        else if (switched && moves.length === 2) send({ t: 'move', orders: [[actor.id, 115, 80]] });
++      });
++    // Repeat the actual two-squad operation and finish its paid binding before removing a member.
++    if (!died && f.inputs.some(input => input.kind === 'group-set' && input.ids?.length === 2)) {
+       f.g.units.delete(member.id); died = true;
+     }
+     step(f.g);
+-    if (f.results.filter(row => row.result === undefined && row.cmd.orders?.some(order => order[0] === actor.id)).length >= 2) break;
+-  }
++    if (f.results.filter(row => row.result === undefined && row.cmd.orders?.some(order => order[0] === actor.id)).length >= 3) break;
++  }
++  const moves = f.results.filter(row => row.result === undefined && row.cmd.orders?.some(order => order[0] === actor.id));
+   const binding = f.inputs.find(input => input.kind === 'group-set' && input.ids?.length === 2);
++  assert.equal(moves.length, 3, 'two accepted group movements establish reuse before the surviving singleton moves');
++  for (const move of moves.slice(0, 2)) assert.deepEqual(move.cmd.orders.map(order => order[0]).sort((a, b) => a - b), [actor.id, member.id],
++    'both repeated native commands move the same actual two-squad selection');
++  assert.ok(binding && binding.tick > moves[1].tick && binding.input.ctrl,
++    'the second accepted operation is followed by a separate physical Ctrl plus digit binding');
+   const switched = f.inputs.find(input => input.command?.t === 'stance' && input.ids.includes(other.id));
+   const recall = f.inputs.find(input => input.kind === 'group-recall' && input.tick > switched?.tick && input.ids?.length === 1);
+   assert.ok(died && binding && switched && recall, 'a genuine previously bound operation pays a recall after one member dies');
++  assert.ok(switched.tick > binding.tick, 'another native selection is acquired only after the real group binding completes');
+   assert.deepEqual(binding.ids, [actor.id, member.id]); assert.deepEqual(recall.ids, [actor.id]);
+   assert.equal(recall.input.code, binding.input.code, 'the surviving singleton uses its physically assigned key');
+   assert.ok(f.results.some(row => row.tick > recall.tick && row.result === undefined && row.cmd.orders?.some(order => order[0] === actor.id)),
+     'the actual surviving selection receives a subsequent accepted movement');
+   assert.equal(f.inputs.filter(input => input.kind === 'group-set').length, 1, 'pruning does not bind a replacement singleton');
++  console.log(`Living group recall: accepted pair moves ${moves[0].tick}/${moves[1].tick}, binding ${binding.tick}, switch ${switched.tick}, recall ${recall.tick}, accepted survivor move ${moves[2].tick}.`);
+ }
+ 
+ for (const interrupted of [false, true]) {

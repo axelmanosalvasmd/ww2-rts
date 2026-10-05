@@ -1,0 +1,9 @@
+{
+  cacheCases: 554,
+  capturedSources: 261,
+  exactMasksOrderedListsAndObjects: true,
+  staleKey: true,
+  stampAliases: true,
+  generationIsolation: true,
+  orderedReadsAndWrites: true
+}

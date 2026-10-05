@@ -1,0 +1,114 @@
+{
+  "shared/ai.js": {
+    "root": {
+      "bytes": 80201,
+      "sha256": "1e601a848c53b1d31493d3fff18648ead11721d5c4a389a50ea1a14aa691a2e0"
+    },
+    "candidate": {
+      "bytes": 81098,
+      "sha256": "07aa8806246fd6f6b869629a17214df19da5f18af01f00d8f819989bd361af38"
+    }
+  },
+  "shared/ai-commander.js": {
+    "root": {
+      "bytes": 27778,
+      "sha256": "27ea7d5b6a05c29e01c1ee1aa630d2d9e486242f364273e7ab1d863b5ae87617"
+    },
+    "candidate": {
+      "bytes": 28236,
+      "sha256": "e63680683fc8ab97ee45d1648197c151a32f4e6de4e5bbc82daa7d8ae9187af2"
+    }
+  },
+  "shared/ai-hands.js": {
+    "root": {
+      "bytes": 62704,
+      "sha256": "69eb15070dbf3e3839f4a264bc24d5010033f6d745bc1cf53ba285fc362323d6"
+    },
+    "candidate": {
+      "bytes": 62704,
+      "sha256": "69eb15070dbf3e3839f4a264bc24d5010033f6d745bc1cf53ba285fc362323d6"
+    }
+  },
+  "shared/ai-attention.js": {
+    "root": {
+      "bytes": 27254,
+      "sha256": "2b1f22635d43a11c40715c7859520a5eb4fc862d557ee7efb09ceb89425d92b5"
+    },
+    "candidate": {
+      "bytes": 27254,
+      "sha256": "2b1f22635d43a11c40715c7859520a5eb4fc862d557ee7efb09ceb89425d92b5"
+    }
+  },
+  "shared/ai-perception.js": {
+    "root": {
+      "bytes": 34168,
+      "sha256": "75b5f4877b5c4509a762028c880b45691a7c9e8d1923a7815e026f2174d33c9c"
+    },
+    "candidate": {
+      "bytes": 34168,
+      "sha256": "75b5f4877b5c4509a762028c880b45691a7c9e8d1923a7815e026f2174d33c9c"
+    }
+  },
+  "shared/sim.js": {
+    "root": {
+      "bytes": 349680,
+      "sha256": "5bedd607250c8171ed053e6200a643ce7f57a55c2549e0b515d80fcdffac832b"
+    },
+    "candidate": {
+      "bytes": 349680,
+      "sha256": "5bedd607250c8171ed053e6200a643ce7f57a55c2549e0b515d80fcdffac832b"
+    }
+  },
+  "shared/navigation.js": {
+    "root": {
+      "bytes": 19838,
+      "sha256": "c277c12f86c9990e281ae28a703dc374126aa1c737d9dc94a300f8d99c898472"
+    },
+    "candidate": {
+      "bytes": 19838,
+      "sha256": "c277c12f86c9990e281ae28a703dc374126aa1c737d9dc94a300f8d99c898472"
+    }
+  },
+  "shared/ai-priority.js": {
+    "root": {
+      "bytes": 5884,
+      "sha256": "6b5d5a8a22968209fe03c8235648a859b36919b9eafd44cd390a8252ab6b3542"
+    },
+    "candidate": {
+      "bytes": 5884,
+      "sha256": "6b5d5a8a22968209fe03c8235648a859b36919b9eafd44cd390a8252ab6b3542"
+    }
+  },
+  "/tmp/human-local-idle-engineer.patch": {
+    "bytes": 5466,
+    "sha256": "95dbd7c565a20a153e03a0c6330cddbe960daa63a9660f27440cebcb255e36e7"
+  },
+  "/tmp/human-local-idle-engineer-test.patch": {
+    "bytes": 7192,
+    "sha256": "1057bf1a3edf9e25617f31ffcd4d91b1b5eafb131a2b58047f71618081a05d7f"
+  },
+  "/tmp/human-local-engineer-review.md": {
+    "bytes": 5570,
+    "sha256": "233450ab9a3097297655f05e5ecb45b7c5481a36a9b78d63381a76420bedbe16"
+  },
+  "/tmp/human-local-engineer-paid-proof.json": {
+    "bytes": 27630,
+    "sha256": "9a0237f67e2d36dd142067b56f40b06e2b6704420ed5c59b34f754a3e5ebb201"
+  },
+  "/tmp/human-local-engineer-final-with-site.log": {
+    "bytes": 75,
+    "sha256": "4e2c17350a6d79bbd9331654fc41a81c2dff8fa4fe26bcb6a6c885bcbc01afb7"
+  },
+  "/tmp/human-v15-diagnosis-qualified-results.json": {
+    "bytes": 4073,
+    "sha256": "0edbb10c004194bb1e1ec2127b558d6167d23d4e68c5457a61d85bda20f6254b"
+  },
+  "/tmp/human-local-engineer-final.log": {
+    "bytes": 75,
+    "sha256": "4e2c17350a6d79bbd9331654fc41a81c2dff8fa4fe26bcb6a6c885bcbc01afb7"
+  },
+  "/tmp/human-local-engineer-candidate/test-engine-ai-local-engineer.js": {
+    "bytes": 7058,
+    "sha256": "04de1e48a4ac2c6a0c6e37b66ade5e30cd91452a1933968cdb98769b42aa8caf"
+  }
+}

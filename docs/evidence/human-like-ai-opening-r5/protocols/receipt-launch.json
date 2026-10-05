@@ -1,0 +1,15 @@
+{
+  "startedAt": "2026-10-04T13:50:37.916386+00:00",
+  "pid": 1334411,
+  "argv": [
+    "taskset",
+    "-c",
+    "6",
+    "node",
+    "/tmp/human-ai-opening-receipt-followup/run-paired.mjs",
+    "--launch-authorized"
+  ],
+  "candidateArchiveSHA256": "80d3af5035c9e8c99f8bb65c7fcd958b2d8b24c166d1bd54c437601d89d92a78",
+  "originalPairedTrialPreserved": true,
+  "noProductionEdits": true
+}

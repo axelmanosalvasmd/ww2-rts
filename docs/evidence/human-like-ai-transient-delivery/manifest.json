@@ -1,0 +1,110 @@
+{
+  "qualification": "Diagnostic audit evidence. Neither an adopted full-suite pass nor current release performance certification.",
+  "payloadCount": 10,
+  "files": {
+    "READOUT.md": {
+      "bytes": 3560,
+      "sha256": "f5d32d3c022ddcd0c6ee9a2f75507390a071e22b76574fafc448593f518e7fba"
+    },
+    "assertion-integrity.json": {
+      "bytes": 191,
+      "sha256": "3a70c388fe9a9db57108b3fdf8dba7df65b622db2aabb2c5bfd99e7d9640cf96"
+    },
+    "hashes.json": {
+      "bytes": 825,
+      "sha256": "acdfcf83285584ef6497757470c1c0434138b46095c82dc8c3ea8b31d5e3c2bc"
+    },
+    "native-proof.json": {
+      "bytes": 19782,
+      "sha256": "4b49e316d349f96688783c3601cac5044cc06f63046498ea7271605cd7566c24"
+    },
+    "physical-probe.mjs": {
+      "bytes": 2043,
+      "sha256": "ae45912955244883fdb8dc345b76786713014ca65dd0c02c872dc9ad639e37b7"
+    },
+    "physical-proof.json": {
+      "bytes": 742259,
+      "sha256": "05f3ab2788248b6966e532680631999b6050d3ee560c427e381a762946c29e64"
+    },
+    "probe.mjs": {
+      "bytes": 2710,
+      "sha256": "cbf68bb7898ca4f32fa294abecd5270c03f355e3891674ea393e628502bd2f84"
+    },
+    "runner-retained.mjs": {
+      "bytes": 12523,
+      "sha256": "35179daa8cadb2904b34c1c7f2c5ffd1bc0011fd4dd1ce9ca0980b049623d5bb"
+    },
+    "test.proposed.js": {
+      "bytes": 593168,
+      "sha256": "2d6fe7cbe71f785205763d1e8fa813598f0e647630804e90525aafc68657997a"
+    },
+    "transient-delivery.patch": {
+      "bytes": 567,
+      "sha256": "890ded5394f292ca2525802c52f450c6faf1751cc43821c11174458cc2bf05ad"
+    }
+  },
+  "sourceQualification": {
+    "originalFullTestSHA256": "2a290f52fa436283c76d3ab7b0c0bbc2b4d69b3a7a3027ecaada05c01fc63cb4",
+    "coreOnlyTransformedTestSHA256": "d60f41ef74295df1839d3b195abf0d7cdc663a500b5cab4caf9ef3e1f02752d7",
+    "copiedAISHA256": "bc677b3d7b2771941e6242f9c598084f04710dad944bdc54db24ef93ac354457",
+    "copiedAIViewSHA256": "ca4c85c25ea800eb43f33977b3c02f3989a8eebc60142f88e52740b3d422ae59",
+    "proposedFullTestSHA256": "2d6fe7cbe71f785205763d1e8fa813598f0e647630804e90525aafc68657997a",
+    "patchSHA256": "890ded5394f292ca2525802c52f450c6faf1751cc43821c11174458cc2bf05ad",
+    "rootSourceMutationsByAuditAgent": false,
+    "assertionIntegrityNoSourceEditsMeaning": "No ROOT or runtime source edits. The scratch proposed test contains the two reviewed harness additions."
+  },
+  "completedChecks": [
+    {
+      "kind": "core-only native body",
+      "exitCode": 0,
+      "elapsedSeconds": 1638.321,
+      "excludedInitialRegisteredChildren": 90,
+      "originalAssertionRowsPreserved": 2233,
+      "unchangedCopiedSourceFiles": 1888,
+      "fullSuitePass": false
+    },
+    {
+      "kind": "four-second native buffering witness",
+      "retainedDeliveredShotRows": 276,
+      "batchedDeliveredShotRows": 24,
+      "healthTimelineEqual": true,
+      "knownTerrainTimelineEqual": true,
+      "scope": "Native two-MG delivery epochs, not whole-match parity."
+    },
+    {
+      "kind": "twenty-second actual commander witness",
+      "physicalInputs": 11,
+      "commandReceipts": 4,
+      "publicCreations": 2,
+      "transcriptsDeepEqual": true,
+      "scope": "Positive native motor/receipt control, not whole-match parity."
+    }
+  ],
+  "supersededFailedChecks": [
+    {
+      "kind": "two-second buffering probe",
+      "failure": "Horizon ended at the first MG shot and did not demonstrate repeated deliveries.",
+      "resolution": "Final four-second native witness includes subsequent deliveries.",
+      "savedFailureLog": false
+    },
+    {
+      "kind": "extended HP parity probe",
+      "failure": "Native engine Math.random was uncontrolled despite g.seed=42.",
+      "resolution": "Final branches scope identical native RNG before checking authoritative HP equality.",
+      "savedFailureLog": false
+    },
+    {
+      "kind": "assertion source-row check",
+      "failure": "An initial overescaped regex matched no rows, so its equality check was vacuous.",
+      "resolution": "Final independent source-line check preserves all 2233 assert. rows in order.",
+      "savedFailureLog": false
+    }
+  ],
+  "limitations": [
+    "The proposed clear has not been rerun through the complete native main body or registered suite by this agent.",
+    "No elapsed-time saving is claimed. The historical 50.765 ms/tick average belongs to the old copied projection source.",
+    "Sequential seat delivery and the existing step phase are preserved. This patch addresses transient lifetime only.",
+    "Public shots created between sequential seat commands remain in the common transient arrays through the epoch. Clearing occurs only after every seat has consumed its current observation.",
+    "V20 is historical and unlaunched. Prospective V21 adoption and execution belong to ROOT."
+  ]
+}

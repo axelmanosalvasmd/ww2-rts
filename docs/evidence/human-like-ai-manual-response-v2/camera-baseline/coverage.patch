@@ -1,0 +1,76 @@
+--- a/tools/ai-manual-response-capture.mjs
++++ b/tools/ai-manual-response-capture.mjs
+@@ -57,7 +57,7 @@
+         && packet.scene.observationTick>receipt.publicScene.observationTick) {
+         receipt.publicAfterFrameId=frame.id;receipt.publicAfter=structuredClone(packet.scene);
+       }
+-      if(!previous || packet.scene.observationTick>previous.observationTick) previous=structuredClone(packet.scene);
++      if(!previous || packet.scene.observationTick>=previous.observationTick) previous=structuredClone(packet.scene);
+     }
+   };
+   const perceptionMeasurements={
+--- a/test-engine-ai-manual-response-policy.js
++++ b/test-engine-ai-manual-response-policy.js
+@@ -6,7 +6,7 @@
+ import { perceive } from './shared/ai-perception.js';
+ import { bindings } from './client/keys.js';
+ import {createManualCapture} from './tools/ai-manual-response-capture.mjs';
+-import { createHands, enqueueDecision, advanceHands } from './shared/ai-hands.js';
++import { createHands, enqueueDecision, queueCamera, advanceHands } from './shared/ai-hands.js';
+ import { kaplanMeier } from './tools/ai-humanity.mjs';
+ import { MANUAL_RESPONSE_POLICY, MANUAL_RESPONSE_STREAM, createManualResponsePolicy } from './tools/ai-manual-response-policy.mjs';
+ 
+@@ -363,6 +363,53 @@
+   actualCommandOnly.inputs.forEach(input=>{input.actor='human';input.kind='command';});
+   check(scoreManualResponses(actualCommandOnly,10,kaplanMeier).acceptedCommand.answered,0,'a command-only recorder cannot borrow a natural physical receipt');
+ 
++
++  // A paid camera arrival changes the public screen between two delivered snapshots.
++  const cameraRefresh=fixture('rifle','mg');cameraRefresh.own.holdFire=true;
++  Object.assign(cameraRefresh.state.camera,{x:10,z:10});
++  const refreshLog={events:[],commands:[],inputs:[],physicalInputsRecorded:true};
++  const refreshMemory={human:cameraRefresh.state};let refreshAdapter;
++  const refreshHands=createHands({slot:0,seed:37,level:'hard',camera:cameraRefresh.state.camera,startedTick:100,
++    log:input=>{refreshLog.inputs.push(structuredClone(input));refreshAdapter.input(refreshLog.inputs.at(-1),refreshLog.inputs.length-1);}});
++  refreshHands.openingDone=true;refreshHands.openingUntil=0;cameraRefresh.state.hands=refreshHands;
++  refreshAdapter=createManualCapture({slot:0,log:refreshLog,memory:refreshMemory,rules:{CELL,CFG,UNITS,SUPPORT,COVER,los,bindings},perceive,
++    observer:{measureRaw:()=>null,onMeasurements:()=>{}}});
++  const refreshDeliver=(raw,tick)=>{
++    cameraRefresh.state.view=perceive(raw,0,cameraRefresh.state,tick,refreshAdapter.perceptionMeasurements);
++    for(const event of cameraRefresh.state.events)if(!refreshLog.events.some(row=>row.id===event.id))refreshLog.events.push(structuredClone(event));
++    refreshAdapter.afterThink(tick);
++  };
++  let refreshRaw=viewFor(cameraRefresh.g,0,cameraRefresh.memory);refreshDeliver(refreshRaw,100);
++  check(cameraRefresh.state.view.screenIds.has(cameraRefresh.own.id),false,'the actor is outside the initial camera');
++  assert.ok(queueCamera(refreshHands,{x:85,z:80},{},'minimap'));assertions++;
++  let refreshCameraKey=JSON.stringify(refreshHands.camera);
++  for(let tick=101;tick<200&&!refreshLog.inputs.length;tick++) {
++    cameraRefresh.g.tick=tick;if(tick%2===0)refreshRaw=viewFor(cameraRefresh.g,0,cameraRefresh.memory);
++    const cameraKey=JSON.stringify(refreshHands.camera);
++    if(refreshRaw.tick!==cameraRefresh.state.view.tick || cameraKey!==refreshCameraKey) {
++      refreshDeliver(refreshRaw,tick);refreshCameraKey=cameraKey;
++    }
++    advanceHands(refreshHands,tick,cameraRefresh.state.view,()=>{throw Error('a camera gesture cannot issue a command');});
++    refreshAdapter.afterThink(tick);
++  }
++  check(refreshLog.inputs.length,1,'one actual paid camera gesture completes');
++  const arrival=refreshLog.inputs[0].tick;
++  check(arrival%2,0,'the camera completes on an even delivery beat');
++  check(refreshLog.inputs[0].kind,'camera-minimap','the camera receipt comes from native hands');
++  cameraRefresh.g.tick=arrival+1;refreshDeliver(refreshRaw,arrival+1);
++  check(cameraRefresh.state.view.screenIds.has(cameraRefresh.own.id),true,'the odd-tick screen refresh reveals the actor');
++  check(cameraRefresh.state.view.tick,arrival,'the odd screen refresh still uses the preceding snapshot');
++  cameraRefresh.own.hp=70;cameraRefresh.g.tick=arrival+2;
++  refreshDeliver(viewFor(cameraRefresh.g,0,cameraRefresh.memory),arrival+2);
++  const refreshedDamage=refreshAdapter.stream.creations.find(row=>row.creation.kind==='screen-damage');
++  assert.ok(refreshedDamage,'native perception creates the displayed damage event');assertions++;
++  check(refreshedDamage.decision,'required','the latest public screen supplies a valid preceding damage baseline');
++  check(refreshedDamage.publicBaseline.recordedTick,arrival+1,'baseline comes from the camera refresh');
++  check(refreshedDamage.publicBaseline.observationTick,arrival,'baseline retains its actual delivery clock');
++  check(refreshLog.commands.length,0,'screen grading creates no command');
++  cameraRefresh.g.tick=arrival+4;refreshDeliver(viewFor(cameraRefresh.g,0,cameraRefresh.memory),arrival+4);
++  check(refreshAdapter.stream.creations.filter(row=>row.creation.kind==='screen-damage').length,1,'an unchanged following health reading creates no new damage demand');
++
+   const isolation=[];
+   for(const level of ['easy','normal','hard']) {
+     const controls=[];

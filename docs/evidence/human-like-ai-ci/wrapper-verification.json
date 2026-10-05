@@ -1,0 +1,33 @@
+[
+  {
+    "workflowContract": "same event, permission, concurrency, runner, Node, dependency and native gate commands; no continue-on-error"
+  },
+  {
+    "intentionalAssertionFailure": false,
+    "pipelineExit": 0,
+    "stdoutAndStderrRetained": true,
+    "unchangedSourceGuard": true
+  },
+  {
+    "intentionalAssertionFailure": true,
+    "pipelineExit": 1,
+    "stdoutAndStderrRetained": true,
+    "unchangedSourceGuard": true
+  },
+  {
+    "actualTrackedSourceMutation": "fails hash comparison and retains diff",
+    "guardExit": 1
+  },
+  {
+    "symlinkDirectoryAndDanglingLinks": "captured without following links; target changes fail source guard"
+  },
+  {
+    "actualRuntimeAndSourceCapture": "executed original proposed workflow command",
+    "node": "v24.21.0",
+    "trackedFiles": 604
+  },
+  {
+    "actualNodeTestWorld": "passes with exact proposed pipefail logging wrapper",
+    "logBytes": 46
+  }
+]

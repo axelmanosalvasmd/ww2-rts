@@ -1,0 +1,55 @@
+{
+  "classification": "Historical V15 only. Current R6 remains unqualified.",
+  "rootVerifiedBundleMembers": 76,
+  "rootVerifiedOriginalArtifacts": 37,
+  "copies": [
+    {
+      "source": "/tmp/human-ai-v15-historical-balance-proof.tar.gz",
+      "target": "docs/evidence/human-like-ai-v15-balance/human-ai-v15-historical-balance-proof.tar.gz",
+      "bytes": 576825,
+      "sha256": "55c50b15f99dd34707da2e035c814798af3509091a74bfd36557fee6b49327ff"
+    },
+    {
+      "source": "/tmp/human-ai-v15-historical-balance-audit/artifact-hash-index.json",
+      "target": "docs/evidence/human-like-ai-v15-balance/artifact-hash-index.json",
+      "bytes": 4459,
+      "sha256": "61d8109cb316223ba592ef6989fde0a1e7638da5e86c26917a6be7ba1b7d9554"
+    },
+    {
+      "source": "/tmp/human-ai-v15-historical-balance-audit/bundle-index.json",
+      "target": "docs/evidence/human-like-ai-v15-balance/bundle-index.json",
+      "bytes": 958,
+      "sha256": "0e74a515f85607722625707ae3043e0245c4a8d9f417e11ade3709996d3f5bb7"
+    },
+    {
+      "source": "/tmp/human-ai-v15-historical-balance-audit/report.json",
+      "target": "docs/evidence/human-like-ai-v15-balance/report.json",
+      "bytes": 205816,
+      "sha256": "e98058f7549b0adf0347fb9d97cf664918f1f1fdeab471c5ca64a894f3b332f0"
+    },
+    {
+      "source": "/tmp/human-ai-v15-historical-balance-audit/report.md",
+      "target": "docs/evidence/human-like-ai-v15-balance/report.md",
+      "bytes": 2267,
+      "sha256": "622b54219b5576c3c42f3e7395432e6e17fd9981526bd955642726d77b7b6df5"
+    },
+    {
+      "source": "/tmp/human-ai-v15-historical-balance-audit/shared-navigation.js.diff",
+      "target": "docs/evidence/human-like-ai-v15-balance/shared-navigation.js.diff",
+      "bytes": 2622,
+      "sha256": "49e322bca593ad114f59b0f2854e6a39fdae4ff3c3c558f16bfc5592c164ebdb"
+    },
+    {
+      "source": "/tmp/human-ai-v15-historical-balance-audit/shared-sim.js.diff",
+      "target": "docs/evidence/human-like-ai-v15-balance/shared-sim.js.diff",
+      "bytes": 1933,
+      "sha256": "7a17119ab4622f6aa41dfe7bfe69da71d2affd7fb0d3e270ea47cd5d69b38617"
+    },
+    {
+      "source": "/tmp/human-ai-v15-historical-balance-audit/tools-ai-balance.mjs.diff",
+      "target": "docs/evidence/human-like-ai-v15-balance/tools-ai-balance.mjs.diff",
+      "bytes": 1860,
+      "sha256": "ab83c005141a5e44b4305483a05f18b0552a21d98aebd45fcbff1642e16dbcd8"
+    }
+  ]
+}

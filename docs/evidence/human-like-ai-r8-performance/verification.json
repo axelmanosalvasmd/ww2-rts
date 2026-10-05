@@ -1,0 +1,14 @@
+{
+  "status": "PASS",
+  "qualification": "Copy integrity only. Retained source-specific results are not new checks or acceptance.",
+  "archive": "r8-four-row-and-preflight-failure.tar.gz",
+  "archiveBytes": 402189,
+  "archiveSHA256": "a16c5a04e495715845052638e2ef9add70c351457a4d7ab038eb5fee2028ed23",
+  "members": 81,
+  "originals": 78,
+  "originalCopiedBytes": 1463396,
+  "payloadBytes": 1496625,
+  "allOriginalBytesUnchanged": true,
+  "allRoundtripBytesMatch": true,
+  "manifestSHA256": "9ade524346e8856e38407d3887799d10931b1b6e68ab15822ac83d5f1d832dab"
+}

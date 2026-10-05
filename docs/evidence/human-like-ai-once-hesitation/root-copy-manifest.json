@@ -1,0 +1,186 @@
+{
+  "copiedAt": "2026-10-04T19:19:13.895827+00:00",
+  "scope": "Root independently verifies full baseline slot0 inputs through1660, exact all-seat commands/slot0 inputs before first changed retry937, all192 initial decisions, original checkpoint-continuation inputs and four current-source focused passes. Checkpoint continuation strips closures and rebuilds ordinary delivered views; it is an episode counterfactual, not a complete private-detector-history or unchanged candidate whole-game proof. Original rates/pauses/motor/APM unchanged. Earlier dummy-draw experiment is retained and excluded from adoption.",
+  "files": [
+    {
+      "source": "/tmp/human-once-hesitation/hesitation.patch",
+      "path": "docs/evidence/human-like-ai-once-hesitation/hesitation.patch",
+      "bytes": 2262,
+      "sha256": "b1737316013b43c692eb681b27d9d032ea084ff09c6c2fe657eb43aa4d02e8c7"
+    },
+    {
+      "source": "/tmp/human-once-hesitation/test-engine-ai-hesitation.js",
+      "path": "docs/evidence/human-like-ai-once-hesitation/test-engine-ai-hesitation.js",
+      "bytes": 8728,
+      "sha256": "a29d8f1b7a66bfac956bb5483fbb7d16c07c8dda56def60e06eddb956d055331"
+    },
+    {
+      "source": "/tmp/human-once-hesitation/baseline-replay.json",
+      "path": "docs/evidence/human-like-ai-once-hesitation/baseline-replay.json",
+      "bytes": 301121,
+      "sha256": "30e445fe0eecd37d98f0cb36cbbd2cad91b3b7ef1f20ce95f2498a27835497d4"
+    },
+    {
+      "source": "/tmp/human-once-hesitation/candidate-replay.json",
+      "path": "docs/evidence/human-like-ai-once-hesitation/candidate-replay.json",
+      "bytes": 335827,
+      "sha256": "e199c3d4913072934a7c9f3051215c60f10b0801f566f9ae6500a4156733f290"
+    },
+    {
+      "source": "/tmp/human-once-hesitation/baseline-tick1594.v8",
+      "path": "docs/evidence/human-like-ai-once-hesitation/baseline-tick1594.v8",
+      "bytes": 662314,
+      "sha256": "d13b248d832de7c35ff3c2c65795da682e4facd3941157bd3bec13ee991e474b"
+    },
+    {
+      "source": "/tmp/human-once-hesitation/checkpoint-baseline.json",
+      "path": "docs/evidence/human-like-ai-once-hesitation/checkpoint-baseline.json",
+      "bytes": 274078,
+      "sha256": "35700491e5fcd944e773afea6f7599bca111ca0f0b682ab50145c23179a15751"
+    },
+    {
+      "source": "/tmp/human-once-hesitation/checkpoint-candidate.json",
+      "path": "docs/evidence/human-like-ai-once-hesitation/checkpoint-candidate.json",
+      "bytes": 233132,
+      "sha256": "a6b63fb98f0d333bdb31913a9e51f24919b8bdd4afb77f54530ff64ddf3e0ea9"
+    },
+    {
+      "source": "/tmp/human-once-hesitation/fixture-proof.json",
+      "path": "docs/evidence/human-like-ai-once-hesitation/fixture-proof.json",
+      "bytes": 30929,
+      "sha256": "47c9385231e4027d5363232ea980324a0bc8f0aadb5114e746fe9801e98a6367"
+    },
+    {
+      "source": "/tmp/human-once-hesitation/baseline-first-decisions.json",
+      "path": "docs/evidence/human-like-ai-once-hesitation/baseline-first-decisions.json",
+      "bytes": 10085,
+      "sha256": "8a2c7419d3b3c0b0eef151bc37e024e80b60133e36cfdfec28e58394168dbcd1"
+    },
+    {
+      "source": "/tmp/human-once-hesitation/native-proof.json",
+      "path": "docs/evidence/human-like-ai-once-hesitation/native-proof.json",
+      "bytes": 1429,
+      "sha256": "425a9aaa6c8f7c468347718a9f7615164b6bcbd56702699c9f652cde3105c591"
+    },
+    {
+      "source": "/tmp/human-once-hesitation/verify-evidence.mjs",
+      "path": "docs/evidence/human-like-ai-once-hesitation/verify-evidence.mjs",
+      "bytes": 2366,
+      "sha256": "118b45cd9823de514ea5395abb87f11f17690a4a8fa2629f60de7648407c7841"
+    },
+    {
+      "source": "/tmp/human-once-hesitation/verify-evidence.log",
+      "path": "docs/evidence/human-like-ai-once-hesitation/verify-evidence.log",
+      "bytes": 124,
+      "sha256": "444214a2c5d9c7337e4ae3507950962e4d2b07d335e15d41c7d91636bdd96dc3"
+    },
+    {
+      "source": "/tmp/human-once-hesitation/REVIEW.md",
+      "path": "docs/evidence/human-like-ai-once-hesitation/REVIEW.md",
+      "bytes": 5711,
+      "sha256": "628c738a7d5a9305a6fe1754724c748331af57d480201638fb65da4bc3e61182"
+    },
+    {
+      "source": "/tmp/human-once-hesitation/test-final.log",
+      "path": "docs/evidence/human-like-ai-once-hesitation/test-final.log",
+      "bytes": 141,
+      "sha256": "8004f904147d072dc0c3a280a07576e4fe73bf82097e743b0ef66d1c2c111431"
+    },
+    {
+      "source": "/tmp/human-once-hesitation/manifest.json",
+      "path": "docs/evidence/human-like-ai-once-hesitation/manifest.json",
+      "bytes": 3228,
+      "sha256": "1e47a29a4a57dca0b9a0a1803c4480ffa0691f7c2a0f4a2d20ad574183b19a2d"
+    },
+    {
+      "source": "/tmp/human-once-hesitation/replay.mjs",
+      "path": "docs/evidence/human-like-ai-once-hesitation/replay.mjs",
+      "bytes": 2962,
+      "sha256": "ea66393f5062a1f4feb19f0c91789c2b10b3ea64a5530f1868e5e8120c9c5578"
+    },
+    {
+      "source": "/tmp/human-once-hesitation/checkpoint-continuation.mjs",
+      "path": "docs/evidence/human-like-ai-once-hesitation/checkpoint-continuation.mjs",
+      "bytes": 4023,
+      "sha256": "35b164a3a7280c369c81d1a5f3ddc731fc3f9f4a61d6ac111f8049f0665e90e2"
+    },
+    {
+      "source": "/tmp/human-once-hesitation/test.log",
+      "path": "docs/evidence/human-like-ai-once-hesitation/test.log",
+      "bytes": 763,
+      "sha256": "e5d66536fda98045ee233177fe1eec5d585693799e80051e665d28dfbb2606a8"
+    },
+    {
+      "source": "/tmp/human-once-hesitation/test-second.log",
+      "path": "docs/evidence/human-like-ai-once-hesitation/test-second.log",
+      "bytes": 141,
+      "sha256": "8004f904147d072dc0c3a280a07576e4fe73bf82097e743b0ef66d1c2c111431"
+    },
+    {
+      "source": "/tmp/human-once-hesitation/checkpoint.log",
+      "path": "docs/evidence/human-like-ai-once-hesitation/checkpoint.log",
+      "bytes": 0,
+      "sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+    },
+    {
+      "source": "/tmp/human-once-hesitation/checkpoint-final.log",
+      "path": "docs/evidence/human-like-ai-once-hesitation/checkpoint-final.log",
+      "bytes": 0,
+      "sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+    },
+    {
+      "source": "/tmp/human-once-hesitation/candidate-replay-preserved-rng.log",
+      "path": "docs/evidence/human-like-ai-once-hesitation/candidate-replay-preserved-rng.log",
+      "bytes": 28,
+      "sha256": "844a75c8463cc015557fb5e4592624440cc6c3ccd36890a520e914697f5050fd"
+    },
+    {
+      "source": "/tmp/ai-v18-root-hesitation-checks/result.json",
+      "path": "docs/evidence/human-like-ai-once-hesitation/root-result.json",
+      "bytes": 1478,
+      "sha256": "91149db43e186d1395513d52c2a95dde8174060dcaec8379144181a4a49de5db"
+    },
+    {
+      "source": "/tmp/ai-v18-root-hesitation-checks/test-engine-ai-coherence.js.log",
+      "path": "docs/evidence/human-like-ai-once-hesitation/root-test-engine-ai-coherence.js.log",
+      "bytes": 403,
+      "sha256": "7912a6a2fd0f5dde8af11c56338fdf488a67e9431f369a1e9972ed821725b5a3"
+    },
+    {
+      "source": "/tmp/ai-v18-root-hesitation-checks/test-engine-ai-commitment.js.log",
+      "path": "docs/evidence/human-like-ai-once-hesitation/root-test-engine-ai-commitment.js.log",
+      "bytes": 422,
+      "sha256": "39b5cd47f43d1d32591f3c1074ac5af77443d15885441ac8341e3cf4976f81bc"
+    },
+    {
+      "source": "/tmp/ai-v18-root-hesitation-checks/test-engine-ai-hesitation.js.log",
+      "path": "docs/evidence/human-like-ai-once-hesitation/root-test-engine-ai-hesitation.js.log",
+      "bytes": 141,
+      "sha256": "8004f904147d072dc0c3a280a07576e4fe73bf82097e743b0ef66d1c2c111431"
+    },
+    {
+      "source": "/tmp/ai-v18-root-hesitation-checks/test-engine-ai-response.js.log",
+      "path": "docs/evidence/human-like-ai-once-hesitation/root-test-engine-ai-response.js.log",
+      "bytes": 576,
+      "sha256": "166fe6cacdb9a9b72c84ed79f1fe2165529e99f8a913b195c91cd5797a2faa87"
+    },
+    {
+      "source": "/home/judiazm/.t3/worktrees/ww2-rts/ai-human-commander/shared/ai-commander.js",
+      "path": "docs/evidence/human-like-ai-once-hesitation/root-ai-commander.js",
+      "bytes": 30709,
+      "sha256": "19112a1e4c94da72d62564d940497d38cf7e93e3086c9bde3db9c29d088703df"
+    },
+    {
+      "source": "/tmp/human-once-hesitation/baseline/shared/ai-commander.js",
+      "path": "docs/evidence/human-like-ai-once-hesitation/baseline-ai-commander.js",
+      "bytes": 30216,
+      "sha256": "214cfdf199c02afbba40a2958a8df05a95c3588f4bd0d1cc08c5bcbe6dc9ae01"
+    },
+    {
+      "source": "/tmp/v16-easy1-gameplay-diagnostic/native-0.json",
+      "path": "docs/evidence/human-like-ai-once-hesitation/original-native-slot0.json",
+      "bytes": 2709186,
+      "sha256": "5e6138c1bd39fd50b078835cbdd72a6b6a6f8c6e20f336d09181509d56670c6e"
+    }
+  ]
+}

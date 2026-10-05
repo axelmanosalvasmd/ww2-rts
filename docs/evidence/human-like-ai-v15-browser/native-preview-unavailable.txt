@@ -1,0 +1,3 @@
+After the successful native recording-stop transfer, preview evaluate returned:
+No preview automation host is available for evaluate in environment 53447711-a9b8-4ee7-bc47-bd249760221c. Preview tools run in a T3 Code desktop app that is open and connected to this environment; a headless server has no browser of its own. Do not retry. To check a page, use a headless browser from the shell, such as Playwright, or curl, or ask the user to open this thread in the T3 Code desktop app.
+The same exec contained subsequently awaited snapshot and recording-start calls, which also returned unavailable. No later native retry was made. Parent authorized Linux fallback.

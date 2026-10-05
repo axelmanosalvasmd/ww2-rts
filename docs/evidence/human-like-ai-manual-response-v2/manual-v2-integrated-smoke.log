@@ -1,0 +1,1279 @@
+conquest/hard seed 1: 1/1
+{
+  "source": "current",
+  "elapsedSeconds": 3.703,
+  "summary": {
+    "conquest/hard": {
+      "requiredScreenPopulation": null,
+      "concernAlignment": {
+        "recordedSeats": 3,
+        "totalSeats": 3,
+        "expansion": {
+          "commands": 0,
+          "acceptedCommands": 0,
+          "commandsToConcern": 0,
+          "commandsToOther": 0,
+          "commandsUnmeasured": 0,
+          "acceptedCommandsToConcern": 0,
+          "acceptedCommandsToOther": 0,
+          "targets": 0,
+          "alignedTargets": 0,
+          "otherTargets": 0,
+          "unmeasuredTargets": 0
+        },
+        "idle": {
+          "inputContextCycles": 0,
+          "cyclesWithAnyCommand": 0,
+          "cyclesWithNoCommand": 0,
+          "cyclesIncludingIdleUnit": 0,
+          "cyclesWithAcceptedIdleUnitCommand": 0,
+          "cyclesWithCommandsForOtherUnitsOnly": 0
+        },
+        "production": {
+          "visits": 7,
+          "visitsWithAttemptedPurchase": 4,
+          "visitsWithAcceptedPurchase": 4,
+          "attemptedPurchases": 4,
+          "acceptedPurchases": 4,
+          "rejectedPurchases": 0,
+          "purchaseSpendMP": 360,
+          "purchaseSpendFuel": 0,
+          "allCommandSpendMP": 360,
+          "allCommandSpendFuel": 0,
+          "unmeasuredPurchaseSpend": 0,
+          "commandKinds": {
+            "move": 13,
+            "buy": 4
+          },
+          "rejectionReasons": {},
+          "planner": {
+            "recordedSeats": 3,
+            "decisions": 7,
+            "proposedBuys": 4,
+            "queuedBuys": 4,
+            "reasons": {
+              "unaffordable": 7
+            }
+          }
+        }
+      },
+      "reactionEventPopulation": {
+        "recordedSeats": 3,
+        "totalSeats": 3,
+        "byType": {
+          "screenNewContact": {
+            "events": 0,
+            "firstActionAnswered": 0,
+            "firstActionUnanswered": 0,
+            "commandAnswered": 0,
+            "commandUnanswered": 0,
+            "acceptedCommandAnswered": 0,
+            "acceptedCommandUnanswered": 0
+          },
+          "screenHpDamage": {
+            "events": 0,
+            "firstActionAnswered": 0,
+            "firstActionUnanswered": 0,
+            "commandAnswered": 0,
+            "commandUnanswered": 0,
+            "acceptedCommandAnswered": 0,
+            "acceptedCommandUnanswered": 0
+          },
+          "onScreenAlert": {
+            "events": 0,
+            "firstActionAnswered": 0,
+            "firstActionUnanswered": 0,
+            "commandAnswered": 0,
+            "commandUnanswered": 0,
+            "acceptedCommandAnswered": 0,
+            "acceptedCommandUnanswered": 0
+          },
+          "offScreenAlert": {
+            "events": 0,
+            "firstActionAnswered": 0,
+            "firstActionUnanswered": 0,
+            "commandAnswered": 0,
+            "commandUnanswered": 0,
+            "acceptedCommandAnswered": 0,
+            "acceptedCommandUnanswered": 0
+          },
+          "minimapContactExploratory": {
+            "events": 0,
+            "firstActionAnswered": 0,
+            "firstActionUnanswered": 0,
+            "commandAnswered": 0,
+            "commandUnanswered": 0,
+            "acceptedCommandAnswered": 0,
+            "acceptedCommandUnanswered": 0
+          },
+          "otherEventExploratory": {
+            "events": 0,
+            "firstActionAnswered": 0,
+            "firstActionUnanswered": 0,
+            "commandAnswered": 0,
+            "commandUnanswered": 0,
+            "acceptedCommandAnswered": 0,
+            "acceptedCommandUnanswered": 0
+          }
+        }
+      },
+      "reactionMeasurementVersion": 3,
+      "screenSpans": [
+        113
+      ],
+      "peakWindowStrideTicks": [
+        1
+      ],
+      "matches": 1,
+      "seats": 3,
+      "seconds": {
+        "count": 1,
+        "mean": 15,
+        "min": 15,
+        "p10": 15,
+        "median": 15,
+        "p90": 15,
+        "p95": 15,
+        "max": 15
+      },
+      "commandAPM": {
+        "count": 3,
+        "mean": 25.333,
+        "min": 24,
+        "p10": 24,
+        "median": 24,
+        "p90": 27.2,
+        "p95": 27.6,
+        "max": 28
+      },
+      "physicalInputAPM": {
+        "count": 3,
+        "mean": 50.667,
+        "min": 48,
+        "p10": 48.8,
+        "median": 52,
+        "p90": 52,
+        "p95": 52,
+        "max": 52
+      },
+      "commandAPM60WindowMean": {
+        "count": 0,
+        "mean": null,
+        "min": null,
+        "p10": null,
+        "median": null,
+        "p90": null,
+        "p95": null,
+        "max": null
+      },
+      "commandAPM10WindowPeak": {
+        "count": 3,
+        "mean": 34,
+        "min": 30,
+        "p10": 30,
+        "median": 30,
+        "p90": 39.6,
+        "p95": 40.8,
+        "max": 42
+      },
+      "physicalInputAPM60WindowMean": {
+        "count": 0,
+        "mean": null,
+        "min": null,
+        "p10": null,
+        "median": null,
+        "p90": null,
+        "p95": null,
+        "max": null
+      },
+      "physicalInputAPM10WindowPeak": {
+        "count": 3,
+        "mean": 68,
+        "min": 60,
+        "p10": 61.2,
+        "median": 66,
+        "p90": 75.6,
+        "p95": 76.8,
+        "max": 78
+      },
+      "maxCommandsPerTick": {
+        "count": 3,
+        "mean": 1,
+        "min": 1,
+        "p10": 1,
+        "median": 1,
+        "p90": 1,
+        "p95": 1,
+        "max": 1
+      },
+      "firstOrderSeconds": {
+        "count": 3,
+        "mean": 3.267,
+        "min": 2.9,
+        "p10": 2.95,
+        "median": 3.15,
+        "p90": 3.63,
+        "p95": 3.69,
+        "max": 3.75
+      },
+      "firstBuySeconds": {
+        "count": 3,
+        "mean": 5.75,
+        "min": 5.35,
+        "p10": 5.41,
+        "median": 5.65,
+        "p90": 6.13,
+        "p95": 6.19,
+        "max": 6.25
+      },
+      "firstAcceptedOrderSeconds": {
+        "count": 3,
+        "mean": 3.267,
+        "min": 2.9,
+        "p10": 2.95,
+        "median": 3.15,
+        "p90": 3.63,
+        "p95": 3.69,
+        "max": 3.75
+      },
+      "firstAcceptedBuySeconds": {
+        "count": 3,
+        "mean": 5.75,
+        "min": 5.35,
+        "p10": 5.41,
+        "median": 5.65,
+        "p90": 6.13,
+        "p95": 6.19,
+        "max": 6.25
+      },
+      "onScreenFirstNonCameraActionMedianSeconds": {
+        "count": 0,
+        "mean": null,
+        "min": null,
+        "p10": null,
+        "median": null,
+        "p90": null,
+        "p95": null,
+        "max": null
+      },
+      "onScreenReactionMedianSeconds": {
+        "count": 0,
+        "mean": null,
+        "min": null,
+        "p10": null,
+        "median": null,
+        "p90": null,
+        "p95": null,
+        "max": null
+      },
+      "offScreenAlertFirstActionMedianSeconds": {
+        "count": 0,
+        "mean": null,
+        "min": null,
+        "p10": null,
+        "median": null,
+        "p90": null,
+        "p95": null,
+        "max": null
+      },
+      "offScreenAlertReactionMedianSeconds": {
+        "count": 0,
+        "mean": null,
+        "min": null,
+        "p10": null,
+        "median": null,
+        "p90": null,
+        "p95": null,
+        "max": null
+      },
+      "onScreenCommandReactionMedianSeconds": {
+        "count": 0,
+        "mean": null,
+        "min": null,
+        "p10": null,
+        "median": null,
+        "p90": null,
+        "p95": null,
+        "max": null
+      },
+      "offScreenAlertCommandReactionMedianSeconds": {
+        "count": 0,
+        "mean": null,
+        "min": null,
+        "p10": null,
+        "median": null,
+        "p90": null,
+        "p95": null,
+        "max": null
+      },
+      "crossMapPairsWithinOneSecond": {
+        "count": 3,
+        "mean": 0,
+        "min": 0,
+        "p10": 0,
+        "median": 0,
+        "p90": 0,
+        "p95": 0,
+        "max": 0
+      },
+      "cameraJumpsPerMinute": {
+        "count": 3,
+        "mean": 0,
+        "min": 0,
+        "p10": 0,
+        "median": 0,
+        "p90": 0,
+        "p95": 0,
+        "max": 0
+      },
+      "dwellMedianSeconds": {
+        "count": 3,
+        "mean": 1.842,
+        "min": 1.625,
+        "p10": 1.64,
+        "median": 1.7,
+        "p90": 2.1,
+        "p95": 2.15,
+        "max": 2.2
+      },
+      "actionsPerCycleMedian": {
+        "count": 3,
+        "mean": 2,
+        "min": 1,
+        "p10": 1.2,
+        "median": 2,
+        "p90": 2.8,
+        "p95": 2.9,
+        "max": 3
+      },
+      "floatingMPMean": {
+        "count": 3,
+        "mean": 96.667,
+        "min": 86,
+        "p10": 89.2,
+        "median": 102,
+        "p90": 102,
+        "p95": 102,
+        "max": 102
+      },
+      "idleMedianSeconds": {
+        "count": 3,
+        "mean": 2.333,
+        "min": 2,
+        "p10": 2,
+        "median": 2,
+        "p90": 2.8,
+        "p95": 2.9,
+        "max": 3
+      },
+      "unnoticedIdleMedianSeconds": {
+        "count": 3,
+        "mean": 0,
+        "min": 0,
+        "p10": 0,
+        "median": 0,
+        "p90": 0,
+        "p95": 0,
+        "max": 0
+      },
+      "openingsByFaction": {
+        "USA": {
+          "matches": 1,
+          "distinct": 1,
+          "mostCommonShare": 1,
+          "counts": {
+            "{\"purchases\":[\"rifle\",\"rifle\"],\"moves\":[0,1,3]}": 1
+          },
+          "purchaseOnly": {
+            "distinct": 1,
+            "mostCommonShare": 1,
+            "counts": {
+              "[\"rifle\",\"rifle\"]": 1
+            }
+          }
+        },
+        "Germany": {
+          "matches": 1,
+          "distinct": 1,
+          "mostCommonShare": 1,
+          "counts": {
+            "{\"purchases\":[\"rifle\",\"rifle\"],\"moves\":[0,1,2]}": 1
+          },
+          "purchaseOnly": {
+            "distinct": 1,
+            "mostCommonShare": 1,
+            "counts": {
+              "[\"rifle\",\"rifle\"]": 1
+            }
+          }
+        },
+        "USSR": {
+          "matches": 1,
+          "distinct": 1,
+          "mostCommonShare": 1,
+          "counts": {
+            "{\"purchases\":[\"conscript\",\"conscript\"],\"moves\":[0,2,3]}": 1
+          },
+          "purchaseOnly": {
+            "distinct": 1,
+            "mostCommonShare": 1,
+            "counts": {
+              "[\"conscript\",\"conscript\"]": 1
+            }
+          }
+        }
+      },
+      "manualResponsePolicy": {
+        "policy": "screen-manual-v2",
+        "totalSeats": 3,
+        "recordedSeats": 3,
+        "evaluableSeats": 0,
+        "creationEvents": 3,
+        "requiredEvents": 0,
+        "monitoringEvents": 3,
+        "unknownEvents": 0,
+        "firstCompletedAction": {
+          "answered": 0,
+          "censored": 0,
+          "survival": {
+            "samples": 0,
+            "observed": 0,
+            "censored": 0,
+            "medianSeconds": null,
+            "medianIdentifiable": false,
+            "curve": [],
+            "method": "Kaplan-Meier survival with completed responses counted before censoring at tied times. Recording-end censoring assumes no informative loss of follow-up. A null median means the observed curve did not reach 0.5."
+          }
+        },
+        "acceptedCommand": {
+          "answered": 0,
+          "censored": 0,
+          "survival": {
+            "samples": 0,
+            "observed": 0,
+            "censored": 0,
+            "medianSeconds": null,
+            "medianIdentifiable": false,
+            "curve": [],
+            "method": "Kaplan-Meier survival with completed responses counted before censoring at tied times. Recording-end censoring assumes no informative loss of follow-up. A null median means the observed curve did not reach 0.5."
+          }
+        },
+        "audit": {
+          "missingCreationProofs": 0,
+          "inconsistentClassifications": 0,
+          "declared": 0,
+          "valid": 0,
+          "futureOrStale": 0,
+          "descriptorMismatch": 0,
+          "unknownCreation": 0,
+          "unrelatedCommand": 0,
+          "missingOperationProof": 0,
+          "invalidNativeReceipt": 0,
+          "belowReactionFloor": 0
+        }
+      },
+      "reactionScoringComparison": {
+        "method": "Both scorings use the same unchanged input timeline, commands, creation population, recording end and completed-input endpoints. Primary-only uses the historical input.event reducer. Explicit-linked independently validates responseEvents, including the240tick enqueue horizon. Both retain unanswered required stimuli; neither score is selected based on its result.",
+        "instrumentedSeats": 3,
+        "totalSeats": 3,
+        "primaryOnly": {
+          "reactionMeasurementVersion": 2,
+          "requiredScreenPopulation": null,
+          "reactionEventPopulation": {
+            "recordedSeats": 3,
+            "totalSeats": 3,
+            "byType": {
+              "screenNewContact": {
+                "events": 0,
+                "firstActionAnswered": 0,
+                "firstActionUnanswered": 0,
+                "commandAnswered": 0,
+                "commandUnanswered": 0,
+                "acceptedCommandAnswered": 0,
+                "acceptedCommandUnanswered": 0
+              },
+              "screenHpDamage": {
+                "events": 0,
+                "firstActionAnswered": 0,
+                "firstActionUnanswered": 0,
+                "commandAnswered": 0,
+                "commandUnanswered": 0,
+                "acceptedCommandAnswered": 0,
+                "acceptedCommandUnanswered": 0
+              },
+              "onScreenAlert": {
+                "events": 0,
+                "firstActionAnswered": 0,
+                "firstActionUnanswered": 0,
+                "commandAnswered": 0,
+                "commandUnanswered": 0,
+                "acceptedCommandAnswered": 0,
+                "acceptedCommandUnanswered": 0
+              },
+              "offScreenAlert": {
+                "events": 0,
+                "firstActionAnswered": 0,
+                "firstActionUnanswered": 0,
+                "commandAnswered": 0,
+                "commandUnanswered": 0,
+                "acceptedCommandAnswered": 0,
+                "acceptedCommandUnanswered": 0
+              },
+              "minimapContactExploratory": {
+                "events": 0,
+                "firstActionAnswered": 0,
+                "firstActionUnanswered": 0,
+                "commandAnswered": 0,
+                "commandUnanswered": 0,
+                "acceptedCommandAnswered": 0,
+                "acceptedCommandUnanswered": 0
+              },
+              "otherEventExploratory": {
+                "events": 0,
+                "firstActionAnswered": 0,
+                "firstActionUnanswered": 0,
+                "commandAnswered": 0,
+                "commandUnanswered": 0,
+                "acceptedCommandAnswered": 0,
+                "acceptedCommandUnanswered": 0
+              }
+            }
+          },
+          "onScreenFirstNonCameraActionMedianSeconds": {
+            "count": 0,
+            "mean": null,
+            "min": null,
+            "p10": null,
+            "median": null,
+            "p90": null,
+            "p95": null,
+            "max": null
+          },
+          "offScreenAlertFirstActionMedianSeconds": {
+            "count": 0,
+            "mean": null,
+            "min": null,
+            "p10": null,
+            "median": null,
+            "p90": null,
+            "p95": null,
+            "max": null
+          },
+          "onScreenCommandReactionMedianSeconds": {
+            "count": 0,
+            "mean": null,
+            "min": null,
+            "p10": null,
+            "median": null,
+            "p90": null,
+            "p95": null,
+            "max": null
+          },
+          "offScreenAlertCommandReactionMedianSeconds": {
+            "count": 0,
+            "mean": null,
+            "min": null,
+            "p10": null,
+            "median": null,
+            "p90": null,
+            "p95": null,
+            "max": null
+          }
+        },
+        "explicitLinked": {
+          "reactionMeasurementVersion": 3,
+          "requiredScreenPopulation": null,
+          "reactionEventPopulation": {
+            "recordedSeats": 3,
+            "totalSeats": 3,
+            "byType": {
+              "screenNewContact": {
+                "events": 0,
+                "firstActionAnswered": 0,
+                "firstActionUnanswered": 0,
+                "commandAnswered": 0,
+                "commandUnanswered": 0,
+                "acceptedCommandAnswered": 0,
+                "acceptedCommandUnanswered": 0
+              },
+              "screenHpDamage": {
+                "events": 0,
+                "firstActionAnswered": 0,
+                "firstActionUnanswered": 0,
+                "commandAnswered": 0,
+                "commandUnanswered": 0,
+                "acceptedCommandAnswered": 0,
+                "acceptedCommandUnanswered": 0
+              },
+              "onScreenAlert": {
+                "events": 0,
+                "firstActionAnswered": 0,
+                "firstActionUnanswered": 0,
+                "commandAnswered": 0,
+                "commandUnanswered": 0,
+                "acceptedCommandAnswered": 0,
+                "acceptedCommandUnanswered": 0
+              },
+              "offScreenAlert": {
+                "events": 0,
+                "firstActionAnswered": 0,
+                "firstActionUnanswered": 0,
+                "commandAnswered": 0,
+                "commandUnanswered": 0,
+                "acceptedCommandAnswered": 0,
+                "acceptedCommandUnanswered": 0
+              },
+              "minimapContactExploratory": {
+                "events": 0,
+                "firstActionAnswered": 0,
+                "firstActionUnanswered": 0,
+                "commandAnswered": 0,
+                "commandUnanswered": 0,
+                "acceptedCommandAnswered": 0,
+                "acceptedCommandUnanswered": 0
+              },
+              "otherEventExploratory": {
+                "events": 0,
+                "firstActionAnswered": 0,
+                "firstActionUnanswered": 0,
+                "commandAnswered": 0,
+                "commandUnanswered": 0,
+                "acceptedCommandAnswered": 0,
+                "acceptedCommandUnanswered": 0
+              }
+            }
+          },
+          "onScreenFirstNonCameraActionMedianSeconds": {
+            "count": 0,
+            "mean": null,
+            "min": null,
+            "p10": null,
+            "median": null,
+            "p90": null,
+            "p95": null,
+            "max": null
+          },
+          "offScreenAlertFirstActionMedianSeconds": {
+            "count": 0,
+            "mean": null,
+            "min": null,
+            "p10": null,
+            "median": null,
+            "p90": null,
+            "p95": null,
+            "max": null
+          },
+          "onScreenCommandReactionMedianSeconds": {
+            "count": 0,
+            "mean": null,
+            "min": null,
+            "p10": null,
+            "median": null,
+            "p90": null,
+            "p95": null,
+            "max": null
+          },
+          "offScreenAlertCommandReactionMedianSeconds": {
+            "count": 0,
+            "mean": null,
+            "min": null,
+            "p10": null,
+            "median": null,
+            "p90": null,
+            "p95": null,
+            "max": null
+          }
+        }
+      },
+      "measurementPolicyComparison": {
+        "method": "Tool-only creation streams are scored on separate derived views of the unchanged native physical inputs and commands. Original screen-v1 is retained for gates; screen-observed-v1 is a separate comparison. Only immutable same-frame runtime creation aliases can answer original stimuli. Unperceived originals remain censored. Each policy reports primary-only and explicit-linked scoring; neither score changes the population or physical APM.",
+        "measuredSeats": 3,
+        "totalSeats": 3,
+        "audit": {
+          "frames": 6,
+          "declaredMappings": 3,
+          "validMappings": 0,
+          "unknownRuntimeMappings": 0,
+          "unknownOriginalMappings": 0,
+          "mismatchedCreationMappings": 3,
+          "invalidRuntimeDescriptors": 0,
+          "unaliasedPrimaryInputs": 0,
+          "unaliasedExplicitLinks": 0
+        },
+        "coverage": {
+          "originalRecordedSeats": 3,
+          "originalFromMatchStartSeats": 3,
+          "originalBaselineTicks": [
+            0
+          ],
+          "nativeEvents": 7,
+          "originalEvents": 0,
+          "observedEvents": 4,
+          "originalEventsWithoutRuntimeAlias": 0
+        },
+        "originalOracle": {
+          "primaryOnly": {
+            "reactionMeasurementVersion": 2,
+            "requiredScreenPopulation": null,
+            "reactionEventPopulation": {
+              "recordedSeats": 3,
+              "totalSeats": 3,
+              "byType": {
+                "screenNewContact": {
+                  "events": 0,
+                  "firstActionAnswered": 0,
+                  "firstActionUnanswered": 0,
+                  "commandAnswered": 0,
+                  "commandUnanswered": 0,
+                  "acceptedCommandAnswered": 0,
+                  "acceptedCommandUnanswered": 0
+                },
+                "screenHpDamage": {
+                  "events": 0,
+                  "firstActionAnswered": 0,
+                  "firstActionUnanswered": 0,
+                  "commandAnswered": 0,
+                  "commandUnanswered": 0,
+                  "acceptedCommandAnswered": 0,
+                  "acceptedCommandUnanswered": 0
+                },
+                "onScreenAlert": {
+                  "events": 0,
+                  "firstActionAnswered": 0,
+                  "firstActionUnanswered": 0,
+                  "commandAnswered": 0,
+                  "commandUnanswered": 0,
+                  "acceptedCommandAnswered": 0,
+                  "acceptedCommandUnanswered": 0
+                },
+                "offScreenAlert": {
+                  "events": 0,
+                  "firstActionAnswered": 0,
+                  "firstActionUnanswered": 0,
+                  "commandAnswered": 0,
+                  "commandUnanswered": 0,
+                  "acceptedCommandAnswered": 0,
+                  "acceptedCommandUnanswered": 0
+                },
+                "minimapContactExploratory": {
+                  "events": 0,
+                  "firstActionAnswered": 0,
+                  "firstActionUnanswered": 0,
+                  "commandAnswered": 0,
+                  "commandUnanswered": 0,
+                  "acceptedCommandAnswered": 0,
+                  "acceptedCommandUnanswered": 0
+                },
+                "otherEventExploratory": {
+                  "events": 0,
+                  "firstActionAnswered": 0,
+                  "firstActionUnanswered": 0,
+                  "commandAnswered": 0,
+                  "commandUnanswered": 0,
+                  "acceptedCommandAnswered": 0,
+                  "acceptedCommandUnanswered": 0
+                }
+              }
+            },
+            "onScreenFirstNonCameraActionMedianSeconds": {
+              "count": 0,
+              "mean": null,
+              "min": null,
+              "p10": null,
+              "median": null,
+              "p90": null,
+              "p95": null,
+              "max": null
+            },
+            "offScreenAlertFirstActionMedianSeconds": {
+              "count": 0,
+              "mean": null,
+              "min": null,
+              "p10": null,
+              "median": null,
+              "p90": null,
+              "p95": null,
+              "max": null
+            },
+            "onScreenCommandReactionMedianSeconds": {
+              "count": 0,
+              "mean": null,
+              "min": null,
+              "p10": null,
+              "median": null,
+              "p90": null,
+              "p95": null,
+              "max": null
+            },
+            "offScreenAlertCommandReactionMedianSeconds": {
+              "count": 0,
+              "mean": null,
+              "min": null,
+              "p10": null,
+              "median": null,
+              "p90": null,
+              "p95": null,
+              "max": null
+            }
+          },
+          "explicitLinked": {
+            "reactionMeasurementVersion": 3,
+            "requiredScreenPopulation": null,
+            "reactionEventPopulation": {
+              "recordedSeats": 3,
+              "totalSeats": 3,
+              "byType": {
+                "screenNewContact": {
+                  "events": 0,
+                  "firstActionAnswered": 0,
+                  "firstActionUnanswered": 0,
+                  "commandAnswered": 0,
+                  "commandUnanswered": 0,
+                  "acceptedCommandAnswered": 0,
+                  "acceptedCommandUnanswered": 0
+                },
+                "screenHpDamage": {
+                  "events": 0,
+                  "firstActionAnswered": 0,
+                  "firstActionUnanswered": 0,
+                  "commandAnswered": 0,
+                  "commandUnanswered": 0,
+                  "acceptedCommandAnswered": 0,
+                  "acceptedCommandUnanswered": 0
+                },
+                "onScreenAlert": {
+                  "events": 0,
+                  "firstActionAnswered": 0,
+                  "firstActionUnanswered": 0,
+                  "commandAnswered": 0,
+                  "commandUnanswered": 0,
+                  "acceptedCommandAnswered": 0,
+                  "acceptedCommandUnanswered": 0
+                },
+                "offScreenAlert": {
+                  "events": 0,
+                  "firstActionAnswered": 0,
+                  "firstActionUnanswered": 0,
+                  "commandAnswered": 0,
+                  "commandUnanswered": 0,
+                  "acceptedCommandAnswered": 0,
+                  "acceptedCommandUnanswered": 0
+                },
+                "minimapContactExploratory": {
+                  "events": 0,
+                  "firstActionAnswered": 0,
+                  "firstActionUnanswered": 0,
+                  "commandAnswered": 0,
+                  "commandUnanswered": 0,
+                  "acceptedCommandAnswered": 0,
+                  "acceptedCommandUnanswered": 0
+                },
+                "otherEventExploratory": {
+                  "events": 0,
+                  "firstActionAnswered": 0,
+                  "firstActionUnanswered": 0,
+                  "commandAnswered": 0,
+                  "commandUnanswered": 0,
+                  "acceptedCommandAnswered": 0,
+                  "acceptedCommandUnanswered": 0
+                }
+              }
+            },
+            "onScreenFirstNonCameraActionMedianSeconds": {
+              "count": 0,
+              "mean": null,
+              "min": null,
+              "p10": null,
+              "median": null,
+              "p90": null,
+              "p95": null,
+              "max": null
+            },
+            "offScreenAlertFirstActionMedianSeconds": {
+              "count": 0,
+              "mean": null,
+              "min": null,
+              "p10": null,
+              "median": null,
+              "p90": null,
+              "p95": null,
+              "max": null
+            },
+            "onScreenCommandReactionMedianSeconds": {
+              "count": 0,
+              "mean": null,
+              "min": null,
+              "p10": null,
+              "median": null,
+              "p90": null,
+              "p95": null,
+              "max": null
+            },
+            "offScreenAlertCommandReactionMedianSeconds": {
+              "count": 0,
+              "mean": null,
+              "min": null,
+              "p10": null,
+              "median": null,
+              "p90": null,
+              "p95": null,
+              "max": null
+            }
+          }
+        },
+        "observed": {
+          "primaryOnly": {
+            "reactionMeasurementVersion": 2,
+            "requiredScreenPopulation": {
+              "recordedSeats": 2,
+              "totalSeats": 3,
+              "policies": [
+                "screen-observed-v1"
+              ],
+              "annotatedEvents": 3,
+              "unannotatedScreenEvents": 0,
+              "requiredEvents": 0,
+              "exemptEvents": 3,
+              "firstAction": {
+                "samples": 0,
+                "observed": 0,
+                "censored": 0,
+                "medianSeconds": null,
+                "medianIdentifiable": false,
+                "curve": [],
+                "method": "Kaplan-Meier survival with completed responses counted before censoring at tied times. Recording-end censoring assumes no informative loss of follow-up. A null median means the observed curve did not reach 0.5."
+              },
+              "attemptedCommand": {
+                "samples": 0,
+                "observed": 0,
+                "censored": 0,
+                "medianSeconds": null,
+                "medianIdentifiable": false,
+                "curve": [],
+                "method": "Kaplan-Meier survival with completed responses counted before censoring at tied times. Recording-end censoring assumes no informative loss of follow-up. A null median means the observed curve did not reach 0.5."
+              },
+              "acceptedCommand": {
+                "samples": 0,
+                "observed": 0,
+                "censored": 0,
+                "medianSeconds": null,
+                "medianIdentifiable": false,
+                "curve": [],
+                "method": "Kaplan-Meier survival with completed responses counted before censoring at tied times. Recording-end censoring assumes no informative loss of follow-up. A null median means the observed curve did not reach 0.5."
+              },
+              "perSeatFirstActionKMMedianSeconds": {
+                "count": 0,
+                "mean": null,
+                "min": null,
+                "p10": null,
+                "median": null,
+                "p90": null,
+                "p95": null,
+                "max": null
+              },
+              "perSeatConditionalFirstActionMedianSeconds": {
+                "count": 0,
+                "mean": null,
+                "min": null,
+                "p10": null,
+                "median": null,
+                "p90": null,
+                "p95": null,
+                "max": null
+              },
+              "reasons": {
+                "monitoring-contact": {
+                  "required": 0,
+                  "exempt": 3
+                }
+              },
+              "causalAlignment": {
+                "intendedResponseInputs": 0,
+                "otherResponseInputs": 0,
+                "missingIntentMetadataInputs": 0,
+                "firstActionSelectionMatches": 0,
+                "firstActionSelectionDiffers": 0,
+                "firstActionSelectionUnmeasured": 0
+              }
+            },
+            "reactionEventPopulation": {
+              "recordedSeats": 3,
+              "totalSeats": 3,
+              "byType": {
+                "screenNewContact": {
+                  "events": 3,
+                  "firstActionAnswered": 0,
+                  "firstActionUnanswered": 3,
+                  "commandAnswered": 0,
+                  "commandUnanswered": 3,
+                  "acceptedCommandAnswered": 0,
+                  "acceptedCommandUnanswered": 3
+                },
+                "screenHpDamage": {
+                  "events": 0,
+                  "firstActionAnswered": 0,
+                  "firstActionUnanswered": 0,
+                  "commandAnswered": 0,
+                  "commandUnanswered": 0,
+                  "acceptedCommandAnswered": 0,
+                  "acceptedCommandUnanswered": 0
+                },
+                "onScreenAlert": {
+                  "events": 0,
+                  "firstActionAnswered": 0,
+                  "firstActionUnanswered": 0,
+                  "commandAnswered": 0,
+                  "commandUnanswered": 0,
+                  "acceptedCommandAnswered": 0,
+                  "acceptedCommandUnanswered": 0
+                },
+                "offScreenAlert": {
+                  "events": 0,
+                  "firstActionAnswered": 0,
+                  "firstActionUnanswered": 0,
+                  "commandAnswered": 0,
+                  "commandUnanswered": 0,
+                  "acceptedCommandAnswered": 0,
+                  "acceptedCommandUnanswered": 0
+                },
+                "minimapContactExploratory": {
+                  "events": 1,
+                  "firstActionAnswered": 0,
+                  "firstActionUnanswered": 1,
+                  "commandAnswered": 0,
+                  "commandUnanswered": 1,
+                  "acceptedCommandAnswered": 0,
+                  "acceptedCommandUnanswered": 1
+                },
+                "otherEventExploratory": {
+                  "events": 0,
+                  "firstActionAnswered": 0,
+                  "firstActionUnanswered": 0,
+                  "commandAnswered": 0,
+                  "commandUnanswered": 0,
+                  "acceptedCommandAnswered": 0,
+                  "acceptedCommandUnanswered": 0
+                }
+              }
+            },
+            "onScreenFirstNonCameraActionMedianSeconds": {
+              "count": 0,
+              "mean": null,
+              "min": null,
+              "p10": null,
+              "median": null,
+              "p90": null,
+              "p95": null,
+              "max": null
+            },
+            "offScreenAlertFirstActionMedianSeconds": {
+              "count": 0,
+              "mean": null,
+              "min": null,
+              "p10": null,
+              "median": null,
+              "p90": null,
+              "p95": null,
+              "max": null
+            },
+            "onScreenCommandReactionMedianSeconds": {
+              "count": 0,
+              "mean": null,
+              "min": null,
+              "p10": null,
+              "median": null,
+              "p90": null,
+              "p95": null,
+              "max": null
+            },
+            "offScreenAlertCommandReactionMedianSeconds": {
+              "count": 0,
+              "mean": null,
+              "min": null,
+              "p10": null,
+              "median": null,
+              "p90": null,
+              "p95": null,
+              "max": null
+            }
+          },
+          "explicitLinked": {
+            "reactionMeasurementVersion": 3,
+            "requiredScreenPopulation": {
+              "recordedSeats": 2,
+              "totalSeats": 3,
+              "policies": [
+                "screen-observed-v1"
+              ],
+              "annotatedEvents": 3,
+              "unannotatedScreenEvents": 0,
+              "requiredEvents": 0,
+              "exemptEvents": 3,
+              "firstAction": {
+                "samples": 0,
+                "observed": 0,
+                "censored": 0,
+                "medianSeconds": null,
+                "medianIdentifiable": false,
+                "curve": [],
+                "method": "Kaplan-Meier survival with completed responses counted before censoring at tied times. Recording-end censoring assumes no informative loss of follow-up. A null median means the observed curve did not reach 0.5."
+              },
+              "attemptedCommand": {
+                "samples": 0,
+                "observed": 0,
+                "censored": 0,
+                "medianSeconds": null,
+                "medianIdentifiable": false,
+                "curve": [],
+                "method": "Kaplan-Meier survival with completed responses counted before censoring at tied times. Recording-end censoring assumes no informative loss of follow-up. A null median means the observed curve did not reach 0.5."
+              },
+              "acceptedCommand": {
+                "samples": 0,
+                "observed": 0,
+                "censored": 0,
+                "medianSeconds": null,
+                "medianIdentifiable": false,
+                "curve": [],
+                "method": "Kaplan-Meier survival with completed responses counted before censoring at tied times. Recording-end censoring assumes no informative loss of follow-up. A null median means the observed curve did not reach 0.5."
+              },
+              "perSeatFirstActionKMMedianSeconds": {
+                "count": 0,
+                "mean": null,
+                "min": null,
+                "p10": null,
+                "median": null,
+                "p90": null,
+                "p95": null,
+                "max": null
+              },
+              "perSeatConditionalFirstActionMedianSeconds": {
+                "count": 0,
+                "mean": null,
+                "min": null,
+                "p10": null,
+                "median": null,
+                "p90": null,
+                "p95": null,
+                "max": null
+              },
+              "reasons": {
+                "monitoring-contact": {
+                  "required": 0,
+                  "exempt": 3
+                }
+              },
+              "causalAlignment": {
+                "intendedResponseInputs": 0,
+                "otherResponseInputs": 0,
+                "missingIntentMetadataInputs": 0,
+                "firstActionSelectionMatches": 0,
+                "firstActionSelectionDiffers": 0,
+                "firstActionSelectionUnmeasured": 0
+              }
+            },
+            "reactionEventPopulation": {
+              "recordedSeats": 3,
+              "totalSeats": 3,
+              "byType": {
+                "screenNewContact": {
+                  "events": 3,
+                  "firstActionAnswered": 0,
+                  "firstActionUnanswered": 3,
+                  "commandAnswered": 0,
+                  "commandUnanswered": 3,
+                  "acceptedCommandAnswered": 0,
+                  "acceptedCommandUnanswered": 3
+                },
+                "screenHpDamage": {
+                  "events": 0,
+                  "firstActionAnswered": 0,
+                  "firstActionUnanswered": 0,
+                  "commandAnswered": 0,
+                  "commandUnanswered": 0,
+                  "acceptedCommandAnswered": 0,
+                  "acceptedCommandUnanswered": 0
+                },
+                "onScreenAlert": {
+                  "events": 0,
+                  "firstActionAnswered": 0,
+                  "firstActionUnanswered": 0,
+                  "commandAnswered": 0,
+                  "commandUnanswered": 0,
+                  "acceptedCommandAnswered": 0,
+                  "acceptedCommandUnanswered": 0
+                },
+                "offScreenAlert": {
+                  "events": 0,
+                  "firstActionAnswered": 0,
+                  "firstActionUnanswered": 0,
+                  "commandAnswered": 0,
+                  "commandUnanswered": 0,
+                  "acceptedCommandAnswered": 0,
+                  "acceptedCommandUnanswered": 0
+                },
+                "minimapContactExploratory": {
+                  "events": 1,
+                  "firstActionAnswered": 0,
+                  "firstActionUnanswered": 1,
+                  "commandAnswered": 0,
+                  "commandUnanswered": 1,
+                  "acceptedCommandAnswered": 0,
+                  "acceptedCommandUnanswered": 1
+                },
+                "otherEventExploratory": {
+                  "events": 0,
+                  "firstActionAnswered": 0,
+                  "firstActionUnanswered": 0,
+                  "commandAnswered": 0,
+                  "commandUnanswered": 0,
+                  "acceptedCommandAnswered": 0,
+                  "acceptedCommandUnanswered": 0
+                }
+              }
+            },
+            "onScreenFirstNonCameraActionMedianSeconds": {
+              "count": 0,
+              "mean": null,
+              "min": null,
+              "p10": null,
+              "median": null,
+              "p90": null,
+              "p95": null,
+              "max": null
+            },
+            "offScreenAlertFirstActionMedianSeconds": {
+              "count": 0,
+              "mean": null,
+              "min": null,
+              "p10": null,
+              "median": null,
+              "p90": null,
+              "p95": null,
+              "max": null
+            },
+            "onScreenCommandReactionMedianSeconds": {
+              "count": 0,
+              "mean": null,
+              "min": null,
+              "p10": null,
+              "median": null,
+              "p90": null,
+              "p95": null,
+              "max": null
+            },
+            "offScreenAlertCommandReactionMedianSeconds": {
+              "count": 0,
+              "mean": null,
+              "min": null,
+              "p10": null,
+              "median": null,
+              "p90": null,
+              "p95": null,
+              "max": null
+            }
+          }
+        }
+      }
+    }
+  }
+}

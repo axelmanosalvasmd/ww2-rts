@@ -1,0 +1,653 @@
+{
+  "verifiedBy": "ROOT independent archive-to-physical-byte comparison",
+  "utc": "2026-10-05T02:29:36Z",
+  "allOriginalsValid": true,
+  "originals": 92,
+  "archiveSHA256": "49589269744c81a2df1e3b01405f6274fb2bd6e4179a28f8e437cbc3738d4b91",
+  "checks": [
+    {
+      "member": "ai-human-slips-r8-current/REVIEW.md",
+      "originalPath": "/tmp/ai-human-slips-r8-current/REVIEW.md",
+      "sha256": "9b40af51c3efb1c9f27088ca0016a63498e8c51402365a48b529d5e3677b20d9",
+      "bytes": 6065,
+      "valid": true
+    },
+    {
+      "member": "ai-human-slips-r8-current/assert-components.mjs",
+      "originalPath": "/tmp/ai-human-slips-r8-current/assert-components.mjs",
+      "sha256": "73c8f476e1cb2ed74658a2656d7b694ac638793471f63a1bbe0c24c4da5a1d19",
+      "bytes": 3630,
+      "valid": true
+    },
+    {
+      "member": "ai-human-slips-r8-current/byte-manifest.json",
+      "originalPath": "/tmp/ai-human-slips-r8-current/byte-manifest.json",
+      "sha256": "fbc260f9c283c364ad5186c9c43fe4347e0a8044eb59f0e834846ae363eb20b6",
+      "bytes": 14840,
+      "valid": true
+    },
+    {
+      "member": "ai-human-slips-r8-current/component-results.json",
+      "originalPath": "/tmp/ai-human-slips-r8-current/component-results.json",
+      "sha256": "67e11eff9e2fb076440cbfef7effc39c57fab0207c543408a1b1c05501b40346",
+      "bytes": 2470,
+      "valid": true
+    },
+    {
+      "member": "ai-human-slips-r8-current/fixture.log",
+      "originalPath": "/tmp/ai-human-slips-r8-current/fixture.log",
+      "sha256": "0af03b49f9284332a0390316739fa07a9d1d00ac979abdd8d04ac2daa992139b",
+      "bytes": 136,
+      "valid": true
+    },
+    {
+      "member": "ai-human-slips-r8-current/fixture.patch",
+      "originalPath": "/tmp/ai-human-slips-r8-current/fixture.patch",
+      "sha256": "bbed92bf8b6dc2b67218e9f5ba17864779efe2eba19548e163a482c9f7169079",
+      "bytes": 9954,
+      "valid": true
+    },
+    {
+      "member": "ai-human-slips-r8-current/flank-easy-seed1.json",
+      "originalPath": "/tmp/ai-human-slips-r8-current/flank-easy-seed1.json",
+      "sha256": "ac3d312775aca0e40e8e2f9bb9fb7bf12db2f6fc187052fdc1f60bfd74b2b473",
+      "bytes": 1517578,
+      "valid": true
+    },
+    {
+      "member": "ai-human-slips-r8-current/flank-hard-seed1-repeat.json",
+      "originalPath": "/tmp/ai-human-slips-r8-current/flank-hard-seed1-repeat.json",
+      "sha256": "178618b64225db9f02916c1d51b2c03f4f678313668c882360563d6a37526503",
+      "bytes": 1587377,
+      "valid": true
+    },
+    {
+      "member": "ai-human-slips-r8-current/flank-hard-seed1.json",
+      "originalPath": "/tmp/ai-human-slips-r8-current/flank-hard-seed1.json",
+      "sha256": "178618b64225db9f02916c1d51b2c03f4f678313668c882360563d6a37526503",
+      "bytes": 1587377,
+      "valid": true
+    },
+    {
+      "member": "ai-human-slips-r8-current/flank-normal-seed1.json",
+      "originalPath": "/tmp/ai-human-slips-r8-current/flank-normal-seed1.json",
+      "sha256": "ddc45df3a36bc0a4ebedf47720e9c0d6b89636c049c2c99275c89f536b76ddd9",
+      "bytes": 1501664,
+      "valid": true
+    },
+    {
+      "member": "ai-human-slips-r8-current/preregistration.json",
+      "originalPath": "/tmp/ai-human-slips-r8-current/preregistration.json",
+      "sha256": "e29db0a2dc7ce5c8ded431d5f6fa39a95861db5fc5cdd52196e03048ed99b732",
+      "bytes": 14434,
+      "valid": true
+    },
+    {
+      "member": "ai-human-slips-r8-current/quiet-hard-seed1.json",
+      "originalPath": "/tmp/ai-human-slips-r8-current/quiet-hard-seed1.json",
+      "sha256": "c794ce91d2ddc27abcb74f0742959879a5a8398464fb77d15c2d8de8bea922e1",
+      "bytes": 1252202,
+      "valid": true
+    },
+    {
+      "member": "ai-human-slips-r8-current/reduce.mjs",
+      "originalPath": "/tmp/ai-human-slips-r8-current/reduce.mjs",
+      "sha256": "4bde7c5e9c0fae75adf8ac709a2ab1b143e663207ac0ef28ce98c74f5f3c2516",
+      "bytes": 1027,
+      "valid": true
+    },
+    {
+      "member": "ai-human-slips-r8-current/reducer.log",
+      "originalPath": "/tmp/ai-human-slips-r8-current/reducer.log",
+      "sha256": "31347e028648a42de77537d30f05cd609eae3bbd18ba2944dbeed5a14688f784",
+      "bytes": 91,
+      "valid": true
+    },
+    {
+      "member": "ai-human-slips-r8-current/run.log",
+      "originalPath": "/tmp/ai-human-slips-r8-current/run.log",
+      "sha256": "7575d5ba0a8a7cb3eaf0807deae4fc13f13cb317d7efebc882afc94248f38cd5",
+      "bytes": 35435,
+      "valid": true
+    },
+    {
+      "member": "ai-human-slips-r8-current/run.mjs",
+      "originalPath": "/tmp/ai-human-slips-r8-current/run.mjs",
+      "sha256": "ffe7368fe36bf57d22a941f2eb489981510668c2e84f4e84c4205c9380317dec",
+      "bytes": 1029,
+      "valid": true
+    },
+    {
+      "member": "ai-human-slips-r8-current/source/client/keys.js",
+      "originalPath": "/tmp/ai-human-slips-r8-current/source/client/keys.js",
+      "sha256": "867e3105b7e4665f8a313c2ab46e23fc3df9407f2163fd6862bb537a01ecd276",
+      "bytes": 7361,
+      "valid": true
+    },
+    {
+      "member": "ai-human-slips-r8-current/source/episode-library.mjs",
+      "originalPath": "/tmp/ai-human-slips-r8-current/source/episode-library.mjs",
+      "sha256": "49cb0f41a914607e3757a0ca27cfe347acd351b3090b3a80c5e48f89eb95acf4",
+      "bytes": 5648,
+      "valid": true
+    },
+    {
+      "member": "ai-human-slips-r8-current/source/package.json",
+      "originalPath": "/tmp/ai-human-slips-r8-current/source/package.json",
+      "sha256": "6dc1b06d6b093e9cccb20bee06a93836eee0420ae26803ca2ce4065d82f070d1",
+      "bytes": 17,
+      "valid": true
+    },
+    {
+      "member": "ai-human-slips-r8-current/source/shared/ai-attention.js",
+      "originalPath": "/tmp/ai-human-slips-r8-current/source/shared/ai-attention.js",
+      "sha256": "a55272249248bf1a7166da3038fa44794d7db3a163089010f6f3b905ccc3405a",
+      "bytes": 31888,
+      "valid": true
+    },
+    {
+      "member": "ai-human-slips-r8-current/source/shared/ai-commander.js",
+      "originalPath": "/tmp/ai-human-slips-r8-current/source/shared/ai-commander.js",
+      "sha256": "54ac57367727010017122c1d29c9050890537eced8c9d2b547f84927dc67f0f2",
+      "bytes": 31105,
+      "valid": true
+    },
+    {
+      "member": "ai-human-slips-r8-current/source/shared/ai-hands.js",
+      "originalPath": "/tmp/ai-human-slips-r8-current/source/shared/ai-hands.js",
+      "sha256": "d209f6861bf1d4165012372d21398c46985d51e357b79009c5b7e4b8dffbdaa9",
+      "bytes": 70724,
+      "valid": true
+    },
+    {
+      "member": "ai-human-slips-r8-current/source/shared/ai-mind.js",
+      "originalPath": "/tmp/ai-human-slips-r8-current/source/shared/ai-mind.js",
+      "sha256": "18bb411cb1d057ce8cffe0b042c21f64b71238ae157b584242df206d708e6b92",
+      "bytes": 19553,
+      "valid": true
+    },
+    {
+      "member": "ai-human-slips-r8-current/source/shared/ai-perception.js",
+      "originalPath": "/tmp/ai-human-slips-r8-current/source/shared/ai-perception.js",
+      "sha256": "50e611a932728940c5047a61bf4fd7554c696f93880d7907a952d8b39fdcf3fd",
+      "bytes": 34765,
+      "valid": true
+    },
+    {
+      "member": "ai-human-slips-r8-current/source/shared/ai-persona.js",
+      "originalPath": "/tmp/ai-human-slips-r8-current/source/shared/ai-persona.js",
+      "sha256": "34de5882046129d2000e5502e354123786f3ad7b7133f31e93863dcc36ba66cf",
+      "bytes": 3586,
+      "valid": true
+    },
+    {
+      "member": "ai-human-slips-r8-current/source/shared/ai-priority.js",
+      "originalPath": "/tmp/ai-human-slips-r8-current/source/shared/ai-priority.js",
+      "sha256": "8bf45be46b77ac78436356190de8b2b2e26005e65879cf61b0a87f840484dc60",
+      "bytes": 11238,
+      "valid": true
+    },
+    {
+      "member": "ai-human-slips-r8-current/source/shared/ai-rng.js",
+      "originalPath": "/tmp/ai-human-slips-r8-current/source/shared/ai-rng.js",
+      "sha256": "2d2f95266eda45ec4fa4862cb01079fc8464a98d8c88fa97ca89b54a5d6f8b90",
+      "bytes": 641,
+      "valid": true
+    },
+    {
+      "member": "ai-human-slips-r8-current/source/shared/ai-view.js",
+      "originalPath": "/tmp/ai-human-slips-r8-current/source/shared/ai-view.js",
+      "sha256": "4466958fc4b8e7a5d2f2bcb8dc3814e27c817a7480b0c765aa6ee2a98cbc87f7",
+      "bytes": 13935,
+      "valid": true
+    },
+    {
+      "member": "ai-human-slips-r8-current/source/shared/ai.js",
+      "originalPath": "/tmp/ai-human-slips-r8-current/source/shared/ai.js",
+      "sha256": "685c178754646223ba57cbf6b0d795b0676b0a5cba84f51bfdfcae0cd71bc005",
+      "bytes": 91945,
+      "valid": true
+    },
+    {
+      "member": "ai-human-slips-r8-current/source/shared/alert-events.js",
+      "originalPath": "/tmp/ai-human-slips-r8-current/source/shared/alert-events.js",
+      "sha256": "df5f0ae98145034e6893ce0b70c2df8938a2d786cc8de37a1fbbc1a9c8b634b0",
+      "bytes": 8219,
+      "valid": true
+    },
+    {
+      "member": "ai-human-slips-r8-current/source/shared/command-feedback.js",
+      "originalPath": "/tmp/ai-human-slips-r8-current/source/shared/command-feedback.js",
+      "sha256": "e851bb8f7e48291bd75f09be66fdeecbe7dca68dcc82c839c5c033083ce77a07",
+      "bytes": 303,
+      "valid": true
+    },
+    {
+      "member": "ai-human-slips-r8-current/source/shared/debris-motion.js",
+      "originalPath": "/tmp/ai-human-slips-r8-current/source/shared/debris-motion.js",
+      "sha256": "d6a0f330f958ec6d78cfcc7f95b209aa5c099369576bf15dfd1c84770287b3b4",
+      "bytes": 4384,
+      "valid": true
+    },
+    {
+      "member": "ai-human-slips-r8-current/source/shared/formation.js",
+      "originalPath": "/tmp/ai-human-slips-r8-current/source/shared/formation.js",
+      "sha256": "265fa63c8c72588f6c8f67057921fd4daa88f96e9d823faa2e41ba10a7dba005",
+      "bytes": 4865,
+      "valid": true
+    },
+    {
+      "member": "ai-human-slips-r8-current/source/shared/grid.js",
+      "originalPath": "/tmp/ai-human-slips-r8-current/source/shared/grid.js",
+      "sha256": "30b0a5d67d99e54548d189374684e6b28863ecb7bf92de5221359e5c24fc5afc",
+      "bytes": 2873,
+      "valid": true
+    },
+    {
+      "member": "ai-human-slips-r8-current/source/shared/human-input.js",
+      "originalPath": "/tmp/ai-human-slips-r8-current/source/shared/human-input.js",
+      "sha256": "dec728db485690620e527f912fa2a0b491f545c5bbdaafc4dc25fd1e425763ff",
+      "bytes": 7966,
+      "valid": true
+    },
+    {
+      "member": "ai-human-slips-r8-current/source/shared/local-traffic.js",
+      "originalPath": "/tmp/ai-human-slips-r8-current/source/shared/local-traffic.js",
+      "sha256": "abad3f6ba310783c3620cec8d599df90dac38bb74eed6509be7d19a8af1490f6",
+      "bytes": 7408,
+      "valid": true
+    },
+    {
+      "member": "ai-human-slips-r8-current/source/shared/navigation.js",
+      "originalPath": "/tmp/ai-human-slips-r8-current/source/shared/navigation.js",
+      "sha256": "c277c12f86c9990e281ae28a703dc374126aa1c737d9dc94a300f8d99c898472",
+      "bytes": 19838,
+      "valid": true
+    },
+    {
+      "member": "ai-human-slips-r8-current/source/shared/projectiles.js",
+      "originalPath": "/tmp/ai-human-slips-r8-current/source/shared/projectiles.js",
+      "sha256": "ded50f3bcd60cf79238d5dba48236d54e33b2b8032f704813118d1419708ccd7",
+      "bytes": 7769,
+      "valid": true
+    },
+    {
+      "member": "ai-human-slips-r8-current/source/shared/scenarios.js",
+      "originalPath": "/tmp/ai-human-slips-r8-current/source/shared/scenarios.js",
+      "sha256": "93f6cda90224a805cc97f42418b2dc11c49e3ea80654b66e0036de55f9b9ba97",
+      "bytes": 16044,
+      "valid": true
+    },
+    {
+      "member": "ai-human-slips-r8-current/source/shared/sim.js",
+      "originalPath": "/tmp/ai-human-slips-r8-current/source/shared/sim.js",
+      "sha256": "5e5f4c2d43d048be36d94f0cbcc68fb974c812fc8ab7e071cddb0a59079d89fa",
+      "bytes": 355291,
+      "valid": true
+    },
+    {
+      "member": "ai-human-slips-r8-current/source/shared/story.js",
+      "originalPath": "/tmp/ai-human-slips-r8-current/source/shared/story.js",
+      "sha256": "fa33e53e61a7d636959dd1d1916d7b5c3359db72b523dc730b16ceab525d170f",
+      "bytes": 3738,
+      "valid": true
+    },
+    {
+      "member": "ai-human-slips-r8-current/source/shared/structures.js",
+      "originalPath": "/tmp/ai-human-slips-r8-current/source/shared/structures.js",
+      "sha256": "933b100a9a4c19a0285f5b137cd29b46e44271776f031045a537009e0176e5a2",
+      "bytes": 4029,
+      "valid": true
+    },
+    {
+      "member": "ai-human-slips-r8-current/source/shared/tutorial.js",
+      "originalPath": "/tmp/ai-human-slips-r8-current/source/shared/tutorial.js",
+      "sha256": "3aaa5e6affd936dae0ae4741d5173eee5d006132a1705d4b553097d3d8fabf42",
+      "bytes": 6342,
+      "valid": true
+    },
+    {
+      "member": "ai-human-slips-r8-current/source/shared/vehicle-motion.js",
+      "originalPath": "/tmp/ai-human-slips-r8-current/source/shared/vehicle-motion.js",
+      "sha256": "05bd1e985a91b3268065a0a84ec4b9aee2c1079aafc4054c38a70677dfb1493b",
+      "bytes": 12185,
+      "valid": true
+    },
+    {
+      "member": "ai-human-slips-r8-current/source/shared/weather.js",
+      "originalPath": "/tmp/ai-human-slips-r8-current/source/shared/weather.js",
+      "sha256": "faad682d6e40fdc6629533f684e1caeec5c9ae49e26e9922651773727c0bc1e5",
+      "bytes": 7228,
+      "valid": true
+    },
+    {
+      "member": "ai-human-slips-r8-current/source/shared/world-conquest.js",
+      "originalPath": "/tmp/ai-human-slips-r8-current/source/shared/world-conquest.js",
+      "sha256": "1c251e6d340586d7fb367d4f47938d5898f5239824dac46f054880a3d897aeef",
+      "bytes": 7203,
+      "valid": true
+    },
+    {
+      "member": "ai-human-slips-r8-current/source/shared/world-landforms.js",
+      "originalPath": "/tmp/ai-human-slips-r8-current/source/shared/world-landforms.js",
+      "sha256": "ecb6916db6785484f8bb813f7745c8c48ccea370f084fea290ff736edc968e34",
+      "bytes": 6645,
+      "valid": true
+    },
+    {
+      "member": "ai-human-slips-r8-current/source/shared/world-layers.js",
+      "originalPath": "/tmp/ai-human-slips-r8-current/source/shared/world-layers.js",
+      "sha256": "f51f34b99946192107ada9a7077d787761c1a9cb6b1e316d7b7e243dd273bb22",
+      "bytes": 6770,
+      "valid": true
+    },
+    {
+      "member": "ai-human-slips-r8-current/source/shared/world-roads.js",
+      "originalPath": "/tmp/ai-human-slips-r8-current/source/shared/world-roads.js",
+      "sha256": "5fb243b63fa9e2c082135b5b093ee753e8a92c197a076d78067e53f08f1885db",
+      "bytes": 6491,
+      "valid": true
+    },
+    {
+      "member": "ai-human-slips-r8-current/source/shared/world-territories.js",
+      "originalPath": "/tmp/ai-human-slips-r8-current/source/shared/world-territories.js",
+      "sha256": "bb33a449d7f2c4d657dbceab8dbd0171eb8ccaa7494cedf9e18707822d8f717f",
+      "bytes": 4110,
+      "valid": true
+    },
+    {
+      "member": "ai-human-slips-r8-current/source/test-engine-ai-human-slips.js",
+      "originalPath": "/tmp/ai-human-slips-r8-current/source/test-engine-ai-human-slips.js",
+      "sha256": "273c268a3f93ec1f8776bdf642d61cfb45e9fb095a16aa3d363eef7b8bee359f",
+      "bytes": 9830,
+      "valid": true
+    },
+    {
+      "member": "ai-human-slips-r8-current/source/tools/ai-balance.mjs",
+      "originalPath": "/tmp/ai-human-slips-r8-current/source/tools/ai-balance.mjs",
+      "sha256": "bf5b5ea07e3bf0eea2e4134647457191d9fe212a05b138677817f0cf5ec8db4b",
+      "bytes": 14906,
+      "valid": true
+    },
+    {
+      "member": "ai-human-slips-r8-current/source/tools/ai-humanity.mjs",
+      "originalPath": "/tmp/ai-human-slips-r8-current/source/tools/ai-humanity.mjs",
+      "sha256": "5aaf88664e7a8af5504286de5d0b82f640ab2b8b3adc386a13fc8d541e5bf791",
+      "bytes": 97622,
+      "valid": true
+    },
+    {
+      "member": "ai-human-slips-r8-current/source/tools/ai-lab-browser.mjs",
+      "originalPath": "/tmp/ai-human-slips-r8-current/source/tools/ai-lab-browser.mjs",
+      "sha256": "9017bac6153e3df8e55428a1bb89fb1586afa67402de3526d6c28e68507b49c9",
+      "bytes": 8245,
+      "valid": true
+    },
+    {
+      "member": "ai-human-slips-r8-current/source/tools/ai-lab-node.mjs",
+      "originalPath": "/tmp/ai-human-slips-r8-current/source/tools/ai-lab-node.mjs",
+      "sha256": "3a673bac091d805ee0807862ba3c580bd6c75f36724521ceee582406529a8657",
+      "bytes": 1125,
+      "valid": true
+    },
+    {
+      "member": "ai-human-slips-r8-current/source/tools/ai-lab-report.mjs",
+      "originalPath": "/tmp/ai-human-slips-r8-current/source/tools/ai-lab-report.mjs",
+      "sha256": "f13340cb3513a5d430ebb023947e4bc9bdede94c56c19a61155505bc6563e06e",
+      "bytes": 3951,
+      "valid": true
+    },
+    {
+      "member": "ai-human-slips-r8-current/source/tools/ai-lab-runner.mjs",
+      "originalPath": "/tmp/ai-human-slips-r8-current/source/tools/ai-lab-runner.mjs",
+      "sha256": "d5f2e87078e6f1ea35300a653d86e0200aea554681ec60c4bd83eacabe17fb25",
+      "bytes": 13565,
+      "valid": true
+    },
+    {
+      "member": "ai-human-slips-r8-current/source/tools/ai-lab-server.mjs",
+      "originalPath": "/tmp/ai-human-slips-r8-current/source/tools/ai-lab-server.mjs",
+      "sha256": "fb9124d7f4a0d18fbdc18a89964d190987f7e1a084807b43cc06cdefa1ac6a9a",
+      "bytes": 2169,
+      "valid": true
+    },
+    {
+      "member": "ai-human-slips-r8-current/source/tools/ai-lab.mjs",
+      "originalPath": "/tmp/ai-human-slips-r8-current/source/tools/ai-lab.mjs",
+      "sha256": "4aabd289dd136b04febfe0b6829628e542d7adb2492a774800a8f147a824100b",
+      "bytes": 2832,
+      "valid": true
+    },
+    {
+      "member": "ai-human-slips-r8-current/source/tools/ai-manual-response-capture-v3.mjs",
+      "originalPath": "/tmp/ai-human-slips-r8-current/source/tools/ai-manual-response-capture-v3.mjs",
+      "sha256": "19e1a93ae79b04f3eb768263052d48b344b086831b261ae40e7da0b004ea8775",
+      "bytes": 6778,
+      "valid": true
+    },
+    {
+      "member": "ai-human-slips-r8-current/source/tools/ai-manual-response-capture.mjs",
+      "originalPath": "/tmp/ai-human-slips-r8-current/source/tools/ai-manual-response-capture.mjs",
+      "sha256": "9ea0b3163788366234c4ff43cdb22f5127158a0a32bcc7e8ec27f978ca3102fc",
+      "bytes": 6600,
+      "valid": true
+    },
+    {
+      "member": "ai-human-slips-r8-current/source/tools/ai-manual-response-policy-v3.mjs",
+      "originalPath": "/tmp/ai-human-slips-r8-current/source/tools/ai-manual-response-policy-v3.mjs",
+      "sha256": "c45e589d661b4980a79181ca987b503054ebb3e7e554f1bc272dd3eab50a6928",
+      "bytes": 29858,
+      "valid": true
+    },
+    {
+      "member": "ai-human-slips-r8-current/source/tools/ai-manual-response-policy.mjs",
+      "originalPath": "/tmp/ai-human-slips-r8-current/source/tools/ai-manual-response-policy.mjs",
+      "sha256": "a5044b77c2b35d25d12d05d8d61135c956e59ee84451f15a3a8f5c0c05470373",
+      "bytes": 26551,
+      "valid": true
+    },
+    {
+      "member": "ai-human-slips-r8-current/source/tools/ai-public-alert-response-v2.mjs",
+      "originalPath": "/tmp/ai-human-slips-r8-current/source/tools/ai-public-alert-response-v2.mjs",
+      "sha256": "e54b5bbf07f2e637cde592e2f6d079ef3a41f3ac4003dd3d68f70f706104c997",
+      "bytes": 24115,
+      "valid": true
+    },
+    {
+      "member": "ai-human-slips-r8-current/source/tools/ai-public-alert-response.mjs",
+      "originalPath": "/tmp/ai-human-slips-r8-current/source/tools/ai-public-alert-response.mjs",
+      "sha256": "6ea2b5b42af9f1ed1bc87f14433adb66da05fdd71f8c6fbe35ca36180fed9baa",
+      "bytes": 20592,
+      "valid": true
+    },
+    {
+      "member": "ai-human-slips-r8-current/source/tools/balance.mjs",
+      "originalPath": "/tmp/ai-human-slips-r8-current/source/tools/balance.mjs",
+      "sha256": "42b7c3355c2fd06513fee58c7d04bc2783050c7259b1329426f7c2dc50ab9d18",
+      "bytes": 10497,
+      "valid": true
+    },
+    {
+      "member": "ai-human-slips-r8-current/source/tools/bench-engine.mjs",
+      "originalPath": "/tmp/ai-human-slips-r8-current/source/tools/bench-engine.mjs",
+      "sha256": "4e84f2b7f86009b9ee47585bc6fc592b50defc2cea0cc1d9cc484ed85d0568be",
+      "bytes": 32433,
+      "valid": true
+    },
+    {
+      "member": "ai-human-slips-r8-current/source/tools/bench-ground.mjs",
+      "originalPath": "/tmp/ai-human-slips-r8-current/source/tools/bench-ground.mjs",
+      "sha256": "5d0e37369daf978eb29317409ac601f1d5df13aec2c835b69ccb41e77a76bd30",
+      "bytes": 3281,
+      "valid": true
+    },
+    {
+      "member": "ai-human-slips-r8-current/source/tools/bench-move.mjs",
+      "originalPath": "/tmp/ai-human-slips-r8-current/source/tools/bench-move.mjs",
+      "sha256": "5b9577bb58e6f7a67593f59262e20c9f7e402449ac1343cf2b6bc1e6ef378c0a",
+      "bytes": 4599,
+      "valid": true
+    },
+    {
+      "member": "ai-human-slips-r8-current/source/tools/bench-world-conquest.mjs",
+      "originalPath": "/tmp/ai-human-slips-r8-current/source/tools/bench-world-conquest.mjs",
+      "sha256": "4a24bd8b0d7e3fdffb2f1811b64993f3ef4373ebb019a69cdab72b68d5a45ada",
+      "bytes": 13956,
+      "valid": true
+    },
+    {
+      "member": "ai-human-slips-r8-current/source/tools/bench.mjs",
+      "originalPath": "/tmp/ai-human-slips-r8-current/source/tools/bench.mjs",
+      "sha256": "0c026604acaba5ec8f477080b83a948e901d4724c8bf06d325d334a1b244b49d",
+      "bytes": 8183,
+      "valid": true
+    },
+    {
+      "member": "ai-human-slips-r8-current/source/tools/build-audio.mjs",
+      "originalPath": "/tmp/ai-human-slips-r8-current/source/tools/build-audio.mjs",
+      "sha256": "e066f7bef14691def1edf934d574fd29b0d3f489b43d15c1b4f8dcdfd14f7714",
+      "bytes": 13322,
+      "valid": true
+    },
+    {
+      "member": "ai-human-slips-r8-current/source/tools/build-fx-atlas.mjs",
+      "originalPath": "/tmp/ai-human-slips-r8-current/source/tools/build-fx-atlas.mjs",
+      "sha256": "3e26da8a6fcb1f5887926a5853c7a0873fe105a55ba8a66d1f91be12423753ec",
+      "bytes": 13451,
+      "valid": true
+    },
+    {
+      "member": "ai-human-slips-r8-current/source/tools/check-new-models.mjs",
+      "originalPath": "/tmp/ai-human-slips-r8-current/source/tools/check-new-models.mjs",
+      "sha256": "f8092868eb3ca7ff75319ec01f5581379e07aff3e73ec9406495ff6e51b61b90",
+      "bytes": 1309,
+      "valid": true
+    },
+    {
+      "member": "ai-human-slips-r8-current/source/tools/diag.mjs",
+      "originalPath": "/tmp/ai-human-slips-r8-current/source/tools/diag.mjs",
+      "sha256": "c554e37684d21821a0f5c7036904178f7e7388c9d26337887b378c1e4cde5e7b",
+      "bytes": 4386,
+      "valid": true
+    },
+    {
+      "member": "ai-human-slips-r8-current/source/tools/genmap-bridge.mjs",
+      "originalPath": "/tmp/ai-human-slips-r8-current/source/tools/genmap-bridge.mjs",
+      "sha256": "94c6b6850b521bae65feedd49e441c014d407086ba4c1240b13d320144c3b909",
+      "bytes": 8003,
+      "valid": true
+    },
+    {
+      "member": "ai-human-slips-r8-current/source/tools/genmap-islands.mjs",
+      "originalPath": "/tmp/ai-human-slips-r8-current/source/tools/genmap-islands.mjs",
+      "sha256": "73b79b2d7771a0cefb55283d5845cae4d5e26dca14da9122178ed05c556b96c6",
+      "bytes": 3060,
+      "valid": true
+    },
+    {
+      "member": "ai-human-slips-r8-current/source/tools/genmap-trenches.mjs",
+      "originalPath": "/tmp/ai-human-slips-r8-current/source/tools/genmap-trenches.mjs",
+      "sha256": "14c5d6ede58df9cd3ca282e599d64865d9ea3131c48f7243ed76dc7c61fe432c",
+      "bytes": 4576,
+      "valid": true
+    },
+    {
+      "member": "ai-human-slips-r8-current/source/tools/hash-json-native.mjs",
+      "originalPath": "/tmp/ai-human-slips-r8-current/source/tools/hash-json-native.mjs",
+      "sha256": "84d9f9c2273071831d86fe88e4244bda6013c762412ef837a5dc4c90a08e41c5",
+      "bytes": 3875,
+      "valid": true
+    },
+    {
+      "member": "ai-human-slips-r8-current/source/tools/horde.mjs",
+      "originalPath": "/tmp/ai-human-slips-r8-current/source/tools/horde.mjs",
+      "sha256": "d23d6c320497a55df56222297256d084dba53d6851934f2212bd6e0be00521af",
+      "bytes": 2223,
+      "valid": true
+    },
+    {
+      "member": "ai-human-slips-r8-current/source/tools/json-stream.mjs",
+      "originalPath": "/tmp/ai-human-slips-r8-current/source/tools/json-stream.mjs",
+      "sha256": "34f01a09d4996f356a3dafc61084aae27a4bf18cd8e6b63b2fda9e95c5168798",
+      "bytes": 9588,
+      "valid": true
+    },
+    {
+      "member": "ai-human-slips-r8-current/source/tools/km-median-boundary.mjs",
+      "originalPath": "/tmp/ai-human-slips-r8-current/source/tools/km-median-boundary.mjs",
+      "sha256": "e92de6b62be628796cf1390a0b4333b87be32a2083f3d2193cf2dd3ac3755469",
+      "bytes": 1037,
+      "valid": true
+    },
+    {
+      "member": "ai-human-slips-r8-current/source/tools/mapstats.mjs",
+      "originalPath": "/tmp/ai-human-slips-r8-current/source/tools/mapstats.mjs",
+      "sha256": "3ec678dda56d0a056dd70046199cb1120e5821dfc378f9876a2e29cfbbfff442",
+      "bytes": 8721,
+      "valid": true
+    },
+    {
+      "member": "ai-human-slips-r8-current/source/tools/mapwork.mjs",
+      "originalPath": "/tmp/ai-human-slips-r8-current/source/tools/mapwork.mjs",
+      "sha256": "668a2464bddcab7377dd9f02fb0c695c13c02bceb2f15a466624d77e8f7223e7",
+      "bytes": 8411,
+      "valid": true
+    },
+    {
+      "member": "ai-human-slips-r8-current/source/tools/movement-lab.mjs",
+      "originalPath": "/tmp/ai-human-slips-r8-current/source/tools/movement-lab.mjs",
+      "sha256": "4aa4fd104a888e5e587a29e92ad4b1a26b75a25fe58f8c3fe7fedd88bc5dcf4c",
+      "bytes": 2177,
+      "valid": true
+    },
+    {
+      "member": "ai-human-slips-r8-current/source/tools/preview-world-generation.mjs",
+      "originalPath": "/tmp/ai-human-slips-r8-current/source/tools/preview-world-generation.mjs",
+      "sha256": "f05dba5305cb8a16c11543b19c7520021998e5e2aefb938cc9d43525b6090e99",
+      "bytes": 1768,
+      "valid": true
+    },
+    {
+      "member": "ai-human-slips-r8-current/source/tools/roads.mjs",
+      "originalPath": "/tmp/ai-human-slips-r8-current/source/tools/roads.mjs",
+      "sha256": "1ba0af74d2e0436105ed4ebcd9f7a519fe2e4d783739613f496488cea1af180a",
+      "bytes": 1917,
+      "valid": true
+    },
+    {
+      "member": "ai-human-slips-r8-current/source/tools/serve-movement-lab.mjs",
+      "originalPath": "/tmp/ai-human-slips-r8-current/source/tools/serve-movement-lab.mjs",
+      "sha256": "1776d74dfe20dbe513e95385ed1ba792c18582e391be8f9da1a21f7e63f5095a",
+      "bytes": 3108,
+      "valid": true
+    },
+    {
+      "member": "ai-human-slips-r8-current/source/tools/test-public-lobby-browser.mjs",
+      "originalPath": "/tmp/ai-human-slips-r8-current/source/tools/test-public-lobby-browser.mjs",
+      "sha256": "666cb37cbe27526abd35131b3ce68968d4079973a643b3a89f3be2fa9019f298",
+      "bytes": 5036,
+      "valid": true
+    },
+    {
+      "member": "ai-human-slips-r8-current/source/tools/test-world-waterway-seeds.mjs",
+      "originalPath": "/tmp/ai-human-slips-r8-current/source/tools/test-world-waterway-seeds.mjs",
+      "sha256": "69b9d3f48ff30249de5a863c38fe12b5b5365951e037d7d7ba2d0bacdb3a3e13",
+      "bytes": 1721,
+      "valid": true
+    },
+    {
+      "member": "ai-human-slips-r8-current/source/tools/woods.mjs",
+      "originalPath": "/tmp/ai-human-slips-r8-current/source/tools/woods.mjs",
+      "sha256": "33012d24d1a7686804e0b1dcb773a24931e72dc129114e463716c5834dbb25f3",
+      "bytes": 2239,
+      "valid": true
+    },
+    {
+      "member": "ai-human-slips-r8-current/test-engine-ai-human-slips.js",
+      "originalPath": "/tmp/ai-human-slips-r8-current/test-engine-ai-human-slips.js",
+      "sha256": "273c268a3f93ec1f8776bdf642d61cfb45e9fb095a16aa3d363eef7b8bee359f",
+      "bytes": 9830,
+      "valid": true
+    }
+  ]
+}

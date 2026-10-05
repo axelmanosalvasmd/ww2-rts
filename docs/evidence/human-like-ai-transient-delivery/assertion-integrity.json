@@ -1,0 +1,6 @@
+{
+  "allOriginalAssertionRowsPreserved": true,
+  "count": 2233,
+  "onlyAddition": "two lines clearing native transient arrays after every delivered two-tick epoch",
+  "noSourceEdits": true
+}

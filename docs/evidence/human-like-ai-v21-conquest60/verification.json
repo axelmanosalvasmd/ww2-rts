@@ -1,0 +1,14 @@
+{
+  "status": "PASS",
+  "qualification": "Copy integrity only. Retained source-specific results are not new checks or acceptance.",
+  "archive": "v21-conquest60-readout.tar.gz",
+  "archiveBytes": 690247,
+  "archiveSHA256": "e8e7826094fecee9d20009cd3184df59b811efabdd8ab9c5f552fe33331b8662",
+  "members": 67,
+  "originals": 64,
+  "originalCopiedBytes": 5311325,
+  "payloadBytes": 5336568,
+  "allOriginalBytesUnchanged": true,
+  "allRoundtripBytesMatch": true,
+  "manifestSHA256": "636cf70a290bbf2468e2ee8d1f7217c1499aa3f42533714f31ceccd94550419f"
+}

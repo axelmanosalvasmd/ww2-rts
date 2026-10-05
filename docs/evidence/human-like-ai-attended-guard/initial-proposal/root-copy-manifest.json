@@ -1,0 +1,120 @@
+{
+  "copiedAt": "2026-10-04T18:59:13.093307+00:00",
+  "scope": "Reviewed initial local-guard proposal and real default-planner control. Root guard/causal pass, then unchanged tactical regression fails the stationary grenade guard at line157. This candidate is not final accepted gameplay or campaign evidence. Preserve before the narrow correction. Original large raw file remains in the running immutable V16 campaign.",
+  "files": [
+    {
+      "source": "/tmp/v16-easy1-gameplay-diagnostic/REVIEW.md",
+      "path": "docs/evidence/human-like-ai-attended-guard/initial-proposal/REVIEW.md",
+      "bytes": 7015,
+      "sha256": "d7230f6ca11e44153b60baa02dfab2d272adfe9789beee9873dff282faed1411"
+    },
+    {
+      "source": "/tmp/v16-easy1-gameplay-diagnostic/guard-local-defense.patch",
+      "path": "docs/evidence/human-like-ai-attended-guard/initial-proposal/guard-local-defense.patch",
+      "bytes": 1973,
+      "sha256": "8027b9cd5361ebc614af6cb34fb822dba73b3dbfc077442229056be6b1ee6176"
+    },
+    {
+      "source": "/tmp/v16-easy1-gameplay-diagnostic/test-engine-ai-attended-guard.js",
+      "path": "docs/evidence/human-like-ai-attended-guard/initial-proposal/test-engine-ai-attended-guard.js",
+      "bytes": 4713,
+      "sha256": "faec59b5fe8ff5dc1cd22e424034f4d5ed6c231d19bb9644732705e8fa732f58"
+    },
+    {
+      "source": "/tmp/v16-easy1-gameplay-diagnostic/guard-proof.json",
+      "path": "docs/evidence/human-like-ai-attended-guard/initial-proposal/guard-proof.json",
+      "bytes": 7430,
+      "sha256": "cb6ec6842f74cc55d01a9fdc508c585adc9a1c1bfd51f62ee5eb46843bd28be0"
+    },
+    {
+      "source": "/tmp/v16-easy1-gameplay-diagnostic/initial-proof.json",
+      "path": "docs/evidence/human-like-ai-attended-guard/initial-proposal/initial-proof.json",
+      "bytes": 7892,
+      "sha256": "04052950151d72b980a225326a59f298eb3cf03e1788fece00152431e68de5db"
+    },
+    {
+      "source": "/tmp/v16-easy1-gameplay-diagnostic/replay.mjs",
+      "path": "docs/evidence/human-like-ai-attended-guard/initial-proposal/replay.mjs",
+      "bytes": 2845,
+      "sha256": "ad1ea70487df7d152846de336d03d1eb0a4bfbffbb8a88e6cf493ba9dcd2c81a"
+    },
+    {
+      "source": "/tmp/v16-easy1-gameplay-diagnostic/replay-guard.mjs",
+      "path": "docs/evidence/human-like-ai-attended-guard/initial-proposal/replay-guard.mjs",
+      "bytes": 2844,
+      "sha256": "2d8373bfff676f755c411a0fe062356a9e16b4a20def6b5f7ddbac6014460baf"
+    },
+    {
+      "source": "/tmp/v16-easy1-gameplay-diagnostic/replay-details.mjs",
+      "path": "docs/evidence/human-like-ai-attended-guard/initial-proposal/replay-details.mjs",
+      "bytes": 2914,
+      "sha256": "88765ea1b8373927c857d2c86b159625c7ef8728e720f7c4ff02ca418a0661c8"
+    },
+    {
+      "source": "/tmp/v16-easy1-gameplay-diagnostic/replay.json",
+      "path": "docs/evidence/human-like-ai-attended-guard/initial-proposal/replay.json",
+      "bytes": 865995,
+      "sha256": "d842b375f0c26e3f36e1b12e4ab186d7c9bc6665c4c600bb70a4a314f90d58fc"
+    },
+    {
+      "source": "/tmp/v16-easy1-gameplay-diagnostic/replay-details.json",
+      "path": "docs/evidence/human-like-ai-attended-guard/initial-proposal/replay-details.json",
+      "bytes": 709588,
+      "sha256": "1e8f9fe6857738bcb69d685f8c92d5ce20def9c6569b801adc5e1cdce7c95d6c"
+    },
+    {
+      "source": "/tmp/v16-easy1-gameplay-diagnostic/guard-replay-final.json",
+      "path": "docs/evidence/human-like-ai-attended-guard/initial-proposal/guard-replay-final.json",
+      "bytes": 121013,
+      "sha256": "5e10c61a05518b39086f01d4d42046680ff6b8d8fdf6799e3a1678836f622504"
+    },
+    {
+      "source": "/tmp/v16-easy1-gameplay-diagnostic/test-local-guard.mjs",
+      "path": "docs/evidence/human-like-ai-attended-guard/initial-proposal/test-local-guard.mjs",
+      "bytes": 4793,
+      "sha256": "4232dff2e844b7453435f659813dc7ed1d9ad2b52aac8e31a29e16715148c1ee"
+    },
+    {
+      "source": "/tmp/v16-easy1-gameplay-diagnostic/guard-fixture-before.log",
+      "path": "docs/evidence/human-like-ai-attended-guard/initial-proposal/guard-fixture-before.log",
+      "bytes": 398,
+      "sha256": "acafb36328910278295895d253efe3f10e8545264c71d17dfdcb5e66ba1734bc"
+    },
+    {
+      "source": "/tmp/v16-easy1-gameplay-diagnostic/guard-fixture-after.log",
+      "path": "docs/evidence/human-like-ai-attended-guard/initial-proposal/guard-fixture-after.log",
+      "bytes": 138,
+      "sha256": "cf5596b209afd99b0ca59d9dee7457f55ef325e9fc6e68762513f48812e1c8d2"
+    },
+    {
+      "source": "/tmp/v16-easy1-gameplay-diagnostic/permanent-fixture-after.log",
+      "path": "docs/evidence/human-like-ai-attended-guard/initial-proposal/permanent-fixture-after.log",
+      "bytes": 138,
+      "sha256": "cf5596b209afd99b0ca59d9dee7457f55ef325e9fc6e68762513f48812e1c8d2"
+    },
+    {
+      "source": "/tmp/ai-v18-root-guard-checks/result.json",
+      "path": "docs/evidence/human-like-ai-attended-guard/initial-proposal/root-result.json",
+      "bytes": 1233,
+      "sha256": "097281bdfc48d9de1ff2af239e6043f6738b839f22addc14b4f7d6e1a9943469"
+    },
+    {
+      "source": "/tmp/ai-v18-root-guard-checks/test-engine-ai-attended-guard.js.log",
+      "path": "docs/evidence/human-like-ai-attended-guard/initial-proposal/root-test-engine-ai-attended-guard.js.log",
+      "bytes": 138,
+      "sha256": "cf5596b209afd99b0ca59d9dee7457f55ef325e9fc6e68762513f48812e1c8d2"
+    },
+    {
+      "source": "/tmp/ai-v18-root-guard-checks/test-engine-ai-causal-orders.js.log",
+      "path": "docs/evidence/human-like-ai-attended-guard/initial-proposal/root-test-engine-ai-causal-orders.js.log",
+      "bytes": 141,
+      "sha256": "91828dc2685d7395a15c305151f677d35b694b880ffc2c73b56e8b30d6bf5a4e"
+    },
+    {
+      "source": "/tmp/ai-v18-root-guard-checks/test-engine-ai-tactical-reaction.js.log",
+      "path": "docs/evidence/human-like-ai-attended-guard/initial-proposal/root-test-engine-ai-tactical-reaction.js.log",
+      "bytes": 636,
+      "sha256": "94f03e722516c62ec0537b49260caa72f39ebf2960222e922cca9cb804e2f9cf"
+    }
+  ]
+}

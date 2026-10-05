@@ -1,0 +1,165 @@
+{
+  "verifiedAtUTC": "2026-10-05T00:26:13Z",
+  "archiveSHA256": "0c8aca48be20406a0b07a8b61793a7db37c107917c1885d23fee9b8d79d52b48",
+  "members": 21,
+  "allOriginalBytesAndHashesMatch": true,
+  "additionalOriginalFilesOmittedByOriginalManifest": [
+    "SHA256SUMS"
+  ],
+  "files": [
+    {
+      "member": "original/human-ai-v21-final-full-verification.json",
+      "original": "/tmp/human-ai-v21-final-full-verification.json",
+      "originalPath": "/tmp/human-ai-v21-final-full-verification.json",
+      "payloadPath": "original/human-ai-v21-final-full-verification.json",
+      "bytes": 8671,
+      "sha256": "c91633fa54eef718f23d1d432cd1e0059877003b56fd10108706c33ee372dcd9"
+    },
+    {
+      "member": "original/human-ai-v21-final-full-completion.json",
+      "original": "/tmp/human-ai-v21-final-full-completion.json",
+      "originalPath": "/tmp/human-ai-v21-final-full-completion.json",
+      "payloadPath": "original/human-ai-v21-final-full-completion.json",
+      "bytes": 94,
+      "sha256": "5c6a1da05744e60c7bddc54109676d8dcd59b192f488a295925d6981bdbfae41"
+    },
+    {
+      "member": "original/human-ai-v21-final-full-test.log",
+      "original": "/tmp/human-ai-v21-final-full-test.log",
+      "originalPath": "/tmp/human-ai-v21-final-full-test.log",
+      "payloadPath": "original/human-ai-v21-final-full-test.log",
+      "bytes": 59486,
+      "sha256": "4ea368c608f108ccf1f847a2666b19186b6bac97f87143a8cd4366b83d481e26"
+    },
+    {
+      "member": "original/human-ai-v21-final-full-test.exit",
+      "original": "/tmp/human-ai-v21-final-full-test.exit",
+      "originalPath": "/tmp/human-ai-v21-final-full-test.exit",
+      "payloadPath": "original/human-ai-v21-final-full-test.exit",
+      "bytes": 12,
+      "sha256": "0aac2256ca135e9e2ce682d26e680d8ec767e0c2897215d636113386fbc768af"
+    },
+    {
+      "member": "original/human-ai-v21-final-full-checks.jsonl",
+      "original": "/tmp/human-ai-v21-final-full-checks.jsonl",
+      "originalPath": "/tmp/human-ai-v21-final-full-checks.jsonl",
+      "payloadPath": "original/human-ai-v21-final-full-checks.jsonl",
+      "bytes": 136394,
+      "sha256": "05947d2bbff0d440afab43d5ecc9ca7c2a157d5a651beed45793edab0dcc9dbe"
+    },
+    {
+      "member": "original/human-ai-v21-final-full-launch.json",
+      "original": "/tmp/human-ai-v21-final-full-launch.json",
+      "originalPath": "/tmp/human-ai-v21-final-full-launch.json",
+      "payloadPath": "original/human-ai-v21-final-full-launch.json",
+      "bytes": 962,
+      "sha256": "dc4ce3ff1f830837d2a0a27106a2e88e79255c3fb394be81627f2210d24d537b"
+    },
+    {
+      "member": "original/human-ai-v21-final-full-background-launch.json",
+      "original": "/tmp/human-ai-v21-final-full-background-launch.json",
+      "originalPath": "/tmp/human-ai-v21-final-full-background-launch.json",
+      "payloadPath": "original/human-ai-v21-final-full-background-launch.json",
+      "bytes": 449,
+      "sha256": "f7ec5685abc8eba1b4989a1a26ffc0cbec8b35fd195fdf30a95bb1fcc67a6d17"
+    },
+    {
+      "member": "original/human-ai-v21-final-full-controller.log",
+      "original": "/tmp/human-ai-v21-final-full-controller.log",
+      "originalPath": "/tmp/human-ai-v21-final-full-controller.log",
+      "payloadPath": "original/human-ai-v21-final-full-controller.log",
+      "bytes": 8694,
+      "sha256": "7b5752cddd6b6ee874af6f843df9296770992cea5a959be7186a8c1d7b82670e"
+    },
+    {
+      "member": "original/human-ai-v21-final-full-predeclared.json",
+      "original": "/tmp/human-ai-v21-final-full-predeclared.json",
+      "originalPath": "/tmp/human-ai-v21-final-full-predeclared.json",
+      "payloadPath": "original/human-ai-v21-final-full-predeclared.json",
+      "bytes": 30681,
+      "sha256": "77fd370f18b0c3149fa5b16d7cc4fea5e43ec44ed95a5acd6cf6903a9b530ceb"
+    },
+    {
+      "member": "original/human-ai-v21-final-full-preregistration-draft.json",
+      "original": "/tmp/human-ai-v21-final-full-preregistration-draft.json",
+      "originalPath": "/tmp/human-ai-v21-final-full-preregistration-draft.json",
+      "payloadPath": "original/human-ai-v21-final-full-preregistration-draft.json",
+      "bytes": 20283,
+      "sha256": "a96e0a42938ee11c0d77c68271c8f794c9e99e4f65cd7f53f1c93f3f0c6ae287"
+    },
+    {
+      "member": "original/human-ai-v21-final-full-finalize.py",
+      "original": "/tmp/human-ai-v21-final-full-finalize.py",
+      "originalPath": "/tmp/human-ai-v21-final-full-finalize.py",
+      "payloadPath": "original/human-ai-v21-final-full-finalize.py",
+      "bytes": 27087,
+      "sha256": "407a78989770be611cc63436dc7ad15342b89dc6b77e4dfd579923b208f46b91"
+    },
+    {
+      "member": "original/ai-v21-final-full-before.json",
+      "original": "/tmp/ai-v21-final-full-before.json",
+      "originalPath": "/tmp/ai-v21-final-full-before.json",
+      "payloadPath": "original/ai-v21-final-full-before.json",
+      "bytes": 424113,
+      "sha256": "d92ce340c6d33f5cd439890a854b3ffdec64a7d5e8ca4ab1f31259b52d69dce1"
+    },
+    {
+      "member": "original/ai-v21-final-full-after.json",
+      "original": "/tmp/ai-v21-final-full-after.json",
+      "originalPath": "/tmp/ai-v21-final-full-after.json",
+      "payloadPath": "original/ai-v21-final-full-after.json",
+      "bytes": 423355,
+      "sha256": "f4a83624c06d422459f6ffb7ee77b905b66724376a7192139556a78aee901522"
+    },
+    {
+      "member": "frozen-source/test.js",
+      "original": "/tmp/human-ai-v21-final-full-source/test.js",
+      "originalPath": "/tmp/human-ai-v21-final-full-source/test.js",
+      "payloadPath": "frozen-source/test.js",
+      "bytes": 593226,
+      "sha256": "35d48dd93d2ba21cbca071cb90e26e6109965aed138897e55b0126a9576dd7e4"
+    },
+    {
+      "member": "frozen-source/server.js",
+      "original": "/tmp/human-ai-v21-final-full-source/server.js",
+      "originalPath": "/tmp/human-ai-v21-final-full-source/server.js",
+      "payloadPath": "frozen-source/server.js",
+      "bytes": 44801,
+      "sha256": "16004b2b7f3cd427d3fb61750a6a2788f9fe0e7bd8a22c92b4cd01d486677e57"
+    },
+    {
+      "member": "frozen-source/package.json",
+      "original": "/tmp/human-ai-v21-final-full-source/package.json",
+      "originalPath": "/tmp/human-ai-v21-final-full-source/package.json",
+      "payloadPath": "frozen-source/package.json",
+      "bytes": 211,
+      "sha256": "38b34423b2e37b851381576f5dd67d9103d951ab7c7ddcf5cacb4112507b34db"
+    },
+    {
+      "member": "frozen-source/package-lock.json",
+      "original": "/tmp/human-ai-v21-final-full-source/package-lock.json",
+      "originalPath": "/tmp/human-ai-v21-final-full-source/package-lock.json",
+      "payloadPath": "frozen-source/package-lock.json",
+      "bytes": 1088,
+      "sha256": "1a6f2b332f963bc5145a1fc927b20d8b7264c5b02a9b8577ae89547e56d620e4"
+    },
+    {
+      "member": "README.md",
+      "original": "/tmp/human-ai-v21-full-failure-evidence/payload/README.md",
+      "bytes": 2044,
+      "sha256": "0915e85bdec66b3336a119e0833b17a2b51cb9466d81d7c055116d2039c40c30"
+    },
+    {
+      "member": "READOUT.json",
+      "original": "/tmp/human-ai-v21-full-failure-evidence/payload/READOUT.json",
+      "bytes": 1121,
+      "sha256": "8f02b3899374e476d7d679f8e9ab4f8c162a87aa00d1da2c10734a805c1e596e"
+    },
+    {
+      "member": "SHA256SUMS",
+      "original": "/tmp/human-ai-v21-full-failure-evidence/payload/SHA256SUMS",
+      "bytes": 2074,
+      "sha256": "4019ef6047113a6668dfd3b51ce8991ce697ffd6197eefc75fabd52209b4973f"
+    }
+  ]
+}

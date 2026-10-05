@@ -1,0 +1,32 @@
+[
+  {
+    "source": "/tmp/r6-root-commitment-support.log",
+    "destination": "docs/evidence/human-like-ai-r6-fixes/root-consolidated/r6-root-commitment-support.log",
+    "bytes": 422,
+    "sha256": "39b5cd47f43d1d32591f3c1074ac5af77443d15885441ac8341e3cf4976f81bc"
+  },
+  {
+    "source": "/tmp/human-ai-v16-commitment-current-baseline.log",
+    "destination": "docs/evidence/human-like-ai-r6-fixes/commitment-fixture/human-ai-v16-commitment-current-baseline.log",
+    "bytes": 618,
+    "sha256": "6d67dd7d03e2f2fb0611883acf6ef3796d82a9df53e9f885f3b3497203ef171f"
+  },
+  {
+    "source": "/tmp/human-ai-v16-commitment-current-candidate.log",
+    "destination": "docs/evidence/human-like-ai-r6-fixes/commitment-fixture/human-ai-v16-commitment-current-candidate.log",
+    "bytes": 422,
+    "sha256": "39b5cd47f43d1d32591f3c1074ac5af77443d15885441ac8341e3cf4976f81bc"
+  },
+  {
+    "source": "/tmp/human-ai-v16-commitment-native-scene.log",
+    "destination": "docs/evidence/human-like-ai-r6-fixes/commitment-fixture/human-ai-v16-commitment-native-scene.log",
+    "bytes": 13832,
+    "sha256": "b14cb1194a5616183dc0a115299c6a58511e44e005b3419f4e5a5aa86380cdfb"
+  },
+  {
+    "source": "/tmp/human-ai-v16-commitment-diagnostic.log",
+    "destination": "docs/evidence/human-like-ai-r6-fixes/commitment-fixture/human-ai-v16-commitment-diagnostic.log",
+    "bytes": 10394,
+    "sha256": "73691911de35cae10a5e0c03b16402d6816061eff94a5b36d531a01f98b33afc"
+  }
+]

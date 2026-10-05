@@ -1,0 +1,37 @@
+{
+  "REVIEW.md": {
+    "source": "/tmp/r5-formation-audit/REVIEW.md",
+    "bytes": 2767,
+    "sha256": "8600ef8b1c6e870557c9e607f35220181644e5295a019d3072f042512d5756ac"
+  },
+  "formation-selection-order.patch": {
+    "source": "/tmp/r5-formation-audit/formation-selection-order.patch",
+    "bytes": 753,
+    "sha256": "32b00227a6fff153906c53e3a0ef6d94bc38cde6d8b1912b07f35ed6517da20c"
+  },
+  "manifest.json": {
+    "source": "/tmp/r5-formation-audit/manifest.json",
+    "bytes": 1838,
+    "sha256": "8f93ec9f6b8f12d5a3a69a27635c6e20a8194ddcd47ad5d42412128f45f10cc6"
+  },
+  "before-proof.json": {
+    "source": "/tmp/r5-formation-audit/before-proof.json",
+    "bytes": 46789,
+    "sha256": "677b7844779d02e107535387b031cb5daf80fe6ba7be60eadc8eb4617938f9c7"
+  },
+  "after-proof.json": {
+    "source": "/tmp/r5-formation-audit/after-proof.json",
+    "bytes": 46795,
+    "sha256": "e929d581af3cb2d297fd01d89c5a8a3fb0266ff202b2ffb1c9fec80abc024c94"
+  },
+  "relative-before-test.log": {
+    "source": "/tmp/r5-formation-audit/relative-before-test.log",
+    "bytes": 412,
+    "sha256": "0008f144d7a929ef897bbaa14e243001b6787e60024021b65f6ede1ef2ec05eb"
+  },
+  "relative-test.log": {
+    "source": "/tmp/r5-formation-audit/relative-test.log",
+    "bytes": 142,
+    "sha256": "48924dfe165dc9ce52bba227b721371f4b3213baef5090ed47df81dda95749bf"
+  }
+}

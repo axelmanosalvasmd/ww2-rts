@@ -1,0 +1,10 @@
+--- a/shared/navigation.js
++++ b/shared/navigation.js
+@@ -45,6 +45,7 @@
+       return old;
+     }
+   }
++  globalThis.__graphFixtures?.push(structuredClone({tick:g.tick,w:g.w,h:g.h,flags:g.flags,height:g.height,block,chunkSize,infantryRegionVersion:g.infantryRegionVersion,navalRegionVersion:g.navalRegionVersion,vehicleRegionVersion:g.vehicleRegionVersion,obstructionVersion:g.obstructionVersion,navigationKnowledge:g.navigationKnowledge,navigationKnowledgeVersion:g.navigationKnowledgeVersion}));
+   const W = g.w, H = g.h, N = W * H, flags = g.flags, height = g.height;
+   const labels = new Int32Array(N), queue = new Int32Array(N), regions = [null], chunks = new Map(), openChunks = new Set();
+   let minHeight = Infinity, maxHeight = -Infinity;

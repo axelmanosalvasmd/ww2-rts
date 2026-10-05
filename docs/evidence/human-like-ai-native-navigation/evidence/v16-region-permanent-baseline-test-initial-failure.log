@@ -1,0 +1,33 @@
+512x512 rifle: warm median 0.27 ms, p95 6.72 ms, peak 47 expansions
+512x512 tank: warm median 0.16 ms, p95 0.24 ms, peak 47 expansions
+node:internal/modules/run_main:107
+    triggerUncaughtException(
+    ^
+
+AssertionError [ERR_ASSERTION]: advancing the public region version admits the newly open route
++ actual - expected
+
+  [
+    [
++     3,
++     1
++   ],
++   [
+      5,
+      1
+    ]
+  ]
+
+    at file:///tmp/v16-region-permanent-baseline-test.mjs:238:10
+    at ModuleJob.run (node:internal/modules/esm/module_job:561:25)
+    at async node:internal/modules/esm/loader:647:26
+    at async asyncRunEntryPointWithESMLoader (node:internal/modules/run_main:101:5) {
+  generatedMessage: false,
+  code: 'ERR_ASSERTION',
+  actual: [ [ 3, 1 ], [ 5, 1 ] ],
+  expected: [ [ 5, 1 ] ],
+  operator: 'deepStrictEqual',
+  diff: 'simple'
+}
+
+Node.js v24.21.0

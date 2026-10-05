@@ -1,0 +1,11 @@
+--- a/shared/ai-hands.js
++++ b/shared/ai-hands.js
+@@ -894,7 +894,7 @@
+     else if (cmd.t === 'attack') { cmd.t = 'move'; cmd.orders = job.ids.map(id => [id, job.clickedAt.x, job.clickedAt.z]); delete cmd.ids; delete cmd.target; }
+   }
+   if (cmd.orders) {
+-    const units = job.units.map(old => view.units.get(old.id) ?? old);
++    const units = hands.selected.map(id => view.units.get(id) ?? job.units.find(old => old.id === id)).filter(Boolean);
+     cmd.orders = formation(units, job.clickedAt, { defs: UNITS, cell: CELL, width: view.w * CELL, height: view.h * CELL,
+       face: cmd.face, shape: 'line', spread: 1, snap: true,
+       terrainAt: (x, z) => x >= 0 && z >= 0 && x < view.w && z < view.h && !!(view.flags[z * view.w + x] & TRENCH) });

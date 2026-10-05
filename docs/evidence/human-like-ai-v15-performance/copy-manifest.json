@@ -1,0 +1,78 @@
+{
+  "copies": [
+    {
+      "source": "/tmp/human-ai-final-performance-protocol-v15.json",
+      "file": "human-ai-final-performance-protocol-v15.json",
+      "bytes": 38183,
+      "sha256": "c042811c4cd8f514e13070ce876de18f155ffd64e51d978c5937fd1bde513133"
+    },
+    {
+      "source": "/tmp/human-ai-performance-v15-predeclared.json",
+      "file": "human-ai-performance-v15-predeclared.json",
+      "bytes": 28023,
+      "sha256": "74a424e5a836d3d4d3849119a67b7628b81357482319ff9c87812272d7a926a2"
+    },
+    {
+      "source": "/tmp/human-ai-final-performance-protocol-v15.py",
+      "file": "human-ai-final-performance-protocol-v15.py",
+      "bytes": 22789,
+      "sha256": "7f3fcb6b94590d9d70e4eac7dbc9c01ca954bc88628c8a5db66b20f1da4dfcd7"
+    },
+    {
+      "source": "/tmp/human-ai-v15-performance-background-launch.json",
+      "file": "human-ai-v15-performance-background-launch.json",
+      "bytes": 402,
+      "sha256": "57fd075d5187b4a677749f327eed6a7d8d1bcc1953c6bca3555f3906f2136ee9"
+    },
+    {
+      "source": "/tmp/human-ai-bench-v15-before.json",
+      "file": "human-ai-bench-v15-before.json",
+      "bytes": 7600,
+      "sha256": "86ff958939e0e4658a1ee73967a72a540c165ca3b9fe2cca1224d08e95502945"
+    },
+    {
+      "source": "/tmp/human-ai-bench-v15-before.log",
+      "file": "human-ai-bench-v15-before.log",
+      "bytes": 94,
+      "sha256": "90da71f3e6baf920cb0fe00ea72b69e78b7a3f1617a6f3f136657eab07cd8c5c"
+    },
+    {
+      "source": "/tmp/human-ai-bench-v15-after.json",
+      "file": "human-ai-bench-v15-after.json",
+      "bytes": 7604,
+      "sha256": "b317b402805e448d47499d4ff1accbebfce1f30bc620e3d5f03d57b86ef45a94"
+    },
+    {
+      "source": "/tmp/human-ai-bench-v15-after.log",
+      "file": "human-ai-bench-v15-after.log",
+      "bytes": 93,
+      "sha256": "410885134f43ccf90e3fb4592004ce722e83fe3818767a4c144f38f36f49d819"
+    },
+    {
+      "source": "/tmp/human-ai-bench-v15-before-counts.json",
+      "file": "human-ai-bench-v15-before-counts.json",
+      "bytes": 7723,
+      "sha256": "af0999ec1a703b85c0bc356bd014fff56fa652e9d57e06b2e34f060809e2f383"
+    },
+    {
+      "source": "/tmp/human-ai-bench-v15-before-counts.log",
+      "file": "human-ai-bench-v15-before-counts.log",
+      "bytes": 100,
+      "sha256": "de38387320c91ebe8168dc551665e9867c20ae9f67ec0ee5ad660ba095aeb418"
+    },
+    {
+      "source": "/tmp/human-ai-bench-v15-after-counts.json",
+      "file": "human-ai-bench-v15-after-counts.json",
+      "bytes": 7727,
+      "sha256": "3d0345c8c089c3a7b42c39141be0106d8018763922418c689c6a0139c0498cd8"
+    },
+    {
+      "source": "/tmp/human-ai-bench-v15-after-counts.log",
+      "file": "human-ai-bench-v15-after-counts.log",
+      "bytes": 99,
+      "sha256": "04cf5a9c346ec4d7f5f386ebfed5c062f6975920916d9b42b7fb91bbc5c618ff"
+    }
+  ],
+  "bytes": 120437,
+  "exactByteCopies": true
+}

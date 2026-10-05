@@ -1,0 +1,96 @@
+{
+  "at": "2026-10-04T19:32:28.763574+00:00",
+  "qualification": "Prospective collector wiring correction. Original oracle and scoring unchanged. Historical zero populations retained as incomplete instrumentation; current native comparison covers combined guard and hesitation fixes.",
+  "files": [
+    {
+      "source": "/tmp/human-ai-original-oracle-cumulative-review.md",
+      "file": "REVIEW.md",
+      "bytes": 3199,
+      "sha256": "aaaf0cbd038b744da5346b9c7254c1a24de17765cfcb4a05deda684706ea3a83"
+    },
+    {
+      "source": "/tmp/human-ai-original-oracle-cumulative-proof.json",
+      "file": "proof.json",
+      "bytes": 4013,
+      "sha256": "fd490fdc1d6785665d64eb64a5c79bd079069b4c5a5ab97ee9e209369a08942f"
+    },
+    {
+      "source": "/tmp/human-ai-original-oracle-cumulative.patch",
+      "file": "collector.patch",
+      "bytes": 6833,
+      "sha256": "e57b918f52020f8ed7e6665b4c031ed51c5dafcfc1af51c1e2c1dec0525a73ed"
+    },
+    {
+      "source": "/tmp/human-ai-original-oracle-baseline-native.log",
+      "file": "human-ai-original-oracle-baseline-native.log",
+      "bytes": 1481,
+      "sha256": "a96740db7db2baf70615014fa447038f13e749327bf5d824c3f7bcb30697e1b3"
+    },
+    {
+      "source": "/tmp/human-ai-original-oracle-baseline-final-fixture.log",
+      "file": "human-ai-original-oracle-baseline-final-fixture.log",
+      "bytes": 1481,
+      "sha256": "06fb953768384f30c995d110268f48afb1e3b4639739e206f96958e1dd199944"
+    },
+    {
+      "source": "/tmp/human-ai-original-oracle-baseline-hook.mjs",
+      "file": "human-ai-original-oracle-baseline-hook.mjs",
+      "bytes": 520,
+      "sha256": "c16f3f506b6cfd91e9f995a8110c8d23f4c52e37695f992f422058b9b59911f7"
+    },
+    {
+      "source": "/tmp/human-ai-original-oracle-candidate-native-final.log",
+      "file": "human-ai-original-oracle-candidate-native-final.log",
+      "bytes": 141,
+      "sha256": "af039e45c4c8e5c97ac07027566520181e0e4c218acb549ad8f5ec3b1820ffcd"
+    },
+    {
+      "source": "/tmp/human-ai-original-oracle-start-native.log",
+      "file": "human-ai-original-oracle-start-native.log",
+      "bytes": 82,
+      "sha256": "89d9a031bbacc343a13b1483faa7183afe94af040a77e63b45d756fe06178cf7"
+    },
+    {
+      "source": "/tmp/human-ai-original-oracle-native-events.json",
+      "file": "human-ai-original-oracle-native-events.json",
+      "bytes": 10300,
+      "sha256": "ab58e1a30600b851e94d3b8b0c56c4ee45fb0126550fa417f06d3ef55fcc8b31"
+    },
+    {
+      "source": "/home/judiazm/.t3/worktrees/ww2-rts/ai-human-commander/tools/ai-humanity.mjs",
+      "file": "source-tools--ai-humanity.mjs",
+      "bytes": 91936,
+      "sha256": "4f695ecb3d2f7f19597150bae3ebd8a4fe721a1c8e90d92e0542898b1a47bdd0"
+    },
+    {
+      "source": "/home/judiazm/.t3/worktrees/ww2-rts/ai-human-commander/test-engine-ai-measurement-streams.js",
+      "file": "source-test-engine-ai-measurement-streams.js",
+      "bytes": 18955,
+      "sha256": "1ab914ccaba8e3786d04c154489639bc1d9eee2e2a128cef54749b7a81a566e1"
+    },
+    {
+      "source": "/home/judiazm/.t3/worktrees/ww2-rts/ai-human-commander/test-engine-ai-measurement-start.js",
+      "file": "source-test-engine-ai-measurement-start.js",
+      "bytes": 12811,
+      "sha256": "79c2c1938af527f071d2d10b0b5ab9c307264418bd5e87027ea838c68a5d29ef"
+    },
+    {
+      "source": "/tmp/ai-v18-root-original-oracle-checks/test-engine-ai-measurement-streams.js.log",
+      "file": "root-test-engine-ai-measurement-streams.js.log",
+      "bytes": 141,
+      "sha256": "af039e45c4c8e5c97ac07027566520181e0e4c218acb549ad8f5ec3b1820ffcd"
+    },
+    {
+      "source": "/tmp/ai-v18-root-original-oracle-checks/test-engine-ai-measurement-start.js.log",
+      "file": "root-test-engine-ai-measurement-start.js.log",
+      "bytes": 82,
+      "sha256": "89d9a031bbacc343a13b1483faa7183afe94af040a77e63b45d756fe06178cf7"
+    },
+    {
+      "source": "/tmp/ai-v18-root-original-oracle-checks/result.json",
+      "file": "root-result.json",
+      "bytes": 1249,
+      "sha256": "940ec385903b3c1af12fa3083b41efcdbf92b8c87351e281469960c3d6ecf0c5"
+    }
+  ]
+}

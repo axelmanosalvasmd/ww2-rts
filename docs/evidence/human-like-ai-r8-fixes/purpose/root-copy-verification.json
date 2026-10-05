@@ -1,0 +1,120 @@
+{
+  "verifiedAtUTC": "2026-10-05T00:25:48Z",
+  "archiveSHA256": "93c03dbe2fa389d85438751ada03ed003ebdfe494cb3bebd07249679b4ffb7df",
+  "members": 19,
+  "payloadBytes": 318320,
+  "allOriginalBytesAndHashesMatch": true,
+  "additionalOriginalFilesOmittedByOriginalManifest": [
+    "human-ai-r8-purpose.patch"
+  ],
+  "files": [
+    {
+      "member": "REVIEW.md",
+      "original": "/tmp/human-ai-r8-purpose/REVIEW.md",
+      "bytes": 6062,
+      "sha256": "c7e9ebe1bb4f45bfcbe2569994b0932e7a3a3c89f14cda899e91200e9a6b3785"
+    },
+    {
+      "member": "protocol.json",
+      "original": "/tmp/human-ai-r8-purpose/protocol.json",
+      "bytes": 844,
+      "sha256": "be4080c19d917f016a1d83ef5b088da1cb5347264d523a5172b3a61ea7449912"
+    },
+    {
+      "member": "final-source-hashes.json",
+      "original": "/tmp/human-ai-r8-purpose/final-source-hashes.json",
+      "bytes": 1190,
+      "sha256": "281cce91ec5c819394dce5547d01bb9ff4979039782f97f9ef3b557b50b2881d"
+    },
+    {
+      "member": "native-purpose.mjs",
+      "original": "/tmp/human-ai-r8-purpose/native-purpose.mjs",
+      "bytes": 5559,
+      "sha256": "2ee21c0f2cf249eba7451f2918772871c23e731ad71fbb4f6b87aeb5ee3a6d91"
+    },
+    {
+      "member": "native-purpose.json",
+      "original": "/tmp/human-ai-r8-purpose/native-purpose.json",
+      "bytes": 29996,
+      "sha256": "ab7d1971a4271a5d4525632308af31c79915e454872646830ac5d3681cef89a7"
+    },
+    {
+      "member": "native-purpose.log",
+      "original": "/tmp/human-ai-r8-purpose/native-purpose.log",
+      "bytes": 28,
+      "sha256": "1784404c9b823fd1c31cc4b25ddcb625c6d009cc008a5ae91fccb2c392b6e619"
+    },
+    {
+      "member": "physical-support.mjs",
+      "original": "/tmp/human-ai-r8-purpose/physical-support.mjs",
+      "bytes": 3343,
+      "sha256": "73c804dda9abd9d893ffa3cb64f28f0eb7018b090ad6152a3f26719ff6098d85"
+    },
+    {
+      "member": "physical-support.json",
+      "original": "/tmp/human-ai-r8-purpose/physical-support.json",
+      "bytes": 25689,
+      "sha256": "f29dbad6c8dd21f283c80cbd34eac862ca17505e6ed0255cedbe262f6b72c62f"
+    },
+    {
+      "member": "physical-support.log",
+      "original": "/tmp/human-ai-r8-purpose/physical-support.log",
+      "bytes": 33,
+      "sha256": "3c127141fe475475ca92d6ddf2c8586d2035f41c145a5c296c1f5d4f07544014"
+    },
+    {
+      "member": "planner-support.mjs",
+      "original": "/tmp/human-ai-r8-purpose/planner-support.mjs",
+      "bytes": 2563,
+      "sha256": "88e1b2bac2a881cdb8a865b6ee464491542da87842a16b477fcc57de55d214ef"
+    },
+    {
+      "member": "planner-support.json",
+      "original": "/tmp/human-ai-r8-purpose/planner-support.json",
+      "bytes": 7237,
+      "sha256": "54bdd3185940ae107192f0cd146aaf7d9b91b702080c5ed361132788b57c444d"
+    },
+    {
+      "member": "planner-support.log",
+      "original": "/tmp/human-ai-r8-purpose/planner-support.log",
+      "bytes": 29,
+      "sha256": "22ae55e3ce103598e2425f72140ddfe1730e15864c68bcadabe4566c00d185b5"
+    },
+    {
+      "member": "shared/ai-priority.js",
+      "original": "/tmp/human-ai-r8-purpose/shared/ai-priority.js",
+      "bytes": 8934,
+      "sha256": "597c6ae80d69bbe9bb77a794096be4dd98c5f0791cd7da0f7a11359536850ab9"
+    },
+    {
+      "member": "shared/ai.js",
+      "original": "/tmp/human-ai-r8-purpose/shared/ai.js",
+      "bytes": 91945,
+      "sha256": "685c178754646223ba57cbf6b0d795b0676b0a5cba84f51bfdfcae0cd71bc005"
+    },
+    {
+      "member": "shared/ai-priority-before.js",
+      "original": "/tmp/human-ai-r8-purpose/shared/ai-priority-before.js",
+      "bytes": 5884,
+      "sha256": "6b5d5a8a22968209fe03c8235648a859b36919b9eafd44cd390a8252ab6b3542"
+    },
+    {
+      "member": "shared/ai-before.js",
+      "original": "/tmp/human-ai-r8-purpose/shared/ai-before.js",
+      "bytes": 91788,
+      "sha256": "088f14a5704c5ea2995ebbaee8b3d1f1f8be584e6099eee19e20672f9f11e728"
+    },
+    {
+      "member": "shared/ai-commander-before.js",
+      "original": "/tmp/human-ai-r8-purpose/shared/ai-commander-before.js",
+      "bytes": 30716,
+      "sha256": "af575d4d2511865dc068a52b4c8ea724eb73e56369c17f0fa13a00f4422286a4"
+    },
+    {
+      "member": "human-ai-r8-purpose.patch",
+      "original": "/tmp/human-ai-r8-purpose.patch",
+      "bytes": 6480,
+      "sha256": "5cd0ce2cc5b34c442dd5d05fd9fbc173c44796a80d599be13c028dec3f4f0de2"
+    }
+  ]
+}

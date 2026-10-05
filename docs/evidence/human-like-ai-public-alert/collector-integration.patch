@@ -1,0 +1,106 @@
+--- a/tools/ai-humanity.mjs
++++ b/tools/ai-humanity.mjs
+@@ -1,5 +1,6 @@
+ // Seeded input and command measurements. Legacy command APM is not physical input APM.
+ import assert from 'node:assert/strict';
++import {PUBLIC_ALERT_POLICY,createPublicAlertCapture,scorePublicAlerts,poolPublicAlerts} from './ai-public-alert-response.mjs';
+ import {createManualResponsePolicy,MANUAL_RESPONSE_POLICY} from './ai-manual-response-policy.mjs';
+ import {createManualCapture} from './ai-manual-response-capture.mjs';
+ import {createManualResponsePolicy as createManualV3Policy,MANUAL_RESPONSE_POLICY as MANUAL_V3_POLICY} from './ai-manual-response-policy-v3.mjs';
+@@ -461,7 +462,7 @@
+ }
+ export async function sourceCheckpoint(legacy) {
+   const shared = (await readdir(resolve(root, 'shared'))).filter(name => name.endsWith('.js')).sort().map(name => `shared/${name}`);
+-  const files = ['tools/ai-humanity.mjs', 'tools/ai-manual-response-policy.mjs', 'tools/ai-manual-response-capture.mjs', 'tools/ai-manual-response-policy-v3.mjs', 'tools/ai-manual-response-capture-v3.mjs', 'tools/json-stream.mjs', ...shared, ...(legacy ? ['tools/legacy-ai/ai.js', 'tools/legacy-ai/ai-view.js', 'tools/legacy-ai/ai-mind.js'] : ['client/keys.js', 'tools/ai-screen-v1-oracle.js'])];
++  const files = ['tools/ai-humanity.mjs', 'tools/ai-public-alert-response.mjs', 'client/alerts.js', 'tools/ai-manual-response-policy.mjs', 'tools/ai-manual-response-capture.mjs', 'tools/ai-manual-response-policy-v3.mjs', 'tools/ai-manual-response-capture-v3.mjs', 'tools/json-stream.mjs', ...shared, ...(legacy ? ['tools/legacy-ai/ai.js', 'tools/legacy-ai/ai-view.js', 'tools/legacy-ai/ai-mind.js'] : ['client/keys.js', 'tools/ai-screen-v1-oracle.js'])];
+   const hashes = Object.fromEntries(await Promise.all(files.map(async file => [file, createHash('sha256').update(await readFile(resolve(root, file))).digest('hex')])));
+   return { recordedAt: new Date().toISOString(), sha256: digest(hashes), files: hashes, method: 'File hashes captured in each worker immediately before its first commander import. The worker reuses those imported modules for its subsequent matches.' };
+ }
+@@ -544,8 +545,10 @@
+   const viewModule = oracle ? await import('../shared/ai-view.js') : null;
+   const manualEnabled=[MANUAL_RESPONSE_POLICY,MANUAL_V3_POLICY].includes(options.manualPolicy);
+   if(options.manualPolicy && !manualEnabled || manualEnabled && !ai.humanCommander) throw Error('Unsupported manual policy or controller');
++  const alertEnabled=options.alertPolicy===PUBLIC_ALERT_POLICY;
++  if(options.alertPolicy && !alertEnabled || alertEnabled && !ai.humanCommander) throw Error('Unsupported public alert policy or controller');
+   const publicModule=manualEnabled ? await import('../shared/ai-perception.js') : null;
+-  const handsModule=manualEnabled ? await import('../shared/ai-hands.js') : null;
++  const handsModule=manualEnabled || alertEnabled ? await import('../shared/ai-hands.js') : null;
+   const keyModule=manualEnabled ? await import('../client/keys.js') : null;
+   const map = JSON.parse(await readFile(resolve(root, `maps/${options.map}.json`), 'utf8'));
+   const slots = task.mode === 'world' ? 3 : sim.spawnsFor(map, task.mode).length;
+@@ -564,9 +567,11 @@
+     const privateObservers = oracle ? g.players.map((_, slot) => bootstrapPrivateOracle(
+       privateTickZeroObservation(g, slot, initialCache, viewModule.viewFor, oracle), slot, recordMeasurements(slot), oracle)) : null;
+ 
+-    const manualMemories=manualEnabled ? g.players.map(()=>({})) : null;
++    const manualMemories=manualEnabled || alertEnabled ? g.players.map(()=>({})) : null;
+     const manualCaptures=manualEnabled ? g.players.map((_,slot)=>(options.manualPolicy===MANUAL_V3_POLICY?createManualV3Capture:createManualCapture)({slot,log:logs[slot],memory:manualMemories[slot],
+       rules:{...sim,bindings:keyModule.bindings},perceive:publicModule.perceive,observer:privateObservers[slot],onProof:options.manualProofTransform})) : null;
++    const alertCaptures=alertEnabled ? g.players.map((_,slot)=>createPublicAlertCapture({slot,log:logs[slot],memory:manualMemories[slot],startedTick:g.tick})) : null;
++    const measurements=g.players.map((_,slot)=>{const base=manualCaptures?.[slot].perceptionMeasurements ?? privateObservers?.[slot];return alertCaptures?.[slot].wrapMeasurements(base) ?? base;});
+     const views = g.players.map((_, slot) => { if (ai.humanCommander && ai.startCommander) { ai.startCommander(g, slot, { w: g.w, h: g.h, spawn: g.players[slot].spawn, level: task.level, seed: task.seed },manualMemories ? {memory:manualMemories[slot]} : {}); return null; } return ai.observe?.(g, slot, initialCache); });
+     const cameraSpan = options.screenSpan ?? DEFAULT_SCREEN_SPAN;
+     const inputLog = (slot, input) => {
+@@ -579,6 +584,7 @@
+       }
+       logs[slot].inputs.push(row);
+       manualCaptures?.[slot].input(row,logs[slot].inputs.length-1);
++      alertCaptures?.[slot].input(row,logs[slot].inputs.length-1);
+     };
+     for (let tick = 0; tick < Math.round(options.seconds / sim.TICK) && g.winner === null; tick++) {
+       sim.step(g);
+@@ -617,10 +623,11 @@
+           return result;
+         };
+         const opts = { level: task.level, view: views[slot], submit, inputLog: input => inputLog(slot, input), seed: task.seed,
+-          ...(privateObservers ? { perceptionMeasurements: manualCaptures?.[slot].perceptionMeasurements ?? privateObservers[slot] } : {}),
++          ...(privateObservers ? { perceptionMeasurements: measurements[slot] } : {}),
+           ...(manualMemories ? {memory:manualMemories[slot]} : {}) };
+         if ((!ai.humanCommander || views[slot]) && (ai.humanCommander || (g.tick + slot * 13) % (ai.thinkEvery?.(task.level) ?? 40) === 0)) ai.think(g, slot, opts);
+         manualCaptures?.[slot].afterThink(g.tick);
++        alertCaptures?.[slot].afterThink(g.tick);
+         const manualState=manualMemories?.[slot].human;
+         const diagnostic = manualState?.hands ? {slot,...handsModule.diagnostics(manualState.hands,g.tick),persona:manualState.persona?.family,
+           attention:manualState.concern ? {id:manualState.concern.id,kind:manualState.concern.kind,since:manualState.concern.since,until:manualState.concern.until} : null,
+@@ -660,8 +667,9 @@
+     }
+     const seconds = g.tick * TICK;
+     logs.forEach((log, slot) => { for (const [id, start] of idle[slot]) { log.idleSeconds.push((g.tick - start) * TICK); if (!idleNoticed[slot].has(id)) log.unnoticedIdleCensoredSeconds.push((g.tick - start) * TICK); } if (attention[slot]) { log.attentionDwellSeconds.push((g.tick - attention[slot].start) * TICK); attention[slot].visit.endTick = g.tick; } });
++    alertCaptures?.forEach(capture=>capture.finish(g.tick));
+     options.nativeIsolationCapture?.(g,logs,Math.random());
+-    return { ...task, seconds: round(seconds), ended: g.winner !== null, winner: g.winner, seats: logs.map((log, slot) => ({ slot, faction: ['USA', 'Germany', 'USSR'][g.players[slot].faction], metrics: {...summarizeSeat(log, seconds, cameraSpan),...(manualEnabled ? {manualResponsePolicy:manualResponseMetrics(log,seconds,{...sim,bindings:keyModule.bindings})} : {})} })), ...(options.logs ? { logs } : {}) };
++    return { ...task, seconds: round(seconds), ended: g.winner !== null, winner: g.winner, seats: logs.map((log, slot) => ({ slot, faction: ['USA', 'Germany', 'USSR'][g.players[slot].faction], metrics: {...summarizeSeat(log, seconds, cameraSpan),...(alertEnabled ? {publicAlertResponse:scorePublicAlerts(log)} : {}),...(manualEnabled ? {manualResponsePolicy:manualResponseMetrics(log,seconds,{...sim,bindings:keyModule.bindings})} : {})} })), ...(options.logs ? { logs } : {}) };
+   } finally { Math.random = originalRandom; }
+ }
+ export function aggregate(results) {
+@@ -733,6 +741,7 @@
+         acceptedCommand:{answered:measured.reduce((n,score)=>n+score.acceptedCommand.answered,0),censored:measured.reduce((n,score)=>n+score.acceptedCommand.censored,0),survival:pooled('acceptedCommand')},
+         audit:Object.fromEntries(Object.keys(measured[0].audit).map(key=>[key,measured.reduce((n,score)=>n+score.audit[key],0)]))};
+     }
++    if(seats.some(seat=>seat.publicAlertResponse)) groups[`${mode}/${level}`].publicAlertResponse=poolPublicAlerts(seats.map(seat=>seat.publicAlertResponse ?? {recorded:false,evaluable:false,samples:[]}),level);
+     if (seats.some(seat => seat.reactionScoringComparison)) {
+       const primaryResults = matches.map(match => ({ ...match, seats: match.seats.map(seat => {
+         const { reactionScoringComparison: comparison, measurementPolicyComparison, ...metrics } = seat.metrics;
+@@ -838,10 +847,11 @@
+   for (let i = 2; i < process.argv.length; i++) {
+     const key = process.argv[i].slice(2);
+     if (['legacy', 'logs'].includes(key)) { options[key] = true; continue; }
+-    if (!['mode', 'level', 'seeds', 'seconds', 'workers', 'map', 'out', 'compare', 'human-log', 'fit', 'screen-span', 'merge', 'package', 'archive', 'manual-policy'].includes(key) || !process.argv[i + 1]) throw Error('Usage: node tools/ai-humanity.mjs [--seeds N|1,3,8-10] [--mode conquest|classic|world|all] [--level easy|normal|hard|all] [--legacy] [--manual-policy screen-manual-v2|screen-manual-v3] [--seconds N] [--workers N] [--out FILE] [--compare FILE] [--human-log FILE] [--fit FILE] [--logs] [--screen-span METRES] [--package FULL_REPORT --archive FILE.json.gz --out COMPACT_REPORT]');
++    if (!['mode', 'level', 'seeds', 'seconds', 'workers', 'map', 'out', 'compare', 'human-log', 'fit', 'screen-span', 'merge', 'package', 'archive', 'manual-policy', 'alert-policy'].includes(key) || !process.argv[i + 1]) throw Error('Usage: node tools/ai-humanity.mjs [--seeds N|1,3,8-10] [--mode conquest|classic|world|all] [--level easy|normal|hard|all] [--legacy] [--manual-policy screen-manual-v2|screen-manual-v3] [--alert-policy public-danger-alert-v1] [--seconds N] [--workers N] [--out FILE] [--compare FILE] [--human-log FILE] [--fit FILE] [--logs] [--screen-span METRES] [--package FULL_REPORT --archive FILE.json.gz --out COMPACT_REPORT]');
+     options[key] = process.argv[++i];
+   }
+   if(options['manual-policy']) {if(![MANUAL_RESPONSE_POLICY,MANUAL_V3_POLICY].includes(options['manual-policy']) || options.legacy) throw Error('--manual-policy requires screen-manual-v2 or screen-manual-v3 and current commander'); options.manualPolicy=options['manual-policy'];options.logs=true;}
++  if(options['alert-policy']) {if(options['alert-policy']!==PUBLIC_ALERT_POLICY || options.legacy) throw Error('--alert-policy requires public-danger-alert-v1 and current commander');options.alertPolicy=options['alert-policy'];options.logs=true;}
+   options.seconds = Number(options.seconds); options.workers = Number(options.workers); options.screenSpan = Number(options['screen-span'] ?? options.screenSpan);
+   if (!Number.isFinite(options.seconds) || options.seconds < 1 || !Number.isSafeInteger(options.workers) || options.workers < 1 || !Number.isFinite(options.screenSpan) || options.screenSpan <= 0) throw Error('Seconds, workers and screen span must be positive.');
+   if (options.package) {
+@@ -907,7 +917,8 @@
+   } catch (error) { await Promise.all(workers.map(w => w.terminate())); throw error; }
+   results.sort((a, b) => MODES.indexOf(a.mode) - MODES.indexOf(b.mode) || LEVELS.indexOf(a.level) - LEVELS.indexOf(b.level) || a.seed - b.seed);
+   const summary = aggregate(results);
+-  const report = { schemaVersion: 1, source: options.legacy ? 'legacy-5293ddb' : 'current', configuration: { modes, levels, seeds, seconds: options.seconds, map: options.map, army: 'standard', worldSize: 'huge', screenSpan: options.screenSpan,...(options.manualPolicy ? {manualPolicy:options.manualPolicy} : {}) }, definitions: {
++  const report = { schemaVersion: 1, source: options.legacy ? 'legacy-5293ddb' : 'current', configuration: { modes, levels, seeds, seconds: options.seconds, map: options.map, army: 'standard', worldSize: 'huge', screenSpan: options.screenSpan,...(options.manualPolicy ? {manualPolicy:options.manualPolicy} : {}),...(options.alertPolicy ? {alertPolicy:options.alertPolicy} : {}) }, definitions: {
++    ...(options.alertPolicy ? {publicAlertResponse:'Prospective public-danger-alert-v1 is a separate native stream. Every off-screen client red danger alert (base, attack, air, unitLost, pointLost) is required at native creation. ready and pointWon are informational; scripted event and unknown kinds block certification. First completed causal paid Space, WASD pan or minimap camera input requires live native enqueue/action identity, motor start/completion, applied camera placement and shared public onScreen geometry against the original alert. Unsupported causal endpoints stay unknown. All required unanswered events remain end-censored. Pool event-level Kaplan-Meier across every seat, including eventless seats and unknown coverage. Easy 3 to 6, Normal 1.5 to 3, Hard 0.8 to 1.6 seconds remain unchanged. Native collection scores in the worker before serialization; historical or fabricated logs never acquire live provenance.'} : {}),
+     commandAPM: 'Every submitted simulation command, including rejected attempts. A command can contain several unit orders. This is not physical input APM.', physicalInputAPM: 'Logged motor inputs with countsAPM other than false. Null when the commander does not emit physical input records.',
+     firstOrder: 'First submitted command other than buy, stance or recover.', reactionSeconds: 'Version3 applies only to explicit responseEvents instrumentation, with full diagnostic identity/descriptor matching and creation before enqueue and motor start. An explicit link must be enqueued within240ticks (12seconds) of creation; later completed inputs remain valid if their plan was timely. Stale links are rejected separately while every stimulus remains recorded and censored. Multiple linked stimuli receive independent completed action/actual command answers from one physical input, counted once for APM. Primary-only historical logs remain Version2. Version2: screen-contact and screen-damage events are stamped by perception at creation. On-screen first action (screen contact, screen damage, or an alert stamped on screen at creation) excludes camera inputs. Off-screen alerts allow a camera input as the first action. Actual attempted and accepted commands are reported separately. Minimap contacts are exploratory and excluded from both reaction gates. Missing event-population instrumentation yields null; historical logs retain their original definitions.',
+     reactionScoringComparison: 'Both primary-only historical and explicit-linked scorings are reported on the same newly instrumented logs, per seat and pooled. They share population, recording duration, commands, input timeline and completed endpoints. Neither result is selected for favorable outcomes. Primary-only historical reports remain unchanged.',

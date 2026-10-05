@@ -1,0 +1,74 @@
+{
+  "protocol.json": {
+    "sha256": "d31f9612ae32686d798d75134a20c7d8813a6dff3b577b29c9d0866ac9fe48a4",
+    "bytes": 604
+  },
+  "source-hashes.json": {
+    "sha256": "7b266019d5197593179acf7c884d8b5e40d2b86655dc317b33c5efd48889725b",
+    "bytes": 459
+  },
+  "final-hashes.json": {
+    "sha256": "b6b981109bda3a7e55d934532c12de7cb6c5c9f637b384377a69f2c5fa148102",
+    "bytes": 751
+  },
+  "REVIEW.md": {
+    "sha256": "9effcc7585d8f1503cf2f5dc6ed3259231206d52dd7ffb9e2aca11d887e05683",
+    "bytes": 4609
+  },
+  "native.mjs": {
+    "sha256": "579b83879087d1e62265edcdf3b6d7c246e7ad901dd15ea50a6d69b32704cc8f",
+    "bytes": 5034
+  },
+  "native.json": {
+    "sha256": "6d5c35358584d10531d9579dccc65f24f74a06dcdc94cf0cb5aa725c0a17b89d",
+    "bytes": 67162
+  },
+  "native.log": {
+    "sha256": "d447cd8d75cc8f1b406f0b119257f68de5c2f45eb7dd95b35fc98c53cf38eea9",
+    "bytes": 120
+  },
+  "native-initial.log": {
+    "sha256": "28090578cb0fa735c9523cc9dc9cc2c350780b9d51620f137d1848bb14433c18",
+    "bytes": 634
+  },
+  "native-second.log": {
+    "sha256": "7cc0bdec6f7371444f76c6ac2bf070902b579c16bd678d52897b61239e1b0a78",
+    "bytes": 634
+  },
+  "native-hud-baseline-diagnostic.log": {
+    "sha256": "e19141781c739b73a786a8d1f18f501fcd497cbddc503fdeca8a79275156146c",
+    "bytes": 1408
+  },
+  "native-exact-setup-diagnostic.log": {
+    "sha256": "7b012c5e2a05bc8b6cd7735603b2d4a93f5bb193f89b30f35ad9d62d2bab6712",
+    "bytes": 5213
+  },
+  "native-initial-reconstructed.mjs": {
+    "sha256": "65498398578e5118ba1189cb3d06ac185b881cb5e395c3a97d037e42cde32d9c",
+    "bytes": 4701
+  },
+  "shared/ai-hands.js": {
+    "sha256": "fa922d91055b52b7b70258a3cb6264c9552b2c07ae663f79a5dc87f310e8be11",
+    "bytes": 68386
+  },
+  "shared/ai-hands-before.js": {
+    "sha256": "277cf75623b9432612db94e0356cfe098695214625605ac130e6984789211c4b",
+    "bytes": 67889
+  },
+  "original-artifact-manifest.json": {
+    "sha256": "05052a071bb8614dc1e41b8c838a3f34b29cf3be656ff7250215388b0b69114e",
+    "bytes": 1847
+  },
+  "PORTABLE.md": {
+    "sha256": "c420af4fb9b6f1673519e07702a7782e4c7038612149e22a1aff166846e70ecf",
+    "bytes": 2117
+  },
+  "test-engine-ai-selection-reuse.js": {
+    "sha256": "25c42c0def6d8d08cb553f972b7ed9261983c396a1a9b86a1d16f4c8facb12e1",
+    "bytes": 6636
+  },
+  "portable-test.log": {
+    "sha256": "a395ce02ccbdc5ba16be09873f03f09fe3e51547bbc520c0bb035f6bfec62d6e",
+    "bytes": 90
+  }
+}

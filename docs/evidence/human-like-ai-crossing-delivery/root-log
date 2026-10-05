@@ -1,0 +1,11 @@
+ww2-rts on http://127.0.0.1:0
+PASS engine acceptance: waiting recruitment identity, refund, head progress and recipient ownership
+PASS engine acceptance: scenario capture ownership, exactly once rewards and durable private objectives
+PASS engine acceptance: road mine placement, clearing, hidden memory and separate bombardment
+PASS engine acceptance: local support failure, settled route and remembered reconnect
+PASS engine acceptance: two way crowded crossing completes infantry, tank and support orders
+PASS engine acceptance: authoritative gun flight stationary, arrival and hidden cue privacy
+PASS engine acceptance: authoritative gun flight moving, arrival and hidden cue privacy
+PASS engine acceptance: authoritative gun flight wall, arrival and hidden cue privacy
+PASS engine acceptance: Horde broad warning agrees with legal delivered first Wave
+Integrated engine acceptance checks passed

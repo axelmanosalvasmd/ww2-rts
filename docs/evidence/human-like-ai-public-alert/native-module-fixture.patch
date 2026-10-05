@@ -1,0 +1,417 @@
+--- /dev/null
++++ b/tools/ai-public-alert-response.mjs
+@@ -0,0 +1,216 @@
++// Prospective tool-only collection. No planner object receives these records.
++import { isDeepStrictEqual as equal } from 'node:util';
++import { CELL } from '../shared/sim.js';
++import { onScreen } from '../shared/ai-perception.js';
++export const PUBLIC_ALERT_POLICY = 'public-danger-alert-v1';
++export const PUBLIC_ALERT_STREAM = 'ww2-public-alert-response-v1';
++const limits = { easy: [3, 6], normal: [1.5, 3], hard: [.8, 1.6] };
++const danger = new Set(['base', 'attack', 'air', 'unitLost', 'pointLost']);
++const information = new Set(['ready', 'pointWon']);
++const sealed = new WeakMap();
++const validTick = n => Number.isSafeInteger(n) && n >= 0;
++const point = p => Number.isFinite(p?.x) && Number.isFinite(p?.z);
++const key = e => `${e.id}/${e.tick}`;
++const clone = value => structuredClone(value);
++function linked(context, e) {
++  if (context?.responseEvents?.some(link => equal(link, e))) return true;
++  const link = context?.event;
++  return link?.source === 'alert' && link.id === e.id && link.kind === e.kind && link.onScreen === e.onScreen
++    && link.x === e.x && link.z === e.z && context.eventTick === e.tick;
++}
++const pose = c => c && ({ x: c.x, z: c.z, yaw: c.yaw ?? 0, distance: c.distance ?? 60 });
++export function classifyPublicAlert(e) {
++  if (e?.source !== 'alert' || e.onScreen === true) return 'outside';
++  if (e.onScreen !== false || e.id == null || !validTick(e.tick)) return 'unknown';
++  if (information.has(e.kind)) return 'informational';
++  return danger.has(e.kind) && point(e) ? 'required' : 'unknown';
++}
++function indices(view, positions) {
++  const found = new Set();
++  for (const at of positions) {
++    const x = Math.min(view.w - 1, Math.max(0, Math.floor(at.x / CELL)));
++    const z = Math.min(view.h - 1, Math.max(0, Math.floor(at.z / CELL)));
++    for (let dz = -1; dz <= 1; dz++) for (let dx = -1; dx <= 1; dx++)
++      found.add(Math.min(view.h - 1, Math.max(0, z + dz)) * view.w + Math.min(view.w - 1, Math.max(0, x + dx)));
++  }
++  return [...found];
++}
++// Save precisely the public cells used by groundRange for the marker and camera focus.
++function geometry(view, marker, camera) {
++  if (!point(marker) || !point(camera) || !Number.isSafeInteger(view?.w) || !Number.isSafeInteger(view?.h) || view.w < 1 || view.h < 1) return null;
++  return { w: view.w, h: view.h, camera: pose(camera), marker: clone(marker), heightPresent: !!view.height,
++    cells: view.height ? indices(view, [marker, camera]).map(i => ({ i, height: view.height[i], char: view.chars?.[i] })) : [] };
++}
++export function publicAlertOnScreen(proof) {
++  if (!proof || !point(proof.marker) || !point(proof.camera) || !Number.isSafeInteger(proof.w) || !Number.isSafeInteger(proof.h)
++    || proof.w < 1 || proof.h < 1 || typeof proof.heightPresent !== 'boolean') return null;
++  const view = { w: proof.w, h: proof.h, height: null };
++  if (proof.heightPresent) {
++    const required = indices(view, [proof.marker, proof.camera]), cells = new Map((proof.cells ?? []).map(row => [row.i, row]));
++    if (cells.size !== proof.cells?.length || required.some(i => !cells.has(i))) return null;
++    view.height = new Array(proof.w * proof.h); view.chars = new Array(proof.w * proof.h);
++    for (const i of required) { view.height[i] = cells.get(i).height; view.chars[i] = cells.get(i).char; }
++  }
++  return onScreen(proof.marker, proof.camera, view);
++}
++export function publicAlertKM(samples) {
++  const times = new Map();
++  for (const s of samples) {
++    if (!Number.isFinite(s.seconds) || s.seconds < 0 || typeof s.observed !== 'boolean') throw Error('Invalid alert survival sample');
++    const row = times.get(s.seconds) ?? { observed: 0, censored: 0 };
++    row[s.observed ? 'observed' : 'censored']++; times.set(s.seconds, row);
++  }
++  let risk = samples.length, survival = 1, medianSeconds = null;
++  const curve = [...times].sort(([a], [b]) => a - b).map(([seconds, row]) => {
++    const atRisk = risk;
++    if (row.observed) survival *= 1 - row.observed / risk;
++    if (medianSeconds === null && survival <= .5) medianSeconds = seconds;
++    risk -= row.observed + row.censored; return { seconds, atRisk, ...row, survival };
++  });
++  return { samples: samples.length, medianSeconds, medianIdentifiable: medianSeconds !== null, curve };
++}
++export function createPublicAlertCapture({ slot, log, memory, startedTick = 0 }) {
++  if (log.alertMeasurements) throw Error('Alert capture already installed');
++  const stream = log.alertMeasurements = { schema: PUBLIC_ALERT_STREAM, policy: PUBLIC_ALERT_POLICY, toolOnly: true, startedTick,
++    creations: [], operations: [], starts: [], completions: [], coverage: { missingEnqueues: 0, missingStarts: 0, invalidGeometry: 0, missingPerception: 0 } };
++  const jobs = new WeakMap(), actions = new WeakMap(), events = new Map();
++  let perceptionFrames = 0;
++  let observation, creationCamera, creationTick, observationTick, lastTick = startedTick, finished = false;
++  const hands = () => memory.human?.hands;
++  function operation(job, tick) {
++    if (!job?.camera) return null;
++    if (jobs.has(job)) return jobs.get(job);
++    if (job.queuedTick !== tick) { stream.coverage.missingEnqueues++; return null; }
++    const causes = [...events.values()].filter(row => linked(job.context, row.creation)).map(row => clone(row.creation));
++    const row = { id: `${slot}:job:${stream.operations.length}`, queuedTick: job.queuedTick, registeredAtTick: tick,
++      mode: job.mode, context: clone(job.context), causes };
++    jobs.set(job, row); stream.operations.push(row); return row;
++  }
++  function start(tick) {
++    const h = hands(), active = h?.active, a = active?.actions[active.index];
++    if (!a?.camera || active.reacting || actions.has(a)) return;
++    const op = operation(active.job, tick);
++    if (!op || a.startedTick !== tick) { stream.coverage.missingStarts++; return; }
++    const row = { id: `${slot}:input:${stream.starts.length}`, operationId: op.id, kind: a.kind, mode: a.mode,
++      startedTick: a.startedTick, registeredAtTick: tick, motorTicks: a.duration, cameraBefore: pose(active.cameraFrom), input: clone(a.input),
++      ...(a.mode === 'pan' ? { panHold: a.panHold, panPrep: a.panPrep, target: clone(a.at) } : {}) };
++    actions.set(a, row); stream.starts.push(row);
++  }
++  return {
++    wrapMeasurements(base = {}) {
++      return {
++        measureRaw(view, seat, measured, tick) {
++          observation = view; creationCamera = pose(measured.camera); creationTick = tick; observationTick = view.tick;
++          return base.measureRaw?.(view, seat, measured, tick);
++        },
++        onMeasurements(payload) {
++          base.onMeasurements?.(payload); perceptionFrames++;
++          for (const e of memory.human?.events ?? []) if (e.source === 'alert' && !events.has(key(e))) {
++            const proof = geometry(observation, e, creationCamera);
++            const row = { creation: clone(e), createdAtTick: creationTick, capturedAtTick: payload.tick,
++              observationTick, geometry: proof };
++            if (point(e) && publicAlertOnScreen(proof) !== e.onScreen) stream.coverage.invalidGeometry++;
++            events.set(key(e), row); stream.creations.push(row);
++          }
++        }
++      };
++    },
++    afterThink(tick) {
++      if (finished) throw Error('Alert capture finished');
++      if (!validTick(tick) || tick < lastTick || tick - lastTick > 1) stream.coverage.missingStarts++;
++      lastTick = tick;
++      const h = hands();
++      for (const job of [h?.active?.job, ...(h?.queue ?? [])]) if (job) operation(job, tick);
++      start(tick);
++    },
++    input(input, inputIndex) {
++      const h = hands(), active = h?.active, a = active?.actions[active.index], s = a && actions.get(a);
++      if (!a?.camera) return;
++      if (!s) { stream.coverage.missingStarts++; return; }
++      const supported = ['minimap', 'alert', 'pan'].includes(a.mode);
++      const latest = (h.lastView?.alerts ?? []).map((e, i) => ({ ...e, i })).filter(e => point(e) && h.tick - e.tick < 120)
++        .sort((a, b) => b.tick - a.tick || b.i - a.i)[0];
++      // These are the exact early-return branches preceding Object.assign(camera, action.at).
++      const applied = supported && !a.outsideMinimap && !a.outsideScreen && (a.mode !== 'alert' || !!latest)
++        && point(a.at) && h.camera.x === a.at.x && h.camera.z === a.at.z
++        && (h.camera.x !== s.cameraBefore.x || h.camera.z !== s.cameraBefore.z);
++      const stopAfterInput = h.interruptAfterInput || !!(active.interruptAfterCommand && a.fire);
++      const op = jobs.get(active.job);
++      stream.completions.push({ startId: s.id, operationId: op.id, completedTick: h.tick, registeredAtTick: h.tick,
++        inputIndex, nativeDescriptor: clone(input), cameraAfter: pose(h.camera), applied, stopAfterInput,
++        geometry: op.causes.map(e => ({ event: key(e), proof: geometry(observation, e, h.camera) })) });
++    },
++    finish(tick) {
++      if (finished) throw Error('Alert capture finished twice');
++      finished = true; stream.endedTick = tick;
++      if (!perceptionFrames || !hands() || tick !== lastTick) stream.coverage.missingPerception++;
++      sealed.set(stream, { stream: clone(stream), inputs: clone(log.inputs), rawAlerts: clone(log.events?.filter(e => e.source === 'alert') ?? []) });
++    }
++  };
++}
++export function scorePublicAlerts(log) {
++  const stream = log.alertMeasurements, proof = stream && sealed.get(stream);
++  const rawAlerts = clone(log.events?.filter(e => e.source === 'alert') ?? []);
++  const native = !!proof && equal(proof.stream, stream) && equal(proof.inputs, log.inputs) && equal(proof.rawAlerts, rawAlerts);
++  if (!native) return { policy: PUBLIC_ALERT_POLICY, recorded: false, evaluable: false, reason: 'missing-or-altered-live-native-capture', rawAlerts, samples: [] };
++  const audit = { unknownCreations: 0, invalidCreationProof: 0, rejectedReceipts: 0, unsupportedCausalInputs: 0 };
++  const samples = [], requiredPopulation = [], decisions = [], seen = new Set();
++  let complete = rawAlerts.length === stream.creations.length;
++  for (const e of rawAlerts) {
++    const decision = classifyPublicAlert(e); decisions.push({ event: key(e), decision });
++    if (seen.has(key(e))) { complete = false; continue; } seen.add(key(e));
++    if (decision === 'unknown') { audit.unknownCreations++; continue; }
++    if (decision !== 'required') continue;
++    const record = stream.creations.find(row => equal(row.creation, e));
++    const creationValid = record && validTick(record.createdAtTick) && record.capturedAtTick === record.createdAtTick
++      && record.observationTick === e.tick && record.observationTick <= record.createdAtTick
++      && record.createdAtTick <= stream.endedTick && publicAlertOnScreen(record.geometry) === false;
++    if (!creationValid) { audit.invalidCreationProof++; complete = false; }
++    let answered = null;
++    for (const receipt of creationValid ? stream.completions : []) {
++      const op = stream.operations.find(row => row.id === receipt.operationId), s = stream.starts.find(row => row.id === receipt.startId);
++      if (!op?.causes.some(cause => equal(cause, e))) continue;
++      const input = log.inputs[receipt.inputIndex];
++      const shape = receipt.geometry.find(row => row.event === key(e))?.proof;
++      if (!s || !input || !equal(input, receipt.nativeDescriptor) || s.operationId !== op.id
++        || ![op.queuedTick, s.startedTick, receipt.completedTick].every(validTick)
++        || op.queuedTick !== op.registeredAtTick || s.startedTick !== s.registeredAtTick || receipt.completedTick !== receipt.registeredAtTick
++        || record.createdAtTick > op.queuedTick || op.queuedTick > s.startedTick || receipt.completedTick <= s.startedTick
++        || input.tick !== receipt.completedTick || input.inputStartedTick !== s.startedTick || input.queuedTick !== op.queuedTick
++        || input.motorTicks !== s.motorTicks || !(s.motorTicks > 0) || receipt.completedTick < s.startedTick + s.motorTicks
++        || input.kind !== s.kind || input.method !== s.mode || !equal(input.input, s.input) || !receipt.applied || input.countsAPM === false
++        || s.mode === 'pan' && (!['KeyW', 'KeyA', 'KeyS', 'KeyD'].includes(s.input?.code)
++          || !Number.isSafeInteger(s.panHold) || s.panHold <= 0 || !Number.isSafeInteger(s.panPrep) || s.panPrep <= 0
++          || s.motorTicks !== s.panPrep + s.panHold || !equal(s.target, input.target))
++        || !equal(pose(input.camera), receipt.cameraAfter) || !equal(shape?.camera, receipt.cameraAfter)
++        || !point(input.target) || input.target.x !== receipt.cameraAfter.x || input.target.z !== receipt.cameraAfter.z
++        || !equal(shape?.marker, e) || publicAlertOnScreen(shape) !== true || receipt.completedTick > stream.endedTick) {
++        audit.rejectedReceipts++; continue;
++      }
++      if (answered === null || receipt.completedTick < answered) answered = receipt.completedTick;
++    }
++    const unsupported = (creationValid ? log.inputs : []).filter(input => linked(input, e) && input.tick >= record.createdAtTick
++      && (answered === null || input.tick < answered) && (!input.kind?.startsWith('camera-') || !['minimap', 'alert', 'pan'].includes(input.method)));
++    if (unsupported.length) { audit.unsupportedCausalInputs += unsupported.length; complete = false; }
++    const duration = validTick(record?.createdAtTick) && validTick(stream.endedTick) && stream.endedTick >= record.createdAtTick
++      ? ((answered ?? stream.endedTick) - record.createdAtTick) / 20 : null;
++    requiredPopulation.push({ creation: clone(e), createdAtTick: record?.createdAtTick ?? null, completedTick: answered,
++      censorTick: answered === null ? stream.endedTick : null, seconds: duration });
++    if (duration !== null) samples.push({ event: key(e), seconds: duration, observed: answered !== null });
++  }
++  const evaluable = complete && audit.unknownCreations === 0 && stream.startedTick === 0 && validTick(stream.endedTick)
++    && Object.values(stream.coverage).every(n => n === 0);
++  return { policy: PUBLIC_ALERT_POLICY, recorded: true, evaluable, rawAlerts, decisions, requiredEvents: requiredPopulation.length,
++    requiredPopulation, audit, coverage: clone(stream.coverage), samples, survival: publicAlertKM(samples),
++    nonCameraEndpoint: 'unknown-no-source-proven-purpose-adapter' };
++}
++export function poolPublicAlerts(scores, level) {
++  if (!limits[level]) throw Error('Unknown alert difficulty');
++  const survival = publicAlertKM(scores.flatMap(s => s.samples ?? []));
++  const coverageComplete = scores.length > 0 && scores.every(s => s.recorded && s.evaluable);
++  const [lo, hi] = limits[level];
++  return { policy: PUBLIC_ALERT_POLICY, totalSeats: scores.length, recordedSeats: scores.filter(s => s.recorded).length,
++    eventlessSeats: scores.filter(s => s.recorded && s.requiredEvents === 0).length, coverageComplete,
++    firstCompletedAction: { survival, answered: survival.curve.reduce((n, r) => n + r.observed, 0), censored: survival.curve.reduce((n, r) => n + r.censored, 0) },
++    limitSeconds: [lo, hi], gate: !coverageComplete || !survival.medianIdentifiable ? 'unknown' : survival.medianSeconds >= lo && survival.medianSeconds <= hi ? 'pass' : 'fail' };
++}
+--- /dev/null
++++ b/test-engine-ai-public-alert.js
+@@ -0,0 +1,175 @@
++import assert from 'node:assert/strict';
++import { createGame, command } from './shared/sim.js';
++import { viewFor } from './shared/ai-view.js';
++import { perceive, onScreen } from './shared/ai-perception.js';
++import { createHands, queueCamera, advanceHands, interruptHands } from './shared/ai-hands.js';
++import { think } from './shared/ai.js';
++import { perceive as frozenOracle } from './tools/ai-screen-v1-oracle.js';
++import { createPublicAlertCapture, scorePublicAlerts, poolPublicAlerts, publicAlertKM, publicAlertOnScreen, classifyPublicAlert } from './tools/ai-public-alert-response.mjs';
++const map = { w: 160, h: 160, rows: Array(160).fill('.'.repeat(160)), heights: Array(160).fill('0'.repeat(160)), spawns: [{ x: 20, y: 20 }, { x: 75, y: 75 }], points: [] };
++function game() {
++  const g = createGame(map, ['AI', 'enemy'], false, [0, 1], [0, 1], { weather: false });
++  g.units.clear(); g.players[0].mp = 5000;
++  for (let i = 0; i < 2; i++) assert.equal(command(g, 0, { t: 'buy', unit: 'rifle' }), undefined);
++  const own = [...g.units.values()];
++  own.forEach((u, i) => Object.assign(u, { x: i ? 280 : 190, z: i ? 45 : 200, holdFire: true, auto: false, autoRetreat: false }));
++  return { g, own };
++}
++function hurt(f, i) {
++  const u = f.own[i]; u.hp *= .6;
++  f.g.shots = [{ t: u.id, to: 0, fo: 1, x: u.x, z: u.z, k: 'hurt', kill: false }];
++}
++function retain(log, state) {
++  for (const e of state.events ?? []) if (!log.events.some(old => old.id === e.id && old.tick === e.tick)) log.events.push(structuredClone(e));
++}
++function cameraCase(mode = 'alert', control = 'normal', recording = true) {
++  const oldRandom = Math.random; let f;
++  try { Math.random = () => .25; f = game(); } finally { Math.random = oldRandom; }
++  const log = { events: [], inputs: [] }, memory = { human: { camera: { x: 80, z: 80, yaw: 0, distance: 60 } } };
++  if (control.startsWith('pan-axis')) f.own[0].x = 80;
++  if (control === 'pan-axis-canceled') f.own[0].z = 150;
++  const state = memory.human, capture = recording ? createPublicAlertCapture({ slot: 0, log, memory }) : null;
++  state.hands = createHands({ slot: 0, seed: 27, camera: state.camera,
++    log: input => { log.inputs.push(structuredClone(input)); capture?.input(log.inputs.at(-1), log.inputs.length - 1); } });
++  const measurements = capture?.wrapMeasurements();
++  const motion = [];
++  let view, original, retargeted = false, interrupted = false;
++  for (let tick = 0; tick <= 140; tick++) {
++    f.g.tick = tick;
++    if (tick === 40 && control !== 'eventless') hurt(f, 0);
++    if (control === 'retargeted' && state.hands.active && !retargeted) { hurt(f, 1); retargeted = true; }
++    if (tick % 2 === 0 || retargeted && f.g.shots.length) {
++      view = perceive(viewFor(f.g, 0, {}), 0, state, tick, measurements); retain(log, state); f.g.shots = [];
++    }
++    advanceHands(state.hands, tick, view, cmd => command(f.g, 0, cmd));
++    if (tick === 40 && control !== 'eventless') {
++      original = log.events.find(e => e.source === 'alert');
++      assert.equal(original?.onScreen, false, 'an authored enemy hurt-shot cue creates a native off-screen danger alert');
++      assert.equal(onScreen(original, state.camera, view), false);
++      const linked = control === 'wrong-cause' ? { ...original, id: 'unrelated' } : original;
++      assert.equal(queueCamera(state.hands, control === 'outside' ? { x: 400, z: 400 } : original, { event: linked, eventTick: original.tick, concern: 'fixture' }, mode), true);
++    }
++    capture?.afterThink(tick);
++    if (mode === 'pan' && original && (state.camera.x !== 80 || state.camera.z !== 80)) {
++      motion.push({ tick, camera: { ...state.camera }, onScreen: onScreen(original, state.camera, view), completions: log.inputs.length });
++      if (['pan-axis-interrupted', 'pan-partial-interrupted'].includes(control) && state.hands.active && !interrupted) {
++        interruptHands(state.hands, tick, view); interrupted = true;
++      }
++    }
++    if (control === 'pan-axis-canceled' && state.hands.active?.reacting && !interrupted) {
++      assert.equal(interruptHands(state.hands, tick, view), true, 'native interruption cancels a waiting pan before its motor starts'); interrupted = true;
++    }
++    if (control === 'interrupted' && state.hands.active && !interrupted) {
++      interruptHands(state.hands, tick, view); interrupted = true;
++    }
++  }
++  capture?.finish(f.g.tick);
++  return { log, score: capture ? scorePublicAlerts(log) : null, original, state, motion };
++}
++const alert = cameraCase();
++assert.equal(alert.score.evaluable, true);
++assert.equal(alert.score.samples.filter(s => s.observed).length, 1);
++assert.equal(alert.log.inputs[0].input.code, 'Space', 'the native alert recipe pays a Space key input');
++assert.ok(alert.log.inputs[0].motorTicks > 0);
++assert.ok(alert.log.inputs[0].tick > alert.log.inputs[0].inputStartedTick);
++const minimap = cameraCase('minimap');
++assert.equal(minimap.score.samples.filter(s => s.observed).length, 1);
++assert.equal(minimap.log.inputs[0].input.button, 0, 'the native minimap recipe pays a left click');
++const pan = cameraCase('pan', 'pan-axis');
++assert.equal(pan.score.evaluable, true);
++assert.equal(pan.score.samples[0].observed, true, 'a paid native axis pan can finish on the original alert');
++assert.equal(pan.log.inputs[0].input.code, 'KeyS');
++assert.equal(pan.score.requiredPopulation[0].completedTick, pan.log.inputs[0].tick);
++assert.ok(pan.motion.some(row => row.onScreen && row.tick < pan.log.inputs[0].tick && row.completions === 0),
++  'continuous native motion can expose the marker before its paid arrival completes, without an early answer');
++const partialPan = cameraCase('pan');
++assert.equal(partialPan.log.inputs.length, 1);
++assert.equal(partialPan.log.alertMeasurements.completions[0].applied, true);
++assert.equal(partialPan.score.samples[0].observed, false, 'one completed axis pan leaves the diagonal original marker off screen');
++const interruptedPan = cameraCase('pan', 'pan-axis-interrupted');
++assert.equal(interruptedPan.log.inputs.length, 1, 'native held pan motion finishes its gesture after an interruption request');
++assert.equal(interruptedPan.log.alertMeasurements.completions[0].stopAfterInput, true);
++assert.equal(interruptedPan.score.samples[0].observed, true, 'stopping after a useful completed held pan retains its actual response');
++assert.equal(interruptedPan.score.requiredPopulation[0].completedTick, interruptedPan.log.inputs[0].tick);
++const canceledPan = cameraCase('pan', 'pan-axis-canceled');
++assert.equal(canceledPan.log.inputs.length, 0);
++assert.equal(canceledPan.log.alertMeasurements.starts.length, 0);
++assert.equal(canceledPan.score.samples[0].observed, false, 'a canceled native waiting pan has no completed response');
++const interruptedPartialPan = cameraCase('pan', 'pan-partial-interrupted');
++assert.equal(interruptedPartialPan.log.inputs.length, 1);
++assert.equal(interruptedPartialPan.log.alertMeasurements.completions[0].stopAfterInput, true);
++assert.equal(interruptedPartialPan.score.samples[0].observed, false, 'a completed interrupted diagonal pan still leaves its original marker off screen');
++const unrecordedPan = cameraCase('pan', 'pan-axis', false);
++const publicState = state => JSON.parse(JSON.stringify(state, (_key, value) => typeof value === 'function' ? undefined : value instanceof Map ? [...value] : value instanceof Set ? [...value] : value));
++assert.deepEqual(publicState(pan.state), publicState(unrecordedPan.state), 'pan capture places no proof or altered native state into the commander');
++assert.deepEqual(pan.log.inputs, unrecordedPan.log.inputs);
++assert.deepEqual(pan.log.events, unrecordedPan.log.events);
++assert.deepEqual(pan.motion, unrecordedPan.motion);
++const retargeted = cameraCase('alert', 'retargeted');
++assert.equal(retargeted.log.inputs[0].method, 'alert');
++assert.ok(Math.hypot(retargeted.log.inputs[0].camera.x - retargeted.original.x, retargeted.log.inputs[0].camera.z - retargeted.original.z) > 100);
++assert.equal(retargeted.score.samples.filter(s => s.observed).length, 0, 'retargeted Space cannot answer the original causal alert');
++assert.equal(retargeted.score.samples.filter(s => !s.observed).length, 2);
++const interrupted = cameraCase('minimap', 'interrupted');
++assert.equal(interrupted.log.inputs.length, 0, 'interrupting the actual native approach produces no completion');
++assert.equal(interrupted.score.samples[0].observed, false);
++const outside = cameraCase('minimap', 'outside');
++assert.equal(outside.log.inputs.length, 1, 'a failed native camera attempt still emits its input');
++assert.equal(outside.log.alertMeasurements.completions[0].applied, false);
++assert.equal(outside.score.samples[0].observed, false, 'a native completion log before camera application is not a response');
++assert.equal(cameraCase('minimap', 'wrong-cause').score.samples[0].observed, false);
++const eventless = cameraCase('alert', 'eventless');
++assert.equal(eventless.score.evaluable, true);
++assert.equal(poolPublicAlerts([eventless.score], 'normal').gate, 'unknown');
++assert.equal(poolPublicAlerts([eventless.score], 'normal').eventlessSeats, 1);
++const emptyLog = { events: [], inputs: [] }, emptyCapture = createPublicAlertCapture({ slot: 0, log: emptyLog, memory: {} });
++emptyCapture.afterThink(0); emptyCapture.finish(0);
++assert.equal(scorePublicAlerts(emptyLog).evaluable, false, 'absence of native perception cannot establish eventless coverage');
++assert.equal(scorePublicAlerts(structuredClone(alert.log)).recorded, false, 'deserialized historical or fabricated logs cannot acquire live native provenance');
++const altered = cameraCase();
++altered.log.inputs[0].inputStartedTick = altered.log.inputs[0].tick;
++assert.equal(scorePublicAlerts(altered.log).evaluable, false, 'a fabricated zero-duration endpoint cannot pass');
++const damagedGeometry = structuredClone(alert.log.alertMeasurements.creations[0].geometry);
++damagedGeometry.cells.pop();
++assert.equal(publicAlertOnScreen(damagedGeometry), null, 'missing public terrain coverage stays unknown');
++assert.equal(classifyPublicAlert({ ...alert.original, kind: 'ready' }), 'informational');
++assert.equal(classifyPublicAlert({ ...alert.original, kind: 'pointWon' }), 'informational');
++assert.equal(classifyPublicAlert({ ...alert.original, kind: 'event' }), 'unknown');
++assert.equal(publicAlertKM([{ seconds: 1, observed: true }, { seconds: 1, observed: false }]).medianSeconds, 1);
++assert.equal(publicAlertKM([{ seconds: 1, observed: false }, { seconds: 2, observed: false }]).medianSeconds, null);
++assert.equal(poolPublicAlerts([alert.score, { recorded: false, evaluable: false, samples: [] }], 'normal').gate, 'unknown');
++// The real default commander receives identical public scenes, independent of the tool observer.
++function defaultCommander(recording) {
++  const oldRandom = Math.random; let n = 777;
++  Math.random = () => ((n = (Math.imul(n, 1664525) + 1013904223) >>> 0) / 4294967296);
++  try {
++    const f = game(), memory = { human: { startedTick: 0, camera: { x: 80, z: 80, yaw: 0, distance: 60 } } };
++    const oracleFrames = [], baseMeasurements = { measureRaw: frozenOracle, onMeasurements: payload => oracleFrames.push(structuredClone(payload)) };
++    const log = { events: [], inputs: [], commands: [] }, capture = recording ? createPublicAlertCapture({ slot: 0, log, memory }) : null;
++    let view;
++    for (let tick = 0; tick <= 180; tick++) {
++      f.g.tick = tick;
++      if (tick === 40) hurt(f, 0);
++      if (tick % 2 === 0) view = viewFor(f.g, 0, {});
++      think(f.g, 0, { memory, view, seed: 27, level: 'normal',
++        perceptionMeasurements: capture ? capture.wrapMeasurements(baseMeasurements) : baseMeasurements,
++        inputLog: input => { log.inputs.push(structuredClone(input)); capture?.input(log.inputs.at(-1), log.inputs.length - 1); },
++        submit: cmd => { const result = command(f.g, 0, cmd); log.commands.push({ tick, cmd: structuredClone(cmd), result }); return result; } });
++      retain(log, memory.human); capture?.afterThink(tick);
++      if (tick % 2 === 0) f.g.shots = [];
++    }
++    capture?.finish(f.g.tick);
++    const replacer = (_k, v) => typeof v === 'function' ? undefined : v instanceof Map ? [...v] : v instanceof Set ? [...v] : v;
++    return { inputs: log.inputs, commands: log.commands, events: log.events, oracleFrames,
++      memory: JSON.parse(JSON.stringify(memory, replacer)), game: JSON.parse(JSON.stringify(f.g, replacer)), rng: n,
++      ...(capture ? { score: scorePublicAlerts(log) } : {}) };
++  } finally { Math.random = oldRandom; }
++}
++const baseline = defaultCommander(false), measured = defaultCommander(true);
++const { score: nativeScore, ...same } = measured;
++assert.deepEqual(same, baseline, 'tool capture changes no native default input, command, perception graph, simulation state or RNG');
++assert.ok(nativeScore.rawAlerts.some(e => e.source === 'alert' && e.onScreen === false));
++console.log(JSON.stringify({ schema: 'ww2-public-alert-focused-proof-v1', nativeSpace: alert.log.inputs[0], nativeMinimap: minimap.log.inputs[0], nativePan: pan.log.inputs[0],
++  panArrival: pan.score.requiredPopulation[0], partialPanCensored: partialPan.score.samples, completedInterruptedPan: interruptedPan.score.samples, canceledPanCensored: canceledPan.score.samples, interruptedPartialPanCensored: interruptedPartialPan.score.samples, panCaptureIsolation: true,
++  retargeted: retargeted.score.audit, interruptedCensored: interrupted.score.samples, defaultCommander: { thinkCalls: 181, simulationSteps: 0, inputs: baseline.inputs.length,
++    commands: baseline.commands.length, rawAlerts: nativeScore.rawAlerts.length, equality: true, score: nativeScore }, checks: 'PASS' }));
+--- /dev/null
++++ b/docs/ai-public-alert-response-v1.md
+@@ -0,0 +1,17 @@
++# Prospective public danger alert response
++
++`--alert-policy public-danger-alert-v1` enables a separate tool-only `ww2-public-alert-response-v1` stream. Existing reaction scores and manual response policies keep their definitions and results. Historical recordings cannot acquire this prospective capture.
++
++Every off-screen native alert of kind `base`, `attack`, `air`, `unitLost` or `pointLost` requires a response. These are exactly the red danger kinds in `client/alerts.js`. Classification uses the creation descriptor alone and is identical at every difficulty. `ready` means production or building completion, and `pointWon` means a friendly objective gain. Both are informational. Scripted `event` messages have no source-defined danger classification, so they remain unknown and block certification. Every raw alert, including its count and merge identity, remains recorded.
++
++The clock starts when native public perception creates the alert. The delivered snapshot tick remains separate. A response can finish with a paid causal Space key, axis pan or minimap camera click that brings the original alert location on screen. The tool captures actual queue and action objects through private WeakMaps, with enqueue, motor start and completion ticks. It verifies the native completion descriptor against the physical input log. The camera must move, match the actual completed target and pass the shared public `onScreen` helper for the original linked alert. Space retargeting to another alert does not answer the original unless that original location also becomes visible.
++
++Native hands also log failed attempts before applying the camera. The adapter checks the live minimap/alert action and the source early-return conditions before treating its changed camera pose as an application. It does not add a gameplay flag. The pan adapter also verifies its actual WASD key, key preparation and positive hold duration, with the completed target fixed at motor start. Continuous motion may expose a marker before arrival, but the response clock stops only at the native completion. A stop-after-input request does not erase a useful completed held pan: native hands apply its camera, emit its physical input and then clear the job. A canceled waiting pan has no completion and remains censored. Completed partial pans remain censored when the original marker stays off screen. Group recipes have no response adapter in this version. A causal unsupported endpoint before the first verified camera response leaves certification unknown. Useful non-camera actions require a separate source-proven purpose adapter; ordinary command acceptance supplies no such proof.
++
++Creation and completion geometry retain only detached public cells used by the shared helper: the 3 by 3 neighborhoods at the alert and the camera focus, including levels and terrain characters. Flat maps explicitly record the absence of height. Missing terrain coverage stays unknown. Authoritative game state never enters this capture or the planner.
++
++Every required unanswered alert remains end-censored. Eventless seats retain explicit coverage; absence of native public perception cannot prove eventless coverage. Pool all event-level completed and censored durations across every seat in each mode and difficulty. Use Kaplan-Meier, with completions preceding censors at tied times. An unidentified median or unknown seat coverage cannot pass. The original bounds remain Easy 3 to 6 seconds, Normal 1.5 to 3 seconds, and Hard 0.8 to 1.6 seconds.
++
++Scores are computed from the live native stream inside its collection worker before serialization. A private sealed copy binds the stream and native input/event timelines. Altered, fabricated or deserialized streams cannot produce a native score. No generic verifier callback can override this requirement. JSON reports retain already computed prospective results and source checkpoints, rather than rescoring old logs.
++
++The focused fixture authors public hurt-shot cues and advances commander ticks manually without stepping the simulation. Native perception creates the off-screen alerts, and native hands execute real Space, pan and minimap recipes. It checks successful axis pan arrival, partial pan, useful completed held pan with a stop request, canceled waiting pan, interrupted partial pan, pan capture isolation, retargeting, interruption, wrong cause, failed camera application, zero-time alteration, incomplete geometry, eventless coverage, unknown coverage and censor ties. An independent run of 181 actual default `think` calls, with the simulation tick set manually and no simulation steps, compares full native input/command/event timelines, commander and game state, RNG, and existing private oracle measurements with capture enabled and disabled.

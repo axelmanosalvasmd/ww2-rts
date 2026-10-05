@@ -1,0 +1,43 @@
+{"name":"easy/1.completeNativeMatch","wallSeconds":43.269946106999996,"cpuSeconds":43.214353,"sha256":"c37d9e114ceadf2f871ce5e2975dfbf40ef8919f362211dcbf59218653225fdd","bytes":110796568}
+{"name":"easy/1.slot0.log","wallSeconds":12.071955568999998,"cpuSeconds":12.071688,"sha256":"94c189535213878bcb7b4cc31bc1dc28ed9ab1d6051aaaf7d06540279f9ec9a0","bytes":36078001}
+{"name":"easy/1.slot0.perceptionMeasurements","wallSeconds":0.11035144600000057,"cpuSeconds":0.110326,"sha256":"6172425ce8e78d36fa494d0e9d9e8d3fe1746304c2aa298147bdd3c5b5853a0c","bytes":659261}
+{"name":"easy/1.slot0.manualMeasurements","wallSeconds":10.972983827999997,"cpuSeconds":10.972716,"sha256":"a06e0bf58dd8a3eddfe225e36786c6159f920e419885e812c7d41de9a9a2ae33","bytes":35305359}
+{"name":"easy/1.slot1.log","wallSeconds":11.684433172999997,"cpuSeconds":11.684187,"sha256":"4dc0b04fac9ba817f04c47b98f66380199bd0ec649b0b3db5edd04e6698a373b","bytes":34435167}
+{"name":"easy/1.slot1.perceptionMeasurements","wallSeconds":0.045542952000003425,"cpuSeconds":0.04552,"sha256":"a6c861fc2720f361abb3701588199b5c1c9fd1c42836a8c7a2133017c5d318b4","bytes":295629}
+{"name":"easy/1.slot1.manualMeasurements","wallSeconds":10.879001479,"cpuSeconds":10.878702,"sha256":"03b8f6bce44ba6bb5130d78ade061b4bc3054b23fefc2282246864de89b7cc3e","bytes":34041906}
+{"name":"easy/1.slot2.log","wallSeconds":12.129347959000006,"cpuSeconds":12.129032,"sha256":"2e3b2a6408ce94c619805f51aeb010e20db09dc24eaa8e0dae384d091aae4f1c","bytes":36365973}
+{"name":"easy/1.slot2.perceptionMeasurements","wallSeconds":0.09331759900000179,"cpuSeconds":0.093298,"sha256":"6a4a719779fa3d9e0da190c87ef6c6130534ef067a73c9e5cf7edf185a268f7c","bytes":726830}
+{"name":"easy/1.slot2.manualMeasurements","wallSeconds":12.311086376999999,"cpuSeconds":12.310349,"sha256":"43f84a110fae744fc2d50086d4f1e8b07e076e9ee40af78da1e5e9cf76ada123","bytes":35544003}
+{"name":"easy/20.completeNativeMatch","wallSeconds":40.97333375199999,"cpuSeconds":40.972103,"sha256":"bb6f232d906153444cc6fd16129caa35876756310ad0b41772937315ff2cc1dc","bytes":103218330}
+{"name":"easy/20.slot0.log","wallSeconds":11.115794116000005,"cpuSeconds":11.115568,"sha256":"d2255a510812fcf072e76757166bbe1d62416c1c2b2e1ad1c041dae6a3b4fce0","bytes":33350889}
+{"name":"easy/20.slot0.perceptionMeasurements","wallSeconds":0.07322509900000296,"cpuSeconds":0.073215,"sha256":"b10e4d79a738b93088835d1af5e2a667920072b64be88df0aaaffcc94bb195fb","bytes":541681}
+{"name":"easy/20.slot0.manualMeasurements","wallSeconds":10.04988776100002,"cpuSeconds":10.049492,"sha256":"a8fc35c32b590a115803a1f20755fe672c952d73c7cfddc7177f77b1cca5c3f4","bytes":32709625}
+{"name":"easy/20.slot1.log","wallSeconds":11.206902207000006,"cpuSeconds":11.206641,"sha256":"c38c34103f81b81b7e6cfa69b125c425bca2f44d523c9ea5ef0644539545e0ba","bytes":33643605}
+{"name":"easy/20.slot1.perceptionMeasurements","wallSeconds":0.04905430300001171,"cpuSeconds":0.049045,"sha256":"5486e614dfff5698d409416912a394dedfb78950d058444b8a792c9d9d1f1fc8","bytes":369660}
+{"name":"easy/20.slot1.manualMeasurements","wallSeconds":10.353634102000012,"cpuSeconds":10.353435,"sha256":"1bd7c671a6cd5f3a943e2bf9e9bd60e1af1d8765d420b5b6cf0ffb3ec9c2c27a","bytes":33204774}
+{"name":"easy/20.slot2.log","wallSeconds":11.33373716000002,"cpuSeconds":11.332089,"sha256":"d13db8c69c357706f6e778977fe943ff042589d168ebbb423aa665dd33955e09","bytes":32881527}
+{"name":"easy/20.slot2.perceptionMeasurements","wallSeconds":0.031978976000013065,"cpuSeconds":0.03197,"sha256":"b804e3f063d64263958f0de3deadbfad0bc5ba6da1a9c54d41b51e5468c1da43","bytes":236525}
+Command terminated by signal 15
+	Command being timed: "node /tmp/v16-hash-buffer-proposal/native-controls.mjs"
+	User time (seconds): 220.14
+	System time (seconds): 0.69
+	Percent of CPU this job got: 99%
+	Elapsed (wall clock) time (h:mm:ss or m:ss): 3:40.96
+	Average shared text size (kbytes): 0
+	Average unshared data size (kbytes): 0
+	Average stack size (kbytes): 0
+	Average total size (kbytes): 0
+	Maximum resident set size (kbytes): 1068252
+	Average resident set size (kbytes): 0
+	Major (requiring I/O) page faults: 0
+	Minor (reclaiming a frame) page faults: 347292
+	Voluntary context switches: 20528
+	Involuntary context switches: 20467
+	Swaps: 0
+	File system inputs: 25600
+	File system outputs: 48
+	Socket messages sent: 0
+	Socket messages received: 0
+	Signals delivered: 0
+	Page size (bytes): 4096
+	Exit status: 0

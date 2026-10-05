@@ -1,0 +1,45 @@
+{
+  "status": "PASS",
+  "checks": [
+    "stale-resource-frame29/useful-nonbuy-still-proposed",
+    "stale-resource-frame30/useful-nonbuy-still-proposed",
+    "strictly-newer-frame-resumes-buy-planning",
+    "unknown-receipt-preserves-old-native-proposals",
+    "explicit-decisionOnly-preserves-direct-planner-semantics",
+    "sender-refusal-stops-current-batch-without-receipt-or-cost-credit",
+    "existing-local-price-projection-still-honors-two-affordable-mortars",
+    "actual-engine-success-stamps-own-accepted-buy-tick",
+    "actual-engine-refusal-does-not-stamp-receipt",
+    "no-buy-callback-has-no-receipt",
+    "existing-two-pending-buy-gestures-and-click-costs-remain-identical-after-first-receipt"
+  ],
+  "actual": [
+    {
+      "refusal": false,
+      "actualBuy": {
+        "tick": 74,
+        "command": {
+          "t": "buy",
+          "unit": "rifle"
+        },
+        "accepted": true,
+        "reason": null
+      },
+      "receiptTick": 74
+    },
+    {
+      "refusal": true,
+      "actualBuy": {
+        "tick": 74,
+        "command": {
+          "t": "buy",
+          "unit": "rifle"
+        },
+        "accepted": false,
+        "reason": "mp"
+      },
+      "receiptTick": null
+    }
+  ],
+  "noProductionEdits": true
+}

@@ -1,0 +1,108 @@
+{
+  "verifiedAtUnix": 1791164787.0140634,
+  "archive": "/home/judiazm/.t3/worktrees/ww2-rts/ai-human-commander/docs/evidence/human-like-ai-r8-fixes/fixture-migrations/human-fixture-migration.tar.gz",
+  "archiveSHA256": "461ebabf0bc37b4e0d155c4106de1282bc33f971a4777bca0fa53bd80192ffd2",
+  "originalPayloadCount": 14,
+  "verifiedMembers": [
+    {
+      "member": "REVIEW.md",
+      "originalPath": "/tmp/human-ai-r8-human-fixture/REVIEW.md",
+      "sha256": "6b05c9543fd1f08a579eed628238ddfb135a39d567d165a84df41b1f9ab9f132",
+      "bytes": 2105,
+      "originalBytesCurrentlyEqual": true
+    },
+    {
+      "member": "baseline-probe.mjs",
+      "originalPath": "/tmp/human-ai-r8-human-fixture/baseline-probe.mjs",
+      "sha256": "2aa0b3340299e235c3f756c2f7b588fe19c489b52c397f079f0f78683285c4df",
+      "bytes": 11196,
+      "originalBytesCurrentlyEqual": true
+    },
+    {
+      "member": "baseline-raw.json",
+      "originalPath": "/tmp/human-ai-r8-human-fixture/baseline-raw.json",
+      "sha256": "a820737342acabe2407d3e6da2607f093079da8a5c55cc283ba644f428b38eeb",
+      "bytes": 84203,
+      "originalBytesCurrentlyEqual": true
+    },
+    {
+      "member": "baseline.log",
+      "originalPath": "/tmp/human-ai-r8-human-fixture/baseline.log",
+      "sha256": "3d9b0ed0d429cd34a930c5bcb5d34bcb1ce593bb91a986c5d21844c91403659a",
+      "bytes": 698,
+      "originalBytesCurrentlyEqual": true
+    },
+    {
+      "member": "candidate-probe.mjs",
+      "originalPath": "/tmp/human-ai-r8-human-fixture/candidate-probe.mjs",
+      "sha256": "74908fb580347f0b125261ae063ffbf03aa1ac4ae1328211602b50f9d711ce94",
+      "bytes": 11715,
+      "originalBytesCurrentlyEqual": true
+    },
+    {
+      "member": "candidate-raw.json",
+      "originalPath": "/tmp/human-ai-r8-human-fixture/candidate-raw.json",
+      "sha256": "008731d4d2b4cc58cc599265ea8918769723d3c46717ddc06184a30929950bde",
+      "bytes": 86748,
+      "originalBytesCurrentlyEqual": true
+    },
+    {
+      "member": "candidate.log",
+      "originalPath": "/tmp/human-ai-r8-human-fixture/candidate.log",
+      "sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+      "bytes": 0,
+      "originalBytesCurrentlyEqual": true
+    },
+    {
+      "member": "handover-probe.mjs",
+      "originalPath": "/tmp/human-ai-r8-human-fixture/handover-probe.mjs",
+      "sha256": "71bc582f196606a3cf2c9eed14ece82d1290da4acf96d028328c24d9d65d4344",
+      "bytes": 12077,
+      "originalBytesCurrentlyEqual": true
+    },
+    {
+      "member": "handover-raw.json",
+      "originalPath": "/tmp/human-ai-r8-human-fixture/handover-raw.json",
+      "sha256": "04e6aa2bd8fde355f0229dc990aebdd8c2e167cc5258655946b45a2d33193b6e",
+      "bytes": 39753,
+      "originalBytesCurrentlyEqual": true
+    },
+    {
+      "member": "handover.log",
+      "originalPath": "/tmp/human-ai-r8-human-fixture/handover.log",
+      "sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+      "bytes": 0,
+      "originalBytesCurrentlyEqual": true
+    },
+    {
+      "member": "source-hashes.json",
+      "originalPath": "/tmp/human-ai-r8-human-fixture/source-hashes.json",
+      "sha256": "7348c0d82206ebfef4b66c8fbe6ade260adf3dbe4f960726a8670d42d4466dce",
+      "bytes": 735,
+      "originalBytesCurrentlyEqual": true
+    },
+    {
+      "member": "test-engine-ai-human.js",
+      "originalPath": "/tmp/human-ai-r8-human-fixture/test-engine-ai-human.js",
+      "sha256": "f3d74de9c48bb9916480ea7e48206833e7f57e3570225998be54111d2dd93df9",
+      "bytes": 14598,
+      "originalBytesCurrentlyEqual": true
+    },
+    {
+      "member": "fixture.patch",
+      "originalPath": "/tmp/human-ai-r8-human-fixture.patch",
+      "sha256": "a8f3029f26acb705507441ab4ba22cc978cc52c12ebe669dbe647e173654ef8a",
+      "bytes": 4010,
+      "originalBytesCurrentlyEqual": true
+    },
+    {
+      "member": "original-fixture.js",
+      "originalPath": "/tmp/r8-package-human-original/test-engine-ai-human.js",
+      "sha256": "5ab11ac992f19ffd326062cb5f447e7781da773d25102a182ad7433e090feb8b",
+      "bytes": 13745,
+      "originalBytesCurrentlyEqual": true
+    }
+  ],
+  "unresolved": [],
+  "allPayloadsVerified": true
+}

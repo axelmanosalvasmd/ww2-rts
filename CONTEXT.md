@@ -189,7 +189,25 @@ The input executor that selects troops, recalls groups, moves the camera, presse
 The current health and ability information shown for the actual selection. A single selected squad supplies rounded numeric values; several squads of one type supply aggregate values. A paid inspection selects a squad before using this reading to decide.
 
 **Physical Input APM**:
-Inputs per minute, including selection and camera gestures. Command APM counts game commands separately; one input can affect a whole formation.
+Completed selections, keys, clicks and camera gestures per minute. Camera samples do not count. Command APM counts submitted game commands separately, including refused attempts; one input can affect a whole formation.
 
 **Persona**:
-A seeded match preference for an aggressive, defensive, armor, infantry or support opening. It changes choices and can adapt to observed threats.
+A seeded match preference for an aggressive, defensive, armor, infantry or support opening. The preference stays stable while the commander adapts its choices to observed threats.
+
+**Observed Danger**:
+A current screen cue that can demand attention, such as a hurt squad or idle combat troops near a newly seen enemy. The commander uses visible estimates and its actual selection.
+
+**Danger Pullback**:
+A short local move away from a threat the commander currently sees. It uses ordinary timed selection and movement inputs.
+
+**Empty Fight Yield**:
+Leaving a watched fight after repeated plans find no useful input, so production or other troops can receive attention. New available work can bring the camera back.
+
+**Measurement Stream**:
+A tool-only record of stimulus creation and its links to actual inputs. It keeps the original detector separate from what the commander perceived; unperceived events stay recorded and censored.
+
+**Manual Response Demand**:
+A newly observed screen situation requiring a new player input. The independent measurement tool records public creation facts and distinguishes it from useful automatic fighting, a safe defensive hold or already proven retreat protection. The commander receives no grading decision.
+
+**AI Sandbox**:
+A developer scene editor that advances the real simulation immediately and records the commander's public perception, camera, timed inputs and native order receipts. Author edits reset the case; the separate debug view never supplies planner information.

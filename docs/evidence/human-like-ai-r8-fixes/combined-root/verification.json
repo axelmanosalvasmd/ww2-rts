@@ -1,0 +1,14 @@
+{
+  "status": "PASS",
+  "qualification": "Copy integrity only. Retained source-specific results are not new checks or acceptance.",
+  "archive": "combined-root-native.tar.gz",
+  "archiveBytes": 15520,
+  "archiveSHA256": "6b6b73b967c9cf056343525606fb78bff70f53493aa926a204793352abb2185e",
+  "members": 26,
+  "originals": 23,
+  "originalCopiedBytes": 186840,
+  "payloadBytes": 197640,
+  "allOriginalBytesUnchanged": true,
+  "allRoundtripBytesMatch": true,
+  "manifestSHA256": "6afcf701ce23717e69a1de2b28e014afb8c3c95f141918822efd871c20ff18fc"
+}

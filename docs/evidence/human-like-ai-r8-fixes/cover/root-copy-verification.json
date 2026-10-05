@@ -1,0 +1,147 @@
+{
+  "verifiedAtUTC": "2026-10-05T00:24:37Z",
+  "archiveSHA256": "1d531588318e1a651e5ecbc8c20f2cb19a4faca109b2d3dec192ef265db663c2",
+  "members": 24,
+  "payloadBytes": 29385463,
+  "allOriginalBytesAndHashesMatch": true,
+  "files": [
+    {
+      "member": "cover-fort/REVIEW.md",
+      "original": "/tmp/ai-r8-cover-fort/REVIEW.md",
+      "bytes": 3430,
+      "sha256": "8765a4d1d459d61dcade94f492576f4f45b88f5e9ccdb4844abc56bc4a24ca68"
+    },
+    {
+      "member": "cover-fort/integration.patch",
+      "original": "/tmp/ai-r8-cover-fort/integration.patch",
+      "bytes": 8159,
+      "sha256": "e90cb51f5e78f96cc4e1d268fe7514c4c5e8fdf9bee2cadeed2cc22b39af8e76"
+    },
+    {
+      "member": "cover-fort/candidate/test-engine-ai-fortification-cover.js",
+      "original": "/tmp/ai-r8-cover-fort/candidate/test-engine-ai-fortification-cover.js",
+      "bytes": 6800,
+      "sha256": "56fb15c8737f75aaaf726558022fe87614274f5e06c9e2e180a333558ae0825c"
+    },
+    {
+      "member": "cover-fort/source-and-proof-manifest.json",
+      "original": "/tmp/ai-r8-cover-fort/source-and-proof-manifest.json",
+      "bytes": 977,
+      "sha256": "de9bbacf7ed9ec261483afd6c6face4bf461d495eb46dc28ada635ed63a74d28"
+    },
+    {
+      "member": "cover-fort/native-proof.json",
+      "original": "/tmp/ai-r8-cover-fort/native-proof.json",
+      "bytes": 5189739,
+      "sha256": "ded1cab0f042ef567456721c7ee601300c378f8a808815c61ce43fc193ee7e9b"
+    },
+    {
+      "member": "cover-fort/native-test.log",
+      "original": "/tmp/ai-r8-cover-fort/native-test.log",
+      "bytes": 176,
+      "sha256": "f1eed39c95e194e636dcfd9691ca7524e88e73330318971fd09f7f2c7223d4f0"
+    },
+    {
+      "member": "cover-fort/cover-opportunity.log",
+      "original": "/tmp/ai-r8-cover-fort/cover-opportunity.log",
+      "bytes": 136,
+      "sha256": "f9a4df1abe636a77292dcefc9184c5251dc42528c35f318bc4f600241d87d307"
+    },
+    {
+      "member": "cover-fort/native-test-readonly-cleanup.log",
+      "original": "/tmp/ai-r8-cover-fort/native-test-readonly-cleanup.log",
+      "bytes": 492,
+      "sha256": "8468cd8510d713763ed0f0cbbe5a80acbffedd6b81e8670d72a8895b4655f9d5"
+    },
+    {
+      "member": "cover-fort/cover-opportunity-readonly.log",
+      "original": "/tmp/ai-r8-cover-fort/cover-opportunity-readonly.log",
+      "bytes": 306,
+      "sha256": "b3bdf9d2488a5bce48868299fbe43e5aeb48922673a036d241a43999fbf8d00b"
+    },
+    {
+      "member": "cover-fort/probe-first.mjs",
+      "original": "/tmp/ai-r8-cover-fort/probe-first.mjs",
+      "bytes": 1743,
+      "sha256": "c770a4594971b28d7e078d429ed012dcb2908c1195bb3417b798c3fd39a8cc83"
+    },
+    {
+      "member": "cover-fort/probe-first.log",
+      "original": "/tmp/ai-r8-cover-fort/probe-first.log",
+      "bytes": 1719,
+      "sha256": "81d8fda8aee8763107935689845e93c3504292dae66e9d0b5f611c1490656442"
+    },
+    {
+      "member": "cover-fort/probe-wire.log",
+      "original": "/tmp/ai-r8-cover-fort/probe-wire.log",
+      "bytes": 635,
+      "sha256": "9bdc185e8e796225d899706ebbc96f99f569c2cdf1bb9c59210ba1a141fda3ac"
+    },
+    {
+      "member": "cover-fort/trench-baseline.json",
+      "original": "/tmp/ai-r8-cover-fort/trench-baseline.json",
+      "bytes": 4019669,
+      "sha256": "fcdd038e91e853a8f8736ba3b028e19e1465ecb8521d65d271cd655db7436aa1"
+    },
+    {
+      "member": "cover-fort/trench-candidate.json",
+      "original": "/tmp/ai-r8-cover-fort/trench-candidate.json",
+      "bytes": 4000799,
+      "sha256": "d8641d37f09c9cb74d361ccb6a7eeb6423e58a65b9c9eca26679b156b453a989"
+    },
+    {
+      "member": "cover-fort/wire-baseline.json",
+      "original": "/tmp/ai-r8-cover-fort/wire-baseline.json",
+      "bytes": 4034524,
+      "sha256": "6c23e8500ef67e1548e35784513fed439c44de56c5ccf7a20fc2faa188bdd81d"
+    },
+    {
+      "member": "cover-fort/wire-candidate.json",
+      "original": "/tmp/ai-r8-cover-fort/wire-candidate.json",
+      "bytes": 4034524,
+      "sha256": "6c23e8500ef67e1548e35784513fed439c44de56c5ccf7a20fc2faa188bdd81d"
+    },
+    {
+      "member": "cover-fort/wire-new-baseline.json",
+      "original": "/tmp/ai-r8-cover-fort/wire-new-baseline.json",
+      "bytes": 4032652,
+      "sha256": "b2efc5c0ae66b7afd2e0bea2f0e0fc4ec770d9c1ac83e853e7e82c257e70b06e"
+    },
+    {
+      "member": "cover-fort/wire-new-candidate.json",
+      "original": "/tmp/ai-r8-cover-fort/wire-new-candidate.json",
+      "bytes": 4032652,
+      "sha256": "b2efc5c0ae66b7afd2e0bea2f0e0fc4ec770d9c1ac83e853e7e82c257e70b06e"
+    },
+    {
+      "member": "mode-gap/REVIEW.md",
+      "original": "/tmp/ai-r8-armor-mode-gap/REVIEW.md",
+      "bytes": 3117,
+      "sha256": "7f1946157a0bf41acab548308db06451f36e3e11547666d911fb7cee6eb0cf88"
+    },
+    {
+      "member": "mode-gap/native-homes.mjs",
+      "original": "/tmp/ai-r8-armor-mode-gap/native-homes.mjs",
+      "bytes": 3417,
+      "sha256": "cea7567022b8d9bd7d3dbcbec2d5712bc5dff1676f68eb9e1c6c50167eea374f"
+    },
+    {
+      "member": "mode-gap/native-homes.json",
+      "original": "/tmp/ai-r8-armor-mode-gap/native-homes.json",
+      "bytes": 9051,
+      "sha256": "e76776bc28ce5cb14f639aafe23b4a713c5bd146ed3f7c81ecca365c2fc81c7d"
+    },
+    {
+      "member": "mode-gap/native-homes.log",
+      "original": "/tmp/ai-r8-armor-mode-gap/native-homes.log",
+      "bytes": 96,
+      "sha256": "5c95d101b84431f8c0c267af3b8b0cb386c6f321d3cabdbfc36994ead783e50a"
+    },
+    {
+      "member": "mode-gap/native-homes-visibility-failure.log",
+      "original": "/tmp/ai-r8-armor-mode-gap/native-homes-visibility-failure.log",
+      "bytes": 650,
+      "sha256": "6557edc950759442e07993c813160c6778bc05ee4a1099f0075672441e0a31fe"
+    }
+  ]
+}

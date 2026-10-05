@@ -1,0 +1,109 @@
+{
+  "status": "PASS",
+  "proof": [
+    {
+      "level": "easy",
+      "seed": 3,
+      "slot": 0,
+      "firstReceiptTick": 279,
+      "preActivationNativeInputAndCommandBytesEqual": true,
+      "beforeRefusedBuys": [],
+      "afterRefusedBuys": []
+    },
+    {
+      "level": "easy",
+      "seed": 3,
+      "slot": 1,
+      "firstReceiptTick": 278,
+      "preActivationNativeInputAndCommandBytesEqual": true,
+      "beforeRefusedBuys": [
+        {
+          "tick": 283,
+          "reason": "mp"
+        }
+      ],
+      "afterRefusedBuys": []
+    },
+    {
+      "level": "easy",
+      "seed": 3,
+      "slot": 2,
+      "firstReceiptTick": 231,
+      "preActivationNativeInputAndCommandBytesEqual": true,
+      "beforeRefusedBuys": [],
+      "afterRefusedBuys": []
+    },
+    {
+      "level": "normal",
+      "seed": 9,
+      "slot": 0,
+      "firstReceiptTick": 150,
+      "preActivationNativeInputAndCommandBytesEqual": true,
+      "beforeRefusedBuys": [],
+      "afterRefusedBuys": []
+    },
+    {
+      "level": "normal",
+      "seed": 9,
+      "slot": 1,
+      "firstReceiptTick": 130,
+      "preActivationNativeInputAndCommandBytesEqual": true,
+      "beforeRefusedBuys": [],
+      "afterRefusedBuys": []
+    },
+    {
+      "level": "normal",
+      "seed": 9,
+      "slot": 2,
+      "firstReceiptTick": 300,
+      "preActivationNativeInputAndCommandBytesEqual": true,
+      "beforeRefusedBuys": [
+        {
+          "tick": 304,
+          "reason": "mp"
+        },
+        {
+          "tick": 311,
+          "reason": "mp"
+        }
+      ],
+      "afterRefusedBuys": []
+    },
+    {
+      "level": "hard",
+      "seed": 2,
+      "slot": 0,
+      "firstReceiptTick": 262,
+      "preActivationNativeInputAndCommandBytesEqual": true,
+      "beforeRefusedBuys": [
+        {
+          "tick": 266,
+          "reason": "mp"
+        },
+        {
+          "tick": 271,
+          "reason": "mp"
+        }
+      ],
+      "afterRefusedBuys": []
+    },
+    {
+      "level": "hard",
+      "seed": 2,
+      "slot": 1,
+      "firstReceiptTick": 118,
+      "preActivationNativeInputAndCommandBytesEqual": true,
+      "beforeRefusedBuys": [],
+      "afterRefusedBuys": []
+    },
+    {
+      "level": "hard",
+      "seed": 2,
+      "slot": 2,
+      "firstReceiptTick": 111,
+      "preActivationNativeInputAndCommandBytesEqual": true,
+      "beforeRefusedBuys": [],
+      "afterRefusedBuys": []
+    }
+  ]
+}

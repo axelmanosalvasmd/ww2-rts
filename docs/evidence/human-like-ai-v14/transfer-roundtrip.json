@@ -1,0 +1,26 @@
+{
+  "final120-compact.json": {
+    "raw": {
+      "sha256": "0ecfda55a44df586aac3e0f1172e7dd4b786f655fc5bbd927947e3de66214eef",
+      "bytes": 107140771
+    },
+    "gzip": {
+      "sha256": "e749786d456b4adba1eafd65d202102f690bfec1f77db567121dd26e269c19ba",
+      "bytes": 6989922
+    },
+    "exactByteRoundtrip": true
+  },
+  "gate-analysis.json": {
+    "raw": {
+      "sha256": "dcfd19189f3e1df2c02b32183499d1a8ca0bd6c841fff8a8d5b9af82a2ad89c3",
+      "bytes": 61328136
+    },
+    "gzip": {
+      "sha256": "890176c089c0dc33ba5441964d364740a93142370e449935cda97e75eca030b9",
+      "bytes": 3417640
+    },
+    "exactByteRoundtrip": true
+  },
+  "allMatchesExact180Seconds": true,
+  "all43ArchivedFilesReadOnly": true
+}

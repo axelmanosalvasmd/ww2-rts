@@ -1,0 +1,53 @@
+{
+  "rootCommand": "taskset -c4 node test-engine-ai-cover-opportunity.js",
+  "nativeExitCode": 0,
+  "nativeOutput": "Cover opportunity: native bare refusal loop 3->0, legal trench and combat-wall control, hidden terrain and full physical timelines PASS",
+  "rootSourceSHA256": {
+    "shared/ai.js": "a903af250df0ea8d738a63ee75c43eb66b40c9b14e63333598ab0b76c68fc5b3",
+    "shared/ai-attention.js": "07c48dbdcc92f326eeb52222518f274dcf05a4d746dfd474126d932ed05ca7ba",
+    "shared/ai-hands.js": "8bd373c3afb8261bf8ca2a53f24512522b91f0ddc6568eaa61dbf7039684b9a3",
+    "shared/sim.js": "7bc57ac179b4982bdb94b469ce029e2e2178567fcb23fa1756476a17f791f018",
+    "test-engine-ai-cover-opportunity.js": "89abf4965254ce6e830102105e43b7cf3596f9c06828974a4b8c79f4ed754373"
+  },
+  "qualification": "Recorded scratch traces use candidate05b91f. Root additionally skips projection for flags with neither COVER nor SIGHT; complete permanent native controls pass on combined root source. This is focused proof, not numeric population acceptance.",
+  "archiveSHA256": "5ea6ffc1dc6ecb70826a7c68056d051b4332cff2056e9c25fb4a4fd5fee1b565",
+  "entries": [
+    {
+      "source": "/tmp/ai-lab-cover-diagnosis/REVIEW.md",
+      "member": "REVIEW.md",
+      "sha256": "a838d987b6a3f65c0cf8826ea478feed7655dc0b899fb2ea7149cd7964774a41",
+      "bytes": 3458
+    },
+    {
+      "source": "/tmp/ai-lab-cover-diagnosis/cover-opportunity.patch",
+      "member": "cover-opportunity.patch",
+      "sha256": "4f17fd69b09495cdeb7588620df242de95cddb4d155006b71281fde77fe61c0c",
+      "bytes": 9046
+    },
+    {
+      "source": "/tmp/ai-lab-cover-diagnosis/test-engine-ai-cover-opportunity.js",
+      "member": "test-engine-ai-cover-opportunity.js",
+      "sha256": "89abf4965254ce6e830102105e43b7cf3596f9c06828974a4b8c79f4ed754373",
+      "bytes": 5999
+    },
+    {
+      "source": "/tmp/ai-lab-cover-diagnosis/native-controls.json",
+      "member": "native-controls.json",
+      "sha256": "462e1251587b3ab07fbc9eaf0ee3bc23ba2489dd11be09aeb828370819ec9446",
+      "bytes": 4003603
+    },
+    {
+      "source": "/tmp/ai-lab-cover-diagnosis/summary.json",
+      "member": "summary.json",
+      "sha256": "fe6c88bd31554a0f756260fa9d0a89559439724f637aa8a8bdb15ee84cf4bb98",
+      "bytes": 1337
+    },
+    {
+      "source": "/tmp/ai-lab-cover-diagnosis/hashes.json",
+      "member": "hashes.json",
+      "sha256": "62c48483f2e071ab4c3b2ea0a81a20d7c863f72e9815d0cf01fa49be0985024f",
+      "bytes": 1869
+    }
+  ],
+  "copiedAtUnix": 1791149603.9488153
+}

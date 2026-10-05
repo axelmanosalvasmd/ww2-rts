@@ -1,0 +1,105 @@
+{
+  "roots": 75,
+  "repeats": 100,
+  "pairs": [
+    {
+      "order": [
+        "before",
+        "after"
+      ],
+      "before": 19.164866000000004,
+      "after": 14.197891999999996
+    },
+    {
+      "order": [
+        "after",
+        "before"
+      ],
+      "after": 14.133133999999984,
+      "before": 18.761678999999987
+    },
+    {
+      "order": [
+        "before",
+        "after"
+      ],
+      "before": 18.888464999999997,
+      "after": 14.033895000000001
+    },
+    {
+      "order": [
+        "after",
+        "before"
+      ],
+      "after": 14.164085999999998,
+      "before": 18.633061999999995
+    },
+    {
+      "order": [
+        "before",
+        "after"
+      ],
+      "before": 18.83601600000003,
+      "after": 14.046102000000019
+    },
+    {
+      "order": [
+        "after",
+        "before"
+      ],
+      "after": 14.272817000000032,
+      "before": 18.64632499999999
+    },
+    {
+      "order": [
+        "before",
+        "after"
+      ],
+      "before": 18.779138999999986,
+      "after": 14.083132000000035
+    },
+    {
+      "order": [
+        "after",
+        "before"
+      ],
+      "after": 14.01878099999999,
+      "before": 18.765108999999995
+    },
+    {
+      "order": [
+        "before",
+        "after"
+      ],
+      "before": 18.87531899999999,
+      "after": 14.13737999999995
+    },
+    {
+      "order": [
+        "after",
+        "before"
+      ],
+      "after": 13.896724000000006,
+      "before": 18.763905000000022
+    },
+    {
+      "order": [
+        "before",
+        "after"
+      ],
+      "before": 19.248669000000007,
+      "after": 14.207641000000024
+    },
+    {
+      "order": [
+        "after",
+        "before"
+      ],
+      "after": 13.88551799999999,
+      "before": 18.889933999999982
+    }
+  ],
+  "before": 18.807577500000008,
+  "after": 14.10813300000001,
+  "note": "CPU1 nice19 diagnostic only. Fresh ordinary unit roots selected by native provenance, two paired warmups, twelve alternating retained pairs."
+}

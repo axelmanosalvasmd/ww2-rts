@@ -1,0 +1,499 @@
+{
+  "generatedAtUTC": "2026-10-04T13:36:55.049065+00:00",
+  "candidate": "selected-hud-v14",
+  "classification": "Historical V14 evidence, superseded by substantive V15 R5 source fixes",
+  "finalAcceptance": false,
+  "overallHistoricalBalanceGate": "FAIL",
+  "historicalV14": {
+    "metrics": {
+      "ended": 30,
+      "draws": 1,
+      "timeouts": 0,
+      "winsByFaction": {
+        "USA": 7,
+        "Germany": 8,
+        "USSR": 14
+      },
+      "medianSeconds": 1600.0,
+      "medianEndedSeconds": 1600.0,
+      "decisiveWins": 29,
+      "decisiveWinFractions": {
+        "USA": 0.2413793103448276,
+        "Germany": 0.27586206896551724,
+        "USSR": 0.4827586206896552
+      },
+      "decisiveWinPercentages": {
+        "USA": 24.14,
+        "Germany": 27.59,
+        "USSR": 48.28
+      },
+      "maximumSeconds": 1662.85,
+      "endReasons": {
+        "hq": 29,
+        "draw": 1
+      }
+    },
+    "gates": {
+      "factionRangePercent": [
+        25,
+        42
+      ],
+      "denominator": "Decisive wins, draws excluded",
+      "factionGate": "FAIL",
+      "outsideRange": {
+        "USA": 24.14,
+        "USSR": 48.28
+      },
+      "allFinishGate": "PASS"
+    },
+    "startedAtUTC": "2026-10-04T11:37:21.359172+00:00",
+    "lastCompletionObservedAtUTC": "2026-10-04T13:25:59.367Z",
+    "wallSeconds": 6518.011,
+    "workers": 4,
+    "actualAllThreadsAffinity": [
+      0,
+      2,
+      8,
+      10
+    ],
+    "outerTimeout": null,
+    "resumedMatches": 0,
+    "ownedNodePid": 1178676,
+    "ownedNodeStartTicks": "10407892",
+    "nodeExited": true
+  },
+  "correctedBefore": {
+    "metrics": {
+      "ended": 30,
+      "draws": 1,
+      "timeouts": 0,
+      "winsByFaction": {
+        "USA": 12,
+        "Germany": 7,
+        "USSR": 10
+      },
+      "medianSeconds": 1600.0,
+      "medianEndedSeconds": 1600.0,
+      "decisiveWins": 29,
+      "decisiveWinFractions": {
+        "USA": 0.41379310344827586,
+        "Germany": 0.2413793103448276,
+        "USSR": 0.3448275862068966
+      },
+      "decisiveWinPercentages": {
+        "USA": 41.38,
+        "Germany": 24.14,
+        "USSR": 34.48
+      },
+      "maximumSeconds": 1670.35,
+      "endReasons": {
+        "hq": 29,
+        "draw": 1
+      }
+    },
+    "gates": {
+      "factionRangePercent": [
+        25,
+        42
+      ],
+      "denominator": "Decisive wins, draws excluded",
+      "factionGate": "FAIL",
+      "outsideRange": {
+        "Germany": 24.14
+      },
+      "allFinishGate": "PASS"
+    },
+    "legacyCommit": "5293ddb1a0267f90e9ddba5a1d2cc725ba3f7bd3",
+    "workers": 6,
+    "resumedMatches": 4,
+    "finalResumedPhaseWallSeconds": 3188.826,
+    "wallTimeCaveat": "Corrected-before elapsed time covers its final resumed 26 rows, while V14 elapsed time covers all 30. These wall durations are not directly comparable."
+  },
+  "comparison": {
+    "sameOriginalSeeds": true,
+    "allSeeds": [
+      1,
+      2,
+      3,
+      4,
+      5,
+      6,
+      7,
+      8,
+      9,
+      10,
+      11,
+      12,
+      13,
+      14,
+      15,
+      16,
+      17,
+      18,
+      19,
+      20,
+      21,
+      22,
+      23,
+      24,
+      25,
+      26,
+      27,
+      28,
+      29,
+      30
+    ],
+    "sameMapModeArmyFactionCountAndLimits": true,
+    "winsDelta": {
+      "USA": -5,
+      "Germany": 1,
+      "USSR": 4
+    },
+    "percentagePointDelta": {
+      "USA": -17.24,
+      "Germany": 3.45,
+      "USSR": 13.79
+    },
+    "medianSecondsDelta": 0.0,
+    "pairedMatches": [
+      {
+        "match": 1,
+        "seed": 1,
+        "beforeFaction": "USA",
+        "v14Faction": "USA",
+        "beforeSeconds": 1526.8,
+        "v14Seconds": 1582.65
+      },
+      {
+        "match": 2,
+        "seed": 2,
+        "beforeFaction": "USSR",
+        "v14Faction": "USSR",
+        "beforeSeconds": 1581.8,
+        "v14Seconds": 1656.3
+      },
+      {
+        "match": 3,
+        "seed": 3,
+        "beforeFaction": "USSR",
+        "v14Faction": "USSR",
+        "beforeSeconds": 1600,
+        "v14Seconds": 1599.65
+      },
+      {
+        "match": 4,
+        "seed": 4,
+        "beforeFaction": "Germany",
+        "v14Faction": "USA",
+        "beforeSeconds": 1548.4,
+        "v14Seconds": 1598.1
+      },
+      {
+        "match": 5,
+        "seed": 5,
+        "beforeFaction": "Germany",
+        "v14Faction": "USA",
+        "beforeSeconds": 1600,
+        "v14Seconds": 1605.8
+      },
+      {
+        "match": 6,
+        "seed": 6,
+        "beforeFaction": "USA",
+        "v14Faction": "Germany",
+        "beforeSeconds": 1600,
+        "v14Seconds": 1648.55
+      },
+      {
+        "match": 7,
+        "seed": 7,
+        "beforeFaction": null,
+        "v14Faction": "Germany",
+        "beforeSeconds": 1600,
+        "v14Seconds": 1600
+      },
+      {
+        "match": 8,
+        "seed": 8,
+        "beforeFaction": "Germany",
+        "v14Faction": "Germany",
+        "beforeSeconds": 1600,
+        "v14Seconds": 1644.05
+      },
+      {
+        "match": 9,
+        "seed": 9,
+        "beforeFaction": "USA",
+        "v14Faction": "USSR",
+        "beforeSeconds": 1250.75,
+        "v14Seconds": 1600
+      },
+      {
+        "match": 10,
+        "seed": 10,
+        "beforeFaction": "USSR",
+        "v14Faction": "USSR",
+        "beforeSeconds": 1574.95,
+        "v14Seconds": 1592.9
+      },
+      {
+        "match": 11,
+        "seed": 11,
+        "beforeFaction": "USA",
+        "v14Faction": "USSR",
+        "beforeSeconds": 1670.35,
+        "v14Seconds": 1600
+      },
+      {
+        "match": 12,
+        "seed": 12,
+        "beforeFaction": "USA",
+        "v14Faction": "Germany",
+        "beforeSeconds": 1600,
+        "v14Seconds": 1643.25
+      },
+      {
+        "match": 13,
+        "seed": 13,
+        "beforeFaction": "USSR",
+        "v14Faction": "USA",
+        "beforeSeconds": 1600,
+        "v14Seconds": 1600
+      },
+      {
+        "match": 14,
+        "seed": 14,
+        "beforeFaction": "USA",
+        "v14Faction": "USSR",
+        "beforeSeconds": 1233.55,
+        "v14Seconds": 1662.85
+      },
+      {
+        "match": 15,
+        "seed": 15,
+        "beforeFaction": "USA",
+        "v14Faction": null,
+        "beforeSeconds": 1600,
+        "v14Seconds": 1600
+      },
+      {
+        "match": 16,
+        "seed": 16,
+        "beforeFaction": "USA",
+        "v14Faction": "USSR",
+        "beforeSeconds": 1518.25,
+        "v14Seconds": 1600
+      },
+      {
+        "match": 17,
+        "seed": 17,
+        "beforeFaction": "USSR",
+        "v14Faction": "USSR",
+        "beforeSeconds": 1267.55,
+        "v14Seconds": 1600
+      },
+      {
+        "match": 18,
+        "seed": 18,
+        "beforeFaction": "USA",
+        "v14Faction": "USSR",
+        "beforeSeconds": 1603.25,
+        "v14Seconds": 1646.05
+      },
+      {
+        "match": 19,
+        "seed": 19,
+        "beforeFaction": "Germany",
+        "v14Faction": "USSR",
+        "beforeSeconds": 935.1,
+        "v14Seconds": 1656.1
+      },
+      {
+        "match": 20,
+        "seed": 20,
+        "beforeFaction": "Germany",
+        "v14Faction": "Germany",
+        "beforeSeconds": 1655.5,
+        "v14Seconds": 1514
+      },
+      {
+        "match": 21,
+        "seed": 21,
+        "beforeFaction": "USSR",
+        "v14Faction": "Germany",
+        "beforeSeconds": 1600,
+        "v14Seconds": 1600
+      },
+      {
+        "match": 22,
+        "seed": 22,
+        "beforeFaction": "Germany",
+        "v14Faction": "USA",
+        "beforeSeconds": 1593,
+        "v14Seconds": 1584.4
+      },
+      {
+        "match": 23,
+        "seed": 23,
+        "beforeFaction": "USSR",
+        "v14Faction": "USA",
+        "beforeSeconds": 1603.55,
+        "v14Seconds": 1637.55
+      },
+      {
+        "match": 24,
+        "seed": 24,
+        "beforeFaction": "USSR",
+        "v14Faction": "Germany",
+        "beforeSeconds": 1506.55,
+        "v14Seconds": 1600
+      },
+      {
+        "match": 25,
+        "seed": 25,
+        "beforeFaction": "USSR",
+        "v14Faction": "USSR",
+        "beforeSeconds": 1606,
+        "v14Seconds": 1599.95
+      },
+      {
+        "match": 26,
+        "seed": 26,
+        "beforeFaction": "USA",
+        "v14Faction": "USSR",
+        "beforeSeconds": 1600,
+        "v14Seconds": 1600
+      },
+      {
+        "match": 27,
+        "seed": 27,
+        "beforeFaction": "USSR",
+        "v14Faction": "Germany",
+        "beforeSeconds": 1649.85,
+        "v14Seconds": 1635.85
+      },
+      {
+        "match": 28,
+        "seed": 28,
+        "beforeFaction": "USA",
+        "v14Faction": "USA",
+        "beforeSeconds": 1404.7,
+        "v14Seconds": 1600
+      },
+      {
+        "match": 29,
+        "seed": 29,
+        "beforeFaction": "Germany",
+        "v14Faction": "USSR",
+        "beforeSeconds": 1576.15,
+        "v14Seconds": 1600
+      },
+      {
+        "match": 30,
+        "seed": 30,
+        "beforeFaction": "USA",
+        "v14Faction": "USSR",
+        "beforeSeconds": 1628.9,
+        "v14Seconds": 1603.85
+      }
+    ],
+    "sharedSourceDifferences": [
+      {
+        "path": "shared/navigation.js",
+        "correctedBeforeSHA256": "c1301d09571b1c3afd9ee212b0d28b2ef8f21fd6da0a7205b47bf6acdee11398",
+        "historicalV14SHA256": "c277c12f86c9990e281ae28a703dc374126aa1c737d9dc94a300f8d99c898472",
+        "exactDiffArtifact": "/tmp/human-ai-selected-hud-v14-balance/before-v14-navigation.diff"
+      },
+      {
+        "path": "shared/sim.js",
+        "correctedBeforeSHA256": "446d0276815f82546f58e45d5c50a2b7961c54678ab7a2848b7428000b9af4ab",
+        "historicalV14SHA256": "20d8f1d1e9f14f8a2178cbc8b30e1732ac5afc367632400081ca393048aaac51",
+        "exactDiffArtifact": "/tmp/human-ai-selected-hud-v14-balance/before-v14-sim.diff"
+      }
+    ],
+    "sourceDifferenceCaveat": "Archived baseline and V14 share the exact runner and ordinary match configuration, but navigation and initial observed-wall source differ. Exact optimization diffs are retained. This audit does not independently establish their behavioral equivalence or attribute faction changes solely to AI."
+  },
+  "sourceEvidence": {
+    "archiveFilesVerified": 42,
+    "v14RunnerFilesVerified": 32,
+    "correctedBeforeRunnerFilesVerified": 23,
+    "sourceFingerprintSHA256": "ced042560b56c3b730ed401b4fcae2ecfc26e0e711a3368273023bdef9cd3100",
+    "coreHashes": {
+      "shared/ai-attention.js": "a9913856d01bc53cce11bd1ce5cb890b7a66d5af1af1b5e1189bc703403f2533",
+      "shared/ai-commander.js": "82f2cc5d9e01aa273f24b6dc589cc0dcb88f7e337b591f735aeeb811223fdea9",
+      "shared/ai-hands.js": "b543052942797cbaf6bf6fc40a5fc242d826ff1d217b15c94188c6cea6bc869e",
+      "shared/ai-mind.js": "18bb411cb1d057ce8cffe0b042c21f64b71238ae157b584242df206d708e6b92",
+      "shared/ai-perception.js": "377d885e40aa85664828fab2dba8eaf09299e5cf0cb9bb5b043ef40a7aa9b39c",
+      "shared/ai-persona.js": "1aa1e5df7e0b3c5e6fdc9c76117b348ce6e2121b3f8e6d6ddcccafb4c3894d16",
+      "shared/ai-priority.js": "3184d73c5fd61afe0a71933b347f39c7edc96050e6299cdc98f121d7249f446e",
+      "shared/ai-rng.js": "2d2f95266eda45ec4fa4862cb01079fc8464a98d8c88fa97ca89b54a5d6f8b90",
+      "shared/ai-view.js": "ca4c85c25ea800eb43f33977b3c02f3989a8eebc60142f88e52740b3d422ae59",
+      "shared/ai.js": "7923203437405f6ba6fa9724eeafcf379ebab34dba6cc3c44a12fe7678ccb12a",
+      "shared/navigation.js": "c277c12f86c9990e281ae28a703dc374126aa1c737d9dc94a300f8d99c898472",
+      "shared/sim.js": "20d8f1d1e9f14f8a2178cbc8b30e1732ac5afc367632400081ca393048aaac51",
+      "tools/ai-balance.mjs": "ab7d17629c198b3c9dc7717af33d6c9b8a6b8f61020cd66e7a89fd34eed311fd"
+    },
+    "legacy": {
+      "commit": "5293ddb1a0267f90e9ddba5a1d2cc725ba3f7bd3",
+      "sources": [
+        "shared/ai.js",
+        "shared/ai-view.js",
+        "shared/ai-mind.js"
+      ],
+      "changes": "Only non-AI import paths changed. The commander, observation, and memory logic are frozen; engine and utility helpers use the current shared simulation.",
+      "purpose": "Offline old-versus-new measurements only. Never imported by server or client.",
+      "hashes": {
+        "ai.js": {
+          "originalSHA256": "8fc9dfc5f94b5f5f315846dc56ab7f7cd38672d37474ecc611aadb78267fc0ba",
+          "frozenSHA256": "49575f9089365e13592a804b852b8eeec8c1dcc96bd64d236eaf3757904bcf4d"
+        },
+        "ai-view.js": {
+          "originalSHA256": "dbedde30d793132c99245f2bc48a0918bc47369683b587490dabed85166cb514",
+          "frozenSHA256": "c8e5332611ec5d18d5f7b0ab9093c30df5006a6f566c106a312a64900be17d5f"
+        },
+        "ai-mind.js": {
+          "originalSHA256": "517701dc493e1271416bed815b5852cdcbab518db83d1b8f72aa401c5feea936",
+          "frozenSHA256": "c2941813a4fb6d655a50b579270e5887723cfc42ea18c9d767735904c78c2d54"
+        }
+      }
+    },
+    "screenV1Oracle": {
+      "commit": "8a2343bf535170dfc14822c82ca15cfeedfb7bef",
+      "source": "shared/ai-perception.js",
+      "originalSHA256": "ecbdc6f82a732188e0aeea122a861870130f4ad797dc8037f8f1c39639d6b583",
+      "frozenSHA256": "6b3894b551f3bf9151372b048b2efc77ffc86a6a173d0871278b27417358b398",
+      "changes": "Only the simulation and alert-events import paths are rewritten to ../shared/. The original screen-v1 detector and population policy are unchanged.",
+      "purpose": "Private offline measurement oracle. The collector injects it explicitly; server, client and normal runtime never import it."
+    },
+    "oracleUsage": "Archived provenance only; the balance runner did not import the measurement oracle."
+  },
+  "checks": {
+    "rawResultMatchesCheckpoint": true,
+    "rawResultMatchesLogReducer": true,
+    "exactThirtyUniqueOriginalSeeds": true,
+    "ticksMatchSimulatedSeconds": true,
+    "independentReducerMatches": true,
+    "noRowsTrimmedOrOmitted": true,
+    "runtimeAndTarHashesMatchFrozenManifest": true,
+    "baselineSourceTarMatchesResultHashes": true,
+    "startupAndAffinityIdentityAgree": true
+  },
+  "artifactsSHA256": {
+    "/tmp/human-ai-selected-hud-v14-balance/classic.json": "3e811c9f0ff2efd18cd5cbe8bea8c91d4c81b56c6cf7e2e2bbbf8d8cd3ec6824",
+    "/tmp/human-ai-selected-hud-v14-balance/classic-checkpoint.json": "0e06b36d46a1bfde9a15d35a74e04519cbf2adf14a30f8543f7ad5b4e720ed97",
+    "/tmp/human-ai-selected-hud-v14-balance/classic.log": "68a69fb4fe53bbd95a606f79327901c85882f7a41ca79a98543b02f0c1ab2422",
+    "/tmp/human-ai-selected-hud-v14-balance-source-manifest.json": "72286ffe840ac96e039b1e5bb9345d185ac35d19e5f02b54ebfd52af0a535861",
+    "/tmp/human-ai-selected-hud-v14-balance-source.tar": "4d83541549719f22460a4c7c6e90248ec944e467a18b133052d5780e3191d627",
+    "/tmp/human-ai-selected-hud-v14-balance-source/tools/ai-balance.mjs": "ab7d17629c198b3c9dc7717af33d6c9b8a6b8f61020cd66e7a89fd34eed311fd",
+    "/tmp/human-ai-selected-hud-v14-balance/classic-launch-1178675.json": "d9458f9035530f71398e9f35d00d172019679282efb06e5665c623c78702b70a",
+    "/tmp/human-ai-selected-hud-v14-balance/classic-affinity-proof.json": "6347bf7ce3f9146fee684325f48c9f9fa71b562a1e421675add4bc97a6de5a15",
+    "/tmp/human-ai-selected-hud-v14-balance/classic-completion-events.jsonl": "b4fef1b24a13fa93347209e2eb2493c646b5a8cb87b431697349ac95c29b4171",
+    "/tmp/human-ai-before-classic-corrected.json": "805d5b162ca7d690fcc91b0da2f788c226f47d1304f79bbcd5fe9de4bcef5e3e",
+    "/tmp/human-ai-before-classic-corrected-checkpoint.json": "8f50b88003b56a7120c444d6a8edd95563b29260a09f9f95a4daf3bbe245b45c",
+    "/tmp/human-ai-classic-baseline-source.tar": "129e88a879aa5fb39aec91597cf6a0f8fd92c6d5027fdc0dd9b8654eaebb40ae",
+    "/tmp/human-ai-selected-hud-v14-balance/before-v14-navigation.diff": "8b6faef9065bdab1c38bd14b0f772b3433ebaa60ddbc87b9417fcd0ee7666785",
+    "/tmp/human-ai-selected-hud-v14-balance/before-v14-sim.diff": "606b5b3085d2219d955b1b48c87c9ca04085050e75209b3d975f694ce1119b62",
+    "/tmp/human-ai-selected-hud-v14-balance/finalize-historical-classic.py": "b21a1b3a3355e5f5d13c1cd8459ef28d2ca1c6d676dbd8faeca218fa8700f1e4"
+  },
+  "launchPolicy": "No new balance batches until the final new source freeze and explicit root CPU clearance."
+}

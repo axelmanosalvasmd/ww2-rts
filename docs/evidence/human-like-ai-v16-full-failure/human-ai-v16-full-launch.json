@@ -1,0 +1,28 @@
+{
+  "startedAtUnix": 1791137644.6308358,
+  "pid": 1605243,
+  "command": [
+    "taskset",
+    "-c",
+    "4",
+    "/usr/bin/node",
+    "test.js"
+  ],
+  "cwd": "/home/judiazm/.t3/worktrees/ww2-rts/ai-human-commander",
+  "outerTimeout": null,
+  "supervisorPID": 1605207,
+  "supervisorCPU": 0,
+  "runtime": {
+    "nodeExecutable": "/usr/bin/node",
+    "nodeVersion": "v24.21.0",
+    "npmVersion": "12.0.2",
+    "pythonVersion": "3.12.3 (main, Aug 31 2026, 10:18:26) [GCC 13.3.0]",
+    "packageSHA256": "38b34423b2e37b851381576f5dd67d9103d951ab7c7ddcf5cacb4112507b34db",
+    "lockfileSHA256": "1a6f2b332f963bc5145a1fc927b20d8b7264c5b02a9b8577ae89547e56d620e4",
+    "installedPackageMetadata": {
+      "three": "f9c474a27c920b9435353a6235968f4453436bee0444fac7e5fd289c8fa463de",
+      "ws": "c1ef91ca04eb4754c011c5f0e7638b5078ff71104fada400c44ac761cf93e0b1"
+    }
+  },
+  "predeclaredProtocolSHA256": "9aaed0ccc99ceb22031c291367e7756ec9f9fc715c3395f8dd4a1b0aab730222"
+}

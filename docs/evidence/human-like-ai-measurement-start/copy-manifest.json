@@ -1,0 +1,175 @@
+{
+  "exactByteCopies": true,
+  "copies": [
+    {
+      "source": "/tmp/human-ai-oracle-tick0-proposal/collector.patch",
+      "file": "collector.patch",
+      "bytes": 5192,
+      "sha256": "ca815e080ba69ce824a2018793a51e751a80314676c18c0879d62258c3a6eaa7"
+    },
+    {
+      "source": "/tmp/human-ai-oracle-tick0-proposal/ready-manifest.json",
+      "file": "ready-manifest.json",
+      "bytes": 1902,
+      "sha256": "f3c97a783f747fa90271b8924c21ffb71ed55b1752bc4cc761b39e9b0b003f17"
+    },
+    {
+      "source": "/tmp/human-ai-oracle-tick0-proposal/review-ready.md",
+      "file": "review-ready.md",
+      "bytes": 3426,
+      "sha256": "1e872607b2d1871660fd7d3e36541a460bf131889decb4c4495b5b5aa22dc686"
+    },
+    {
+      "source": "/tmp/human-ai-oracle-tick0-proposal/verification.json",
+      "file": "verification.json",
+      "bytes": 6030,
+      "sha256": "9e973baae9567d7a713a012f58290d98e277ad1dbced365d30d99ea971d322b1"
+    },
+    {
+      "source": "/tmp/human-ai-oracle-tick0-proposal/world-cache-witness.json",
+      "file": "world-cache-witness.json",
+      "bytes": 13430,
+      "sha256": "6b428e5ecff6f69e2b5d7ba8bea1bc1701673117dd37b99f0760d90c12b780a9"
+    },
+    {
+      "source": "/tmp/human-ai-oracle-tick0-proposal/inspect-world-projection.mjs",
+      "file": "inspect-world-projection.mjs",
+      "bytes": 4748,
+      "sha256": "703b016960604771d34a17ae74bd9f38a4a6b43295a5222b0e564d1dd2856dcb"
+    },
+    {
+      "source": "/tmp/human-ai-oracle-tick0-proposal/integrated-smoke.json",
+      "file": "integrated-smoke.json",
+      "bytes": 1613476,
+      "sha256": "cd63b7fa450794cfc565c44c30e03d4fc8efa152ba85562603fb4c35b62ab751"
+    },
+    {
+      "source": "/tmp/human-ai-oracle-tick0-proposal/test-engine-ai-measurement-start.js",
+      "file": "test-engine-ai-measurement-start.js",
+      "bytes": 12193,
+      "sha256": "46b52431fee02b1d49dc6eed279af84f01bca65e0cf4ae89cd6f96d06c8bcd9b"
+    },
+    {
+      "source": "/tmp/human-ai-oracle-tick0-proposal/default-portable-test.log",
+      "file": "default-portable-test.log",
+      "bytes": 907,
+      "sha256": "c70442fe618e31fc35f58ac9ab3bda7143a4460a3218abc74a6a699ed3f60dc6"
+    },
+    {
+      "source": "/tmp/human-ai-oracle-tick0-proposal/test-attempt1.log",
+      "file": "test-attempt1.log",
+      "bytes": 911,
+      "sha256": "58beba8ec28d87539b6f4d3b6472950d72eb61c333d8ccd6a591ed8fc1681309"
+    },
+    {
+      "source": "/tmp/human-ai-oracle-tick0-proposal/test-attempt2.log",
+      "file": "test-attempt2.log",
+      "bytes": 782,
+      "sha256": "b805a7b9ca1ab3c0ec73015d7f59152c14d5a3310ac27c2ef97546d5b543dd30"
+    },
+    {
+      "source": "/tmp/human-ai-oracle-tick0-proposal/test-attempt3.log",
+      "file": "test-attempt3.log",
+      "bytes": 352,
+      "sha256": "58ea9571ec64e1fc847c260d7562725ddd9eab5ea55553e03b6fa45522ee9cad"
+    },
+    {
+      "source": "/tmp/human-ai-oracle-tick0-proposal/test-attempt4.log",
+      "file": "test-attempt4.log",
+      "bytes": 0,
+      "sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+    },
+    {
+      "source": "/tmp/human-ai-oracle-tick0-proposal/test-attempt1.mjs",
+      "file": "test-attempt1.mjs",
+      "bytes": 9048,
+      "sha256": "a5be2bc233cfec910783957745c00e257f799394af1e11825611f4f9dee0d667"
+    },
+    {
+      "source": "/tmp/human-ai-oracle-tick0-proposal/test-attempt2.mjs",
+      "file": "test-attempt2.mjs",
+      "bytes": 10031,
+      "sha256": "24e946bfa853250dd03d775ae08b6d0d403fc8a1a3d62f5922c7b1bb9c42629d"
+    },
+    {
+      "source": "/tmp/human-ai-oracle-tick0-proposal/test-attempt3.mjs",
+      "file": "test-attempt3.mjs",
+      "bytes": 10173,
+      "sha256": "4f3b8feb2acd0e891daa1f5b3e04a31fa02298f3da8e8c7c3a7ebfa5e2394d11"
+    },
+    {
+      "source": "/tmp/human-ai-oracle-tick0-proposal/test-attempt4.mjs",
+      "file": "test-attempt4.mjs",
+      "bytes": 10666,
+      "sha256": "168a407a194c141fc265b7326f44e6ca4a256f19474f0d656772b89fc940644b"
+    },
+    {
+      "source": "/tmp/r6-root-measurement-start.log",
+      "file": "r6-root-measurement-start.log",
+      "bytes": 854,
+      "sha256": "f677039f2fe9f99e652215900e2ae3e088dab603635692f5fac3e1b0aea1c30f"
+    },
+    {
+      "source": "/tmp/r6-root-measurement-start-launch.json",
+      "file": "r6-root-measurement-start-launch.json",
+      "bytes": 174,
+      "sha256": "09bd9f2dece22d223454c2c000347591d67f116bfc286b2f08d502172d2f8417"
+    },
+    {
+      "source": "/tmp/human-ai-oracle-tick0-proposal/raw/classic-easy.json.gz",
+      "file": "full-classic-easy.json.gz",
+      "bytes": 109640,
+      "sha256": "52444759082c1bc89cd3a75abcdfc0e1d3dadade15be45aeb5cebf699c496c7b"
+    },
+    {
+      "source": "/tmp/human-ai-oracle-tick0-proposal/raw/classic-hard.json.gz",
+      "file": "full-classic-hard.json.gz",
+      "bytes": 121428,
+      "sha256": "2270a95da4da7820dab6508458da4dc69c59b7b0809b76fc2b762a259dbc2278"
+    },
+    {
+      "source": "/tmp/human-ai-oracle-tick0-proposal/raw/classic-normal.json.gz",
+      "file": "full-classic-normal.json.gz",
+      "bytes": 112303,
+      "sha256": "0619913dd7f4d87324bd822dc1603b5d126f60ef4e286e805b52dc0da65f46eb"
+    },
+    {
+      "source": "/tmp/human-ai-oracle-tick0-proposal/raw/conquest-easy.json.gz",
+      "file": "full-conquest-easy.json.gz",
+      "bytes": 105040,
+      "sha256": "4fc5d673127e4118e2cff76f073312b59b62785d0cef75ddc99547c5f93a388e"
+    },
+    {
+      "source": "/tmp/human-ai-oracle-tick0-proposal/raw/conquest-hard.json.gz",
+      "file": "full-conquest-hard.json.gz",
+      "bytes": 136269,
+      "sha256": "a72f604c4722646b8aa3c89b3d2cc62fb953dbef360799a419c01b37be63f196"
+    },
+    {
+      "source": "/tmp/human-ai-oracle-tick0-proposal/raw/conquest-normal.json.gz",
+      "file": "full-conquest-normal.json.gz",
+      "bytes": 115501,
+      "sha256": "9bf1c473db5cea2c46b7202bc4294e02b79ec4c179293a2d74ef6f6fae8feb62"
+    },
+    {
+      "source": "/tmp/human-ai-oracle-tick0-proposal/raw/world-easy.json.gz",
+      "file": "full-world-easy.json.gz",
+      "bytes": 3206600,
+      "sha256": "180c0bc77e4eff32e2467fa8526d40dcb736c77abc90aef61299a973d8b3badd"
+    },
+    {
+      "source": "/tmp/human-ai-oracle-tick0-proposal/raw/world-hard.json.gz",
+      "file": "full-world-hard.json.gz",
+      "bytes": 3288287,
+      "sha256": "853d57daf1a4ed1d67317236f5db603d8a976e104bed75f2b4c3b51a096321e1"
+    },
+    {
+      "source": "/tmp/human-ai-oracle-tick0-proposal/raw/world-normal.json.gz",
+      "file": "full-world-normal.json.gz",
+      "bytes": 3265512,
+      "sha256": "7bbe174cc5b36f050f4603d017eacc96c68354b4ce0fc7676a3081eb0c57d3f8"
+    }
+  ],
+  "defaultRawFullGraphComparisonPreserved": true,
+  "qualification": "Prototype proof uses frozen V15; root focused regression uses commander27ea/sim5bedd plus collector2625."
+}

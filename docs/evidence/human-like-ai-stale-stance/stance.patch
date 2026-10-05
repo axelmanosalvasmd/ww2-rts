@@ -1,0 +1,71 @@
+--- a/shared/ai-hands.js
++++ b/shared/ai-hands.js
+@@ -509,7 +509,24 @@
+   });
+ }
+ 
++function obsoleteQueuedStance(hands, job, view) {
++  const cmd = job.command;
++  if (hands.cancelTargeting || cmd?.t !== 'stance' || typeof cmd.on !== 'boolean'
++    || !['holdFire', 'holdPos', 'autoRetreat'].includes(cmd.key)
++    || !job.ids.length || !(view.tick > job.queuedTick)) return false;
++  // Only a newer delivered screen reading can retire an unstarted intent. Inventory and memory
++  // placeholders cannot establish that every intended actor already has this setting.
++  return job.ids.every(id => {
++    const unit = view.units.get(id);
++    return unit?.owner === hands.slot && view.screenIds?.has(id) && !unit.inventoryOnly
++      && Number.isFinite(unit.lastScreenTick) && unit.lastScreenTick >= view.tick
++      && Number.isFinite(unit.hp) && unit.hp > 0
++      && typeof unit[cmd.key] === 'boolean' && unit[cmd.key] === cmd.on;
++  });
++}
++
+ function actionsFor(hands, job, view) {
++  if (obsoleteQueuedStance(hands, job, view)) return [];
+   const context = job.context, actions = [];
+   const add = (kind, at, extra = {}) => actions.push({ kind, at, context, ...extra });
+   const key = (kind, id, extra = {}) => {
+--- /dev/null
++++ b/test-engine-ai-stale-stance.js
+@@ -0,0 +1,41 @@
++import assert from 'node:assert/strict';
++import { createHands, enqueueDecision, advanceHands } from './shared/ai-hands.js';
++const flags = { holdFire: 2048, holdPos: 4096, autoRetreat: 8192 };
++function fixture(key, on) {
++  return { tick: 0, w: 96, h: 96, winner: null, flags: Array(9216).fill(0), screenIds: new Set([1, 2]),
++    players: [{ out: false }], units: new Map([1, 2].map((id, i) => [id, { id, type: 'rifle', owner: 0,
++      x: 80 + i * 4, z: 79, hp: 100, flags: on ? 0 : flags[key], [key]: !on, lastScreenTick: 0, inventoryOnly: false }])) };
++}
++function trial(key, on, mutate, started = false) {
++  const view = fixture(key, on), log = [], commands = [];
++  const hands = createHands({ slot: 0, seed: 42, level: 'hard', camera: { x: 80, z: 79 }, log });
++  assert(enqueueDecision(hands, { t: 'stance', ids: [1, 2], key, on }, view, { concern: 'combat' }));
++  let changed = false;
++  for (let tick = 0; tick <= 200; tick++) {
++    view.tick = tick; for (const unit of view.units.values()) unit.lastScreenTick = tick;
++    if (!changed && (started ? hands.active && !hands.active.reacting : tick === 30)) { mutate(view, hands); changed = true; }
++    advanceHands(hands, tick, view, cmd => { commands.push(structuredClone(cmd)); });
++  }
++  assert(changed); return { log, commands, hands };
++}
++for (const key of Object.keys(flags)) for (const on of [false, true]) {
++  const obsolete = trial(key, on, view => { for (const unit of view.units.values()) { unit[key] = on; unit.flags = on ? flags[key] : 0; } });
++  assert.equal(obsolete.log.length, 0, `${key}/${on}: newer identical state costs no fake physical work`);
++  assert.equal(obsolete.commands.length, 0);
++  const needed = trial(key, on, () => {});
++  assert(needed.log.length && needed.commands.length, `${key}/${on}: a needed change still pays its input sequence`);
++  assert.equal(needed.commands[0].on, on);
++  const mixed = trial(key, on, view => { view.units.get(1)[key] = on; });
++  assert(mixed.log.length, `${key}/${on}: mixed settings do not disappear`);
++  const unknown = trial(key, on, view => { for (const unit of view.units.values()) { delete unit[key]; unit.flags = on ? flags[key] : 0; } });
++  assert(unknown.log.length, `${key}/${on}: missing boolean is not guessed from flags`);
++  const dead = trial(key, on, view => { for (const unit of view.units.values()) unit[key] = on; view.units.get(2).hp = 0; });
++  assert(!dead.commands.some(cmd => cmd.ids?.includes(2)), 'a dead actor cannot produce a forged command');
++  const begun = trial(key, on, view => { for (const unit of view.units.values()) unit[key] = on; }, true);
++  assert(begun.log.length && begun.commands.length, `${key}/${on}: a started physical input finishes normally`);
++}
++const remembered = trial('autoRetreat', true, view => { for (const unit of view.units.values()) { unit.autoRetreat = true; unit.inventoryOnly = true; } });
++assert(remembered.log.length, 'inventory placeholders cannot retire a job based on remembered fields');
++const stale = trial('autoRetreat', true, view => { for (const unit of view.units.values()) { unit.autoRetreat = true; unit.lastScreenTick = -1; } });
++assert(stale.log.length, 'an old screen reading cannot establish a new setting');
++console.log('Queued stance: known identical, required, mixed, unknown, dead, inventory and started-gesture controls PASS');

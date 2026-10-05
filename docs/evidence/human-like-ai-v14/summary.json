@@ -1,0 +1,4575 @@
+{
+  "schema": "historical-human-ai-v14-verification-summary-v1",
+  "status": "Historical frozen V14 completed campaign. Acceptance FAIL. Not current release proof.",
+  "sourceAnalysisSHA256": "dcfd19189f3e1df2c02b32183499d1a8ca0bd6c841fff8a8d5b9af82a2ad89c3",
+  "configuration": {
+    "modes": [
+      "conquest",
+      "classic",
+      "world"
+    ],
+    "levels": [
+      "easy",
+      "normal",
+      "hard"
+    ],
+    "seconds": 180,
+    "map": "default",
+    "army": "standard",
+    "worldSize": "huge",
+    "screenSpan": 113,
+    "seedsByMode": {
+      "conquest": [
+        1,
+        2,
+        3,
+        4,
+        5,
+        6,
+        7,
+        8,
+        9,
+        10,
+        11,
+        12,
+        13,
+        14,
+        15,
+        16,
+        17,
+        18,
+        19,
+        20
+      ],
+      "classic": [
+        1,
+        2,
+        3,
+        4,
+        5,
+        6,
+        7,
+        8,
+        9,
+        10
+      ],
+      "world": [
+        1,
+        2,
+        3,
+        4,
+        5,
+        6,
+        7,
+        8,
+        9,
+        10
+      ]
+    },
+    "screenSpanByMode": {
+      "conquest": [
+        113
+      ],
+      "classic": [
+        113
+      ],
+      "world": [
+        113
+      ]
+    }
+  },
+  "sourceCheckpoints": {
+    "7c87de19ed1196044efbabad0d63bb8774d52acdd35e7695efac053a1f7c74a9": {
+      "recordedAt": "2026-10-04T12:11:55.385Z",
+      "sha256": "7c87de19ed1196044efbabad0d63bb8774d52acdd35e7695efac053a1f7c74a9",
+      "files": {
+        "tools/ai-humanity.mjs": "8326d7c0aa0f2b25f8e1307bcda857ac563a5c7c7c91e435c32542489341e951",
+        "shared/ai-attention.js": "a9913856d01bc53cce11bd1ce5cb890b7a66d5af1af1b5e1189bc703403f2533",
+        "shared/ai-commander.js": "82f2cc5d9e01aa273f24b6dc589cc0dcb88f7e337b591f735aeeb811223fdea9",
+        "shared/ai-hands.js": "b543052942797cbaf6bf6fc40a5fc242d826ff1d217b15c94188c6cea6bc869e",
+        "shared/ai-mind.js": "18bb411cb1d057ce8cffe0b042c21f64b71238ae157b584242df206d708e6b92",
+        "shared/ai-perception.js": "377d885e40aa85664828fab2dba8eaf09299e5cf0cb9bb5b043ef40a7aa9b39c",
+        "shared/ai-persona.js": "1aa1e5df7e0b3c5e6fdc9c76117b348ce6e2121b3f8e6d6ddcccafb4c3894d16",
+        "shared/ai-priority.js": "3184d73c5fd61afe0a71933b347f39c7edc96050e6299cdc98f121d7249f446e",
+        "shared/ai-rng.js": "2d2f95266eda45ec4fa4862cb01079fc8464a98d8c88fa97ca89b54a5d6f8b90",
+        "shared/ai-view.js": "ca4c85c25ea800eb43f33977b3c02f3989a8eebc60142f88e52740b3d422ae59",
+        "shared/ai.js": "7923203437405f6ba6fa9724eeafcf379ebab34dba6cc3c44a12fe7678ccb12a",
+        "shared/alert-events.js": "df5f0ae98145034e6893ce0b70c2df8938a2d786cc8de37a1fbbc1a9c8b634b0",
+        "shared/command-feedback.js": "e851bb8f7e48291bd75f09be66fdeecbe7dca68dcc82c839c5c033083ce77a07",
+        "shared/debris-motion.js": "d6a0f330f958ec6d78cfcc7f95b209aa5c099369576bf15dfd1c84770287b3b4",
+        "shared/formation.js": "265fa63c8c72588f6c8f67057921fd4daa88f96e9d823faa2e41ba10a7dba005",
+        "shared/grid.js": "30b0a5d67d99e54548d189374684e6b28863ecb7bf92de5221359e5c24fc5afc",
+        "shared/human-input.js": "dec728db485690620e527f912fa2a0b491f545c5bbdaafc4dc25fd1e425763ff",
+        "shared/local-traffic.js": "abad3f6ba310783c3620cec8d599df90dac38bb74eed6509be7d19a8af1490f6",
+        "shared/navigation.js": "c277c12f86c9990e281ae28a703dc374126aa1c737d9dc94a300f8d99c898472",
+        "shared/projectiles.js": "ded50f3bcd60cf79238d5dba48236d54e33b2b8032f704813118d1419708ccd7",
+        "shared/scenarios.js": "93f6cda90224a805cc97f42418b2dc11c49e3ea80654b66e0036de55f9b9ba97",
+        "shared/sim.js": "20d8f1d1e9f14f8a2178cbc8b30e1732ac5afc367632400081ca393048aaac51",
+        "shared/story.js": "fa33e53e61a7d636959dd1d1916d7b5c3359db72b523dc730b16ceab525d170f",
+        "shared/structures.js": "933b100a9a4c19a0285f5b137cd29b46e44271776f031045a537009e0176e5a2",
+        "shared/tutorial.js": "3aaa5e6affd936dae0ae4741d5173eee5d006132a1705d4b553097d3d8fabf42",
+        "shared/vehicle-motion.js": "05bd1e985a91b3268065a0a84ec4b9aee2c1079aafc4054c38a70677dfb1493b",
+        "shared/weather.js": "faad682d6e40fdc6629533f684e1caeec5c9ae49e26e9922651773727c0bc1e5",
+        "shared/world-conquest.js": "1c251e6d340586d7fb367d4f47938d5898f5239824dac46f054880a3d897aeef",
+        "shared/world-landforms.js": "ecb6916db6785484f8bb813f7745c8c48ccea370f084fea290ff736edc968e34",
+        "shared/world-layers.js": "f51f34b99946192107ada9a7077d787761c1a9cb6b1e316d7b7e243dd273bb22",
+        "shared/world-roads.js": "5fb243b63fa9e2c082135b5b093ee753e8a92c197a076d78067e53f08f1885db",
+        "shared/world-territories.js": "bb33a449d7f2c4d657dbceab8dbd0171eb8ccaa7494cedf9e18707822d8f717f",
+        "client/keys.js": "867e3105b7e4665f8a313c2ab46e23fc3df9407f2163fd6862bb537a01ecd276",
+        "tools/ai-screen-v1-oracle.js": "6b3894b551f3bf9151372b048b2efc77ffc86a6a173d0871278b27417358b398"
+      },
+      "method": "File hashes captured in each worker immediately before its first commander import. The worker reuses those imported modules for its subsequent matches."
+    }
+  },
+  "independentVerification": {
+    "status": "PASS",
+    "sourceCheckpointSHA256": "7c87de19ed1196044efbabad0d63bb8774d52acdd35e7695efac053a1f7c74a9",
+    "exactOriginalPairs": 120,
+    "seats": 360,
+    "allRawArchivesChecked": 120,
+    "allPrivateRecordingFromMatchStart": true,
+    "samePopulationAcrossPrimaryExplicitBothPolicies": true,
+    "privateFrames": 16845,
+    "nativeInputRows": 42574,
+    "nativeEventRows": 19748,
+    "nativeCommandRows": 12560,
+    "fullArchive": {
+      "format": "gzip",
+      "path": "final120-full.json.gz",
+      "sha256": "f73890986df3502ac1e2b69e18a71ee22a7c563715abc746331437f026ab30e5",
+      "bytes": 16775131,
+      "uncompressedSHA256": "714cb8bbabc54607e9c4d95cd13848e09b8a7a6677154d6374d86f22f9998ca2",
+      "uncompressedBytes": 429134109,
+      "method": "Exact streamed full report bytes, assembled from independently verified full raw match JSON archives; never serialized or parsed as one campaign-sized string."
+    },
+    "sourceFilesUnchanged": 43,
+    "oracleAndProvenanceRecorded": true
+  },
+  "openingInterpretation": "The original opening gate uses accepted purchase-family sequences over20seeds per faction: at least3distinct sequences and maximumshare0.5. First-purchase-family counts are a separate concentration diagnostic, not an additional mandatory gate. Empty sequences stay recorded and are not meaningful openings. Coordinates do not contribute.",
+  "groups": {
+    "conquest/easy": {
+      "matches": 20,
+      "seats": 60,
+      "bounds": {
+        "screen": [
+          0.9,
+          1.4
+        ],
+        "off": [
+          3,
+          6
+        ],
+        "apm": [
+          20,
+          35
+        ],
+        "peak": 60,
+        "opening": [
+          4,
+          8
+        ]
+      },
+      "originalRequiredFirstCompletedKMSeconds": 4.95,
+      "originalRequiredKMStatus": "outside-original-band",
+      "physicalAPM60SeatMeanMedian": 27,
+      "physicalAPM60Status": "within-original-band",
+      "physicalAPM60AllWindows": {
+        "count": 180,
+        "mean": 26.922,
+        "min": 5,
+        "p10": 19.9,
+        "median": 27,
+        "p90": 35,
+        "p95": 35,
+        "max": 35
+      },
+      "windowsWithinBand": 162,
+      "totalWindows": 180,
+      "peak10Max": 60,
+      "peak10Status": "within-original-cap",
+      "firstOrder": {
+        "count": 60,
+        "mean": 6.044,
+        "min": 4.1,
+        "p10": 4.495,
+        "median": 6.15,
+        "p90": 7.755,
+        "p95": 7.9,
+        "max": 8
+      },
+      "firstOrderStatus": "all-within-original-band",
+      "conditionalOffScreenSeatMedianSeconds": 4,
+      "conditionalOffScreenStatus": "within-original-band",
+      "offScreenRequiredGate": "not-evaluable: alerts lack a prospective required-response policy; conditional answered medians are not population acceptance",
+      "maxCommandsPerTick": 1,
+      "physicalInputs": 4846,
+      "cameraInputs": 1179,
+      "acceptedNonBuyCommands": 1112,
+      "acceptedPurchases": 282,
+      "acceptedAbilityCommands": 175,
+      "groups": {
+        "bindings": 184,
+        "single": 0,
+        "neverRecalled": 152,
+        "neverRecalledSingle": 0,
+        "recallInputs": 41,
+        "cameraGroupInputs": 0
+      },
+      "inspections": {
+        "attempts": 351,
+        "acquired": 288,
+        "missed": 63
+      },
+      "originalOnScreenFloorSeconds": 0.95,
+      "nativeOnScreenFloorSeconds": 0.95,
+      "openingByFaction": {
+        "USA": {
+          "firstAcceptedFamily": {
+            "matches": 20,
+            "counts": {
+              "\"infantry\"": 16,
+              "\"machineGun\"": 4
+            },
+            "distinct": 2,
+            "mostCommonShare": 0.8
+          },
+          "acceptedFamilySequence": {
+            "matches": 20,
+            "counts": {
+              "[\"infantry\",\"infantry\"]": 14,
+              "[\"infantry\",\"infantry\",\"infantry\"]": 1,
+              "[\"machineGun\",\"infantry\"]": 2,
+              "[\"machineGun\"]": 2,
+              "[\"infantry\"]": 1
+            },
+            "distinct": 5,
+            "mostCommonShare": 0.7
+          },
+          "meaningfulFirstFamilies": 2,
+          "meaningfulFamilySequences": 5,
+          "gate": {
+            "familySequenceStatus": "fail",
+            "firstFamilyDiagnosticStatus": "fail"
+          },
+          "coordinateNoveltyUsed": false
+        },
+        "Germany": {
+          "firstAcceptedFamily": {
+            "matches": 20,
+            "counts": {
+              "\"infantry\"": 17,
+              "\"machineGun\"": 3
+            },
+            "distinct": 2,
+            "mostCommonShare": 0.85
+          },
+          "acceptedFamilySequence": {
+            "matches": 20,
+            "counts": {
+              "[\"infantry\",\"infantry\"]": 13,
+              "[\"machineGun\"]": 3,
+              "[\"infantry\",\"infantry\",\"infantry\"]": 4
+            },
+            "distinct": 3,
+            "mostCommonShare": 0.65
+          },
+          "meaningfulFirstFamilies": 2,
+          "meaningfulFamilySequences": 3,
+          "gate": {
+            "familySequenceStatus": "fail",
+            "firstFamilyDiagnosticStatus": "fail"
+          },
+          "coordinateNoveltyUsed": false
+        },
+        "USSR": {
+          "firstAcceptedFamily": {
+            "matches": 20,
+            "counts": {
+              "\"infantry\"": 15,
+              "\"machineGun\"": 5
+            },
+            "distinct": 2,
+            "mostCommonShare": 0.75
+          },
+          "acceptedFamilySequence": {
+            "matches": 20,
+            "counts": {
+              "[\"infantry\",\"infantry\"]": 15,
+              "[\"machineGun\",\"infantry\"]": 3,
+              "[\"machineGun\"]": 2
+            },
+            "distinct": 3,
+            "mostCommonShare": 0.75
+          },
+          "meaningfulFirstFamilies": 2,
+          "meaningfulFamilySequences": 3,
+          "gate": {
+            "familySequenceStatus": "fail",
+            "firstFamilyDiagnosticStatus": "fail"
+          },
+          "coordinateNoveltyUsed": false
+        }
+      },
+      "quarterSecondCrossScreenPairs": 0,
+      "policyScores": {
+        "originalOracle": {
+          "primaryOnly": {
+            "recordedSeats": 60,
+            "totalSeats": 60,
+            "policies": [
+              "screen-v1"
+            ],
+            "annotatedEvents": 2323,
+            "unannotatedScreenEvents": 0,
+            "requiredEvents": 383,
+            "exemptEvents": 1940,
+            "reasons": {
+              "monitoring-contact": {
+                "required": 0,
+                "exempt": 936
+              },
+              "already-engaged": {
+                "required": 0,
+                "exempt": 506
+              },
+              "already-retreating": {
+                "required": 0,
+                "exempt": 166
+              },
+              "idle-combat-contact": {
+                "required": 297,
+                "exempt": 0
+              },
+              "monitoring-damage": {
+                "required": 0,
+                "exempt": 234
+              },
+              "heavy-damage": {
+                "required": 31,
+                "exempt": 0
+              },
+              "auto-retreat-enabled": {
+                "required": 0,
+                "exempt": 98
+              },
+              "retreat-risk-crossing": {
+                "required": 55,
+                "exempt": 0
+              }
+            },
+            "causalAlignment": {
+              "intendedResponseInputs": 378,
+              "otherResponseInputs": 87,
+              "missingIntentMetadataInputs": 0,
+              "firstActionSelectionMatches": 131,
+              "firstActionSelectionDiffers": 10,
+              "firstActionSelectionUnmeasured": 0
+            },
+            "firstAction": {
+              "samples": 383,
+              "observed": 141,
+              "censored": 242,
+              "medianSeconds": null,
+              "medianIdentifiable": false,
+              "method": "Kaplan-Meier survival with completed responses counted before censoring at tied times. Recording-end censoring assumes no informative loss of follow-up. A null median means the observed curve did not reach 0.5."
+            },
+            "attemptedCommand": {
+              "samples": 383,
+              "observed": 127,
+              "censored": 256,
+              "medianSeconds": null,
+              "medianIdentifiable": false,
+              "method": "Kaplan-Meier survival with completed responses counted before censoring at tied times. Recording-end censoring assumes no informative loss of follow-up. A null median means the observed curve did not reach 0.5."
+            },
+            "acceptedCommand": {
+              "samples": 383,
+              "observed": 127,
+              "censored": 256,
+              "medianSeconds": null,
+              "medianIdentifiable": false,
+              "method": "Kaplan-Meier survival with completed responses counted before censoring at tied times. Recording-end censoring assumes no informative loss of follow-up. A null median means the observed curve did not reach 0.5."
+            }
+          },
+          "explicitLinked": {
+            "recordedSeats": 60,
+            "totalSeats": 60,
+            "policies": [
+              "screen-v1"
+            ],
+            "annotatedEvents": 2323,
+            "unannotatedScreenEvents": 0,
+            "requiredEvents": 383,
+            "exemptEvents": 1940,
+            "reasons": {
+              "monitoring-contact": {
+                "required": 0,
+                "exempt": 936
+              },
+              "already-engaged": {
+                "required": 0,
+                "exempt": 506
+              },
+              "already-retreating": {
+                "required": 0,
+                "exempt": 166
+              },
+              "idle-combat-contact": {
+                "required": 297,
+                "exempt": 0
+              },
+              "monitoring-damage": {
+                "required": 0,
+                "exempt": 234
+              },
+              "heavy-damage": {
+                "required": 31,
+                "exempt": 0
+              },
+              "auto-retreat-enabled": {
+                "required": 0,
+                "exempt": 98
+              },
+              "retreat-risk-crossing": {
+                "required": 55,
+                "exempt": 0
+              }
+            },
+            "causalAlignment": {
+              "intendedResponseInputs": 566,
+              "otherResponseInputs": 0,
+              "missingIntentMetadataInputs": 0,
+              "firstActionSelectionMatches": 196,
+              "firstActionSelectionDiffers": 23,
+              "firstActionSelectionUnmeasured": 0
+            },
+            "firstAction": {
+              "samples": 383,
+              "observed": 219,
+              "censored": 164,
+              "medianSeconds": 4.95,
+              "medianIdentifiable": true,
+              "method": "Kaplan-Meier survival with completed responses counted before censoring at tied times. Recording-end censoring assumes no informative loss of follow-up. A null median means the observed curve did not reach 0.5."
+            },
+            "attemptedCommand": {
+              "samples": 383,
+              "observed": 184,
+              "censored": 199,
+              "medianSeconds": null,
+              "medianIdentifiable": false,
+              "method": "Kaplan-Meier survival with completed responses counted before censoring at tied times. Recording-end censoring assumes no informative loss of follow-up. A null median means the observed curve did not reach 0.5."
+            },
+            "acceptedCommand": {
+              "samples": 383,
+              "observed": 184,
+              "censored": 199,
+              "medianSeconds": null,
+              "medianIdentifiable": false,
+              "method": "Kaplan-Meier survival with completed responses counted before censoring at tied times. Recording-end censoring assumes no informative loss of follow-up. A null median means the observed curve did not reach 0.5."
+            }
+          }
+        },
+        "observed": {
+          "primaryOnly": {
+            "recordedSeats": 60,
+            "totalSeats": 60,
+            "policies": [
+              "screen-observed-v1"
+            ],
+            "annotatedEvents": 2304,
+            "unannotatedScreenEvents": 0,
+            "requiredEvents": 380,
+            "exemptEvents": 1924,
+            "reasons": {
+              "monitoring-contact": {
+                "required": 0,
+                "exempt": 936
+              },
+              "already-engaged": {
+                "required": 0,
+                "exempt": 526
+              },
+              "already-retreating": {
+                "required": 0,
+                "exempt": 161
+              },
+              "idle-combat-contact": {
+                "required": 297,
+                "exempt": 0
+              },
+              "monitoring-damage": {
+                "required": 0,
+                "exempt": 224
+              },
+              "heavy-damage": {
+                "required": 38,
+                "exempt": 0
+              },
+              "retreat-risk-crossing": {
+                "required": 45,
+                "exempt": 0
+              },
+              "auto-retreat-enabled": {
+                "required": 0,
+                "exempt": 77
+              }
+            },
+            "causalAlignment": {
+              "intendedResponseInputs": 402,
+              "otherResponseInputs": 87,
+              "missingIntentMetadataInputs": 0,
+              "firstActionSelectionMatches": 142,
+              "firstActionSelectionDiffers": 12,
+              "firstActionSelectionUnmeasured": 0
+            },
+            "firstAction": {
+              "samples": 380,
+              "observed": 154,
+              "censored": 226,
+              "medianSeconds": null,
+              "medianIdentifiable": false,
+              "method": "Kaplan-Meier survival with completed responses counted before censoring at tied times. Recording-end censoring assumes no informative loss of follow-up. A null median means the observed curve did not reach 0.5."
+            },
+            "attemptedCommand": {
+              "samples": 380,
+              "observed": 137,
+              "censored": 243,
+              "medianSeconds": null,
+              "medianIdentifiable": false,
+              "method": "Kaplan-Meier survival with completed responses counted before censoring at tied times. Recording-end censoring assumes no informative loss of follow-up. A null median means the observed curve did not reach 0.5."
+            },
+            "acceptedCommand": {
+              "samples": 380,
+              "observed": 137,
+              "censored": 243,
+              "medianSeconds": null,
+              "medianIdentifiable": false,
+              "method": "Kaplan-Meier survival with completed responses counted before censoring at tied times. Recording-end censoring assumes no informative loss of follow-up. A null median means the observed curve did not reach 0.5."
+            }
+          },
+          "explicitLinked": {
+            "recordedSeats": 60,
+            "totalSeats": 60,
+            "policies": [
+              "screen-observed-v1"
+            ],
+            "annotatedEvents": 2304,
+            "unannotatedScreenEvents": 0,
+            "requiredEvents": 380,
+            "exemptEvents": 1924,
+            "reasons": {
+              "monitoring-contact": {
+                "required": 0,
+                "exempt": 936
+              },
+              "already-engaged": {
+                "required": 0,
+                "exempt": 526
+              },
+              "already-retreating": {
+                "required": 0,
+                "exempt": 161
+              },
+              "idle-combat-contact": {
+                "required": 297,
+                "exempt": 0
+              },
+              "monitoring-damage": {
+                "required": 0,
+                "exempt": 224
+              },
+              "heavy-damage": {
+                "required": 38,
+                "exempt": 0
+              },
+              "retreat-risk-crossing": {
+                "required": 45,
+                "exempt": 0
+              },
+              "auto-retreat-enabled": {
+                "required": 0,
+                "exempt": 77
+              }
+            },
+            "causalAlignment": {
+              "intendedResponseInputs": 591,
+              "otherResponseInputs": 0,
+              "missingIntentMetadataInputs": 0,
+              "firstActionSelectionMatches": 207,
+              "firstActionSelectionDiffers": 26,
+              "firstActionSelectionUnmeasured": 0
+            },
+            "firstAction": {
+              "samples": 380,
+              "observed": 233,
+              "censored": 147,
+              "medianSeconds": 3.4,
+              "medianIdentifiable": true,
+              "method": "Kaplan-Meier survival with completed responses counted before censoring at tied times. Recording-end censoring assumes no informative loss of follow-up. A null median means the observed curve did not reach 0.5."
+            },
+            "attemptedCommand": {
+              "samples": 380,
+              "observed": 194,
+              "censored": 186,
+              "medianSeconds": 14.05,
+              "medianIdentifiable": true,
+              "method": "Kaplan-Meier survival with completed responses counted before censoring at tied times. Recording-end censoring assumes no informative loss of follow-up. A null median means the observed curve did not reach 0.5."
+            },
+            "acceptedCommand": {
+              "samples": 380,
+              "observed": 194,
+              "censored": 186,
+              "medianSeconds": 14.05,
+              "medianIdentifiable": true,
+              "method": "Kaplan-Meier survival with completed responses counted before censoring at tied times. Recording-end censoring assumes no informative loss of follow-up. A null median means the observed curve did not reach 0.5."
+            }
+          }
+        }
+      },
+      "policyAudit": {
+        "frames": 2897,
+        "declaredMappings": 2800,
+        "validMappings": 2800,
+        "unknownRuntimeMappings": 0,
+        "unknownOriginalMappings": 0,
+        "mismatchedCreationMappings": 0,
+        "invalidRuntimeDescriptors": 0,
+        "unaliasedPrimaryInputs": 353,
+        "unaliasedExplicitLinks": 500
+      },
+      "coverage": {
+        "originalRecordedSeats": 60,
+        "originalFromMatchStartSeats": 60,
+        "originalBaselineTicks": [
+          0
+        ],
+        "nativeEvents": 3599,
+        "originalEvents": 2967,
+        "observedEvents": 3593,
+        "originalEventsWithoutRuntimeAlias": 167
+      },
+      "firstOrderOutsideSeats": 0
+    },
+    "conquest/normal": {
+      "matches": 20,
+      "seats": 60,
+      "bounds": {
+        "screen": [
+          0.5,
+          0.8
+        ],
+        "off": [
+          1.5,
+          3
+        ],
+        "apm": [
+          40,
+          70
+        ],
+        "peak": 120,
+        "opening": [
+          3,
+          6
+        ]
+      },
+      "originalRequiredFirstCompletedKMSeconds": 1.6,
+      "originalRequiredKMStatus": "outside-original-band",
+      "physicalAPM60SeatMeanMedian": 41,
+      "physicalAPM60Status": "within-original-band",
+      "physicalAPM60AllWindows": {
+        "count": 180,
+        "mean": 41.106,
+        "min": 21,
+        "p10": 29,
+        "median": 40,
+        "p90": 52.1,
+        "p95": 57,
+        "max": 67
+      },
+      "windowsWithinBand": 99,
+      "totalWindows": 180,
+      "peak10Max": 120,
+      "peak10Status": "within-original-cap",
+      "firstOrder": {
+        "count": 60,
+        "mean": 4.55,
+        "min": 3.1,
+        "p10": 3.395,
+        "median": 4.625,
+        "p90": 5.85,
+        "p95": 5.95,
+        "max": 6
+      },
+      "firstOrderStatus": "all-within-original-band",
+      "conditionalOffScreenSeatMedianSeconds": 2.05,
+      "conditionalOffScreenStatus": "within-original-band",
+      "offScreenRequiredGate": "not-evaluable: alerts lack a prospective required-response policy; conditional answered medians are not population acceptance",
+      "maxCommandsPerTick": 1,
+      "physicalInputs": 7399,
+      "cameraInputs": 1875,
+      "acceptedNonBuyCommands": 1782,
+      "acceptedPurchases": 262,
+      "acceptedAbilityCommands": 278,
+      "groups": {
+        "bindings": 238,
+        "single": 0,
+        "neverRecalled": 187,
+        "neverRecalledSingle": 0,
+        "recallInputs": 72,
+        "cameraGroupInputs": 0
+      },
+      "inspections": {
+        "attempts": 459,
+        "acquired": 388,
+        "missed": 71
+      },
+      "originalOnScreenFloorSeconds": 0.55,
+      "nativeOnScreenFloorSeconds": 0.55,
+      "openingByFaction": {
+        "USA": {
+          "firstAcceptedFamily": {
+            "matches": 20,
+            "counts": {
+              "\"infantry\"": 16,
+              "\"machineGun\"": 4
+            },
+            "distinct": 2,
+            "mostCommonShare": 0.8
+          },
+          "acceptedFamilySequence": {
+            "matches": 20,
+            "counts": {
+              "[\"infantry\",\"infantry\"]": 13,
+              "[\"infantry\",\"infantry\",\"infantry\"]": 3,
+              "[\"machineGun\"]": 1,
+              "[\"machineGun\",\"infantry\"]": 3
+            },
+            "distinct": 4,
+            "mostCommonShare": 0.65
+          },
+          "meaningfulFirstFamilies": 2,
+          "meaningfulFamilySequences": 4,
+          "gate": {
+            "familySequenceStatus": "fail",
+            "firstFamilyDiagnosticStatus": "fail"
+          },
+          "coordinateNoveltyUsed": false
+        },
+        "Germany": {
+          "firstAcceptedFamily": {
+            "matches": 20,
+            "counts": {
+              "\"infantry\"": 17,
+              "\"machineGun\"": 3
+            },
+            "distinct": 2,
+            "mostCommonShare": 0.85
+          },
+          "acceptedFamilySequence": {
+            "matches": 20,
+            "counts": {
+              "[\"infantry\",\"infantry\"]": 14,
+              "[\"machineGun\",\"infantry\"]": 3,
+              "[\"infantry\",\"infantry\",\"infantry\"]": 3
+            },
+            "distinct": 3,
+            "mostCommonShare": 0.7
+          },
+          "meaningfulFirstFamilies": 2,
+          "meaningfulFamilySequences": 3,
+          "gate": {
+            "familySequenceStatus": "fail",
+            "firstFamilyDiagnosticStatus": "fail"
+          },
+          "coordinateNoveltyUsed": false
+        },
+        "USSR": {
+          "firstAcceptedFamily": {
+            "matches": 20,
+            "counts": {
+              "\"infantry\"": 15,
+              "\"machineGun\"": 5
+            },
+            "distinct": 2,
+            "mostCommonShare": 0.75
+          },
+          "acceptedFamilySequence": {
+            "matches": 20,
+            "counts": {
+              "[\"infantry\",\"infantry\",\"infantry\"]": 5,
+              "[\"infantry\",\"infantry\"]": 6,
+              "[\"machineGun\",\"infantry\"]": 2,
+              "[\"machineGun\"]": 3,
+              "[\"infantry\",\"infantry\",\"machineGun\"]": 3,
+              "[\"infantry\",\"infantry\",\"infantry\",\"infantry\"]": 1
+            },
+            "distinct": 6,
+            "mostCommonShare": 0.3
+          },
+          "meaningfulFirstFamilies": 2,
+          "meaningfulFamilySequences": 6,
+          "gate": {
+            "familySequenceStatus": "pass",
+            "firstFamilyDiagnosticStatus": "fail"
+          },
+          "coordinateNoveltyUsed": false
+        }
+      },
+      "quarterSecondCrossScreenPairs": 0,
+      "policyScores": {
+        "originalOracle": {
+          "primaryOnly": {
+            "recordedSeats": 60,
+            "totalSeats": 60,
+            "policies": [
+              "screen-v1"
+            ],
+            "annotatedEvents": 3172,
+            "unannotatedScreenEvents": 0,
+            "requiredEvents": 485,
+            "exemptEvents": 2687,
+            "reasons": {
+              "monitoring-damage": {
+                "required": 0,
+                "exempt": 355
+              },
+              "monitoring-contact": {
+                "required": 0,
+                "exempt": 1263
+              },
+              "already-engaged": {
+                "required": 0,
+                "exempt": 687
+              },
+              "idle-combat-contact": {
+                "required": 357,
+                "exempt": 0
+              },
+              "auto-retreat-enabled": {
+                "required": 0,
+                "exempt": 147
+              },
+              "already-retreating": {
+                "required": 0,
+                "exempt": 235
+              },
+              "retreat-risk-crossing": {
+                "required": 77,
+                "exempt": 0
+              },
+              "heavy-damage": {
+                "required": 51,
+                "exempt": 0
+              }
+            },
+            "causalAlignment": {
+              "intendedResponseInputs": 619,
+              "otherResponseInputs": 127,
+              "missingIntentMetadataInputs": 0,
+              "firstActionSelectionMatches": 200,
+              "firstActionSelectionDiffers": 21,
+              "firstActionSelectionUnmeasured": 0
+            },
+            "firstAction": {
+              "samples": 485,
+              "observed": 221,
+              "censored": 264,
+              "medianSeconds": null,
+              "medianIdentifiable": false,
+              "method": "Kaplan-Meier survival with completed responses counted before censoring at tied times. Recording-end censoring assumes no informative loss of follow-up. A null median means the observed curve did not reach 0.5."
+            },
+            "attemptedCommand": {
+              "samples": 485,
+              "observed": 205,
+              "censored": 280,
+              "medianSeconds": null,
+              "medianIdentifiable": false,
+              "method": "Kaplan-Meier survival with completed responses counted before censoring at tied times. Recording-end censoring assumes no informative loss of follow-up. A null median means the observed curve did not reach 0.5."
+            },
+            "acceptedCommand": {
+              "samples": 485,
+              "observed": 205,
+              "censored": 280,
+              "medianSeconds": null,
+              "medianIdentifiable": false,
+              "method": "Kaplan-Meier survival with completed responses counted before censoring at tied times. Recording-end censoring assumes no informative loss of follow-up. A null median means the observed curve did not reach 0.5."
+            }
+          },
+          "explicitLinked": {
+            "recordedSeats": 60,
+            "totalSeats": 60,
+            "policies": [
+              "screen-v1"
+            ],
+            "annotatedEvents": 3172,
+            "unannotatedScreenEvents": 0,
+            "requiredEvents": 485,
+            "exemptEvents": 2687,
+            "reasons": {
+              "monitoring-damage": {
+                "required": 0,
+                "exempt": 355
+              },
+              "monitoring-contact": {
+                "required": 0,
+                "exempt": 1263
+              },
+              "already-engaged": {
+                "required": 0,
+                "exempt": 687
+              },
+              "idle-combat-contact": {
+                "required": 357,
+                "exempt": 0
+              },
+              "auto-retreat-enabled": {
+                "required": 0,
+                "exempt": 147
+              },
+              "already-retreating": {
+                "required": 0,
+                "exempt": 235
+              },
+              "retreat-risk-crossing": {
+                "required": 77,
+                "exempt": 0
+              },
+              "heavy-damage": {
+                "required": 51,
+                "exempt": 0
+              }
+            },
+            "causalAlignment": {
+              "intendedResponseInputs": 957,
+              "otherResponseInputs": 0,
+              "missingIntentMetadataInputs": 0,
+              "firstActionSelectionMatches": 277,
+              "firstActionSelectionDiffers": 40,
+              "firstActionSelectionUnmeasured": 0
+            },
+            "firstAction": {
+              "samples": 485,
+              "observed": 317,
+              "censored": 168,
+              "medianSeconds": 1.6,
+              "medianIdentifiable": true,
+              "method": "Kaplan-Meier survival with completed responses counted before censoring at tied times. Recording-end censoring assumes no informative loss of follow-up. A null median means the observed curve did not reach 0.5."
+            },
+            "attemptedCommand": {
+              "samples": 485,
+              "observed": 304,
+              "censored": 181,
+              "medianSeconds": 3.05,
+              "medianIdentifiable": true,
+              "method": "Kaplan-Meier survival with completed responses counted before censoring at tied times. Recording-end censoring assumes no informative loss of follow-up. A null median means the observed curve did not reach 0.5."
+            },
+            "acceptedCommand": {
+              "samples": 485,
+              "observed": 304,
+              "censored": 181,
+              "medianSeconds": 3.05,
+              "medianIdentifiable": true,
+              "method": "Kaplan-Meier survival with completed responses counted before censoring at tied times. Recording-end censoring assumes no informative loss of follow-up. A null median means the observed curve did not reach 0.5."
+            }
+          }
+        },
+        "observed": {
+          "primaryOnly": {
+            "recordedSeats": 60,
+            "totalSeats": 60,
+            "policies": [
+              "screen-observed-v1"
+            ],
+            "annotatedEvents": 3149,
+            "unannotatedScreenEvents": 0,
+            "requiredEvents": 491,
+            "exemptEvents": 2658,
+            "reasons": {
+              "monitoring-damage": {
+                "required": 0,
+                "exempt": 349
+              },
+              "monitoring-contact": {
+                "required": 0,
+                "exempt": 1263
+              },
+              "already-engaged": {
+                "required": 0,
+                "exempt": 704
+              },
+              "idle-combat-contact": {
+                "required": 357,
+                "exempt": 0
+              },
+              "auto-retreat-enabled": {
+                "required": 0,
+                "exempt": 112
+              },
+              "retreat-risk-crossing": {
+                "required": 74,
+                "exempt": 0
+              },
+              "already-retreating": {
+                "required": 0,
+                "exempt": 230
+              },
+              "heavy-damage": {
+                "required": 60,
+                "exempt": 0
+              }
+            },
+            "causalAlignment": {
+              "intendedResponseInputs": 649,
+              "otherResponseInputs": 145,
+              "missingIntentMetadataInputs": 0,
+              "firstActionSelectionMatches": 213,
+              "firstActionSelectionDiffers": 23,
+              "firstActionSelectionUnmeasured": 0
+            },
+            "firstAction": {
+              "samples": 491,
+              "observed": 236,
+              "censored": 255,
+              "medianSeconds": null,
+              "medianIdentifiable": false,
+              "method": "Kaplan-Meier survival with completed responses counted before censoring at tied times. Recording-end censoring assumes no informative loss of follow-up. A null median means the observed curve did not reach 0.5."
+            },
+            "attemptedCommand": {
+              "samples": 491,
+              "observed": 219,
+              "censored": 272,
+              "medianSeconds": null,
+              "medianIdentifiable": false,
+              "method": "Kaplan-Meier survival with completed responses counted before censoring at tied times. Recording-end censoring assumes no informative loss of follow-up. A null median means the observed curve did not reach 0.5."
+            },
+            "acceptedCommand": {
+              "samples": 491,
+              "observed": 219,
+              "censored": 272,
+              "medianSeconds": null,
+              "medianIdentifiable": false,
+              "method": "Kaplan-Meier survival with completed responses counted before censoring at tied times. Recording-end censoring assumes no informative loss of follow-up. A null median means the observed curve did not reach 0.5."
+            }
+          },
+          "explicitLinked": {
+            "recordedSeats": 60,
+            "totalSeats": 60,
+            "policies": [
+              "screen-observed-v1"
+            ],
+            "annotatedEvents": 3149,
+            "unannotatedScreenEvents": 0,
+            "requiredEvents": 491,
+            "exemptEvents": 2658,
+            "reasons": {
+              "monitoring-damage": {
+                "required": 0,
+                "exempt": 349
+              },
+              "monitoring-contact": {
+                "required": 0,
+                "exempt": 1263
+              },
+              "already-engaged": {
+                "required": 0,
+                "exempt": 704
+              },
+              "idle-combat-contact": {
+                "required": 357,
+                "exempt": 0
+              },
+              "auto-retreat-enabled": {
+                "required": 0,
+                "exempt": 112
+              },
+              "retreat-risk-crossing": {
+                "required": 74,
+                "exempt": 0
+              },
+              "already-retreating": {
+                "required": 0,
+                "exempt": 230
+              },
+              "heavy-damage": {
+                "required": 60,
+                "exempt": 0
+              }
+            },
+            "causalAlignment": {
+              "intendedResponseInputs": 992,
+              "otherResponseInputs": 0,
+              "missingIntentMetadataInputs": 0,
+              "firstActionSelectionMatches": 293,
+              "firstActionSelectionDiffers": 42,
+              "firstActionSelectionUnmeasured": 0
+            },
+            "firstAction": {
+              "samples": 491,
+              "observed": 335,
+              "censored": 156,
+              "medianSeconds": 1.45,
+              "medianIdentifiable": true,
+              "method": "Kaplan-Meier survival with completed responses counted before censoring at tied times. Recording-end censoring assumes no informative loss of follow-up. A null median means the observed curve did not reach 0.5."
+            },
+            "attemptedCommand": {
+              "samples": 491,
+              "observed": 320,
+              "censored": 171,
+              "medianSeconds": 2.6,
+              "medianIdentifiable": true,
+              "method": "Kaplan-Meier survival with completed responses counted before censoring at tied times. Recording-end censoring assumes no informative loss of follow-up. A null median means the observed curve did not reach 0.5."
+            },
+            "acceptedCommand": {
+              "samples": 491,
+              "observed": 320,
+              "censored": 171,
+              "medianSeconds": 2.6,
+              "medianIdentifiable": true,
+              "method": "Kaplan-Meier survival with completed responses counted before censoring at tied times. Recording-end censoring assumes no informative loss of follow-up. A null median means the observed curve did not reach 0.5."
+            }
+          }
+        }
+      },
+      "policyAudit": {
+        "frames": 3935,
+        "declaredMappings": 3863,
+        "validMappings": 3863,
+        "unknownRuntimeMappings": 0,
+        "unknownOriginalMappings": 0,
+        "mismatchedCreationMappings": 0,
+        "invalidRuntimeDescriptors": 0,
+        "unaliasedPrimaryInputs": 499,
+        "unaliasedExplicitLinks": 629
+      },
+      "coverage": {
+        "originalRecordedSeats": 60,
+        "originalFromMatchStartSeats": 60,
+        "originalBaselineTicks": [
+          0
+        ],
+        "nativeEvents": 4604,
+        "originalEvents": 4074,
+        "observedEvents": 4599,
+        "originalEventsWithoutRuntimeAlias": 211
+      },
+      "firstOrderOutsideSeats": 0
+    },
+    "conquest/hard": {
+      "matches": 20,
+      "seats": 60,
+      "bounds": {
+        "screen": [
+          0.3,
+          0.45
+        ],
+        "off": [
+          0.8,
+          1.6
+        ],
+        "apm": [
+          80,
+          120
+        ],
+        "peak": 200,
+        "opening": [
+          2,
+          4
+        ]
+      },
+      "originalRequiredFirstCompletedKMSeconds": 3.4,
+      "originalRequiredKMStatus": "outside-original-band",
+      "physicalAPM60SeatMeanMedian": 57.167,
+      "physicalAPM60Status": "outside-original-band",
+      "physicalAPM60AllWindows": {
+        "count": 180,
+        "mean": 57.517,
+        "min": 34,
+        "p10": 46,
+        "median": 57,
+        "p90": 71,
+        "p95": 73.05,
+        "max": 81
+      },
+      "windowsWithinBand": 1,
+      "totalWindows": 180,
+      "peak10Max": 168,
+      "peak10Status": "within-original-cap",
+      "firstOrder": {
+        "count": 60,
+        "mean": 3.067,
+        "min": 2.25,
+        "p10": 2.345,
+        "median": 3.1,
+        "p90": 3.905,
+        "p95": 4,
+        "max": 4.05
+      },
+      "firstOrderStatus": "outside-original-band",
+      "conditionalOffScreenSeatMedianSeconds": 1.2,
+      "conditionalOffScreenStatus": "within-original-band",
+      "offScreenRequiredGate": "not-evaluable: alerts lack a prospective required-response policy; conditional answered medians are not population acceptance",
+      "maxCommandsPerTick": 1,
+      "physicalInputs": 10353,
+      "cameraInputs": 2846,
+      "acceptedNonBuyCommands": 2662,
+      "acceptedPurchases": 303,
+      "acceptedAbilityCommands": 399,
+      "groups": {
+        "bindings": 294,
+        "single": 0,
+        "neverRecalled": 234,
+        "neverRecalledSingle": 0,
+        "recallInputs": 100,
+        "cameraGroupInputs": 0
+      },
+      "inspections": {
+        "attempts": 606,
+        "acquired": 511,
+        "missed": 95
+      },
+      "originalOnScreenFloorSeconds": 0.35,
+      "nativeOnScreenFloorSeconds": 0.35,
+      "openingByFaction": {
+        "USA": {
+          "firstAcceptedFamily": {
+            "matches": 20,
+            "counts": {
+              "\"infantry\"": 16,
+              "\"machineGun\"": 4
+            },
+            "distinct": 2,
+            "mostCommonShare": 0.8
+          },
+          "acceptedFamilySequence": {
+            "matches": 20,
+            "counts": {
+              "[\"infantry\",\"infantry\"]": 14,
+              "[\"machineGun\"]": 1,
+              "[\"infantry\",\"infantry\",\"infantry\"]": 1,
+              "[\"machineGun\",\"infantry\"]": 3,
+              "[\"infantry\",\"machineGun\",\"infantry\"]": 1
+            },
+            "distinct": 5,
+            "mostCommonShare": 0.7
+          },
+          "meaningfulFirstFamilies": 2,
+          "meaningfulFamilySequences": 5,
+          "gate": {
+            "familySequenceStatus": "fail",
+            "firstFamilyDiagnosticStatus": "fail"
+          },
+          "coordinateNoveltyUsed": false
+        },
+        "Germany": {
+          "firstAcceptedFamily": {
+            "matches": 20,
+            "counts": {
+              "\"infantry\"": 17,
+              "\"machineGun\"": 3
+            },
+            "distinct": 2,
+            "mostCommonShare": 0.85
+          },
+          "acceptedFamilySequence": {
+            "matches": 20,
+            "counts": {
+              "[\"infantry\",\"infantry\",\"infantry\"]": 7,
+              "[\"machineGun\",\"infantry\"]": 3,
+              "[\"infantry\",\"infantry\",\"machineGun\"]": 1,
+              "[\"infantry\",\"infantry\"]": 7,
+              "[\"infantry\",\"machineGun\"]": 2
+            },
+            "distinct": 5,
+            "mostCommonShare": 0.35
+          },
+          "meaningfulFirstFamilies": 2,
+          "meaningfulFamilySequences": 5,
+          "gate": {
+            "familySequenceStatus": "pass",
+            "firstFamilyDiagnosticStatus": "fail"
+          },
+          "coordinateNoveltyUsed": false
+        },
+        "USSR": {
+          "firstAcceptedFamily": {
+            "matches": 20,
+            "counts": {
+              "\"infantry\"": 15,
+              "\"machineGun\"": 5
+            },
+            "distinct": 2,
+            "mostCommonShare": 0.75
+          },
+          "acceptedFamilySequence": {
+            "matches": 20,
+            "counts": {
+              "[\"infantry\",\"infantry\",\"infantry\"]": 11,
+              "[\"machineGun\",\"infantry\",\"infantry\"]": 1,
+              "[\"machineGun\",\"infantry\"]": 4,
+              "[\"infantry\",\"infantry\",\"machineGun\"]": 2,
+              "[\"infantry\",\"infantry\",\"infantry\",\"infantry\"]": 1,
+              "[\"infantry\",\"infantry\"]": 1
+            },
+            "distinct": 6,
+            "mostCommonShare": 0.55
+          },
+          "meaningfulFirstFamilies": 2,
+          "meaningfulFamilySequences": 6,
+          "gate": {
+            "familySequenceStatus": "fail",
+            "firstFamilyDiagnosticStatus": "fail"
+          },
+          "coordinateNoveltyUsed": false
+        }
+      },
+      "quarterSecondCrossScreenPairs": 0,
+      "policyScores": {
+        "originalOracle": {
+          "primaryOnly": {
+            "recordedSeats": 60,
+            "totalSeats": 60,
+            "policies": [
+              "screen-v1"
+            ],
+            "annotatedEvents": 3708,
+            "unannotatedScreenEvents": 0,
+            "requiredEvents": 426,
+            "exemptEvents": 3282,
+            "reasons": {
+              "monitoring-contact": {
+                "required": 0,
+                "exempt": 1647
+              },
+              "already-engaged": {
+                "required": 0,
+                "exempt": 884
+              },
+              "monitoring-damage": {
+                "required": 0,
+                "exempt": 440
+              },
+              "already-retreating": {
+                "required": 0,
+                "exempt": 232
+              },
+              "retreat-risk-crossing": {
+                "required": 51,
+                "exempt": 0
+              },
+              "idle-combat-contact": {
+                "required": 330,
+                "exempt": 0
+              },
+              "auto-retreat-enabled": {
+                "required": 0,
+                "exempt": 79
+              },
+              "heavy-damage": {
+                "required": 45,
+                "exempt": 0
+              }
+            },
+            "causalAlignment": {
+              "intendedResponseInputs": 499,
+              "otherResponseInputs": 131,
+              "missingIntentMetadataInputs": 0,
+              "firstActionSelectionMatches": 166,
+              "firstActionSelectionDiffers": 12,
+              "firstActionSelectionUnmeasured": 0
+            },
+            "firstAction": {
+              "samples": 426,
+              "observed": 178,
+              "censored": 248,
+              "medianSeconds": null,
+              "medianIdentifiable": false,
+              "method": "Kaplan-Meier survival with completed responses counted before censoring at tied times. Recording-end censoring assumes no informative loss of follow-up. A null median means the observed curve did not reach 0.5."
+            },
+            "attemptedCommand": {
+              "samples": 426,
+              "observed": 168,
+              "censored": 258,
+              "medianSeconds": null,
+              "medianIdentifiable": false,
+              "method": "Kaplan-Meier survival with completed responses counted before censoring at tied times. Recording-end censoring assumes no informative loss of follow-up. A null median means the observed curve did not reach 0.5."
+            },
+            "acceptedCommand": {
+              "samples": 426,
+              "observed": 168,
+              "censored": 258,
+              "medianSeconds": null,
+              "medianIdentifiable": false,
+              "method": "Kaplan-Meier survival with completed responses counted before censoring at tied times. Recording-end censoring assumes no informative loss of follow-up. A null median means the observed curve did not reach 0.5."
+            }
+          },
+          "explicitLinked": {
+            "recordedSeats": 60,
+            "totalSeats": 60,
+            "policies": [
+              "screen-v1"
+            ],
+            "annotatedEvents": 3708,
+            "unannotatedScreenEvents": 0,
+            "requiredEvents": 426,
+            "exemptEvents": 3282,
+            "reasons": {
+              "monitoring-contact": {
+                "required": 0,
+                "exempt": 1647
+              },
+              "already-engaged": {
+                "required": 0,
+                "exempt": 884
+              },
+              "monitoring-damage": {
+                "required": 0,
+                "exempt": 440
+              },
+              "already-retreating": {
+                "required": 0,
+                "exempt": 232
+              },
+              "retreat-risk-crossing": {
+                "required": 51,
+                "exempt": 0
+              },
+              "idle-combat-contact": {
+                "required": 330,
+                "exempt": 0
+              },
+              "auto-retreat-enabled": {
+                "required": 0,
+                "exempt": 79
+              },
+              "heavy-damage": {
+                "required": 45,
+                "exempt": 0
+              }
+            },
+            "causalAlignment": {
+              "intendedResponseInputs": 678,
+              "otherResponseInputs": 0,
+              "missingIntentMetadataInputs": 0,
+              "firstActionSelectionMatches": 217,
+              "firstActionSelectionDiffers": 22,
+              "firstActionSelectionUnmeasured": 0
+            },
+            "firstAction": {
+              "samples": 426,
+              "observed": 239,
+              "censored": 187,
+              "medianSeconds": 3.4,
+              "medianIdentifiable": true,
+              "method": "Kaplan-Meier survival with completed responses counted before censoring at tied times. Recording-end censoring assumes no informative loss of follow-up. A null median means the observed curve did not reach 0.5."
+            },
+            "attemptedCommand": {
+              "samples": 426,
+              "observed": 224,
+              "censored": 202,
+              "medianSeconds": 7.35,
+              "medianIdentifiable": true,
+              "method": "Kaplan-Meier survival with completed responses counted before censoring at tied times. Recording-end censoring assumes no informative loss of follow-up. A null median means the observed curve did not reach 0.5."
+            },
+            "acceptedCommand": {
+              "samples": 426,
+              "observed": 224,
+              "censored": 202,
+              "medianSeconds": 7.35,
+              "medianIdentifiable": true,
+              "method": "Kaplan-Meier survival with completed responses counted before censoring at tied times. Recording-end censoring assumes no informative loss of follow-up. A null median means the observed curve did not reach 0.5."
+            }
+          }
+        },
+        "observed": {
+          "primaryOnly": {
+            "recordedSeats": 60,
+            "totalSeats": 60,
+            "policies": [
+              "screen-observed-v1"
+            ],
+            "annotatedEvents": 3650,
+            "unannotatedScreenEvents": 0,
+            "requiredEvents": 426,
+            "exemptEvents": 3224,
+            "reasons": {
+              "monitoring-contact": {
+                "required": 0,
+                "exempt": 1647
+              },
+              "already-engaged": {
+                "required": 0,
+                "exempt": 873
+              },
+              "monitoring-damage": {
+                "required": 0,
+                "exempt": 428
+              },
+              "already-retreating": {
+                "required": 0,
+                "exempt": 214
+              },
+              "retreat-risk-crossing": {
+                "required": 46,
+                "exempt": 0
+              },
+              "idle-combat-contact": {
+                "required": 330,
+                "exempt": 0
+              },
+              "auto-retreat-enabled": {
+                "required": 0,
+                "exempt": 62
+              },
+              "heavy-damage": {
+                "required": 50,
+                "exempt": 0
+              }
+            },
+            "causalAlignment": {
+              "intendedResponseInputs": 525,
+              "otherResponseInputs": 131,
+              "missingIntentMetadataInputs": 0,
+              "firstActionSelectionMatches": 178,
+              "firstActionSelectionDiffers": 12,
+              "firstActionSelectionUnmeasured": 0
+            },
+            "firstAction": {
+              "samples": 426,
+              "observed": 190,
+              "censored": 236,
+              "medianSeconds": null,
+              "medianIdentifiable": false,
+              "method": "Kaplan-Meier survival with completed responses counted before censoring at tied times. Recording-end censoring assumes no informative loss of follow-up. A null median means the observed curve did not reach 0.5."
+            },
+            "attemptedCommand": {
+              "samples": 426,
+              "observed": 180,
+              "censored": 246,
+              "medianSeconds": null,
+              "medianIdentifiable": false,
+              "method": "Kaplan-Meier survival with completed responses counted before censoring at tied times. Recording-end censoring assumes no informative loss of follow-up. A null median means the observed curve did not reach 0.5."
+            },
+            "acceptedCommand": {
+              "samples": 426,
+              "observed": 180,
+              "censored": 246,
+              "medianSeconds": null,
+              "medianIdentifiable": false,
+              "method": "Kaplan-Meier survival with completed responses counted before censoring at tied times. Recording-end censoring assumes no informative loss of follow-up. A null median means the observed curve did not reach 0.5."
+            }
+          },
+          "explicitLinked": {
+            "recordedSeats": 60,
+            "totalSeats": 60,
+            "policies": [
+              "screen-observed-v1"
+            ],
+            "annotatedEvents": 3650,
+            "unannotatedScreenEvents": 0,
+            "requiredEvents": 426,
+            "exemptEvents": 3224,
+            "reasons": {
+              "monitoring-contact": {
+                "required": 0,
+                "exempt": 1647
+              },
+              "already-engaged": {
+                "required": 0,
+                "exempt": 873
+              },
+              "monitoring-damage": {
+                "required": 0,
+                "exempt": 428
+              },
+              "already-retreating": {
+                "required": 0,
+                "exempt": 214
+              },
+              "retreat-risk-crossing": {
+                "required": 46,
+                "exempt": 0
+              },
+              "idle-combat-contact": {
+                "required": 330,
+                "exempt": 0
+              },
+              "auto-retreat-enabled": {
+                "required": 0,
+                "exempt": 62
+              },
+              "heavy-damage": {
+                "required": 50,
+                "exempt": 0
+              }
+            },
+            "causalAlignment": {
+              "intendedResponseInputs": 706,
+              "otherResponseInputs": 0,
+              "missingIntentMetadataInputs": 0,
+              "firstActionSelectionMatches": 230,
+              "firstActionSelectionDiffers": 22,
+              "firstActionSelectionUnmeasured": 0
+            },
+            "firstAction": {
+              "samples": 426,
+              "observed": 252,
+              "censored": 174,
+              "medianSeconds": 1.6,
+              "medianIdentifiable": true,
+              "method": "Kaplan-Meier survival with completed responses counted before censoring at tied times. Recording-end censoring assumes no informative loss of follow-up. A null median means the observed curve did not reach 0.5."
+            },
+            "attemptedCommand": {
+              "samples": 426,
+              "observed": 237,
+              "censored": 189,
+              "medianSeconds": 3.1,
+              "medianIdentifiable": true,
+              "method": "Kaplan-Meier survival with completed responses counted before censoring at tied times. Recording-end censoring assumes no informative loss of follow-up. A null median means the observed curve did not reach 0.5."
+            },
+            "acceptedCommand": {
+              "samples": 426,
+              "observed": 237,
+              "censored": 189,
+              "medianSeconds": 3.1,
+              "medianIdentifiable": true,
+              "method": "Kaplan-Meier survival with completed responses counted before censoring at tied times. Recording-end censoring assumes no informative loss of follow-up. A null median means the observed curve did not reach 0.5."
+            }
+          }
+        }
+      },
+      "policyAudit": {
+        "frames": 4696,
+        "declaredMappings": 4578,
+        "validMappings": 4578,
+        "unknownRuntimeMappings": 0,
+        "unknownOriginalMappings": 0,
+        "mismatchedCreationMappings": 0,
+        "invalidRuntimeDescriptors": 0,
+        "unaliasedPrimaryInputs": 834,
+        "unaliasedExplicitLinks": 795
+      },
+      "coverage": {
+        "originalRecordedSeats": 60,
+        "originalFromMatchStartSeats": 60,
+        "originalBaselineTicks": [
+          0
+        ],
+        "nativeEvents": 5442,
+        "originalEvents": 4823,
+        "observedEvents": 5434,
+        "originalEventsWithoutRuntimeAlias": 245
+      },
+      "firstOrderOutsideSeats": 1
+    },
+    "classic/easy": {
+      "matches": 10,
+      "seats": 30,
+      "bounds": {
+        "screen": [
+          0.9,
+          1.4
+        ],
+        "off": [
+          3,
+          6
+        ],
+        "apm": [
+          20,
+          35
+        ],
+        "peak": 60,
+        "opening": [
+          4,
+          8
+        ]
+      },
+      "originalRequiredFirstCompletedKMSeconds": 2.25,
+      "originalRequiredKMStatus": "outside-original-band",
+      "physicalAPM60SeatMeanMedian": 24.5,
+      "physicalAPM60Status": "within-original-band",
+      "physicalAPM60AllWindows": {
+        "count": 90,
+        "mean": 25.167,
+        "min": 9,
+        "p10": 17.9,
+        "median": 25,
+        "p90": 35,
+        "p95": 35,
+        "max": 35
+      },
+      "windowsWithinBand": 75,
+      "totalWindows": 90,
+      "peak10Max": 60,
+      "peak10Status": "within-original-cap",
+      "firstOrder": {
+        "count": 30,
+        "mean": 5.958,
+        "min": 4.3,
+        "p10": 4.635,
+        "median": 6.1,
+        "p90": 7.57,
+        "p95": 7.778,
+        "max": 8
+      },
+      "firstOrderStatus": "all-within-original-band",
+      "conditionalOffScreenSeatMedianSeconds": 3.975,
+      "conditionalOffScreenStatus": "within-original-band",
+      "offScreenRequiredGate": "not-evaluable: alerts lack a prospective required-response policy; conditional answered medians are not population acceptance",
+      "maxCommandsPerTick": 1,
+      "physicalInputs": 2265,
+      "cameraInputs": 593,
+      "acceptedNonBuyCommands": 513,
+      "acceptedPurchases": 183,
+      "acceptedAbilityCommands": 9,
+      "groups": {
+        "bindings": 34,
+        "single": 0,
+        "neverRecalled": 27,
+        "neverRecalledSingle": 0,
+        "recallInputs": 7,
+        "cameraGroupInputs": 0
+      },
+      "inspections": {
+        "attempts": 12,
+        "acquired": 8,
+        "missed": 4
+      },
+      "originalOnScreenFloorSeconds": 1,
+      "nativeOnScreenFloorSeconds": 1,
+      "openingByFaction": {
+        "USA": {
+          "firstAcceptedFamily": {
+            "matches": 10,
+            "counts": {
+              "\"engineer\"": 10
+            },
+            "distinct": 1,
+            "mostCommonShare": 1
+          },
+          "acceptedFamilySequence": {
+            "matches": 10,
+            "counts": {
+              "[\"engineer\",\"infantry\",\"infantry\"]": 3,
+              "[\"engineer\",\"engineer\",\"infantry\"]": 3,
+              "[\"engineer\"]": 1,
+              "[\"engineer\",\"engineer\",\"engineer\",\"infantry\"]": 1,
+              "[\"engineer\",\"engineer\",\"engineer\"]": 1,
+              "[\"engineer\",\"engineer\"]": 1
+            },
+            "distinct": 6,
+            "mostCommonShare": 0.3
+          },
+          "meaningfulFirstFamilies": 1,
+          "meaningfulFamilySequences": 6,
+          "gate": {
+            "status": "not-evaluable: fewer than20seeds"
+          },
+          "coordinateNoveltyUsed": false
+        },
+        "Germany": {
+          "firstAcceptedFamily": {
+            "matches": 10,
+            "counts": {
+              "\"engineer\"": 10
+            },
+            "distinct": 1,
+            "mostCommonShare": 1
+          },
+          "acceptedFamilySequence": {
+            "matches": 10,
+            "counts": {
+              "[\"engineer\"]": 2,
+              "[\"engineer\",\"infantry\"]": 2,
+              "[\"engineer\",\"infantry\",\"infantry\"]": 1,
+              "[\"engineer\",\"engineer\",\"engineer\",\"infantry\"]": 1,
+              "[\"engineer\",\"engineer\",\"infantry\"]": 2,
+              "[\"engineer\",\"engineer\"]": 2
+            },
+            "distinct": 6,
+            "mostCommonShare": 0.2
+          },
+          "meaningfulFirstFamilies": 1,
+          "meaningfulFamilySequences": 6,
+          "gate": {
+            "status": "not-evaluable: fewer than20seeds"
+          },
+          "coordinateNoveltyUsed": false
+        },
+        "USSR": {
+          "firstAcceptedFamily": {
+            "matches": 10,
+            "counts": {
+              "\"engineer\"": 10
+            },
+            "distinct": 1,
+            "mostCommonShare": 1
+          },
+          "acceptedFamilySequence": {
+            "matches": 10,
+            "counts": {
+              "[\"engineer\",\"engineer\",\"engineer\",\"infantry\"]": 3,
+              "[\"engineer\",\"engineer\"]": 2,
+              "[\"engineer\",\"engineer\",\"infantry\"]": 3,
+              "[\"engineer\"]": 2
+            },
+            "distinct": 4,
+            "mostCommonShare": 0.3
+          },
+          "meaningfulFirstFamilies": 1,
+          "meaningfulFamilySequences": 4,
+          "gate": {
+            "status": "not-evaluable: fewer than20seeds"
+          },
+          "coordinateNoveltyUsed": false
+        }
+      },
+      "quarterSecondCrossScreenPairs": 0,
+      "policyScores": {
+        "originalOracle": {
+          "primaryOnly": {
+            "recordedSeats": 30,
+            "totalSeats": 30,
+            "policies": [
+              "screen-v1"
+            ],
+            "annotatedEvents": 676,
+            "unannotatedScreenEvents": 0,
+            "requiredEvents": 75,
+            "exemptEvents": 601,
+            "reasons": {
+              "monitoring-contact": {
+                "required": 0,
+                "exempt": 314
+              },
+              "already-engaged": {
+                "required": 0,
+                "exempt": 143
+              },
+              "already-retreating": {
+                "required": 0,
+                "exempt": 33
+              },
+              "auto-retreat-enabled": {
+                "required": 0,
+                "exempt": 26
+              },
+              "idle-combat-contact": {
+                "required": 73,
+                "exempt": 0
+              },
+              "heavy-damage": {
+                "required": 1,
+                "exempt": 0
+              },
+              "monitoring-damage": {
+                "required": 0,
+                "exempt": 45
+              },
+              "uncontrollable-damage": {
+                "required": 0,
+                "exempt": 40
+              },
+              "retreat-risk-crossing": {
+                "required": 1,
+                "exempt": 0
+              }
+            },
+            "causalAlignment": {
+              "intendedResponseInputs": 95,
+              "otherResponseInputs": 1,
+              "missingIntentMetadataInputs": 0,
+              "firstActionSelectionMatches": 28,
+              "firstActionSelectionDiffers": 2,
+              "firstActionSelectionUnmeasured": 0
+            },
+            "firstAction": {
+              "samples": 75,
+              "observed": 30,
+              "censored": 45,
+              "medianSeconds": null,
+              "medianIdentifiable": false,
+              "method": "Kaplan-Meier survival with completed responses counted before censoring at tied times. Recording-end censoring assumes no informative loss of follow-up. A null median means the observed curve did not reach 0.5."
+            },
+            "attemptedCommand": {
+              "samples": 75,
+              "observed": 28,
+              "censored": 47,
+              "medianSeconds": null,
+              "medianIdentifiable": false,
+              "method": "Kaplan-Meier survival with completed responses counted before censoring at tied times. Recording-end censoring assumes no informative loss of follow-up. A null median means the observed curve did not reach 0.5."
+            },
+            "acceptedCommand": {
+              "samples": 75,
+              "observed": 28,
+              "censored": 47,
+              "medianSeconds": null,
+              "medianIdentifiable": false,
+              "method": "Kaplan-Meier survival with completed responses counted before censoring at tied times. Recording-end censoring assumes no informative loss of follow-up. A null median means the observed curve did not reach 0.5."
+            }
+          },
+          "explicitLinked": {
+            "recordedSeats": 30,
+            "totalSeats": 30,
+            "policies": [
+              "screen-v1"
+            ],
+            "annotatedEvents": 676,
+            "unannotatedScreenEvents": 0,
+            "requiredEvents": 75,
+            "exemptEvents": 601,
+            "reasons": {
+              "monitoring-contact": {
+                "required": 0,
+                "exempt": 314
+              },
+              "already-engaged": {
+                "required": 0,
+                "exempt": 143
+              },
+              "already-retreating": {
+                "required": 0,
+                "exempt": 33
+              },
+              "auto-retreat-enabled": {
+                "required": 0,
+                "exempt": 26
+              },
+              "idle-combat-contact": {
+                "required": 73,
+                "exempt": 0
+              },
+              "heavy-damage": {
+                "required": 1,
+                "exempt": 0
+              },
+              "monitoring-damage": {
+                "required": 0,
+                "exempt": 45
+              },
+              "uncontrollable-damage": {
+                "required": 0,
+                "exempt": 40
+              },
+              "retreat-risk-crossing": {
+                "required": 1,
+                "exempt": 0
+              }
+            },
+            "causalAlignment": {
+              "intendedResponseInputs": 142,
+              "otherResponseInputs": 0,
+              "missingIntentMetadataInputs": 0,
+              "firstActionSelectionMatches": 41,
+              "firstActionSelectionDiffers": 4,
+              "firstActionSelectionUnmeasured": 0
+            },
+            "firstAction": {
+              "samples": 75,
+              "observed": 45,
+              "censored": 30,
+              "medianSeconds": 2.25,
+              "medianIdentifiable": true,
+              "method": "Kaplan-Meier survival with completed responses counted before censoring at tied times. Recording-end censoring assumes no informative loss of follow-up. A null median means the observed curve did not reach 0.5."
+            },
+            "attemptedCommand": {
+              "samples": 75,
+              "observed": 40,
+              "censored": 35,
+              "medianSeconds": 5.65,
+              "medianIdentifiable": true,
+              "method": "Kaplan-Meier survival with completed responses counted before censoring at tied times. Recording-end censoring assumes no informative loss of follow-up. A null median means the observed curve did not reach 0.5."
+            },
+            "acceptedCommand": {
+              "samples": 75,
+              "observed": 40,
+              "censored": 35,
+              "medianSeconds": 5.65,
+              "medianIdentifiable": true,
+              "method": "Kaplan-Meier survival with completed responses counted before censoring at tied times. Recording-end censoring assumes no informative loss of follow-up. A null median means the observed curve did not reach 0.5."
+            }
+          }
+        },
+        "observed": {
+          "primaryOnly": {
+            "recordedSeats": 30,
+            "totalSeats": 30,
+            "policies": [
+              "screen-observed-v1"
+            ],
+            "annotatedEvents": 634,
+            "unannotatedScreenEvents": 0,
+            "requiredEvents": 74,
+            "exemptEvents": 560,
+            "reasons": {
+              "monitoring-contact": {
+                "required": 0,
+                "exempt": 314
+              },
+              "already-engaged": {
+                "required": 0,
+                "exempt": 142
+              },
+              "already-retreating": {
+                "required": 0,
+                "exempt": 27
+              },
+              "idle-combat-contact": {
+                "required": 73,
+                "exempt": 0
+              },
+              "auto-retreat-enabled": {
+                "required": 0,
+                "exempt": 22
+              },
+              "heavy-damage": {
+                "required": 1,
+                "exempt": 0
+              },
+              "monitoring-damage": {
+                "required": 0,
+                "exempt": 46
+              },
+              "uncontrollable-damage": {
+                "required": 0,
+                "exempt": 9
+              }
+            },
+            "causalAlignment": {
+              "intendedResponseInputs": 95,
+              "otherResponseInputs": 1,
+              "missingIntentMetadataInputs": 0,
+              "firstActionSelectionMatches": 28,
+              "firstActionSelectionDiffers": 2,
+              "firstActionSelectionUnmeasured": 0
+            },
+            "firstAction": {
+              "samples": 74,
+              "observed": 30,
+              "censored": 44,
+              "medianSeconds": null,
+              "medianIdentifiable": false,
+              "method": "Kaplan-Meier survival with completed responses counted before censoring at tied times. Recording-end censoring assumes no informative loss of follow-up. A null median means the observed curve did not reach 0.5."
+            },
+            "attemptedCommand": {
+              "samples": 74,
+              "observed": 28,
+              "censored": 46,
+              "medianSeconds": null,
+              "medianIdentifiable": false,
+              "method": "Kaplan-Meier survival with completed responses counted before censoring at tied times. Recording-end censoring assumes no informative loss of follow-up. A null median means the observed curve did not reach 0.5."
+            },
+            "acceptedCommand": {
+              "samples": 74,
+              "observed": 28,
+              "censored": 46,
+              "medianSeconds": null,
+              "medianIdentifiable": false,
+              "method": "Kaplan-Meier survival with completed responses counted before censoring at tied times. Recording-end censoring assumes no informative loss of follow-up. A null median means the observed curve did not reach 0.5."
+            }
+          },
+          "explicitLinked": {
+            "recordedSeats": 30,
+            "totalSeats": 30,
+            "policies": [
+              "screen-observed-v1"
+            ],
+            "annotatedEvents": 634,
+            "unannotatedScreenEvents": 0,
+            "requiredEvents": 74,
+            "exemptEvents": 560,
+            "reasons": {
+              "monitoring-contact": {
+                "required": 0,
+                "exempt": 314
+              },
+              "already-engaged": {
+                "required": 0,
+                "exempt": 142
+              },
+              "already-retreating": {
+                "required": 0,
+                "exempt": 27
+              },
+              "idle-combat-contact": {
+                "required": 73,
+                "exempt": 0
+              },
+              "auto-retreat-enabled": {
+                "required": 0,
+                "exempt": 22
+              },
+              "heavy-damage": {
+                "required": 1,
+                "exempt": 0
+              },
+              "monitoring-damage": {
+                "required": 0,
+                "exempt": 46
+              },
+              "uncontrollable-damage": {
+                "required": 0,
+                "exempt": 9
+              }
+            },
+            "causalAlignment": {
+              "intendedResponseInputs": 142,
+              "otherResponseInputs": 0,
+              "missingIntentMetadataInputs": 0,
+              "firstActionSelectionMatches": 41,
+              "firstActionSelectionDiffers": 4,
+              "firstActionSelectionUnmeasured": 0
+            },
+            "firstAction": {
+              "samples": 74,
+              "observed": 45,
+              "censored": 29,
+              "medianSeconds": 2.25,
+              "medianIdentifiable": true,
+              "method": "Kaplan-Meier survival with completed responses counted before censoring at tied times. Recording-end censoring assumes no informative loss of follow-up. A null median means the observed curve did not reach 0.5."
+            },
+            "attemptedCommand": {
+              "samples": 74,
+              "observed": 40,
+              "censored": 34,
+              "medianSeconds": 5.65,
+              "medianIdentifiable": true,
+              "method": "Kaplan-Meier survival with completed responses counted before censoring at tied times. Recording-end censoring assumes no informative loss of follow-up. A null median means the observed curve did not reach 0.5."
+            },
+            "acceptedCommand": {
+              "samples": 74,
+              "observed": 40,
+              "censored": 34,
+              "medianSeconds": 5.65,
+              "medianIdentifiable": true,
+              "method": "Kaplan-Meier survival with completed responses counted before censoring at tied times. Recording-end censoring assumes no informative loss of follow-up. A null median means the observed curve did not reach 0.5."
+            }
+          }
+        }
+      },
+      "policyAudit": {
+        "frames": 1102,
+        "declaredMappings": 1066,
+        "validMappings": 1066,
+        "unknownRuntimeMappings": 0,
+        "unknownOriginalMappings": 0,
+        "mismatchedCreationMappings": 0,
+        "invalidRuntimeDescriptors": 0,
+        "unaliasedPrimaryInputs": 118,
+        "unaliasedExplicitLinks": 95
+      },
+      "coverage": {
+        "originalRecordedSeats": 30,
+        "originalFromMatchStartSeats": 30,
+        "originalBaselineTicks": [
+          0
+        ],
+        "nativeEvents": 1347,
+        "originalEvents": 1132,
+        "observedEvents": 1345,
+        "originalEventsWithoutRuntimeAlias": 66
+      },
+      "firstOrderOutsideSeats": 0
+    },
+    "classic/normal": {
+      "matches": 10,
+      "seats": 30,
+      "bounds": {
+        "screen": [
+          0.5,
+          0.8
+        ],
+        "off": [
+          1.5,
+          3
+        ],
+        "apm": [
+          40,
+          70
+        ],
+        "peak": 120,
+        "opening": [
+          3,
+          6
+        ]
+      },
+      "originalRequiredFirstCompletedKMSeconds": 4.8,
+      "originalRequiredKMStatus": "outside-original-band",
+      "physicalAPM60SeatMeanMedian": 35.167,
+      "physicalAPM60Status": "outside-original-band",
+      "physicalAPM60AllWindows": {
+        "count": 90,
+        "mean": 35.056,
+        "min": 13,
+        "p10": 23,
+        "median": 33.5,
+        "p90": 47.1,
+        "p95": 50,
+        "max": 59
+      },
+      "windowsWithinBand": 30,
+      "totalWindows": 90,
+      "peak10Max": 120,
+      "peak10Status": "within-original-cap",
+      "firstOrder": {
+        "count": 30,
+        "mean": 4.485,
+        "min": 3.25,
+        "p10": 3.49,
+        "median": 4.575,
+        "p90": 5.715,
+        "p95": 5.877,
+        "max": 6
+      },
+      "firstOrderStatus": "all-within-original-band",
+      "conditionalOffScreenSeatMedianSeconds": 2.125,
+      "conditionalOffScreenStatus": "within-original-band",
+      "offScreenRequiredGate": "not-evaluable: alerts lack a prospective required-response policy; conditional answered medians are not population acceptance",
+      "maxCommandsPerTick": 1,
+      "physicalInputs": 3155,
+      "cameraInputs": 934,
+      "acceptedNonBuyCommands": 698,
+      "acceptedPurchases": 197,
+      "acceptedAbilityCommands": 15,
+      "groups": {
+        "bindings": 33,
+        "single": 0,
+        "neverRecalled": 29,
+        "neverRecalledSingle": 0,
+        "recallInputs": 7,
+        "cameraGroupInputs": 0
+      },
+      "inspections": {
+        "attempts": 14,
+        "acquired": 12,
+        "missed": 2
+      },
+      "originalOnScreenFloorSeconds": 0.55,
+      "nativeOnScreenFloorSeconds": 0.55,
+      "openingByFaction": {
+        "USA": {
+          "firstAcceptedFamily": {
+            "matches": 10,
+            "counts": {
+              "\"engineer\"": 10
+            },
+            "distinct": 1,
+            "mostCommonShare": 1
+          },
+          "acceptedFamilySequence": {
+            "matches": 10,
+            "counts": {
+              "[\"engineer\",\"engineer\",\"engineer\"]": 7,
+              "[\"engineer\",\"engineer\"]": 1,
+              "[\"engineer\",\"engineer\",\"engineer\",\"infantry\"]": 1,
+              "[\"engineer\",\"engineer\",\"infantry\"]": 1
+            },
+            "distinct": 4,
+            "mostCommonShare": 0.7
+          },
+          "meaningfulFirstFamilies": 1,
+          "meaningfulFamilySequences": 4,
+          "gate": {
+            "status": "not-evaluable: fewer than20seeds"
+          },
+          "coordinateNoveltyUsed": false
+        },
+        "Germany": {
+          "firstAcceptedFamily": {
+            "matches": 10,
+            "counts": {
+              "\"engineer\"": 10
+            },
+            "distinct": 1,
+            "mostCommonShare": 1
+          },
+          "acceptedFamilySequence": {
+            "matches": 10,
+            "counts": {
+              "[\"engineer\",\"engineer\",\"infantry\"]": 2,
+              "[\"engineer\",\"engineer\",\"engineer\"]": 4,
+              "[\"engineer\",\"engineer\",\"engineer\",\"infantry\"]": 3,
+              "[\"engineer\",\"engineer\"]": 1
+            },
+            "distinct": 4,
+            "mostCommonShare": 0.4
+          },
+          "meaningfulFirstFamilies": 1,
+          "meaningfulFamilySequences": 4,
+          "gate": {
+            "status": "not-evaluable: fewer than20seeds"
+          },
+          "coordinateNoveltyUsed": false
+        },
+        "USSR": {
+          "firstAcceptedFamily": {
+            "matches": 10,
+            "counts": {
+              "\"engineer\"": 10
+            },
+            "distinct": 1,
+            "mostCommonShare": 1
+          },
+          "acceptedFamilySequence": {
+            "matches": 10,
+            "counts": {
+              "[\"engineer\",\"engineer\",\"engineer\"]": 4,
+              "[\"engineer\",\"engineer\",\"infantry\"]": 4,
+              "[\"engineer\",\"engineer\"]": 2
+            },
+            "distinct": 3,
+            "mostCommonShare": 0.4
+          },
+          "meaningfulFirstFamilies": 1,
+          "meaningfulFamilySequences": 3,
+          "gate": {
+            "status": "not-evaluable: fewer than20seeds"
+          },
+          "coordinateNoveltyUsed": false
+        }
+      },
+      "quarterSecondCrossScreenPairs": 0,
+      "policyScores": {
+        "originalOracle": {
+          "primaryOnly": {
+            "recordedSeats": 30,
+            "totalSeats": 30,
+            "policies": [
+              "screen-v1"
+            ],
+            "annotatedEvents": 780,
+            "unannotatedScreenEvents": 0,
+            "requiredEvents": 72,
+            "exemptEvents": 708,
+            "reasons": {
+              "monitoring-contact": {
+                "required": 0,
+                "exempt": 364
+              },
+              "already-engaged": {
+                "required": 0,
+                "exempt": 154
+              },
+              "monitoring-damage": {
+                "required": 0,
+                "exempt": 59
+              },
+              "auto-retreat-enabled": {
+                "required": 0,
+                "exempt": 23
+              },
+              "already-retreating": {
+                "required": 0,
+                "exempt": 50
+              },
+              "uncontrollable-damage": {
+                "required": 0,
+                "exempt": 58
+              },
+              "idle-combat-contact": {
+                "required": 58,
+                "exempt": 0
+              },
+              "retreat-risk-crossing": {
+                "required": 4,
+                "exempt": 0
+              },
+              "heavy-damage": {
+                "required": 10,
+                "exempt": 0
+              }
+            },
+            "causalAlignment": {
+              "intendedResponseInputs": 82,
+              "otherResponseInputs": 13,
+              "missingIntentMetadataInputs": 0,
+              "firstActionSelectionMatches": 24,
+              "firstActionSelectionDiffers": 3,
+              "firstActionSelectionUnmeasured": 0
+            },
+            "firstAction": {
+              "samples": 72,
+              "observed": 27,
+              "censored": 45,
+              "medianSeconds": null,
+              "medianIdentifiable": false,
+              "method": "Kaplan-Meier survival with completed responses counted before censoring at tied times. Recording-end censoring assumes no informative loss of follow-up. A null median means the observed curve did not reach 0.5."
+            },
+            "attemptedCommand": {
+              "samples": 72,
+              "observed": 26,
+              "censored": 46,
+              "medianSeconds": null,
+              "medianIdentifiable": false,
+              "method": "Kaplan-Meier survival with completed responses counted before censoring at tied times. Recording-end censoring assumes no informative loss of follow-up. A null median means the observed curve did not reach 0.5."
+            },
+            "acceptedCommand": {
+              "samples": 72,
+              "observed": 26,
+              "censored": 46,
+              "medianSeconds": null,
+              "medianIdentifiable": false,
+              "method": "Kaplan-Meier survival with completed responses counted before censoring at tied times. Recording-end censoring assumes no informative loss of follow-up. A null median means the observed curve did not reach 0.5."
+            }
+          },
+          "explicitLinked": {
+            "recordedSeats": 30,
+            "totalSeats": 30,
+            "policies": [
+              "screen-v1"
+            ],
+            "annotatedEvents": 780,
+            "unannotatedScreenEvents": 0,
+            "requiredEvents": 72,
+            "exemptEvents": 708,
+            "reasons": {
+              "monitoring-contact": {
+                "required": 0,
+                "exempt": 364
+              },
+              "already-engaged": {
+                "required": 0,
+                "exempt": 154
+              },
+              "monitoring-damage": {
+                "required": 0,
+                "exempt": 59
+              },
+              "auto-retreat-enabled": {
+                "required": 0,
+                "exempt": 23
+              },
+              "already-retreating": {
+                "required": 0,
+                "exempt": 50
+              },
+              "uncontrollable-damage": {
+                "required": 0,
+                "exempt": 58
+              },
+              "idle-combat-contact": {
+                "required": 58,
+                "exempt": 0
+              },
+              "retreat-risk-crossing": {
+                "required": 4,
+                "exempt": 0
+              },
+              "heavy-damage": {
+                "required": 10,
+                "exempt": 0
+              }
+            },
+            "causalAlignment": {
+              "intendedResponseInputs": 123,
+              "otherResponseInputs": 0,
+              "missingIntentMetadataInputs": 0,
+              "firstActionSelectionMatches": 33,
+              "firstActionSelectionDiffers": 7,
+              "firstActionSelectionUnmeasured": 0
+            },
+            "firstAction": {
+              "samples": 72,
+              "observed": 40,
+              "censored": 32,
+              "medianSeconds": 4.8,
+              "medianIdentifiable": true,
+              "method": "Kaplan-Meier survival with completed responses counted before censoring at tied times. Recording-end censoring assumes no informative loss of follow-up. A null median means the observed curve did not reach 0.5."
+            },
+            "attemptedCommand": {
+              "samples": 72,
+              "observed": 37,
+              "censored": 35,
+              "medianSeconds": 7,
+              "medianIdentifiable": true,
+              "method": "Kaplan-Meier survival with completed responses counted before censoring at tied times. Recording-end censoring assumes no informative loss of follow-up. A null median means the observed curve did not reach 0.5."
+            },
+            "acceptedCommand": {
+              "samples": 72,
+              "observed": 37,
+              "censored": 35,
+              "medianSeconds": 7,
+              "medianIdentifiable": true,
+              "method": "Kaplan-Meier survival with completed responses counted before censoring at tied times. Recording-end censoring assumes no informative loss of follow-up. A null median means the observed curve did not reach 0.5."
+            }
+          }
+        },
+        "observed": {
+          "primaryOnly": {
+            "recordedSeats": 30,
+            "totalSeats": 30,
+            "policies": [
+              "screen-observed-v1"
+            ],
+            "annotatedEvents": 737,
+            "unannotatedScreenEvents": 0,
+            "requiredEvents": 72,
+            "exemptEvents": 665,
+            "reasons": {
+              "monitoring-contact": {
+                "required": 0,
+                "exempt": 364
+              },
+              "already-engaged": {
+                "required": 0,
+                "exempt": 148
+              },
+              "monitoring-damage": {
+                "required": 0,
+                "exempt": 59
+              },
+              "auto-retreat-enabled": {
+                "required": 0,
+                "exempt": 17
+              },
+              "already-retreating": {
+                "required": 0,
+                "exempt": 45
+              },
+              "uncontrollable-damage": {
+                "required": 0,
+                "exempt": 32
+              },
+              "idle-combat-contact": {
+                "required": 58,
+                "exempt": 0
+              },
+              "retreat-risk-crossing": {
+                "required": 2,
+                "exempt": 0
+              },
+              "heavy-damage": {
+                "required": 12,
+                "exempt": 0
+              }
+            },
+            "causalAlignment": {
+              "intendedResponseInputs": 82,
+              "otherResponseInputs": 13,
+              "missingIntentMetadataInputs": 0,
+              "firstActionSelectionMatches": 24,
+              "firstActionSelectionDiffers": 3,
+              "firstActionSelectionUnmeasured": 0
+            },
+            "firstAction": {
+              "samples": 72,
+              "observed": 27,
+              "censored": 45,
+              "medianSeconds": null,
+              "medianIdentifiable": false,
+              "method": "Kaplan-Meier survival with completed responses counted before censoring at tied times. Recording-end censoring assumes no informative loss of follow-up. A null median means the observed curve did not reach 0.5."
+            },
+            "attemptedCommand": {
+              "samples": 72,
+              "observed": 26,
+              "censored": 46,
+              "medianSeconds": null,
+              "medianIdentifiable": false,
+              "method": "Kaplan-Meier survival with completed responses counted before censoring at tied times. Recording-end censoring assumes no informative loss of follow-up. A null median means the observed curve did not reach 0.5."
+            },
+            "acceptedCommand": {
+              "samples": 72,
+              "observed": 26,
+              "censored": 46,
+              "medianSeconds": null,
+              "medianIdentifiable": false,
+              "method": "Kaplan-Meier survival with completed responses counted before censoring at tied times. Recording-end censoring assumes no informative loss of follow-up. A null median means the observed curve did not reach 0.5."
+            }
+          },
+          "explicitLinked": {
+            "recordedSeats": 30,
+            "totalSeats": 30,
+            "policies": [
+              "screen-observed-v1"
+            ],
+            "annotatedEvents": 737,
+            "unannotatedScreenEvents": 0,
+            "requiredEvents": 72,
+            "exemptEvents": 665,
+            "reasons": {
+              "monitoring-contact": {
+                "required": 0,
+                "exempt": 364
+              },
+              "already-engaged": {
+                "required": 0,
+                "exempt": 148
+              },
+              "monitoring-damage": {
+                "required": 0,
+                "exempt": 59
+              },
+              "auto-retreat-enabled": {
+                "required": 0,
+                "exempt": 17
+              },
+              "already-retreating": {
+                "required": 0,
+                "exempt": 45
+              },
+              "uncontrollable-damage": {
+                "required": 0,
+                "exempt": 32
+              },
+              "idle-combat-contact": {
+                "required": 58,
+                "exempt": 0
+              },
+              "retreat-risk-crossing": {
+                "required": 2,
+                "exempt": 0
+              },
+              "heavy-damage": {
+                "required": 12,
+                "exempt": 0
+              }
+            },
+            "causalAlignment": {
+              "intendedResponseInputs": 123,
+              "otherResponseInputs": 0,
+              "missingIntentMetadataInputs": 0,
+              "firstActionSelectionMatches": 33,
+              "firstActionSelectionDiffers": 7,
+              "firstActionSelectionUnmeasured": 0
+            },
+            "firstAction": {
+              "samples": 72,
+              "observed": 40,
+              "censored": 32,
+              "medianSeconds": 4.8,
+              "medianIdentifiable": true,
+              "method": "Kaplan-Meier survival with completed responses counted before censoring at tied times. Recording-end censoring assumes no informative loss of follow-up. A null median means the observed curve did not reach 0.5."
+            },
+            "attemptedCommand": {
+              "samples": 72,
+              "observed": 37,
+              "censored": 35,
+              "medianSeconds": 7,
+              "medianIdentifiable": true,
+              "method": "Kaplan-Meier survival with completed responses counted before censoring at tied times. Recording-end censoring assumes no informative loss of follow-up. A null median means the observed curve did not reach 0.5."
+            },
+            "acceptedCommand": {
+              "samples": 72,
+              "observed": 37,
+              "censored": 35,
+              "medianSeconds": 7,
+              "medianIdentifiable": true,
+              "method": "Kaplan-Meier survival with completed responses counted before censoring at tied times. Recording-end censoring assumes no informative loss of follow-up. A null median means the observed curve did not reach 0.5."
+            }
+          }
+        }
+      },
+      "policyAudit": {
+        "frames": 1311,
+        "declaredMappings": 1290,
+        "validMappings": 1290,
+        "unknownRuntimeMappings": 0,
+        "unknownOriginalMappings": 0,
+        "mismatchedCreationMappings": 0,
+        "invalidRuntimeDescriptors": 0,
+        "unaliasedPrimaryInputs": 142,
+        "unaliasedExplicitLinks": 98
+      },
+      "coverage": {
+        "originalRecordedSeats": 30,
+        "originalFromMatchStartSeats": 30,
+        "originalBaselineTicks": [
+          0
+        ],
+        "nativeEvents": 1508,
+        "originalEvents": 1363,
+        "observedEvents": 1507,
+        "originalEventsWithoutRuntimeAlias": 73
+      },
+      "firstOrderOutsideSeats": 0
+    },
+    "classic/hard": {
+      "matches": 10,
+      "seats": 30,
+      "bounds": {
+        "screen": [
+          0.3,
+          0.45
+        ],
+        "off": [
+          0.8,
+          1.6
+        ],
+        "apm": [
+          80,
+          120
+        ],
+        "peak": 200,
+        "opening": [
+          2,
+          4
+        ]
+      },
+      "originalRequiredFirstCompletedKMSeconds": 1.75,
+      "originalRequiredKMStatus": "outside-original-band",
+      "physicalAPM60SeatMeanMedian": 47.667,
+      "physicalAPM60Status": "outside-original-band",
+      "physicalAPM60AllWindows": {
+        "count": 90,
+        "mean": 48.7,
+        "min": 23,
+        "p10": 31.9,
+        "median": 46.5,
+        "p90": 70.2,
+        "p95": 76.55,
+        "max": 105
+      },
+      "windowsWithinBand": 4,
+      "totalWindows": 90,
+      "peak10Max": 198,
+      "peak10Status": "within-original-cap",
+      "firstOrder": {
+        "count": 30,
+        "mean": 3.022,
+        "min": 2.25,
+        "p10": 2.35,
+        "median": 3.075,
+        "p90": 3.81,
+        "p95": 3.927,
+        "max": 4.05
+      },
+      "firstOrderStatus": "outside-original-band",
+      "conditionalOffScreenSeatMedianSeconds": 1.05,
+      "conditionalOffScreenStatus": "within-original-band",
+      "offScreenRequiredGate": "not-evaluable: alerts lack a prospective required-response policy; conditional answered medians are not population acceptance",
+      "maxCommandsPerTick": 1,
+      "physicalInputs": 4383,
+      "cameraInputs": 1505,
+      "acceptedNonBuyCommands": 894,
+      "acceptedPurchases": 189,
+      "acceptedAbilityCommands": 21,
+      "groups": {
+        "bindings": 60,
+        "single": 0,
+        "neverRecalled": 49,
+        "neverRecalledSingle": 0,
+        "recallInputs": 15,
+        "cameraGroupInputs": 0
+      },
+      "inspections": {
+        "attempts": 26,
+        "acquired": 23,
+        "missed": 3
+      },
+      "originalOnScreenFloorSeconds": 0.35,
+      "nativeOnScreenFloorSeconds": 0.35,
+      "openingByFaction": {
+        "USA": {
+          "firstAcceptedFamily": {
+            "matches": 10,
+            "counts": {
+              "\"engineer\"": 10
+            },
+            "distinct": 1,
+            "mostCommonShare": 1
+          },
+          "acceptedFamilySequence": {
+            "matches": 10,
+            "counts": {
+              "[\"engineer\",\"engineer\",\"engineer\",\"infantry\"]": 1,
+              "[\"engineer\",\"engineer\"]": 2,
+              "[\"engineer\",\"engineer\",\"infantry\"]": 5,
+              "[\"engineer\",\"engineer\",\"engineer\"]": 2
+            },
+            "distinct": 4,
+            "mostCommonShare": 0.5
+          },
+          "meaningfulFirstFamilies": 1,
+          "meaningfulFamilySequences": 4,
+          "gate": {
+            "status": "not-evaluable: fewer than20seeds"
+          },
+          "coordinateNoveltyUsed": false
+        },
+        "Germany": {
+          "firstAcceptedFamily": {
+            "matches": 10,
+            "counts": {
+              "\"engineer\"": 10
+            },
+            "distinct": 1,
+            "mostCommonShare": 1
+          },
+          "acceptedFamilySequence": {
+            "matches": 10,
+            "counts": {
+              "[\"engineer\",\"engineer\",\"infantry\"]": 8,
+              "[\"engineer\",\"engineer\",\"engineer\",\"infantry\"]": 1,
+              "[\"engineer\",\"engineer\"]": 1
+            },
+            "distinct": 3,
+            "mostCommonShare": 0.8
+          },
+          "meaningfulFirstFamilies": 1,
+          "meaningfulFamilySequences": 3,
+          "gate": {
+            "status": "not-evaluable: fewer than20seeds"
+          },
+          "coordinateNoveltyUsed": false
+        },
+        "USSR": {
+          "firstAcceptedFamily": {
+            "matches": 10,
+            "counts": {
+              "\"engineer\"": 10
+            },
+            "distinct": 1,
+            "mostCommonShare": 1
+          },
+          "acceptedFamilySequence": {
+            "matches": 10,
+            "counts": {
+              "[\"engineer\",\"engineer\"]": 5,
+              "[\"engineer\",\"engineer\",\"infantry\"]": 5
+            },
+            "distinct": 2,
+            "mostCommonShare": 0.5
+          },
+          "meaningfulFirstFamilies": 1,
+          "meaningfulFamilySequences": 2,
+          "gate": {
+            "status": "not-evaluable: fewer than20seeds"
+          },
+          "coordinateNoveltyUsed": false
+        }
+      },
+      "quarterSecondCrossScreenPairs": 0,
+      "policyScores": {
+        "originalOracle": {
+          "primaryOnly": {
+            "recordedSeats": 30,
+            "totalSeats": 30,
+            "policies": [
+              "screen-v1"
+            ],
+            "annotatedEvents": 945,
+            "unannotatedScreenEvents": 0,
+            "requiredEvents": 78,
+            "exemptEvents": 867,
+            "reasons": {
+              "monitoring-damage": {
+                "required": 0,
+                "exempt": 76
+              },
+              "monitoring-contact": {
+                "required": 0,
+                "exempt": 433
+              },
+              "uncontrollable-damage": {
+                "required": 0,
+                "exempt": 78
+              },
+              "already-engaged": {
+                "required": 0,
+                "exempt": 211
+              },
+              "already-retreating": {
+                "required": 0,
+                "exempt": 55
+              },
+              "idle-combat-contact": {
+                "required": 66,
+                "exempt": 0
+              },
+              "retreat-risk-crossing": {
+                "required": 5,
+                "exempt": 0
+              },
+              "heavy-damage": {
+                "required": 7,
+                "exempt": 0
+              },
+              "auto-retreat-enabled": {
+                "required": 0,
+                "exempt": 14
+              }
+            },
+            "causalAlignment": {
+              "intendedResponseInputs": 94,
+              "otherResponseInputs": 5,
+              "missingIntentMetadataInputs": 0,
+              "firstActionSelectionMatches": 32,
+              "firstActionSelectionDiffers": 2,
+              "firstActionSelectionUnmeasured": 0
+            },
+            "firstAction": {
+              "samples": 78,
+              "observed": 34,
+              "censored": 44,
+              "medianSeconds": null,
+              "medianIdentifiable": false,
+              "method": "Kaplan-Meier survival with completed responses counted before censoring at tied times. Recording-end censoring assumes no informative loss of follow-up. A null median means the observed curve did not reach 0.5."
+            },
+            "attemptedCommand": {
+              "samples": 78,
+              "observed": 32,
+              "censored": 46,
+              "medianSeconds": null,
+              "medianIdentifiable": false,
+              "method": "Kaplan-Meier survival with completed responses counted before censoring at tied times. Recording-end censoring assumes no informative loss of follow-up. A null median means the observed curve did not reach 0.5."
+            },
+            "acceptedCommand": {
+              "samples": 78,
+              "observed": 32,
+              "censored": 46,
+              "medianSeconds": null,
+              "medianIdentifiable": false,
+              "method": "Kaplan-Meier survival with completed responses counted before censoring at tied times. Recording-end censoring assumes no informative loss of follow-up. A null median means the observed curve did not reach 0.5."
+            }
+          },
+          "explicitLinked": {
+            "recordedSeats": 30,
+            "totalSeats": 30,
+            "policies": [
+              "screen-v1"
+            ],
+            "annotatedEvents": 945,
+            "unannotatedScreenEvents": 0,
+            "requiredEvents": 78,
+            "exemptEvents": 867,
+            "reasons": {
+              "monitoring-damage": {
+                "required": 0,
+                "exempt": 76
+              },
+              "monitoring-contact": {
+                "required": 0,
+                "exempt": 433
+              },
+              "uncontrollable-damage": {
+                "required": 0,
+                "exempt": 78
+              },
+              "already-engaged": {
+                "required": 0,
+                "exempt": 211
+              },
+              "already-retreating": {
+                "required": 0,
+                "exempt": 55
+              },
+              "idle-combat-contact": {
+                "required": 66,
+                "exempt": 0
+              },
+              "retreat-risk-crossing": {
+                "required": 5,
+                "exempt": 0
+              },
+              "heavy-damage": {
+                "required": 7,
+                "exempt": 0
+              },
+              "auto-retreat-enabled": {
+                "required": 0,
+                "exempt": 14
+              }
+            },
+            "causalAlignment": {
+              "intendedResponseInputs": 128,
+              "otherResponseInputs": 0,
+              "missingIntentMetadataInputs": 0,
+              "firstActionSelectionMatches": 41,
+              "firstActionSelectionDiffers": 4,
+              "firstActionSelectionUnmeasured": 0
+            },
+            "firstAction": {
+              "samples": 78,
+              "observed": 45,
+              "censored": 33,
+              "medianSeconds": 1.75,
+              "medianIdentifiable": true,
+              "method": "Kaplan-Meier survival with completed responses counted before censoring at tied times. Recording-end censoring assumes no informative loss of follow-up. A null median means the observed curve did not reach 0.5."
+            },
+            "attemptedCommand": {
+              "samples": 78,
+              "observed": 42,
+              "censored": 36,
+              "medianSeconds": 5.45,
+              "medianIdentifiable": true,
+              "method": "Kaplan-Meier survival with completed responses counted before censoring at tied times. Recording-end censoring assumes no informative loss of follow-up. A null median means the observed curve did not reach 0.5."
+            },
+            "acceptedCommand": {
+              "samples": 78,
+              "observed": 42,
+              "censored": 36,
+              "medianSeconds": 5.45,
+              "medianIdentifiable": true,
+              "method": "Kaplan-Meier survival with completed responses counted before censoring at tied times. Recording-end censoring assumes no informative loss of follow-up. A null median means the observed curve did not reach 0.5."
+            }
+          }
+        },
+        "observed": {
+          "primaryOnly": {
+            "recordedSeats": 30,
+            "totalSeats": 30,
+            "policies": [
+              "screen-observed-v1"
+            ],
+            "annotatedEvents": 867,
+            "unannotatedScreenEvents": 0,
+            "requiredEvents": 78,
+            "exemptEvents": 789,
+            "reasons": {
+              "monitoring-damage": {
+                "required": 0,
+                "exempt": 73
+              },
+              "monitoring-contact": {
+                "required": 0,
+                "exempt": 433
+              },
+              "already-engaged": {
+                "required": 0,
+                "exempt": 210
+              },
+              "already-retreating": {
+                "required": 0,
+                "exempt": 43
+              },
+              "idle-combat-contact": {
+                "required": 66,
+                "exempt": 0
+              },
+              "retreat-risk-crossing": {
+                "required": 5,
+                "exempt": 0
+              },
+              "uncontrollable-damage": {
+                "required": 0,
+                "exempt": 19
+              },
+              "heavy-damage": {
+                "required": 7,
+                "exempt": 0
+              },
+              "auto-retreat-enabled": {
+                "required": 0,
+                "exempt": 11
+              }
+            },
+            "causalAlignment": {
+              "intendedResponseInputs": 94,
+              "otherResponseInputs": 5,
+              "missingIntentMetadataInputs": 0,
+              "firstActionSelectionMatches": 32,
+              "firstActionSelectionDiffers": 2,
+              "firstActionSelectionUnmeasured": 0
+            },
+            "firstAction": {
+              "samples": 78,
+              "observed": 34,
+              "censored": 44,
+              "medianSeconds": null,
+              "medianIdentifiable": false,
+              "method": "Kaplan-Meier survival with completed responses counted before censoring at tied times. Recording-end censoring assumes no informative loss of follow-up. A null median means the observed curve did not reach 0.5."
+            },
+            "attemptedCommand": {
+              "samples": 78,
+              "observed": 32,
+              "censored": 46,
+              "medianSeconds": null,
+              "medianIdentifiable": false,
+              "method": "Kaplan-Meier survival with completed responses counted before censoring at tied times. Recording-end censoring assumes no informative loss of follow-up. A null median means the observed curve did not reach 0.5."
+            },
+            "acceptedCommand": {
+              "samples": 78,
+              "observed": 32,
+              "censored": 46,
+              "medianSeconds": null,
+              "medianIdentifiable": false,
+              "method": "Kaplan-Meier survival with completed responses counted before censoring at tied times. Recording-end censoring assumes no informative loss of follow-up. A null median means the observed curve did not reach 0.5."
+            }
+          },
+          "explicitLinked": {
+            "recordedSeats": 30,
+            "totalSeats": 30,
+            "policies": [
+              "screen-observed-v1"
+            ],
+            "annotatedEvents": 867,
+            "unannotatedScreenEvents": 0,
+            "requiredEvents": 78,
+            "exemptEvents": 789,
+            "reasons": {
+              "monitoring-damage": {
+                "required": 0,
+                "exempt": 73
+              },
+              "monitoring-contact": {
+                "required": 0,
+                "exempt": 433
+              },
+              "already-engaged": {
+                "required": 0,
+                "exempt": 210
+              },
+              "already-retreating": {
+                "required": 0,
+                "exempt": 43
+              },
+              "idle-combat-contact": {
+                "required": 66,
+                "exempt": 0
+              },
+              "retreat-risk-crossing": {
+                "required": 5,
+                "exempt": 0
+              },
+              "uncontrollable-damage": {
+                "required": 0,
+                "exempt": 19
+              },
+              "heavy-damage": {
+                "required": 7,
+                "exempt": 0
+              },
+              "auto-retreat-enabled": {
+                "required": 0,
+                "exempt": 11
+              }
+            },
+            "causalAlignment": {
+              "intendedResponseInputs": 128,
+              "otherResponseInputs": 0,
+              "missingIntentMetadataInputs": 0,
+              "firstActionSelectionMatches": 41,
+              "firstActionSelectionDiffers": 4,
+              "firstActionSelectionUnmeasured": 0
+            },
+            "firstAction": {
+              "samples": 78,
+              "observed": 45,
+              "censored": 33,
+              "medianSeconds": 1.75,
+              "medianIdentifiable": true,
+              "method": "Kaplan-Meier survival with completed responses counted before censoring at tied times. Recording-end censoring assumes no informative loss of follow-up. A null median means the observed curve did not reach 0.5."
+            },
+            "attemptedCommand": {
+              "samples": 78,
+              "observed": 42,
+              "censored": 36,
+              "medianSeconds": 5.45,
+              "medianIdentifiable": true,
+              "method": "Kaplan-Meier survival with completed responses counted before censoring at tied times. Recording-end censoring assumes no informative loss of follow-up. A null median means the observed curve did not reach 0.5."
+            },
+            "acceptedCommand": {
+              "samples": 78,
+              "observed": 42,
+              "censored": 36,
+              "medianSeconds": 5.45,
+              "medianIdentifiable": true,
+              "method": "Kaplan-Meier survival with completed responses counted before censoring at tied times. Recording-end censoring assumes no informative loss of follow-up. A null median means the observed curve did not reach 0.5."
+            }
+          }
+        }
+      },
+      "policyAudit": {
+        "frames": 1499,
+        "declaredMappings": 1459,
+        "validMappings": 1459,
+        "unknownRuntimeMappings": 0,
+        "unknownOriginalMappings": 0,
+        "mismatchedCreationMappings": 0,
+        "invalidRuntimeDescriptors": 0,
+        "unaliasedPrimaryInputs": 260,
+        "unaliasedExplicitLinks": 181
+      },
+      "coverage": {
+        "originalRecordedSeats": 30,
+        "originalFromMatchStartSeats": 30,
+        "originalBaselineTicks": [
+          0
+        ],
+        "nativeEvents": 1705,
+        "originalEvents": 1567,
+        "observedEvents": 1702,
+        "originalEventsWithoutRuntimeAlias": 108
+      },
+      "firstOrderOutsideSeats": 1
+    },
+    "world/easy": {
+      "matches": 10,
+      "seats": 30,
+      "bounds": {
+        "screen": [
+          0.9,
+          1.4
+        ],
+        "off": [
+          3,
+          6
+        ],
+        "apm": [
+          20,
+          35
+        ],
+        "peak": 60,
+        "opening": [
+          4,
+          8
+        ]
+      },
+      "originalRequiredFirstCompletedKMSeconds": null,
+      "originalRequiredKMStatus": "not-evaluable",
+      "physicalAPM60SeatMeanMedian": 30,
+      "physicalAPM60Status": "within-original-band",
+      "physicalAPM60AllWindows": {
+        "count": 90,
+        "mean": 29.378,
+        "min": 16,
+        "p10": 22,
+        "median": 31,
+        "p90": 35,
+        "p95": 35,
+        "max": 35
+      },
+      "windowsWithinBand": 87,
+      "totalWindows": 90,
+      "peak10Max": 60,
+      "peak10Status": "within-original-cap",
+      "firstOrder": {
+        "count": 30,
+        "mean": 6.135,
+        "min": 4.3,
+        "p10": 4.695,
+        "median": 6.25,
+        "p90": 7.575,
+        "p95": 7.91,
+        "max": 9
+      },
+      "firstOrderStatus": "outside-original-band",
+      "conditionalOffScreenSeatMedianSeconds": 4.45,
+      "conditionalOffScreenStatus": "within-original-band",
+      "offScreenRequiredGate": "not-evaluable: alerts lack a prospective required-response policy; conditional answered medians are not population acceptance",
+      "maxCommandsPerTick": 1,
+      "physicalInputs": 2644,
+      "cameraInputs": 645,
+      "acceptedNonBuyCommands": 543,
+      "acceptedPurchases": 147,
+      "acceptedAbilityCommands": 0,
+      "groups": {
+        "bindings": 13,
+        "single": 0,
+        "neverRecalled": 5,
+        "neverRecalledSingle": 0,
+        "recallInputs": 9,
+        "cameraGroupInputs": 0
+      },
+      "inspections": {
+        "attempts": 0,
+        "acquired": 0,
+        "missed": 0
+      },
+      "originalOnScreenFloorSeconds": 1,
+      "nativeOnScreenFloorSeconds": 1,
+      "openingByFaction": {
+        "USA": {
+          "firstAcceptedFamily": {
+            "matches": 10,
+            "counts": {
+              "\"infantry\"": 10
+            },
+            "distinct": 1,
+            "mostCommonShare": 1
+          },
+          "acceptedFamilySequence": {
+            "matches": 10,
+            "counts": {
+              "[\"infantry\",\"infantry\"]": 7,
+              "[\"infantry\"]": 3
+            },
+            "distinct": 2,
+            "mostCommonShare": 0.7
+          },
+          "meaningfulFirstFamilies": 1,
+          "meaningfulFamilySequences": 2,
+          "gate": {
+            "status": "not-evaluable: fewer than20seeds"
+          },
+          "coordinateNoveltyUsed": false
+        },
+        "Germany": {
+          "firstAcceptedFamily": {
+            "matches": 10,
+            "counts": {
+              "\"infantry\"": 10
+            },
+            "distinct": 1,
+            "mostCommonShare": 1
+          },
+          "acceptedFamilySequence": {
+            "matches": 10,
+            "counts": {
+              "[\"infantry\",\"infantry\"]": 9,
+              "[\"infantry\"]": 1
+            },
+            "distinct": 2,
+            "mostCommonShare": 0.9
+          },
+          "meaningfulFirstFamilies": 1,
+          "meaningfulFamilySequences": 2,
+          "gate": {
+            "status": "not-evaluable: fewer than20seeds"
+          },
+          "coordinateNoveltyUsed": false
+        },
+        "USSR": {
+          "firstAcceptedFamily": {
+            "matches": 10,
+            "counts": {
+              "null": 4,
+              "\"infantry\"": 6
+            },
+            "distinct": 2,
+            "mostCommonShare": 0.6
+          },
+          "acceptedFamilySequence": {
+            "matches": 10,
+            "counts": {
+              "[]": 4,
+              "[\"infantry\"]": 5,
+              "[\"infantry\",\"infantry\"]": 1
+            },
+            "distinct": 3,
+            "mostCommonShare": 0.5
+          },
+          "meaningfulFirstFamilies": 1,
+          "meaningfulFamilySequences": 2,
+          "gate": {
+            "status": "not-evaluable: fewer than20seeds"
+          },
+          "coordinateNoveltyUsed": false
+        }
+      },
+      "quarterSecondCrossScreenPairs": 0,
+      "policyScores": {
+        "originalOracle": {
+          "primaryOnly": {
+            "recordedSeats": 25,
+            "totalSeats": 30,
+            "policies": [
+              "screen-v1"
+            ],
+            "annotatedEvents": 137,
+            "unannotatedScreenEvents": 0,
+            "requiredEvents": 14,
+            "exemptEvents": 123,
+            "reasons": {
+              "retreat-risk-crossing": {
+                "required": 8,
+                "exempt": 0
+              },
+              "idle-combat-contact": {
+                "required": 6,
+                "exempt": 0
+              },
+              "already-engaged": {
+                "required": 0,
+                "exempt": 20
+              },
+              "monitoring-contact": {
+                "required": 0,
+                "exempt": 91
+              },
+              "monitoring-damage": {
+                "required": 0,
+                "exempt": 7
+              },
+              "already-retreating": {
+                "required": 0,
+                "exempt": 5
+              }
+            },
+            "causalAlignment": {
+              "intendedResponseInputs": 9,
+              "otherResponseInputs": 0,
+              "missingIntentMetadataInputs": 0,
+              "firstActionSelectionMatches": 4,
+              "firstActionSelectionDiffers": 0,
+              "firstActionSelectionUnmeasured": 0
+            },
+            "firstAction": {
+              "samples": 14,
+              "observed": 4,
+              "censored": 10,
+              "medianSeconds": null,
+              "medianIdentifiable": false,
+              "method": "Kaplan-Meier survival with completed responses counted before censoring at tied times. Recording-end censoring assumes no informative loss of follow-up. A null median means the observed curve did not reach 0.5."
+            },
+            "attemptedCommand": {
+              "samples": 14,
+              "observed": 4,
+              "censored": 10,
+              "medianSeconds": null,
+              "medianIdentifiable": false,
+              "method": "Kaplan-Meier survival with completed responses counted before censoring at tied times. Recording-end censoring assumes no informative loss of follow-up. A null median means the observed curve did not reach 0.5."
+            },
+            "acceptedCommand": {
+              "samples": 14,
+              "observed": 4,
+              "censored": 10,
+              "medianSeconds": null,
+              "medianIdentifiable": false,
+              "method": "Kaplan-Meier survival with completed responses counted before censoring at tied times. Recording-end censoring assumes no informative loss of follow-up. A null median means the observed curve did not reach 0.5."
+            }
+          },
+          "explicitLinked": {
+            "recordedSeats": 25,
+            "totalSeats": 30,
+            "policies": [
+              "screen-v1"
+            ],
+            "annotatedEvents": 137,
+            "unannotatedScreenEvents": 0,
+            "requiredEvents": 14,
+            "exemptEvents": 123,
+            "reasons": {
+              "retreat-risk-crossing": {
+                "required": 8,
+                "exempt": 0
+              },
+              "idle-combat-contact": {
+                "required": 6,
+                "exempt": 0
+              },
+              "already-engaged": {
+                "required": 0,
+                "exempt": 20
+              },
+              "monitoring-contact": {
+                "required": 0,
+                "exempt": 91
+              },
+              "monitoring-damage": {
+                "required": 0,
+                "exempt": 7
+              },
+              "already-retreating": {
+                "required": 0,
+                "exempt": 5
+              }
+            },
+            "causalAlignment": {
+              "intendedResponseInputs": 11,
+              "otherResponseInputs": 0,
+              "missingIntentMetadataInputs": 0,
+              "firstActionSelectionMatches": 5,
+              "firstActionSelectionDiffers": 0,
+              "firstActionSelectionUnmeasured": 0
+            },
+            "firstAction": {
+              "samples": 14,
+              "observed": 5,
+              "censored": 9,
+              "medianSeconds": null,
+              "medianIdentifiable": false,
+              "method": "Kaplan-Meier survival with completed responses counted before censoring at tied times. Recording-end censoring assumes no informative loss of follow-up. A null median means the observed curve did not reach 0.5."
+            },
+            "attemptedCommand": {
+              "samples": 14,
+              "observed": 4,
+              "censored": 10,
+              "medianSeconds": null,
+              "medianIdentifiable": false,
+              "method": "Kaplan-Meier survival with completed responses counted before censoring at tied times. Recording-end censoring assumes no informative loss of follow-up. A null median means the observed curve did not reach 0.5."
+            },
+            "acceptedCommand": {
+              "samples": 14,
+              "observed": 4,
+              "censored": 10,
+              "medianSeconds": null,
+              "medianIdentifiable": false,
+              "method": "Kaplan-Meier survival with completed responses counted before censoring at tied times. Recording-end censoring assumes no informative loss of follow-up. A null median means the observed curve did not reach 0.5."
+            }
+          }
+        },
+        "observed": {
+          "primaryOnly": {
+            "recordedSeats": 25,
+            "totalSeats": 30,
+            "policies": [
+              "screen-observed-v1"
+            ],
+            "annotatedEvents": 138,
+            "unannotatedScreenEvents": 0,
+            "requiredEvents": 13,
+            "exemptEvents": 125,
+            "reasons": {
+              "retreat-risk-crossing": {
+                "required": 7,
+                "exempt": 0
+              },
+              "idle-combat-contact": {
+                "required": 6,
+                "exempt": 0
+              },
+              "already-engaged": {
+                "required": 0,
+                "exempt": 22
+              },
+              "monitoring-contact": {
+                "required": 0,
+                "exempt": 91
+              },
+              "monitoring-damage": {
+                "required": 0,
+                "exempt": 7
+              },
+              "already-retreating": {
+                "required": 0,
+                "exempt": 5
+              }
+            },
+            "causalAlignment": {
+              "intendedResponseInputs": 9,
+              "otherResponseInputs": 0,
+              "missingIntentMetadataInputs": 0,
+              "firstActionSelectionMatches": 4,
+              "firstActionSelectionDiffers": 0,
+              "firstActionSelectionUnmeasured": 0
+            },
+            "firstAction": {
+              "samples": 13,
+              "observed": 4,
+              "censored": 9,
+              "medianSeconds": null,
+              "medianIdentifiable": false,
+              "method": "Kaplan-Meier survival with completed responses counted before censoring at tied times. Recording-end censoring assumes no informative loss of follow-up. A null median means the observed curve did not reach 0.5."
+            },
+            "attemptedCommand": {
+              "samples": 13,
+              "observed": 4,
+              "censored": 9,
+              "medianSeconds": null,
+              "medianIdentifiable": false,
+              "method": "Kaplan-Meier survival with completed responses counted before censoring at tied times. Recording-end censoring assumes no informative loss of follow-up. A null median means the observed curve did not reach 0.5."
+            },
+            "acceptedCommand": {
+              "samples": 13,
+              "observed": 4,
+              "censored": 9,
+              "medianSeconds": null,
+              "medianIdentifiable": false,
+              "method": "Kaplan-Meier survival with completed responses counted before censoring at tied times. Recording-end censoring assumes no informative loss of follow-up. A null median means the observed curve did not reach 0.5."
+            }
+          },
+          "explicitLinked": {
+            "recordedSeats": 25,
+            "totalSeats": 30,
+            "policies": [
+              "screen-observed-v1"
+            ],
+            "annotatedEvents": 138,
+            "unannotatedScreenEvents": 0,
+            "requiredEvents": 13,
+            "exemptEvents": 125,
+            "reasons": {
+              "retreat-risk-crossing": {
+                "required": 7,
+                "exempt": 0
+              },
+              "idle-combat-contact": {
+                "required": 6,
+                "exempt": 0
+              },
+              "already-engaged": {
+                "required": 0,
+                "exempt": 22
+              },
+              "monitoring-contact": {
+                "required": 0,
+                "exempt": 91
+              },
+              "monitoring-damage": {
+                "required": 0,
+                "exempt": 7
+              },
+              "already-retreating": {
+                "required": 0,
+                "exempt": 5
+              }
+            },
+            "causalAlignment": {
+              "intendedResponseInputs": 11,
+              "otherResponseInputs": 0,
+              "missingIntentMetadataInputs": 0,
+              "firstActionSelectionMatches": 5,
+              "firstActionSelectionDiffers": 0,
+              "firstActionSelectionUnmeasured": 0
+            },
+            "firstAction": {
+              "samples": 13,
+              "observed": 5,
+              "censored": 8,
+              "medianSeconds": null,
+              "medianIdentifiable": false,
+              "method": "Kaplan-Meier survival with completed responses counted before censoring at tied times. Recording-end censoring assumes no informative loss of follow-up. A null median means the observed curve did not reach 0.5."
+            },
+            "attemptedCommand": {
+              "samples": 13,
+              "observed": 4,
+              "censored": 9,
+              "medianSeconds": null,
+              "medianIdentifiable": false,
+              "method": "Kaplan-Meier survival with completed responses counted before censoring at tied times. Recording-end censoring assumes no informative loss of follow-up. A null median means the observed curve did not reach 0.5."
+            },
+            "acceptedCommand": {
+              "samples": 13,
+              "observed": 4,
+              "censored": 9,
+              "medianSeconds": null,
+              "medianIdentifiable": false,
+              "method": "Kaplan-Meier survival with completed responses counted before censoring at tied times. Recording-end censoring assumes no informative loss of follow-up. A null median means the observed curve did not reach 0.5."
+            }
+          }
+        }
+      },
+      "policyAudit": {
+        "frames": 367,
+        "declaredMappings": 349,
+        "validMappings": 349,
+        "unknownRuntimeMappings": 0,
+        "unknownOriginalMappings": 0,
+        "mismatchedCreationMappings": 0,
+        "invalidRuntimeDescriptors": 0,
+        "unaliasedPrimaryInputs": 67,
+        "unaliasedExplicitLinks": 0
+      },
+      "coverage": {
+        "originalRecordedSeats": 30,
+        "originalFromMatchStartSeats": 30,
+        "originalBaselineTicks": [
+          0
+        ],
+        "nativeEvents": 415,
+        "originalEvents": 352,
+        "observedEvents": 412,
+        "originalEventsWithoutRuntimeAlias": 3
+      },
+      "firstOrderOutsideSeats": 1
+    },
+    "world/normal": {
+      "matches": 10,
+      "seats": 30,
+      "bounds": {
+        "screen": [
+          0.5,
+          0.8
+        ],
+        "off": [
+          1.5,
+          3
+        ],
+        "apm": [
+          40,
+          70
+        ],
+        "peak": 120,
+        "opening": [
+          3,
+          6
+        ]
+      },
+      "originalRequiredFirstCompletedKMSeconds": 0.9,
+      "originalRequiredKMStatus": "outside-original-band",
+      "physicalAPM60SeatMeanMedian": 36.5,
+      "physicalAPM60Status": "outside-original-band",
+      "physicalAPM60AllWindows": {
+        "count": 90,
+        "mean": 35.922,
+        "min": 22,
+        "p10": 27.9,
+        "median": 34.5,
+        "p90": 48.1,
+        "p95": 50.55,
+        "max": 62
+      },
+      "windowsWithinBand": 24,
+      "totalWindows": 90,
+      "peak10Max": 120,
+      "peak10Status": "within-original-cap",
+      "firstOrder": {
+        "count": 30,
+        "mean": 4.622,
+        "min": 3.25,
+        "p10": 3.545,
+        "median": 4.7,
+        "p90": 5.72,
+        "p95": 5.955,
+        "max": 6.85
+      },
+      "firstOrderStatus": "outside-original-band",
+      "conditionalOffScreenSeatMedianSeconds": 2.1,
+      "conditionalOffScreenStatus": "within-original-band",
+      "offScreenRequiredGate": "not-evaluable: alerts lack a prospective required-response policy; conditional answered medians are not population acceptance",
+      "maxCommandsPerTick": 1,
+      "physicalInputs": 3233,
+      "cameraInputs": 816,
+      "acceptedNonBuyCommands": 717,
+      "acceptedPurchases": 178,
+      "acceptedAbilityCommands": 3,
+      "groups": {
+        "bindings": 21,
+        "single": 0,
+        "neverRecalled": 14,
+        "neverRecalledSingle": 0,
+        "recallInputs": 10,
+        "cameraGroupInputs": 0
+      },
+      "inspections": {
+        "attempts": 2,
+        "acquired": 2,
+        "missed": 0
+      },
+      "originalOnScreenFloorSeconds": 0.55,
+      "nativeOnScreenFloorSeconds": 0.55,
+      "openingByFaction": {
+        "USA": {
+          "firstAcceptedFamily": {
+            "matches": 10,
+            "counts": {
+              "\"engineer\"": 10
+            },
+            "distinct": 1,
+            "mostCommonShare": 1
+          },
+          "acceptedFamilySequence": {
+            "matches": 10,
+            "counts": {
+              "[\"engineer\",\"engineer\",\"infantry\",\"infantry\"]": 2,
+              "[\"engineer\",\"engineer\",\"infantry\"]": 8
+            },
+            "distinct": 2,
+            "mostCommonShare": 0.8
+          },
+          "meaningfulFirstFamilies": 1,
+          "meaningfulFamilySequences": 2,
+          "gate": {
+            "status": "not-evaluable: fewer than20seeds"
+          },
+          "coordinateNoveltyUsed": false
+        },
+        "Germany": {
+          "firstAcceptedFamily": {
+            "matches": 10,
+            "counts": {
+              "\"engineer\"": 10
+            },
+            "distinct": 1,
+            "mostCommonShare": 1
+          },
+          "acceptedFamilySequence": {
+            "matches": 10,
+            "counts": {
+              "[\"engineer\",\"engineer\",\"infantry\"]": 10
+            },
+            "distinct": 1,
+            "mostCommonShare": 1
+          },
+          "meaningfulFirstFamilies": 1,
+          "meaningfulFamilySequences": 1,
+          "gate": {
+            "status": "not-evaluable: fewer than20seeds"
+          },
+          "coordinateNoveltyUsed": false
+        },
+        "USSR": {
+          "firstAcceptedFamily": {
+            "matches": 10,
+            "counts": {
+              "\"engineer\"": 10
+            },
+            "distinct": 1,
+            "mostCommonShare": 1
+          },
+          "acceptedFamilySequence": {
+            "matches": 10,
+            "counts": {
+              "[\"engineer\",\"engineer\"]": 3,
+              "[\"engineer\",\"engineer\",\"infantry\"]": 6,
+              "[\"engineer\",\"engineer\",\"infantry\",\"infantry\"]": 1
+            },
+            "distinct": 3,
+            "mostCommonShare": 0.6
+          },
+          "meaningfulFirstFamilies": 1,
+          "meaningfulFamilySequences": 3,
+          "gate": {
+            "status": "not-evaluable: fewer than20seeds"
+          },
+          "coordinateNoveltyUsed": false
+        }
+      },
+      "quarterSecondCrossScreenPairs": 0,
+      "policyScores": {
+        "originalOracle": {
+          "primaryOnly": {
+            "recordedSeats": 28,
+            "totalSeats": 30,
+            "policies": [
+              "screen-v1"
+            ],
+            "annotatedEvents": 213,
+            "unannotatedScreenEvents": 0,
+            "requiredEvents": 14,
+            "exemptEvents": 199,
+            "reasons": {
+              "monitoring-contact": {
+                "required": 0,
+                "exempt": 133
+              },
+              "monitoring-damage": {
+                "required": 0,
+                "exempt": 10
+              },
+              "already-engaged": {
+                "required": 0,
+                "exempt": 49
+              },
+              "retreat-risk-crossing": {
+                "required": 5,
+                "exempt": 0
+              },
+              "already-retreating": {
+                "required": 0,
+                "exempt": 7
+              },
+              "idle-combat-contact": {
+                "required": 9,
+                "exempt": 0
+              }
+            },
+            "causalAlignment": {
+              "intendedResponseInputs": 19,
+              "otherResponseInputs": 0,
+              "missingIntentMetadataInputs": 0,
+              "firstActionSelectionMatches": 7,
+              "firstActionSelectionDiffers": 0,
+              "firstActionSelectionUnmeasured": 0
+            },
+            "firstAction": {
+              "samples": 14,
+              "observed": 7,
+              "censored": 7,
+              "medianSeconds": 1.65,
+              "medianIdentifiable": true,
+              "method": "Kaplan-Meier survival with completed responses counted before censoring at tied times. Recording-end censoring assumes no informative loss of follow-up. A null median means the observed curve did not reach 0.5."
+            },
+            "attemptedCommand": {
+              "samples": 14,
+              "observed": 7,
+              "censored": 7,
+              "medianSeconds": 2.3,
+              "medianIdentifiable": true,
+              "method": "Kaplan-Meier survival with completed responses counted before censoring at tied times. Recording-end censoring assumes no informative loss of follow-up. A null median means the observed curve did not reach 0.5."
+            },
+            "acceptedCommand": {
+              "samples": 14,
+              "observed": 7,
+              "censored": 7,
+              "medianSeconds": 2.3,
+              "medianIdentifiable": true,
+              "method": "Kaplan-Meier survival with completed responses counted before censoring at tied times. Recording-end censoring assumes no informative loss of follow-up. A null median means the observed curve did not reach 0.5."
+            }
+          },
+          "explicitLinked": {
+            "recordedSeats": 28,
+            "totalSeats": 30,
+            "policies": [
+              "screen-v1"
+            ],
+            "annotatedEvents": 213,
+            "unannotatedScreenEvents": 0,
+            "requiredEvents": 14,
+            "exemptEvents": 199,
+            "reasons": {
+              "monitoring-contact": {
+                "required": 0,
+                "exempt": 133
+              },
+              "monitoring-damage": {
+                "required": 0,
+                "exempt": 10
+              },
+              "already-engaged": {
+                "required": 0,
+                "exempt": 49
+              },
+              "retreat-risk-crossing": {
+                "required": 5,
+                "exempt": 0
+              },
+              "already-retreating": {
+                "required": 0,
+                "exempt": 7
+              },
+              "idle-combat-contact": {
+                "required": 9,
+                "exempt": 0
+              }
+            },
+            "causalAlignment": {
+              "intendedResponseInputs": 24,
+              "otherResponseInputs": 0,
+              "missingIntentMetadataInputs": 0,
+              "firstActionSelectionMatches": 9,
+              "firstActionSelectionDiffers": 0,
+              "firstActionSelectionUnmeasured": 0
+            },
+            "firstAction": {
+              "samples": 14,
+              "observed": 9,
+              "censored": 5,
+              "medianSeconds": 0.9,
+              "medianIdentifiable": true,
+              "method": "Kaplan-Meier survival with completed responses counted before censoring at tied times. Recording-end censoring assumes no informative loss of follow-up. A null median means the observed curve did not reach 0.5."
+            },
+            "attemptedCommand": {
+              "samples": 14,
+              "observed": 9,
+              "censored": 5,
+              "medianSeconds": 1.55,
+              "medianIdentifiable": true,
+              "method": "Kaplan-Meier survival with completed responses counted before censoring at tied times. Recording-end censoring assumes no informative loss of follow-up. A null median means the observed curve did not reach 0.5."
+            },
+            "acceptedCommand": {
+              "samples": 14,
+              "observed": 9,
+              "censored": 5,
+              "medianSeconds": 1.55,
+              "medianIdentifiable": true,
+              "method": "Kaplan-Meier survival with completed responses counted before censoring at tied times. Recording-end censoring assumes no informative loss of follow-up. A null median means the observed curve did not reach 0.5."
+            }
+          }
+        },
+        "observed": {
+          "primaryOnly": {
+            "recordedSeats": 28,
+            "totalSeats": 30,
+            "policies": [
+              "screen-observed-v1"
+            ],
+            "annotatedEvents": 217,
+            "unannotatedScreenEvents": 0,
+            "requiredEvents": 12,
+            "exemptEvents": 205,
+            "reasons": {
+              "monitoring-contact": {
+                "required": 0,
+                "exempt": 133
+              },
+              "monitoring-damage": {
+                "required": 0,
+                "exempt": 11
+              },
+              "already-engaged": {
+                "required": 0,
+                "exempt": 54
+              },
+              "retreat-risk-crossing": {
+                "required": 3,
+                "exempt": 0
+              },
+              "already-retreating": {
+                "required": 0,
+                "exempt": 7
+              },
+              "idle-combat-contact": {
+                "required": 9,
+                "exempt": 0
+              }
+            },
+            "causalAlignment": {
+              "intendedResponseInputs": 19,
+              "otherResponseInputs": 0,
+              "missingIntentMetadataInputs": 0,
+              "firstActionSelectionMatches": 7,
+              "firstActionSelectionDiffers": 0,
+              "firstActionSelectionUnmeasured": 0
+            },
+            "firstAction": {
+              "samples": 12,
+              "observed": 7,
+              "censored": 5,
+              "medianSeconds": 0.9,
+              "medianIdentifiable": true,
+              "method": "Kaplan-Meier survival with completed responses counted before censoring at tied times. Recording-end censoring assumes no informative loss of follow-up. A null median means the observed curve did not reach 0.5."
+            },
+            "attemptedCommand": {
+              "samples": 12,
+              "observed": 7,
+              "censored": 5,
+              "medianSeconds": 2.3,
+              "medianIdentifiable": true,
+              "method": "Kaplan-Meier survival with completed responses counted before censoring at tied times. Recording-end censoring assumes no informative loss of follow-up. A null median means the observed curve did not reach 0.5."
+            },
+            "acceptedCommand": {
+              "samples": 12,
+              "observed": 7,
+              "censored": 5,
+              "medianSeconds": 2.3,
+              "medianIdentifiable": true,
+              "method": "Kaplan-Meier survival with completed responses counted before censoring at tied times. Recording-end censoring assumes no informative loss of follow-up. A null median means the observed curve did not reach 0.5."
+            }
+          },
+          "explicitLinked": {
+            "recordedSeats": 28,
+            "totalSeats": 30,
+            "policies": [
+              "screen-observed-v1"
+            ],
+            "annotatedEvents": 217,
+            "unannotatedScreenEvents": 0,
+            "requiredEvents": 12,
+            "exemptEvents": 205,
+            "reasons": {
+              "monitoring-contact": {
+                "required": 0,
+                "exempt": 133
+              },
+              "monitoring-damage": {
+                "required": 0,
+                "exempt": 11
+              },
+              "already-engaged": {
+                "required": 0,
+                "exempt": 54
+              },
+              "retreat-risk-crossing": {
+                "required": 3,
+                "exempt": 0
+              },
+              "already-retreating": {
+                "required": 0,
+                "exempt": 7
+              },
+              "idle-combat-contact": {
+                "required": 9,
+                "exempt": 0
+              }
+            },
+            "causalAlignment": {
+              "intendedResponseInputs": 24,
+              "otherResponseInputs": 0,
+              "missingIntentMetadataInputs": 0,
+              "firstActionSelectionMatches": 9,
+              "firstActionSelectionDiffers": 0,
+              "firstActionSelectionUnmeasured": 0
+            },
+            "firstAction": {
+              "samples": 12,
+              "observed": 9,
+              "censored": 3,
+              "medianSeconds": 0.9,
+              "medianIdentifiable": true,
+              "method": "Kaplan-Meier survival with completed responses counted before censoring at tied times. Recording-end censoring assumes no informative loss of follow-up. A null median means the observed curve did not reach 0.5."
+            },
+            "attemptedCommand": {
+              "samples": 12,
+              "observed": 9,
+              "censored": 3,
+              "medianSeconds": 1.45,
+              "medianIdentifiable": true,
+              "method": "Kaplan-Meier survival with completed responses counted before censoring at tied times. Recording-end censoring assumes no informative loss of follow-up. A null median means the observed curve did not reach 0.5."
+            },
+            "acceptedCommand": {
+              "samples": 12,
+              "observed": 9,
+              "censored": 3,
+              "medianSeconds": 1.45,
+              "medianIdentifiable": true,
+              "method": "Kaplan-Meier survival with completed responses counted before censoring at tied times. Recording-end censoring assumes no informative loss of follow-up. A null median means the observed curve did not reach 0.5."
+            }
+          }
+        }
+      },
+      "policyAudit": {
+        "frames": 493,
+        "declaredMappings": 481,
+        "validMappings": 481,
+        "unknownRuntimeMappings": 0,
+        "unknownOriginalMappings": 0,
+        "mismatchedCreationMappings": 0,
+        "invalidRuntimeDescriptors": 0,
+        "unaliasedPrimaryInputs": 100,
+        "unaliasedExplicitLinks": 1
+      },
+      "coverage": {
+        "originalRecordedSeats": 30,
+        "originalFromMatchStartSeats": 30,
+        "originalBaselineTicks": [
+          0
+        ],
+        "nativeEvents": 535,
+        "originalEvents": 486,
+        "observedEvents": 535,
+        "originalEventsWithoutRuntimeAlias": 5
+      },
+      "firstOrderOutsideSeats": 1
+    },
+    "world/hard": {
+      "matches": 10,
+      "seats": 30,
+      "bounds": {
+        "screen": [
+          0.3,
+          0.45
+        ],
+        "off": [
+          0.8,
+          1.6
+        ],
+        "apm": [
+          80,
+          120
+        ],
+        "peak": 200,
+        "opening": [
+          2,
+          4
+        ]
+      },
+      "originalRequiredFirstCompletedKMSeconds": 0.8,
+      "originalRequiredKMStatus": "outside-original-band",
+      "physicalAPM60SeatMeanMedian": 47.5,
+      "physicalAPM60Status": "outside-original-band",
+      "physicalAPM60AllWindows": {
+        "count": 90,
+        "mean": 47.733,
+        "min": 25,
+        "p10": 33,
+        "median": 48.5,
+        "p90": 61.1,
+        "p95": 65.55,
+        "max": 75
+      },
+      "windowsWithinBand": 0,
+      "totalWindows": 90,
+      "peak10Max": 162,
+      "peak10Status": "within-original-cap",
+      "firstOrder": {
+        "count": 30,
+        "mean": 3.11,
+        "min": 2.3,
+        "p10": 2.4,
+        "median": 3.15,
+        "p90": 3.81,
+        "p95": 3.927,
+        "max": 4.05
+      },
+      "firstOrderStatus": "outside-original-band",
+      "conditionalOffScreenSeatMedianSeconds": 1.113,
+      "conditionalOffScreenStatus": "within-original-band",
+      "offScreenRequiredGate": "not-evaluable: alerts lack a prospective required-response policy; conditional answered medians are not population acceptance",
+      "maxCommandsPerTick": 1,
+      "physicalInputs": 4296,
+      "cameraInputs": 1388,
+      "acceptedNonBuyCommands": 877,
+      "acceptedPurchases": 202,
+      "acceptedAbilityCommands": 2,
+      "groups": {
+        "bindings": 27,
+        "single": 0,
+        "neverRecalled": 23,
+        "neverRecalledSingle": 0,
+        "recallInputs": 5,
+        "cameraGroupInputs": 0
+      },
+      "inspections": {
+        "attempts": 2,
+        "acquired": 2,
+        "missed": 0
+      },
+      "originalOnScreenFloorSeconds": 0.4,
+      "nativeOnScreenFloorSeconds": 0.4,
+      "openingByFaction": {
+        "USA": {
+          "firstAcceptedFamily": {
+            "matches": 10,
+            "counts": {
+              "\"engineer\"": 10
+            },
+            "distinct": 1,
+            "mostCommonShare": 1
+          },
+          "acceptedFamilySequence": {
+            "matches": 10,
+            "counts": {
+              "[\"engineer\",\"engineer\",\"infantry\",\"infantry\"]": 6,
+              "[\"engineer\",\"engineer\",\"infantry\"]": 4
+            },
+            "distinct": 2,
+            "mostCommonShare": 0.6
+          },
+          "meaningfulFirstFamilies": 1,
+          "meaningfulFamilySequences": 2,
+          "gate": {
+            "status": "not-evaluable: fewer than20seeds"
+          },
+          "coordinateNoveltyUsed": false
+        },
+        "Germany": {
+          "firstAcceptedFamily": {
+            "matches": 10,
+            "counts": {
+              "\"engineer\"": 10
+            },
+            "distinct": 1,
+            "mostCommonShare": 1
+          },
+          "acceptedFamilySequence": {
+            "matches": 10,
+            "counts": {
+              "[\"engineer\",\"engineer\",\"infantry\",\"infantry\"]": 7,
+              "[\"engineer\",\"engineer\",\"infantry\"]": 3
+            },
+            "distinct": 2,
+            "mostCommonShare": 0.7
+          },
+          "meaningfulFirstFamilies": 1,
+          "meaningfulFamilySequences": 2,
+          "gate": {
+            "status": "not-evaluable: fewer than20seeds"
+          },
+          "coordinateNoveltyUsed": false
+        },
+        "USSR": {
+          "firstAcceptedFamily": {
+            "matches": 10,
+            "counts": {
+              "\"engineer\"": 10
+            },
+            "distinct": 1,
+            "mostCommonShare": 1
+          },
+          "acceptedFamilySequence": {
+            "matches": 10,
+            "counts": {
+              "[\"engineer\",\"engineer\"]": 3,
+              "[\"engineer\",\"engineer\",\"infantry\",\"infantry\"]": 6,
+              "[\"engineer\",\"engineer\",\"infantry\"]": 1
+            },
+            "distinct": 3,
+            "mostCommonShare": 0.6
+          },
+          "meaningfulFirstFamilies": 1,
+          "meaningfulFamilySequences": 3,
+          "gate": {
+            "status": "not-evaluable: fewer than20seeds"
+          },
+          "coordinateNoveltyUsed": false
+        }
+      },
+      "quarterSecondCrossScreenPairs": 0,
+      "policyScores": {
+        "originalOracle": {
+          "primaryOnly": {
+            "recordedSeats": 29,
+            "totalSeats": 30,
+            "policies": [
+              "screen-v1"
+            ],
+            "annotatedEvents": 237,
+            "unannotatedScreenEvents": 0,
+            "requiredEvents": 13,
+            "exemptEvents": 224,
+            "reasons": {
+              "monitoring-contact": {
+                "required": 0,
+                "exempt": 143
+              },
+              "idle-combat-contact": {
+                "required": 12,
+                "exempt": 0
+              },
+              "already-engaged": {
+                "required": 0,
+                "exempt": 66
+              },
+              "monitoring-damage": {
+                "required": 0,
+                "exempt": 9
+              },
+              "already-retreating": {
+                "required": 0,
+                "exempt": 6
+              },
+              "retreat-risk-crossing": {
+                "required": 1,
+                "exempt": 0
+              }
+            },
+            "causalAlignment": {
+              "intendedResponseInputs": 18,
+              "otherResponseInputs": 0,
+              "missingIntentMetadataInputs": 0,
+              "firstActionSelectionMatches": 6,
+              "firstActionSelectionDiffers": 0,
+              "firstActionSelectionUnmeasured": 0
+            },
+            "firstAction": {
+              "samples": 13,
+              "observed": 6,
+              "censored": 7,
+              "medianSeconds": null,
+              "medianIdentifiable": false,
+              "method": "Kaplan-Meier survival with completed responses counted before censoring at tied times. Recording-end censoring assumes no informative loss of follow-up. A null median means the observed curve did not reach 0.5."
+            },
+            "attemptedCommand": {
+              "samples": 13,
+              "observed": 6,
+              "censored": 7,
+              "medianSeconds": 1.3,
+              "medianIdentifiable": true,
+              "method": "Kaplan-Meier survival with completed responses counted before censoring at tied times. Recording-end censoring assumes no informative loss of follow-up. A null median means the observed curve did not reach 0.5."
+            },
+            "acceptedCommand": {
+              "samples": 13,
+              "observed": 6,
+              "censored": 7,
+              "medianSeconds": 1.3,
+              "medianIdentifiable": true,
+              "method": "Kaplan-Meier survival with completed responses counted before censoring at tied times. Recording-end censoring assumes no informative loss of follow-up. A null median means the observed curve did not reach 0.5."
+            }
+          },
+          "explicitLinked": {
+            "recordedSeats": 29,
+            "totalSeats": 30,
+            "policies": [
+              "screen-v1"
+            ],
+            "annotatedEvents": 237,
+            "unannotatedScreenEvents": 0,
+            "requiredEvents": 13,
+            "exemptEvents": 224,
+            "reasons": {
+              "monitoring-contact": {
+                "required": 0,
+                "exempt": 143
+              },
+              "idle-combat-contact": {
+                "required": 12,
+                "exempt": 0
+              },
+              "already-engaged": {
+                "required": 0,
+                "exempt": 66
+              },
+              "monitoring-damage": {
+                "required": 0,
+                "exempt": 9
+              },
+              "already-retreating": {
+                "required": 0,
+                "exempt": 6
+              },
+              "retreat-risk-crossing": {
+                "required": 1,
+                "exempt": 0
+              }
+            },
+            "causalAlignment": {
+              "intendedResponseInputs": 21,
+              "otherResponseInputs": 0,
+              "missingIntentMetadataInputs": 0,
+              "firstActionSelectionMatches": 7,
+              "firstActionSelectionDiffers": 0,
+              "firstActionSelectionUnmeasured": 0
+            },
+            "firstAction": {
+              "samples": 13,
+              "observed": 7,
+              "censored": 6,
+              "medianSeconds": 0.8,
+              "medianIdentifiable": true,
+              "method": "Kaplan-Meier survival with completed responses counted before censoring at tied times. Recording-end censoring assumes no informative loss of follow-up. A null median means the observed curve did not reach 0.5."
+            },
+            "attemptedCommand": {
+              "samples": 13,
+              "observed": 7,
+              "censored": 6,
+              "medianSeconds": 1.1,
+              "medianIdentifiable": true,
+              "method": "Kaplan-Meier survival with completed responses counted before censoring at tied times. Recording-end censoring assumes no informative loss of follow-up. A null median means the observed curve did not reach 0.5."
+            },
+            "acceptedCommand": {
+              "samples": 13,
+              "observed": 7,
+              "censored": 6,
+              "medianSeconds": 1.1,
+              "medianIdentifiable": true,
+              "method": "Kaplan-Meier survival with completed responses counted before censoring at tied times. Recording-end censoring assumes no informative loss of follow-up. A null median means the observed curve did not reach 0.5."
+            }
+          }
+        },
+        "observed": {
+          "primaryOnly": {
+            "recordedSeats": 29,
+            "totalSeats": 30,
+            "policies": [
+              "screen-observed-v1"
+            ],
+            "annotatedEvents": 234,
+            "unannotatedScreenEvents": 0,
+            "requiredEvents": 12,
+            "exemptEvents": 222,
+            "reasons": {
+              "monitoring-contact": {
+                "required": 0,
+                "exempt": 143
+              },
+              "idle-combat-contact": {
+                "required": 12,
+                "exempt": 0
+              },
+              "already-engaged": {
+                "required": 0,
+                "exempt": 63
+              },
+              "monitoring-damage": {
+                "required": 0,
+                "exempt": 11
+              },
+              "already-retreating": {
+                "required": 0,
+                "exempt": 5
+              }
+            },
+            "causalAlignment": {
+              "intendedResponseInputs": 18,
+              "otherResponseInputs": 0,
+              "missingIntentMetadataInputs": 0,
+              "firstActionSelectionMatches": 6,
+              "firstActionSelectionDiffers": 0,
+              "firstActionSelectionUnmeasured": 0
+            },
+            "firstAction": {
+              "samples": 12,
+              "observed": 6,
+              "censored": 6,
+              "medianSeconds": null,
+              "medianIdentifiable": false,
+              "method": "Kaplan-Meier survival with completed responses counted before censoring at tied times. Recording-end censoring assumes no informative loss of follow-up. A null median means the observed curve did not reach 0.5."
+            },
+            "attemptedCommand": {
+              "samples": 12,
+              "observed": 6,
+              "censored": 6,
+              "medianSeconds": 1.3,
+              "medianIdentifiable": true,
+              "method": "Kaplan-Meier survival with completed responses counted before censoring at tied times. Recording-end censoring assumes no informative loss of follow-up. A null median means the observed curve did not reach 0.5."
+            },
+            "acceptedCommand": {
+              "samples": 12,
+              "observed": 6,
+              "censored": 6,
+              "medianSeconds": 1.3,
+              "medianIdentifiable": true,
+              "method": "Kaplan-Meier survival with completed responses counted before censoring at tied times. Recording-end censoring assumes no informative loss of follow-up. A null median means the observed curve did not reach 0.5."
+            }
+          },
+          "explicitLinked": {
+            "recordedSeats": 29,
+            "totalSeats": 30,
+            "policies": [
+              "screen-observed-v1"
+            ],
+            "annotatedEvents": 234,
+            "unannotatedScreenEvents": 0,
+            "requiredEvents": 12,
+            "exemptEvents": 222,
+            "reasons": {
+              "monitoring-contact": {
+                "required": 0,
+                "exempt": 143
+              },
+              "idle-combat-contact": {
+                "required": 12,
+                "exempt": 0
+              },
+              "already-engaged": {
+                "required": 0,
+                "exempt": 63
+              },
+              "monitoring-damage": {
+                "required": 0,
+                "exempt": 11
+              },
+              "already-retreating": {
+                "required": 0,
+                "exempt": 5
+              }
+            },
+            "causalAlignment": {
+              "intendedResponseInputs": 21,
+              "otherResponseInputs": 0,
+              "missingIntentMetadataInputs": 0,
+              "firstActionSelectionMatches": 7,
+              "firstActionSelectionDiffers": 0,
+              "firstActionSelectionUnmeasured": 0
+            },
+            "firstAction": {
+              "samples": 12,
+              "observed": 7,
+              "censored": 5,
+              "medianSeconds": 0.55,
+              "medianIdentifiable": true,
+              "method": "Kaplan-Meier survival with completed responses counted before censoring at tied times. Recording-end censoring assumes no informative loss of follow-up. A null median means the observed curve did not reach 0.5."
+            },
+            "attemptedCommand": {
+              "samples": 12,
+              "observed": 7,
+              "censored": 5,
+              "medianSeconds": 1.1,
+              "medianIdentifiable": true,
+              "method": "Kaplan-Meier survival with completed responses counted before censoring at tied times. Recording-end censoring assumes no informative loss of follow-up. A null median means the observed curve did not reach 0.5."
+            },
+            "acceptedCommand": {
+              "samples": 12,
+              "observed": 7,
+              "censored": 5,
+              "medianSeconds": 1.1,
+              "medianIdentifiable": true,
+              "method": "Kaplan-Meier survival with completed responses counted before censoring at tied times. Recording-end censoring assumes no informative loss of follow-up. A null median means the observed curve did not reach 0.5."
+            }
+          }
+        }
+      },
+      "policyAudit": {
+        "frames": 545,
+        "declaredMappings": 536,
+        "validMappings": 536,
+        "unknownRuntimeMappings": 0,
+        "unknownOriginalMappings": 0,
+        "mismatchedCreationMappings": 0,
+        "invalidRuntimeDescriptors": 0,
+        "unaliasedPrimaryInputs": 215,
+        "unaliasedExplicitLinks": 4
+      },
+      "coverage": {
+        "originalRecordedSeats": 30,
+        "originalFromMatchStartSeats": 30,
+        "originalBaselineTicks": [
+          0
+        ],
+        "nativeEvents": 593,
+        "originalEvents": 544,
+        "observedEvents": 590,
+        "originalEventsWithoutRuntimeAlias": 8
+      },
+      "firstOrderOutsideSeats": 1
+    }
+  },
+  "diagnosticTotals": {
+    "bindings": 904,
+    "neverRecalled": 720,
+    "inspectionAttempts": 1472,
+    "inspectionMissed": 238
+  },
+  "seatsCount": 360,
+  "seatPopulationArchive": "seat-populations.json.gz"
+}

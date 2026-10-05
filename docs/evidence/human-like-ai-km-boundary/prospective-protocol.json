@@ -1,0 +1,24 @@
+{
+  "version": "km-exact-half-v1",
+  "screenPolicyUnchanged": "screen-manual-v3",
+  "alertPolicyUnchanged": "public-danger-alert-v1",
+  "baselineHelper": "absent before prospective correction",
+  "portableNativeExit": 0,
+  "portableTestLogSHA256": "3147852da26740c2b9ea18354808463bc0d465bdf28ef3d611fec1891520ab96",
+  "historical87ProofSHA256": "c8879e0f48a31938f87d755947d93701c2301700303faba7de50d09fa14ce4ea",
+  "sourceBinding": {
+    "tools/ai-humanity.mjs": {
+      "beforeSHA256": "fac34526a548c8fec5b11e8bd10f07e28b84f6aa09b13206296c4d40a589af4c",
+      "candidateSHA256": "187293809db16f7d571b03c5824aeef54914406b66e9128e328123907546b76a"
+    },
+    "tools/ai-public-alert-response.mjs": {
+      "beforeSHA256": "f548de11aef467e7655c0beaa66d22ad1de1c9d1f252f1048ca81e06b3a87c4a",
+      "candidateSHA256": "7974a9d20da09b9df2a3b8cb296e385d2ac2f94374be24396ac6df275c3cb829"
+    },
+    "tools/km-median-boundary.mjs": {
+      "beforeSHA256": null,
+      "candidateSHA256": "e92de6b62be628796cf1390a0b4333b87be32a2083f3d2193cf2dd3ac3755469"
+    }
+  },
+  "policy": "Prospective numerical mechanism only. Existing creation, response, censor and original timing bands unchanged. Completed campaign scores and raw reports remain untouched."
+}

@@ -5,6 +5,8 @@ import { think, plan } from './shared/ai.js';
 import { viewFor } from './shared/ai-view.js';
 import { perceive, readinessFor, needsInspection } from './shared/ai-perception.js';
 import { createHands, enqueueDecision, advanceHands, HUMAN_SKILLS } from './shared/ai-hands.js';
+import { perceive as screenV1Oracle } from './tools/ai-screen-v1-oracle.js';
+import { measurementScoringViews } from './tools/ai-humanity.mjs';
 import { personaFor } from './shared/ai-persona.js';
 
 const map = { w: 80, h: 80, rows: Array(80).fill('.'.repeat(80)),
@@ -28,8 +30,9 @@ function fixture({ type = 'mg', cooldown = 0, start = 400, replacement = false, 
   if (!busy) assert.equal(command(game, 0, { t: 'move', orders: [[own.id, 130, 80]] }), undefined);
   step(game); game.players[0].mp = 0; own.cd = cooldown; game.tick = start;
   const memory = { human: { camera: { x: 80, z: 80, yaw: 0, distance: 60 }, startedTick: start } };
-  perceive(viewFor(game, 0, {}), 0, memory.human, start);
-  return { game, own, enemy, other, memory, inputs: [], commands: [], readings: [], start };
+  const frames = [], measurements = { measureRaw: screenV1Oracle, onMeasurements: frame => frames.push(frame) };
+  perceive(viewFor(game, 0, {}), 0, memory.human, start, measurements);
+  return { game, own, enemy, other, memory, inputs: [], commands: [], readings: [], frames, measurements, start };
 }
 
 function scene({ type = 'mg', cooldown = 0, start = 400, level = 'hard', seed = 27,
@@ -58,7 +61,7 @@ function scene({ type = 'mg', cooldown = 0, start = 400, level = 'hard', seed = 
     const beat = outcome === 'correct' ? 4 : 2;
     if (!delivered || tick % beat === 0) delivered = viewFor(f.game, 0, {});
     think(f.game, 0, { memory: f.memory, view: delivered, level, seed,
-      inputLog: input => f.inputs.push(structuredClone(input)), submit: cmd => {
+      perceptionMeasurements: f.measurements, inputLog: input => f.inputs.push(structuredClone(input)), submit: cmd => {
         const result = command(f.game, 0, cmd);
         f.commands.push({ tick, cmd: structuredClone(cmd), result }); return result;
       } });
@@ -82,6 +85,16 @@ function scene({ type = 'mg', cooldown = 0, start = 400, level = 'hard', seed = 
   return { ...f, firstProposal, altered };
 }
 
+function measurementViews(f) {
+  return measurementScoringViews({ inputs: f.inputs, commands: f.commands.map(row => ({ tick: row.tick, command: row.cmd, accepted: row.result === undefined,
+    sourceIds: row.cmd.ids ?? row.cmd.orders?.map(order => order[0]) ?? [] })), events: f.memory.human.events,
+    perceptionMeasurements: { schema: 'ww2-private-perception-measurements-v1', toolOnly: true,
+      startedTick: f.start, frames: f.frames } }, f.game.tick / 20);
+}
+const originalScoring = f => measurementViews(f).originalOracle.log;
+function runtimeIdFor(f, originalId) {
+  return f.frames.flatMap(frame => frame.links).find(link => link.originalIds.includes(originalId))?.runtimeId;
+}
 function inspected(f) {
   const input = f.inputs.find(input => input.inspection);
   assert.ok(input && f.firstProposal, 'the actual planner requests and completes a physical inspection');
@@ -89,12 +102,15 @@ function inspected(f) {
   assert.ok(input.tick >= f.start + 1 + 30, 'inspection pays the global opening or handover look');
   assert.equal(input.tick - input.inputStartedTick, input.motorTicks, 'full selection motor remains intact');
   assert.equal(input.inspectionAcquired, true); assert.deepEqual(input.ids, [f.own.id]);
-  const required = f.memory.human.events.find(event => event.kind === 'screen-damage' && event.responseRequired);
+  const scoring = originalScoring(f), required = scoring.events.find(event => event.kind === 'screen-damage' && event.responseRequired);
   assert.ok(required, 'a real heavy-damage episode requires this actor to respond');
-  assert.deepEqual(input.responseEvents.find(event => event.id === required.id), required,
+  const runtimeId = runtimeIdFor(f, required.id), observed = f.memory.human.events.find(event => event.id === runtimeId);
+  assert.ok(observed?.observedDanger.lossShare >= .25 || observed?.observedDanger.retreatRisk, 'actual human-observed damage creates the behavioral cue');
+  assert.equal(Object.hasOwn(observed, 'responseRequired'), false);
+  assert.deepEqual(scoring.inputs.find(row => row.tick === input.tick && row.kind === input.kind).responseEvents.find(event => event.id === required.id), required,
     'inspection retains the original immutable causal descriptor');
   assert.ok(input.tick - required.tick >= 4);
-  assert.ok(!f.readings.find(row => row.tick === input.tick).answeredIds.includes(required.id),
+  assert.ok(!f.readings.find(row => row.tick === input.tick).answeredIds.includes(runtimeId),
     'physical inspection alone does not acknowledge an accepted command');
   assert.equal(f.memory.human.hands.inputTicks.length, f.inputs.length, 'multiple links count each physical input once');
   return input;
@@ -109,6 +125,8 @@ for (const level of ['easy', 'normal', 'hard']) {
   const cast = ready.commands.find(row => row.cmd.t === 'ability');
   assert.ok(cast); assert.equal(cast.result, undefined, 'the real readiness decision produces an authoritative accepted ability');
   assert.deepEqual(cast.cmd.ids, [ready.own.id]); assert.ok(ready.own.buff > 0, 'MG suppression is active in the engine');
+  assert.equal(measurementViews(ready).originalOracle.explicitLinked.requiredScreenPopulation.acceptedCommand.answered, 1,
+    'the real accepted ability preserves the unchanged original required-actor endpoint');
   assert.ok(cast.tick >= selected.tick + ({ easy: 10, normal: 6, hard: 4 }[level]), 'the acquired HUD receives paid reading time before the next decision');
   assert.ok(!cooling.commands.some(row => row.cmd.t === 'ability'), 'a genuinely cooling selected squad casts no ability');
   assert.equal(cooling.inputs.filter(input => input.inspection).length, 1, 'a still-selected known cooldown causes no repeated inspection clicks');
@@ -144,8 +162,15 @@ for (const outcome of ['wrong', 'miss']) {
   if (outcome === 'wrong') assert.ok(f.readings.some(row => row.other?.readiness.known && row.other.readiness.cooldownSeconds === 30),
     'a wrong hit reads only its actual selected squad HUD');
   assert.ok(!f.commands.some(row => row.cmd.t === 'ability' && row.cmd.ids.includes(f.own.id)));
-  const required = f.memory.human.events.find(event => event.responseRequired && event.unitId === f.own.id);
-  assert.ok(required && !f.memory.human.answeredEvents?.has(required.id), 'an inspection miss creates no accepted-command acknowledgement');
+  const required = originalScoring(f).events.find(event => event.responseRequired && event.unitId === f.own.id);
+  assert.ok(required && !f.readings.find(row => row.tick === input.tick).answeredIds.includes(runtimeIdFor(f, required.id)),
+    'an inspection miss creates no accepted-command acknowledgement at physical completion');
+  assert.ok(required && !f.memory.human.answeredEvents?.has(runtimeIdFor(f, required.id)),
+    'an inspection miss creates no accepted-command acknowledgement');
+  assert.equal(measurementViews(f).originalOracle.explicitLinked.requiredScreenPopulation.acceptedCommand.answered, 0,
+    'a later command by the wrong selected neighbour cannot answer the unchanged original actor population');
+  assert.equal(measurementViews(f).originalOracle.explicitLinked.requiredScreenPopulation.acceptedCommand.unanswered, 1,
+    'the original required damage stimulus remains censored under its existing accepted-command endpoint');
 }
 
 {

@@ -1,0 +1,42 @@
+--- /tmp/human-ai-opening-paired-base-source/shared/ai.js	2026-10-04 12:57:27.878195160 +0000
++++ /tmp/human-ai-opening-paired-candidate-source/shared/ai.js	2026-10-04 13:02:51.629556718 +0000
+@@ -8,7 +8,7 @@
+ import { aiCaution } from './weather.js';
+ import { insideKnownRegion } from './world-territories.js';
+ import { createRng, random } from './ai-rng.js';
+-import { openingBuy } from './ai-persona.js';
++import { openingBuy, saveOpeningPreference } from './ai-persona.js';
+ import { runCommander } from './ai-commander.js';
+ import { diagnostics } from './ai-hands.js';
+ import { armedContactActor } from './ai-priority.js';
+@@ -466,16 +466,17 @@
+   if (want === 'rifle' && canBuild('commando', me.faction) && count('commando') < 2 && count('rifle') >= 1) buy = 'commando';
+   if (canBuild('churchill', me.faction) && count('churchill') < 1 && armySize >= 5 && affords('churchill') && (want === 'tank' || want === 'rifle')) buy = 'churchill';
+   // A tank that already wiped a squad, or one this seat still remembers, changes the next buy after it leaves sight.
+-  if (mindful) {
+-    const learned = lesson(mind, buy, count('at'), count('mg')) || sit?.counter || null;
+-    if (learned) buy = learned;
+-  }
++  const learnedBuy = mindful ? lesson(mind, buy, count('at'), count('mg')) || sit?.counter || null : null;
++  if (learnedBuy) buy = learnedBuy;
+   // Classic: keep an Engineer while there are nodes to build on
+   // Classic: no building for it, or no Fuel for a vehicle: infantry instead
+   if (!trains(buy) || !canBuild(buy, me.faction) || priceOf(view, buy).fuel > (me.fuel ?? 0)) buy = trains('conscript') && canBuild('conscript', me.faction) ? 'conscript' : 'rifle';
+   if (world && (!count('engineer') || !ownB.some(b => b.type === 'hq'))) submit({ t: 'recover' });
+   if (classic && count('engineer') < (view.nodes.some((_, i) => !view.claimedNodes.has(i)) ? 2 : 1)) buy = 'engineer';
+   if (opts.human && !seenTanks && !sit?.counter) buy = openingBuy(mem.human, view, slot, buy, trains);
++  const saveFirstPreference = opts.human && saveOpeningPreference(mem.human, view, slot, buy, trains, { armySize,
++    tacticalCounter: seenTanks || enemyPlanes || seenGarrison || seenDugIn || learnedBuy || sit?.counter
++      || sit?.kind === 'defense' || seenInf >= 6 && armySize >= 5 });
+   // Classic: save up for the next building, unless the army is nearly gone
+   // big armies: buy several at a time (one per decision can't keep a 60-unit army topped up)
+   const purchaseLimit = opts.human ? ({ easy: 1, normal: 2, hard: 3 }[level]) : view.army?.pop > 1 ? 4 : 1;
+@@ -490,7 +491,7 @@
+   if (!horde && economyVisit && opts.concern?.panel !== 'air') for (let k = 0; k < purchaseLimit; k++) {
+     // Keep a useful army in the field rather than waiting forever for a prestige purchase.
+     let candidate = buy;
+-    if (opts.human && armySize < 6 && !affords(candidate)) {
++    if (opts.human && armySize < 6 && !affords(candidate) && !saveFirstPreference) {
+       const fallback = canBuild('conscript', me.faction) && trains('conscript') ? 'conscript' : 'rifle';
+       if (trains(fallback) && affords(fallback)) candidate = fallback;
+     }

@@ -1214,6 +1214,8 @@ function worldPathView(g, slot) {
 }
 
 const observedPaths = new WeakMap();
+// Internal views have complete typed terrain and maintain every navigation version.
+const nativeObservedPathViews = new WeakSet();
 function observedPathView(g, slot) {
   let recipients = observedPaths.get(g); if (!recipients) observedPaths.set(g, recipients = new Map());
   let state = recipients.get(slot); if (state?.initial !== g.initialTerrain) state = null;
@@ -1224,6 +1226,8 @@ function observedPathView(g, slot) {
     const view = { ...g, navigationObserved: true, chars, ground, objects, mineLayer, height, flags, wear, materials: new Map(), baseMaterials: new Map(), structuralCells: new Map(), structures: new Map(), cellMetadata: new Map(), cellHp: new Float32Array(N), trenchFront: Float32Array.from(g.initialTerrain.trenchFront ?? Array(N).fill(NaN)), wrecks: [], worldNearWalls: new Uint8Array(N), mineSeen: new Map(),
       pathStats: pathStatsFor(g), navigationKnowledge: slot, navigationKnowledgeVersion: 0, obstructionVersion: 0,
       infantryRegionVersion: 0, vehicleRegionVersion: 0, navalRegionVersion: 0, terrainVersion: 0, navigationChanges: [], initialTerrain: { chars, height } };
+    if (Number.isInteger(g.w) && Number.isInteger(g.h) && g.w > 0 && g.h > 0
+      && view.flags.length === N && view.height.length === N) nativeObservedPathViews.add(view);
     for (let c = 0; c < N; c++) view.cellHp[c] = maxHp(view, c);
     state = { view, rows: new Map(), version: 0, initial: g.initialTerrain }; recipients.set(slot, state);
     updateObservedWalls(view, flags.keys(), true);
@@ -2169,7 +2173,11 @@ export function findPath(g, from, to) {
     return path;
   }
   const groundProfile = UNITS[from.type];
-  if (isGroundVehicle(groundProfile) && !g.vehicleFootprintKnown) return findPath(vehicleNavigationView(g, groundProfile, blockOf(groundProfile)), from, to);
+  if (isGroundVehicle(groundProfile) && !g.vehicleFootprintKnown) {
+    const view = vehicleNavigationView(g, groundProfile, blockOf(groundProfile));
+    if (nativeObservedPathViews.has(g)) nativeObservedPathViews.add(view);
+    return findPath(view, from, to);
+  }
   pathFailures.delete(from); // a fresh immediate command resets earlier retry failures
   // vehicles can't cross tank traps; infantry go around wire when there's a way (straight lines don't cross it either)
   const def = UNITS[from.type], naval = !!def?.naval, veh = def && !def.infantry && !naval, block = blockOf(def), pull = naval ? block : veh ? block | MUD | WOOD : MOVE | WIRE;
@@ -2206,7 +2214,8 @@ export function findPath(g, from, to) {
   const throughPost = (a, b) => posts.some(p => dist(a, p) >= postR + 1.5 && dist(b, p) >= postR + 1.5 && segHits(a, b, p, postR + 1.5));
   const stats = pathStatsFor(g); stats.calls++;
   if (!leg.connected) { stats.failed++; stats.regionRejected++; return []; }
-  if (!g.worldKnown && goal !== start && !(g.flags[start] & block)) {
+  // A connected coarse route is contained in full-map connectivity on these internal views.
+  if (!g.worldKnown && !nativeObservedPathViews.has(g) && goal !== start && !(g.flags[start] & block)) {
     const labels = regionsFor(g, block);
     if (labels[goal] < 0 || labels[start] !== labels[goal]) { stats.failed++; stats.regionRejected++; return []; }
   }
@@ -3392,11 +3401,14 @@ function fogTerrain(g) {
   }
   const bw = (w >> FOG_BLOCK) + 1, blocks = bw * ((h >> FOG_BLOCK) + 1), top = new Int8Array(blocks).fill(CFG.minLevel);
   const height = g.height?.slice() ?? null, stamp = old?.stamp ?? new Uint32Array(blocks);
-  for (let c = 0; c < n; c++) {
-    const b = (Math.floor(c / w) >> FOG_BLOCK) * bw + ((c % w) >> FOG_BLOCK), level = height ? height[c] : 0;
-    if (level > top[b]) top[b] = level;
-    // the blocks where sight changed: sources looking over them work their cells out again
-    if (old && (sight[c] !== old.sight[c] || level !== (old.height ? old.height[c] : 0))) stamp[b] = version;
+  for (let y = 0, c = 0; y < h; y++) {
+    const row = (y >> FOG_BLOCK) * bw;
+    for (let x = 0; x < w; x++, c++) {
+      const b = row + (x >> FOG_BLOCK), level = height ? height[c] : 0;
+      if (level > top[b]) top[b] = level;
+      // the blocks where sight changed: sources looking over them work their cells out again
+      if (old && (sight[c] !== old.sight[c] || level !== (old.height ? old.height[c] : 0))) stamp[b] = version;
+    }
   }
   return (g.fogTerrain = { version, sat, W, top, bw, sight, height, stamp });
 }
@@ -4680,9 +4692,84 @@ export function unitDelta(sent, rows, full = false) {
   return { units, gone: gone.size ? [...gone] : undefined, all: full || undefined, held: [sent.size, xor] };
 }
 
+// Sparse effect visibility keeps the same private source-cache generations as teamCells.
+const pointFogGames = new WeakMap(), projectionPointFog = new WeakMap();
+export function useProjectionPointFog(projection, token, game) {
+  let states = pointFogGames.get(game);
+  if (!states) pointFogGames.set(game, states = new WeakMap());
+  let state = states.get(token);
+  if (!state) states.set(token, state = { teams: new Map(), sources: new Map() });
+  projectionPointFog.set(projection, state);
+}
+function pointSource(g, frozen, f, u) {
+  const def = UNITS[u.type], w = g.w, h = g.h, air = !!u.air, building = !!def.building;
+  const vision = visionOf(g, u), range = visionRange(g, u, def), reach = fogReach(g, u, def), sx = u.x, sz = u.z;
+  const x0 = Math.max(0, Math.floor((sx - reach) / CELL)), x1 = Math.min(w - 1, Math.floor((sx + reach) / CELL));
+  const y0 = Math.max(0, Math.floor((sz - reach) / CELL)), y1 = Math.min(h - 1, Math.floor((sz + reach) / CELL));
+  const ux = Math.floor(sx / CELL), uy = Math.floor(sz / CELL), inside = ux >= 0 && uy >= 0 && ux < w && uy < h;
+  const la = levelAt(g, sx, sz), srcTop = g.height && x0 <= x1 && y0 <= y1 ? blockMax(f, f.top, x0, y0, x1, y1) : CFG.minLevel;
+  const originals = smokesNear(g, u, reach), smokes = originals.map(s => ({ x: s.x, z: s.z, r: s.r })), answers = new Map();
+  const query = cell => {
+    if (answers.has(cell)) return answers.get(cell);
+    const x = cell % w, y = Math.floor(cell / w), px = (x + .5) * CELL, pz = (y + .5) * CELL;
+    const dx = sx - px, dz = sz - pz, q = dx * dx + dz * dz, span = Math.sqrt(Math.max(0, reach * reach - dz * dz));
+    const xa = Math.max(x0, Math.floor((sx - span) / CELL) - 1), xb = Math.min(x1, Math.floor((sx + span) / CELL) + 1);
+    const visible = y >= y0 && y <= y1 && x >= xa && x <= xb && (air ? within(q, dx, dz, vision)
+      : within(q, dx, dz, 6, true) || (building && within(q, dx, dz, vision))
+        || (within(q, dx, dz, range) && (inside ? fogLos(frozen, f, sx, sz, ux, uy, x, y, la, srcTop, smokes) : los(frozen, { x: sx, z: sz }, { x: px, z: pz }))));
+    answers.set(cell, visible); return visible;
+  };
+  return { query, box: [x0, y0, Math.max(x0, x1), Math.max(y0, y1)], smokes: originals, reach, range, version: f.version };
+}
+function pointFogVisible(g, team, cell, state) {
+  const key = g.visionTick ?? -1;
+  let remembered = state.teams.get(team);
+  if (remembered?.key !== key) {
+    const terrainHost = { w: g.w, h: g.h, flags: g.flags, height: g.height, terrainVersion: g.terrainVersion, fogTerrain: state.terrain };
+    const f = fogTerrain(terrainHost); state.terrain = f;
+    const frozen = { w: g.w, h: g.h, flags: g.flags.slice(), height: g.height?.slice() ?? null,
+      smokes: g.smokes.map(s => ({ x: s.x, z: s.z, r: s.r })) };
+    const kept = state.sources, queries = [];
+    for (const id of kept.keys()) if (!g.units.has(id)) kept.delete(id);
+    for (const u of g.units.values()) {
+      if (g.players[u.owner].team !== team || (u.air && !airborne(u))) continue;
+      if (u.air) { queries.push(pointSource(g, frozen, f, u).query); continue; }
+      const e = kept.get(u.id);
+      if (!e || e.x !== u.x || e.z !== u.z || e.garrison !== u.garrison) {
+        kept.set(u.id, { x: u.x, z: u.z, garrison: u.garrison, query: null });
+        queries.push(pointSource(g, frozen, f, u).query); continue;
+      }
+      if (!(e.query && e.range === visionRange(g, u, UNITS[u.type]) && blockMax(f, f.stamp, e.box[0], e.box[1], e.box[2], e.box[3]) <= e.version && sameList(e.smokes, smokesNear(g, u, e.reach))))
+        Object.assign(e, pointSource(g, frozen, f, u));
+      queries.push(e.query);
+    }
+    const recon = g.strikes.filter(s => s.live && s.kind === 'recon' && g.players[s.owner].team === team).map(s => ({ ...s }));
+    const seen = new Set();
+    for (const id of g.players.find(p => p.team === team)?.visible ?? []) {
+      const u = g.units.get(id); if (!u || u.air) continue;
+      if (u.cells) for (const c of u.cells) seen.add(c);
+      else { const c = cellOf(g, u.x, u.z); if (c >= 0) seen.add(c); }
+    }
+    const w = g.w, h = g.h, { len, width } = SUPPORT.recon, reach = Math.hypot(len, width) / 2, answers = new Map();
+    const query = c => {
+      if (answers.has(c)) return answers.get(c);
+      const x = c % w, y = Math.floor(c / w), at = { x: (x + .5) * CELL, z: (y + .5) * CELL };
+      const result = seen.has(c) || queries.some(query => query(c)) || recon.some(s =>
+        x >= Math.max(0, Math.floor((s.x - reach) / CELL)) && x <= Math.min(w - 1, Math.floor((s.x + reach) / CELL))
+        && y >= Math.max(0, Math.floor((s.z - reach) / CELL)) && y <= Math.min(h - 1, Math.floor((s.z + reach) / CELL)) && inStrip(s, at, len, width));
+      answers.set(c, result); return result;
+    };
+    remembered = { key, query }; state.teams.set(team, remembered);
+  }
+  return remembered.query(cell);
+}
+
 function flightVisible(g, team, at) {
   const c = cellOf(g, at.x, at.z);
-  return g.reveal || (c >= 0 && !!teamFog(g, team).vis[c]);
+  if (g.reveal || c < 0) return !!g.reveal;
+  const sparse = projectionPointFog.get(g), canonical = g.fog?.get(team);
+  if (sparse && canonical?.key !== (g.visionTick ?? -1)) return pointFogVisible(g, team, c, sparse);
+  return !!teamFog(g, team).vis[c];
 }
 function flightUntil(g, team, p, time, slot) {
   const end = Math.min(p.expires, time + 0.15), a = flightAt(p, time), b = flightAt(p, end);

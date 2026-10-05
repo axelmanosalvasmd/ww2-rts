@@ -1,0 +1,14 @@
+{
+  "status": "PASS",
+  "qualification": "Copy integrity only. Retained source-specific results are not new checks or acceptance.",
+  "archive": "inspection-agent-and-root-native.tar.gz",
+  "archiveBytes": 721719,
+  "archiveSHA256": "908cbba4564e04df7b830bf545034e80f2d6f4b460d4cd3e492ae7cdd0ca7cf1",
+  "members": 119,
+  "originals": 116,
+  "originalCopiedBytes": 2172078,
+  "payloadBytes": 2219785,
+  "allOriginalBytesUnchanged": true,
+  "allRoundtripBytesMatch": true,
+  "manifestSHA256": "aed2e94ef8b14326332bd26f1bb33ae821d8c26736370c79e2cc8a380811321f"
+}

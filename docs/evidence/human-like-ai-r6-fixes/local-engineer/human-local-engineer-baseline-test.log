@@ -1,0 +1,22 @@
+{"variant":"positive","commands":[],"inputs":[],"idleWork":[],"siteBuilt":0,"builtBefore":0,"engineerId":3,"engineerBuild":0}
+node:internal/modules/run_main:107
+    triggerUncaughtException(
+    ^
+
+AssertionError [ERR_ASSERTION]: the actual work belongs to the named idle visit
+
+0 !== 1
+
+    at file:///tmp/human-local-engineer-baseline/test-local-idle-engineer.js:37:57
+    at ModuleJob.run (node:internal/modules/esm/module_job:561:25)
+    at async node:internal/modules/esm/loader:647:26
+    at async asyncRunEntryPointWithESMLoader (node:internal/modules/run_main:101:5) {
+  generatedMessage: false,
+  code: 'ERR_ASSERTION',
+  actual: 0,
+  expected: 1,
+  operator: 'strictEqual',
+  diff: 'simple'
+}
+
+Node.js v24.21.0

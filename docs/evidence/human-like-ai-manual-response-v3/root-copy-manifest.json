@@ -1,0 +1,37 @@
+{
+  "copiedAt": "2026-10-04T20:46:30.420112+00:00",
+  "adopted": true,
+  "numericalAcceptance": false,
+  "sourceFiles": {
+    "test-engine-ai-manual-response-v3.js": "ee51561c9509fe0764c47c173b12ed35d161d4aa6d6ebf5985e06a9df78e9342",
+    "tools/ai-manual-response-policy-v3.mjs": "c45e589d661b4980a79181ca987b503054ebb3e7e554f1bc272dd3eab50a6928",
+    "tools/ai-manual-response-capture-v3.mjs": "19e1a93ae79b04f3eb768263052d48b344b086831b261ae40e7da0b004ea8775",
+    "tools/ai-humanity.mjs": "f2f0819439bb45e6241d2f4aba5f2f8c45cd93fa073a9930bd6368eb9ef838a8"
+  },
+  "copied": [
+    {
+      "source": "/tmp/ai-manual-v3-proposal/DECLARATION.md",
+      "path": "docs/evidence/human-like-ai-manual-response-v3/DECLARATION.md",
+      "bytes": 4664,
+      "sha256": "b5f07da5cf6b82154b94eaa67f327d3dab970b2fa72c459d440b7d4a0ceafc62"
+    },
+    {
+      "source": "/tmp/ai-manual-v3-proposal/proposal.patch",
+      "path": "docs/evidence/human-like-ai-manual-response-v3/proposal.patch",
+      "bytes": 62922,
+      "sha256": "f8c96be9daa3167ba317d65e7e036777bf82043f438a705f74c53caddc5b565e"
+    },
+    {
+      "source": "/tmp/ai-manual-v3-proposal/native-proof.json",
+      "path": "docs/evidence/human-like-ai-manual-response-v3/native-proof.json",
+      "bytes": 154539,
+      "sha256": "c01d0908d96da26e96104a45541581603e432799fb03b2097d9a348b3c4c8fd4"
+    },
+    {
+      "source": "/tmp/ai-manual-v3-proposal/test-portable-final.log",
+      "path": "docs/evidence/human-like-ai-manual-response-v3/test-portable-final.log",
+      "bytes": 95,
+      "sha256": "d84d66496136784f9c462cdb37bab2e7d5e187edfbbdd1e36a51bc7986a619ee"
+    }
+  ]
+}

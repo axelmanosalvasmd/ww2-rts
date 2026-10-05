@@ -1,0 +1,1689 @@
+{
+  "note": "Isolated full-map region connectivity pass on captured native flags/height graphs. CPU1 nice19, all2warmups and12fixed trials retained. No whole-frame timing or acceptance claim. Existing native graph capture used, no new native simulation row.",
+  "fixtures": 22,
+  "warmups": [
+    [
+      {
+        "tick": 64,
+        "block": 1,
+        "milliseconds": 10.681908999999997
+      },
+      {
+        "tick": 65,
+        "block": 1,
+        "milliseconds": 1.384754000000001
+      },
+      {
+        "tick": 89,
+        "block": 1,
+        "milliseconds": 11.845659000000012
+      },
+      {
+        "tick": 105,
+        "block": 1,
+        "milliseconds": 6.677052000000003
+      },
+      {
+        "tick": 112,
+        "block": 1,
+        "milliseconds": 3.0453940000000017
+      },
+      {
+        "tick": 113,
+        "block": 1,
+        "milliseconds": 6.813758000000007
+      },
+      {
+        "tick": 298,
+        "block": 65,
+        "milliseconds": 4.567292000000009
+      },
+      {
+        "tick": 299,
+        "block": 65,
+        "milliseconds": 2.1675579999999997
+      },
+      {
+        "tick": 324,
+        "block": 65,
+        "milliseconds": 2.140309000000002
+      },
+      {
+        "tick": 331,
+        "block": 65,
+        "milliseconds": 2.1062940000000054
+      },
+      {
+        "tick": 341,
+        "block": 65,
+        "milliseconds": 2.0886579999999952
+      },
+      {
+        "tick": 348,
+        "block": 65,
+        "milliseconds": 2.0825770000000006
+      },
+      {
+        "tick": 535,
+        "block": 65,
+        "milliseconds": 2.158991999999998
+      },
+      {
+        "tick": 600,
+        "block": 65,
+        "milliseconds": 2.0665680000000037
+      },
+      {
+        "tick": 629,
+        "block": 65,
+        "milliseconds": 2.172101000000012
+      },
+      {
+        "tick": 637,
+        "block": 65,
+        "milliseconds": 2.0544160000000034
+      },
+      {
+        "tick": 750,
+        "block": 65,
+        "milliseconds": 2.1480200000000025
+      },
+      {
+        "tick": 806,
+        "block": 65,
+        "milliseconds": 2.1047889999999967
+      },
+      {
+        "tick": 857,
+        "block": 65,
+        "milliseconds": 2.0796529999999933
+      },
+      {
+        "tick": 867,
+        "block": 65,
+        "milliseconds": 2.133922999999996
+      },
+      {
+        "tick": 923,
+        "block": 65,
+        "milliseconds": 2.1033590000000117
+      },
+      {
+        "tick": 938,
+        "block": 65,
+        "milliseconds": 2.0833339999999794
+      }
+    ],
+    [
+      {
+        "tick": 64,
+        "block": 1,
+        "milliseconds": 2.2185539999999833
+      },
+      {
+        "tick": 65,
+        "block": 1,
+        "milliseconds": 2.1813630000000046
+      },
+      {
+        "tick": 89,
+        "block": 1,
+        "milliseconds": 2.202371999999997
+      },
+      {
+        "tick": 105,
+        "block": 1,
+        "milliseconds": 2.224113000000017
+      },
+      {
+        "tick": 112,
+        "block": 1,
+        "milliseconds": 2.176757000000009
+      },
+      {
+        "tick": 113,
+        "block": 1,
+        "milliseconds": 2.2434279999999944
+      },
+      {
+        "tick": 298,
+        "block": 65,
+        "milliseconds": 2.1016759999999977
+      },
+      {
+        "tick": 299,
+        "block": 65,
+        "milliseconds": 2.1112139999999897
+      },
+      {
+        "tick": 324,
+        "block": 65,
+        "milliseconds": 2.1268990000000088
+      },
+      {
+        "tick": 331,
+        "block": 65,
+        "milliseconds": 2.0623270000000105
+      },
+      {
+        "tick": 341,
+        "block": 65,
+        "milliseconds": 2.1325429999999983
+      },
+      {
+        "tick": 348,
+        "block": 65,
+        "milliseconds": 2.1483160000000225
+      },
+      {
+        "tick": 535,
+        "block": 65,
+        "milliseconds": 2.1125310000000184
+      },
+      {
+        "tick": 600,
+        "block": 65,
+        "milliseconds": 2.1042469999999867
+      },
+      {
+        "tick": 629,
+        "block": 65,
+        "milliseconds": 2.164738
+      },
+      {
+        "tick": 637,
+        "block": 65,
+        "milliseconds": 2.1335659999999734
+      },
+      {
+        "tick": 750,
+        "block": 65,
+        "milliseconds": 2.0540670000000034
+      },
+      {
+        "tick": 806,
+        "block": 65,
+        "milliseconds": 2.1928869999999847
+      },
+      {
+        "tick": 857,
+        "block": 65,
+        "milliseconds": 2.121561999999983
+      },
+      {
+        "tick": 867,
+        "block": 65,
+        "milliseconds": 2.0804720000000145
+      },
+      {
+        "tick": 923,
+        "block": 65,
+        "milliseconds": 2.151128
+      },
+      {
+        "tick": 938,
+        "block": 65,
+        "milliseconds": 2.015654000000012
+      }
+    ]
+  ],
+  "trials": [
+    [
+      {
+        "tick": 64,
+        "block": 1,
+        "milliseconds": 2.180605999999983
+      },
+      {
+        "tick": 65,
+        "block": 1,
+        "milliseconds": 2.1316659999999956
+      },
+      {
+        "tick": 89,
+        "block": 1,
+        "milliseconds": 2.235942999999992
+      },
+      {
+        "tick": 105,
+        "block": 1,
+        "milliseconds": 2.155253000000016
+      },
+      {
+        "tick": 112,
+        "block": 1,
+        "milliseconds": 2.2151929999999993
+      },
+      {
+        "tick": 113,
+        "block": 1,
+        "milliseconds": 2.198983999999996
+      },
+      {
+        "tick": 298,
+        "block": 65,
+        "milliseconds": 2.1152230000000145
+      },
+      {
+        "tick": 299,
+        "block": 65,
+        "milliseconds": 2.1617899999999963
+      },
+      {
+        "tick": 324,
+        "block": 65,
+        "milliseconds": 2.153154999999998
+      },
+      {
+        "tick": 331,
+        "block": 65,
+        "milliseconds": 2.1206750000000056
+      },
+      {
+        "tick": 341,
+        "block": 65,
+        "milliseconds": 2.1176790000000096
+      },
+      {
+        "tick": 348,
+        "block": 65,
+        "milliseconds": 2.08417799999998
+      },
+      {
+        "tick": 535,
+        "block": 65,
+        "milliseconds": 2.1243840000000205
+      },
+      {
+        "tick": 600,
+        "block": 65,
+        "milliseconds": 2.0938210000000197
+      },
+      {
+        "tick": 629,
+        "block": 65,
+        "milliseconds": 2.0704410000000166
+      },
+      {
+        "tick": 637,
+        "block": 65,
+        "milliseconds": 2.1581290000000024
+      },
+      {
+        "tick": 750,
+        "block": 65,
+        "milliseconds": 2.100943000000001
+      },
+      {
+        "tick": 806,
+        "block": 65,
+        "milliseconds": 2.1487419999999986
+      },
+      {
+        "tick": 857,
+        "block": 65,
+        "milliseconds": 2.076238000000018
+      },
+      {
+        "tick": 867,
+        "block": 65,
+        "milliseconds": 2.1326170000000104
+      },
+      {
+        "tick": 923,
+        "block": 65,
+        "milliseconds": 2.133251999999999
+      },
+      {
+        "tick": 938,
+        "block": 65,
+        "milliseconds": 2.082554999999985
+      }
+    ],
+    [
+      {
+        "tick": 64,
+        "block": 1,
+        "milliseconds": 2.208387999999985
+      },
+      {
+        "tick": 65,
+        "block": 1,
+        "milliseconds": 2.2774619999999857
+      },
+      {
+        "tick": 89,
+        "block": 1,
+        "milliseconds": 2.1622820000000047
+      },
+      {
+        "tick": 105,
+        "block": 1,
+        "milliseconds": 2.2335319999999967
+      },
+      {
+        "tick": 112,
+        "block": 1,
+        "milliseconds": 2.1512580000000128
+      },
+      {
+        "tick": 113,
+        "block": 1,
+        "milliseconds": 2.1901829999999904
+      },
+      {
+        "tick": 298,
+        "block": 65,
+        "milliseconds": 2.1160250000000076
+      },
+      {
+        "tick": 299,
+        "block": 65,
+        "milliseconds": 2.0942790000000002
+      },
+      {
+        "tick": 324,
+        "block": 65,
+        "milliseconds": 2.1664340000000095
+      },
+      {
+        "tick": 331,
+        "block": 65,
+        "milliseconds": 2.093590999999975
+      },
+      {
+        "tick": 341,
+        "block": 65,
+        "milliseconds": 2.1390710000000013
+      },
+      {
+        "tick": 348,
+        "block": 65,
+        "milliseconds": 2.1107279999999946
+      },
+      {
+        "tick": 535,
+        "block": 65,
+        "milliseconds": 2.0218380000000025
+      },
+      {
+        "tick": 600,
+        "block": 65,
+        "milliseconds": 2.171065999999996
+      },
+      {
+        "tick": 629,
+        "block": 65,
+        "milliseconds": 2.003629000000018
+      },
+      {
+        "tick": 637,
+        "block": 65,
+        "milliseconds": 2.059615000000008
+      },
+      {
+        "tick": 750,
+        "block": 65,
+        "milliseconds": 2.1553030000000035
+      },
+      {
+        "tick": 806,
+        "block": 65,
+        "milliseconds": 2.0746619999999893
+      },
+      {
+        "tick": 857,
+        "block": 65,
+        "milliseconds": 2.123453999999981
+      },
+      {
+        "tick": 867,
+        "block": 65,
+        "milliseconds": 2.0354790000000094
+      },
+      {
+        "tick": 923,
+        "block": 65,
+        "milliseconds": 1.9440040000000067
+      },
+      {
+        "tick": 938,
+        "block": 65,
+        "milliseconds": 2.0209310000000187
+      }
+    ],
+    [
+      {
+        "tick": 64,
+        "block": 1,
+        "milliseconds": 2.180209999999988
+      },
+      {
+        "tick": 65,
+        "block": 1,
+        "milliseconds": 2.1818099999999845
+      },
+      {
+        "tick": 89,
+        "block": 1,
+        "milliseconds": 2.1121289999999817
+      },
+      {
+        "tick": 105,
+        "block": 1,
+        "milliseconds": 2.264197000000024
+      },
+      {
+        "tick": 112,
+        "block": 1,
+        "milliseconds": 2.119168000000002
+      },
+      {
+        "tick": 113,
+        "block": 1,
+        "milliseconds": 2.1979939999999942
+      },
+      {
+        "tick": 298,
+        "block": 65,
+        "milliseconds": 2.123576000000014
+      },
+      {
+        "tick": 299,
+        "block": 65,
+        "milliseconds": 2.1078809999999635
+      },
+      {
+        "tick": 324,
+        "block": 65,
+        "milliseconds": 2.082479000000035
+      },
+      {
+        "tick": 331,
+        "block": 65,
+        "milliseconds": 1.9426730000000134
+      },
+      {
+        "tick": 341,
+        "block": 65,
+        "milliseconds": 2.103681999999992
+      },
+      {
+        "tick": 348,
+        "block": 65,
+        "milliseconds": 2.1079659999999762
+      },
+      {
+        "tick": 535,
+        "block": 65,
+        "milliseconds": 2.1316120000000183
+      },
+      {
+        "tick": 600,
+        "block": 65,
+        "milliseconds": 2.097766999999976
+      },
+      {
+        "tick": 629,
+        "block": 65,
+        "milliseconds": 2.0958969999999795
+      },
+      {
+        "tick": 637,
+        "block": 65,
+        "milliseconds": 2.0780790000000025
+      },
+      {
+        "tick": 750,
+        "block": 65,
+        "milliseconds": 2.123085000000003
+      },
+      {
+        "tick": 806,
+        "block": 65,
+        "milliseconds": 2.0574760000000083
+      },
+      {
+        "tick": 857,
+        "block": 65,
+        "milliseconds": 2.165440999999987
+      },
+      {
+        "tick": 867,
+        "block": 65,
+        "milliseconds": 2.0856919999999946
+      },
+      {
+        "tick": 923,
+        "block": 65,
+        "milliseconds": 2.1192629999999895
+      },
+      {
+        "tick": 938,
+        "block": 65,
+        "milliseconds": 2.120582000000013
+      }
+    ],
+    [
+      {
+        "tick": 64,
+        "block": 1,
+        "milliseconds": 2.2046649999999772
+      },
+      {
+        "tick": 65,
+        "block": 1,
+        "milliseconds": 2.1915009999999597
+      },
+      {
+        "tick": 89,
+        "block": 1,
+        "milliseconds": 2.300755000000038
+      },
+      {
+        "tick": 105,
+        "block": 1,
+        "milliseconds": 2.2007500000000277
+      },
+      {
+        "tick": 112,
+        "block": 1,
+        "milliseconds": 2.1905179999999973
+      },
+      {
+        "tick": 113,
+        "block": 1,
+        "milliseconds": 2.1640990000000215
+      },
+      {
+        "tick": 298,
+        "block": 65,
+        "milliseconds": 2.136954000000003
+      },
+      {
+        "tick": 299,
+        "block": 65,
+        "milliseconds": 2.0606859999999756
+      },
+      {
+        "tick": 324,
+        "block": 65,
+        "milliseconds": 2.155212000000006
+      },
+      {
+        "tick": 331,
+        "block": 65,
+        "milliseconds": 2.1003859999999577
+      },
+      {
+        "tick": 341,
+        "block": 65,
+        "milliseconds": 2.1047719999999686
+      },
+      {
+        "tick": 348,
+        "block": 65,
+        "milliseconds": 2.1067670000000476
+      },
+      {
+        "tick": 535,
+        "block": 65,
+        "milliseconds": 2.1787560000000212
+      },
+      {
+        "tick": 600,
+        "block": 65,
+        "milliseconds": 2.1049579999999537
+      },
+      {
+        "tick": 629,
+        "block": 65,
+        "milliseconds": 2.129169999999988
+      },
+      {
+        "tick": 637,
+        "block": 65,
+        "milliseconds": 2.131463999999994
+      },
+      {
+        "tick": 750,
+        "block": 65,
+        "milliseconds": 2.110243999999966
+      },
+      {
+        "tick": 806,
+        "block": 65,
+        "milliseconds": 2.140412000000026
+      },
+      {
+        "tick": 857,
+        "block": 65,
+        "milliseconds": 2.089049999999986
+      },
+      {
+        "tick": 867,
+        "block": 65,
+        "milliseconds": 2.1647120000000086
+      },
+      {
+        "tick": 923,
+        "block": 65,
+        "milliseconds": 2.1244910000000345
+      },
+      {
+        "tick": 938,
+        "block": 65,
+        "milliseconds": 2.0715110000000436
+      }
+    ],
+    [
+      {
+        "tick": 64,
+        "block": 1,
+        "milliseconds": 2.1830889999999954
+      },
+      {
+        "tick": 65,
+        "block": 1,
+        "milliseconds": 2.191411999999957
+      },
+      {
+        "tick": 89,
+        "block": 1,
+        "milliseconds": 2.24772999999999
+      },
+      {
+        "tick": 105,
+        "block": 1,
+        "milliseconds": 2.151497000000006
+      },
+      {
+        "tick": 112,
+        "block": 1,
+        "milliseconds": 2.222025999999971
+      },
+      {
+        "tick": 113,
+        "block": 1,
+        "milliseconds": 2.149689999999964
+      },
+      {
+        "tick": 298,
+        "block": 65,
+        "milliseconds": 1.925547999999992
+      },
+      {
+        "tick": 299,
+        "block": 65,
+        "milliseconds": 2.1462810000000445
+      },
+      {
+        "tick": 324,
+        "block": 65,
+        "milliseconds": 2.0917949999999905
+      },
+      {
+        "tick": 331,
+        "block": 65,
+        "milliseconds": 2.1703860000000077
+      },
+      {
+        "tick": 341,
+        "block": 65,
+        "milliseconds": 2.150390000000016
+      },
+      {
+        "tick": 348,
+        "block": 65,
+        "milliseconds": 2.0963459999999827
+      },
+      {
+        "tick": 535,
+        "block": 65,
+        "milliseconds": 2.1697170000000483
+      },
+      {
+        "tick": 600,
+        "block": 65,
+        "milliseconds": 2.1107990000000427
+      },
+      {
+        "tick": 629,
+        "block": 65,
+        "milliseconds": 2.150228000000027
+      },
+      {
+        "tick": 637,
+        "block": 65,
+        "milliseconds": 2.100764999999967
+      },
+      {
+        "tick": 750,
+        "block": 65,
+        "milliseconds": 2.111334999999997
+      },
+      {
+        "tick": 806,
+        "block": 65,
+        "milliseconds": 2.1321399999999926
+      },
+      {
+        "tick": 857,
+        "block": 65,
+        "milliseconds": 2.036485999999968
+      },
+      {
+        "tick": 867,
+        "block": 65,
+        "milliseconds": 1.9960470000000328
+      },
+      {
+        "tick": 923,
+        "block": 65,
+        "milliseconds": 2.1960879999999747
+      },
+      {
+        "tick": 938,
+        "block": 65,
+        "milliseconds": 2.1180060000000367
+      }
+    ],
+    [
+      {
+        "tick": 64,
+        "block": 1,
+        "milliseconds": 2.1761829999999804
+      },
+      {
+        "tick": 65,
+        "block": 1,
+        "milliseconds": 2.206692999999973
+      },
+      {
+        "tick": 89,
+        "block": 1,
+        "milliseconds": 2.1794099999999617
+      },
+      {
+        "tick": 105,
+        "block": 1,
+        "milliseconds": 2.1941469999999867
+      },
+      {
+        "tick": 112,
+        "block": 1,
+        "milliseconds": 2.1843620000000215
+      },
+      {
+        "tick": 113,
+        "block": 1,
+        "milliseconds": 2.217671999999993
+      },
+      {
+        "tick": 298,
+        "block": 65,
+        "milliseconds": 2.1023480000000063
+      },
+      {
+        "tick": 299,
+        "block": 65,
+        "milliseconds": 2.1141810000000305
+      },
+      {
+        "tick": 324,
+        "block": 65,
+        "milliseconds": 2.123974999999973
+      },
+      {
+        "tick": 331,
+        "block": 65,
+        "milliseconds": 2.1237310000000207
+      },
+      {
+        "tick": 341,
+        "block": 65,
+        "milliseconds": 2.0568590000000313
+      },
+      {
+        "tick": 348,
+        "block": 65,
+        "milliseconds": 2.1805990000000293
+      },
+      {
+        "tick": 535,
+        "block": 65,
+        "milliseconds": 2.1413709999999924
+      },
+      {
+        "tick": 600,
+        "block": 65,
+        "milliseconds": 2.1128669999999943
+      },
+      {
+        "tick": 629,
+        "block": 65,
+        "milliseconds": 2.0946870000000217
+      },
+      {
+        "tick": 637,
+        "block": 65,
+        "milliseconds": 2.1558630000000107
+      },
+      {
+        "tick": 750,
+        "block": 65,
+        "milliseconds": 2.074017999999967
+      },
+      {
+        "tick": 806,
+        "block": 65,
+        "milliseconds": 2.1320289999999886
+      },
+      {
+        "tick": 857,
+        "block": 65,
+        "milliseconds": 2.1049689999999828
+      },
+      {
+        "tick": 867,
+        "block": 65,
+        "milliseconds": 2.1560670000000073
+      },
+      {
+        "tick": 923,
+        "block": 65,
+        "milliseconds": 2.144139999999993
+      },
+      {
+        "tick": 938,
+        "block": 65,
+        "milliseconds": 2.1255429999999933
+      }
+    ],
+    [
+      {
+        "tick": 64,
+        "block": 1,
+        "milliseconds": 2.203099000000009
+      },
+      {
+        "tick": 65,
+        "block": 1,
+        "milliseconds": 2.164442000000008
+      },
+      {
+        "tick": 89,
+        "block": 1,
+        "milliseconds": 2.2406730000000152
+      },
+      {
+        "tick": 105,
+        "block": 1,
+        "milliseconds": 2.1960129999999936
+      },
+      {
+        "tick": 112,
+        "block": 1,
+        "milliseconds": 2.186020000000042
+      },
+      {
+        "tick": 113,
+        "block": 1,
+        "milliseconds": 2.19380000000001
+      },
+      {
+        "tick": 298,
+        "block": 65,
+        "milliseconds": 2.1005409999999642
+      },
+      {
+        "tick": 299,
+        "block": 65,
+        "milliseconds": 2.1571429999999623
+      },
+      {
+        "tick": 324,
+        "block": 65,
+        "milliseconds": 2.0915770000000293
+      },
+      {
+        "tick": 331,
+        "block": 65,
+        "milliseconds": 2.118200999999999
+      },
+      {
+        "tick": 341,
+        "block": 65,
+        "milliseconds": 2.045348000000047
+      },
+      {
+        "tick": 348,
+        "block": 65,
+        "milliseconds": 2.1392809999999827
+      },
+      {
+        "tick": 535,
+        "block": 65,
+        "milliseconds": 2.1041819999999802
+      },
+      {
+        "tick": 600,
+        "block": 65,
+        "milliseconds": 2.1375439999999912
+      },
+      {
+        "tick": 629,
+        "block": 65,
+        "milliseconds": 2.08911599999999
+      },
+      {
+        "tick": 637,
+        "block": 65,
+        "milliseconds": 2.043428000000006
+      },
+      {
+        "tick": 750,
+        "block": 65,
+        "milliseconds": 1.9086619999999925
+      },
+      {
+        "tick": 806,
+        "block": 65,
+        "milliseconds": 2.035800999999992
+      },
+      {
+        "tick": 857,
+        "block": 65,
+        "milliseconds": 2.1140359999999987
+      },
+      {
+        "tick": 867,
+        "block": 65,
+        "milliseconds": 2.0947930000000383
+      },
+      {
+        "tick": 923,
+        "block": 65,
+        "milliseconds": 2.087564000000043
+      },
+      {
+        "tick": 938,
+        "block": 65,
+        "milliseconds": 2.1115990000000124
+      }
+    ],
+    [
+      {
+        "tick": 64,
+        "block": 1,
+        "milliseconds": 2.203749999999957
+      },
+      {
+        "tick": 65,
+        "block": 1,
+        "milliseconds": 2.2063699999999926
+      },
+      {
+        "tick": 89,
+        "block": 1,
+        "milliseconds": 2.1769870000000537
+      },
+      {
+        "tick": 105,
+        "block": 1,
+        "milliseconds": 2.197363999999993
+      },
+      {
+        "tick": 112,
+        "block": 1,
+        "milliseconds": 2.120119000000045
+      },
+      {
+        "tick": 113,
+        "block": 1,
+        "milliseconds": 2.2899609999999484
+      },
+      {
+        "tick": 298,
+        "block": 65,
+        "milliseconds": 2.2427810000000363
+      },
+      {
+        "tick": 299,
+        "block": 65,
+        "milliseconds": 2.0664189999999962
+      },
+      {
+        "tick": 324,
+        "block": 65,
+        "milliseconds": 2.114492999999925
+      },
+      {
+        "tick": 331,
+        "block": 65,
+        "milliseconds": 2.1338510000000497
+      },
+      {
+        "tick": 341,
+        "block": 65,
+        "milliseconds": 2.0905910000000176
+      },
+      {
+        "tick": 348,
+        "block": 65,
+        "milliseconds": 2.1212530000000243
+      },
+      {
+        "tick": 535,
+        "block": 65,
+        "milliseconds": 2.088581999999974
+      },
+      {
+        "tick": 600,
+        "block": 65,
+        "milliseconds": 2.0765069999999923
+      },
+      {
+        "tick": 629,
+        "block": 65,
+        "milliseconds": 2.1120090000000573
+      },
+      {
+        "tick": 637,
+        "block": 65,
+        "milliseconds": 2.1313940000000002
+      },
+      {
+        "tick": 750,
+        "block": 65,
+        "milliseconds": 2.1349709999999504
+      },
+      {
+        "tick": 806,
+        "block": 65,
+        "milliseconds": 2.0955880000000207
+      },
+      {
+        "tick": 857,
+        "block": 65,
+        "milliseconds": 2.113205999999991
+      },
+      {
+        "tick": 867,
+        "block": 65,
+        "milliseconds": 2.1159000000000106
+      },
+      {
+        "tick": 923,
+        "block": 65,
+        "milliseconds": 2.090108999999984
+      },
+      {
+        "tick": 938,
+        "block": 65,
+        "milliseconds": 2.104989000000046
+      }
+    ],
+    [
+      {
+        "tick": 64,
+        "block": 1,
+        "milliseconds": 2.173310000000015
+      },
+      {
+        "tick": 65,
+        "block": 1,
+        "milliseconds": 2.1639539999999897
+      },
+      {
+        "tick": 89,
+        "block": 1,
+        "milliseconds": 2.228738000000021
+      },
+      {
+        "tick": 105,
+        "block": 1,
+        "milliseconds": 2.120820999999978
+      },
+      {
+        "tick": 112,
+        "block": 1,
+        "milliseconds": 2.060021000000006
+      },
+      {
+        "tick": 113,
+        "block": 1,
+        "milliseconds": 2.1211580000000367
+      },
+      {
+        "tick": 298,
+        "block": 65,
+        "milliseconds": 1.9726119999999128
+      },
+      {
+        "tick": 299,
+        "block": 65,
+        "milliseconds": 2.0045029999999997
+      },
+      {
+        "tick": 324,
+        "block": 65,
+        "milliseconds": 1.9988160000000335
+      },
+      {
+        "tick": 331,
+        "block": 65,
+        "milliseconds": 2.021929
+      },
+      {
+        "tick": 341,
+        "block": 65,
+        "milliseconds": 2.0121059999999034
+      },
+      {
+        "tick": 348,
+        "block": 65,
+        "milliseconds": 2.0627700000000004
+      },
+      {
+        "tick": 535,
+        "block": 65,
+        "milliseconds": 2.052703000000065
+      },
+      {
+        "tick": 600,
+        "block": 65,
+        "milliseconds": 2.034699000000046
+      },
+      {
+        "tick": 629,
+        "block": 65,
+        "milliseconds": 1.9974650000000338
+      },
+      {
+        "tick": 637,
+        "block": 65,
+        "milliseconds": 1.9727509999999029
+      },
+      {
+        "tick": 750,
+        "block": 65,
+        "milliseconds": 1.9886000000000195
+      },
+      {
+        "tick": 806,
+        "block": 65,
+        "milliseconds": 1.8081670000000258
+      },
+      {
+        "tick": 857,
+        "block": 65,
+        "milliseconds": 1.9347360000000435
+      },
+      {
+        "tick": 867,
+        "block": 65,
+        "milliseconds": 1.996939999999995
+      },
+      {
+        "tick": 923,
+        "block": 65,
+        "milliseconds": 2.044010999999955
+      },
+      {
+        "tick": 938,
+        "block": 65,
+        "milliseconds": 2.010654999999929
+      }
+    ],
+    [
+      {
+        "tick": 64,
+        "block": 1,
+        "milliseconds": 2.069678999999951
+      },
+      {
+        "tick": 65,
+        "block": 1,
+        "milliseconds": 2.130431000000044
+      },
+      {
+        "tick": 89,
+        "block": 1,
+        "milliseconds": 2.056905000000029
+      },
+      {
+        "tick": 105,
+        "block": 1,
+        "milliseconds": 2.167989000000034
+      },
+      {
+        "tick": 112,
+        "block": 1,
+        "milliseconds": 2.0938460000000987
+      },
+      {
+        "tick": 113,
+        "block": 1,
+        "milliseconds": 2.0401339999999664
+      },
+      {
+        "tick": 298,
+        "block": 65,
+        "milliseconds": 2.063199999999938
+      },
+      {
+        "tick": 299,
+        "block": 65,
+        "milliseconds": 1.9741300000000592
+      },
+      {
+        "tick": 324,
+        "block": 65,
+        "milliseconds": 2.0117649999999685
+      },
+      {
+        "tick": 331,
+        "block": 65,
+        "milliseconds": 2.057745999999952
+      },
+      {
+        "tick": 341,
+        "block": 65,
+        "milliseconds": 2.100797000000057
+      },
+      {
+        "tick": 348,
+        "block": 65,
+        "milliseconds": 1.9636369999999488
+      },
+      {
+        "tick": 535,
+        "block": 65,
+        "milliseconds": 2.132374000000027
+      },
+      {
+        "tick": 600,
+        "block": 65,
+        "milliseconds": 2.1036309999999503
+      },
+      {
+        "tick": 629,
+        "block": 65,
+        "milliseconds": 2.0938990000000786
+      },
+      {
+        "tick": 637,
+        "block": 65,
+        "milliseconds": 2.030674999999974
+      },
+      {
+        "tick": 750,
+        "block": 65,
+        "milliseconds": 2.009206000000063
+      },
+      {
+        "tick": 806,
+        "block": 65,
+        "milliseconds": 2.0008510000000115
+      },
+      {
+        "tick": 857,
+        "block": 65,
+        "milliseconds": 3.113574000000085
+      },
+      {
+        "tick": 867,
+        "block": 65,
+        "milliseconds": 2.023684000000003
+      },
+      {
+        "tick": 923,
+        "block": 65,
+        "milliseconds": 1.960311000000047
+      },
+      {
+        "tick": 938,
+        "block": 65,
+        "milliseconds": 2.11902299999997
+      }
+    ],
+    [
+      {
+        "tick": 64,
+        "block": 1,
+        "milliseconds": 2.0306080000000293
+      },
+      {
+        "tick": 65,
+        "block": 1,
+        "milliseconds": 2.116514000000052
+      },
+      {
+        "tick": 89,
+        "block": 1,
+        "milliseconds": 2.0918629999999894
+      },
+      {
+        "tick": 105,
+        "block": 1,
+        "milliseconds": 2.083648999999923
+      },
+      {
+        "tick": 112,
+        "block": 1,
+        "milliseconds": 2.0658809999999903
+      },
+      {
+        "tick": 113,
+        "block": 1,
+        "milliseconds": 2.0976229999999987
+      },
+      {
+        "tick": 298,
+        "block": 65,
+        "milliseconds": 2.0293770000000677
+      },
+      {
+        "tick": 299,
+        "block": 65,
+        "milliseconds": 2.055154000000016
+      },
+      {
+        "tick": 324,
+        "block": 65,
+        "milliseconds": 1.9639419999999745
+      },
+      {
+        "tick": 331,
+        "block": 65,
+        "milliseconds": 2.0579979999999978
+      },
+      {
+        "tick": 341,
+        "block": 65,
+        "milliseconds": 2.009064999999964
+      },
+      {
+        "tick": 348,
+        "block": 65,
+        "milliseconds": 2.1470030000000406
+      },
+      {
+        "tick": 535,
+        "block": 65,
+        "milliseconds": 2.093118000000004
+      },
+      {
+        "tick": 600,
+        "block": 65,
+        "milliseconds": 2.0937790000000405
+      },
+      {
+        "tick": 629,
+        "block": 65,
+        "milliseconds": 2.101945999999998
+      },
+      {
+        "tick": 637,
+        "block": 65,
+        "milliseconds": 2.0468440000000783
+      },
+      {
+        "tick": 750,
+        "block": 65,
+        "milliseconds": 2.1684020000000146
+      },
+      {
+        "tick": 806,
+        "block": 65,
+        "milliseconds": 2.0639810000000125
+      },
+      {
+        "tick": 857,
+        "block": 65,
+        "milliseconds": 2.070697999999993
+      },
+      {
+        "tick": 867,
+        "block": 65,
+        "milliseconds": 2.09359900000004
+      },
+      {
+        "tick": 923,
+        "block": 65,
+        "milliseconds": 2.059364999999957
+      },
+      {
+        "tick": 938,
+        "block": 65,
+        "milliseconds": 2.1434279999999717
+      }
+    ],
+    [
+      {
+        "tick": 64,
+        "block": 1,
+        "milliseconds": 2.0375760000000582
+      },
+      {
+        "tick": 65,
+        "block": 1,
+        "milliseconds": 1.9455390000000534
+      },
+      {
+        "tick": 89,
+        "block": 1,
+        "milliseconds": 2.2542689999999084
+      },
+      {
+        "tick": 105,
+        "block": 1,
+        "milliseconds": 2.0706910000000107
+      },
+      {
+        "tick": 112,
+        "block": 1,
+        "milliseconds": 2.122728000000052
+      },
+      {
+        "tick": 113,
+        "block": 1,
+        "milliseconds": 2.020432000000028
+      },
+      {
+        "tick": 298,
+        "block": 65,
+        "milliseconds": 2.0484349999999267
+      },
+      {
+        "tick": 299,
+        "block": 65,
+        "milliseconds": 2.016471000000024
+      },
+      {
+        "tick": 324,
+        "block": 65,
+        "milliseconds": 2.0333559999999125
+      },
+      {
+        "tick": 331,
+        "block": 65,
+        "milliseconds": 1.984407000000033
+      },
+      {
+        "tick": 341,
+        "block": 65,
+        "milliseconds": 2.0650519999999233
+      },
+      {
+        "tick": 348,
+        "block": 65,
+        "milliseconds": 2.0364989999999352
+      },
+      {
+        "tick": 535,
+        "block": 65,
+        "milliseconds": 2.0408250000000407
+      },
+      {
+        "tick": 600,
+        "block": 65,
+        "milliseconds": 1.9720930000000862
+      },
+      {
+        "tick": 629,
+        "block": 65,
+        "milliseconds": 2.011030000000005
+      },
+      {
+        "tick": 637,
+        "block": 65,
+        "milliseconds": 2.0421740000000455
+      },
+      {
+        "tick": 750,
+        "block": 65,
+        "milliseconds": 2.0266710000000785
+      },
+      {
+        "tick": 806,
+        "block": 65,
+        "milliseconds": 2.108387999999991
+      },
+      {
+        "tick": 857,
+        "block": 65,
+        "milliseconds": 1.8590520000000197
+      },
+      {
+        "tick": 867,
+        "block": 65,
+        "milliseconds": 1.9768270000000712
+      },
+      {
+        "tick": 923,
+        "block": 65,
+        "milliseconds": 1.9777749999999514
+      },
+      {
+        "tick": 938,
+        "block": 65,
+        "milliseconds": 2.0340029999999842
+      }
+    ]
+  ],
+  "summaries": [
+    {
+      "tick": 64,
+      "block": 1,
+      "medianMS": 2.1804079999999857
+    },
+    {
+      "tick": 65,
+      "block": 1,
+      "medianMS": 2.1731259999999963
+    },
+    {
+      "tick": 89,
+      "block": 1,
+      "medianMS": 2.2040739999999914
+    },
+    {
+      "tick": 105,
+      "block": 1,
+      "medianMS": 2.1810680000000104
+    },
+    {
+      "tick": 112,
+      "block": 1,
+      "medianMS": 2.1369930000000323
+    },
+    {
+      "tick": 113,
+      "block": 1,
+      "medianMS": 2.177141000000006
+    },
+    {
+      "tick": 298,
+      "block": 65,
+      "medianMS": 2.1014444999999853
+    },
+    {
+      "tick": 299,
+      "block": 65,
+      "medianMS": 2.0803489999999982
+    },
+    {
+      "tick": 324,
+      "block": 65,
+      "medianMS": 2.09168600000001
+    },
+    {
+      "tick": 331,
+      "block": 65,
+      "medianMS": 2.0969884999999664
+    },
+    {
+      "tick": 341,
+      "block": 65,
+      "medianMS": 2.0956940000000372
+    },
+    {
+      "tick": 348,
+      "block": 65,
+      "medianMS": 2.107366500000012
+    },
+    {
+      "tick": 535,
+      "block": 65,
+      "medianMS": 2.1142830000000004
+    },
+    {
+      "tick": 600,
+      "block": 65,
+      "medianMS": 2.1006989999999632
+    },
+    {
+      "tick": 629,
+      "block": 65,
+      "medianMS": 2.09429300000005
+    },
+    {
+      "tick": 637,
+      "block": 65,
+      "medianMS": 2.068847000000005
+    },
+    {
+      "tick": 750,
+      "block": 65,
+      "medianMS": 2.1055934999999835
+    },
+    {
+      "tick": 806,
+      "block": 65,
+      "medianMS": 2.085125000000005
+    },
+    {
+      "tick": 857,
+      "block": 65,
+      "medianMS": 2.0970094999999844
+    },
+    {
+      "tick": 867,
+      "block": 65,
+      "medianMS": 2.0896455000000174
+    },
+    {
+      "tick": 923,
+      "block": 65,
+      "medianMS": 2.0888365000000135
+    },
+    {
+      "tick": 938,
+      "block": 65,
+      "medianMS": 2.108294000000029
+    }
+  ],
+  "sink": -140
+}

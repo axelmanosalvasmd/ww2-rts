@@ -1,0 +1,14 @@
+{
+  "baseline": "/tmp/human-ai-perf-v16-frozen",
+  "candidate": "/tmp/v16-region-redundancy-candidate",
+  "filesChecked": 206,
+  "changed": {
+    "shared/sim.js": {
+      "before": "5bedd607250c8171ed053e6200a643ce7f57a55c2549e0b515d80fcdffac832b",
+      "after": "7bc57ac179b4982bdb94b469ce029e2e2178567fcb23fa1756476a17f791f018"
+    }
+  },
+  "patchSHA256": "56cb4155400ea782a521801ca4f9ec7ab81bc92ff2464378bce1313888d0532c",
+  "postVerificationFilesChecked": 206,
+  "postVerificationSourceChangeCheck": "PASS"
+}

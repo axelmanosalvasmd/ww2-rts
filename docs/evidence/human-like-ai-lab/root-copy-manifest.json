@@ -1,0 +1,33 @@
+{
+  "copiedAt": "2026-10-04T20:46:30.418891+00:00",
+  "adopted": true,
+  "numericalAcceptance": false,
+  "sourceFiles": {
+    "test-ai-lab.js": "0a66b1b69804d87ef58d0f1ee03cc0d8d437c24785ae1d43d71c06a5c298fd52",
+    "tools/ai-lab.mjs": "795be7f8db4b31d138f2f5a771e19510cbd9af128808676a1b7bf12bb104d7e4",
+    "tools/ai-lab-runner.mjs": "01020a610e714ca538ca12b81c03652d77bba31d7a99ea696aec786b97c34ea2",
+    "shared/ai.js": "76f02609cb675070fb3f02476ed12158c8660e14aea5f242ce912b188f4d4d70",
+    "shared/ai-hands.js": "69eb15070dbf3e3839f4a264bc24d5010033f6d745bc1cf53ba285fc362323d6",
+    "shared/sim.js": "7bc57ac179b4982bdb94b469ce029e2e2178567fcb23fa1756476a17f791f018"
+  },
+  "copied": [
+    {
+      "source": "/tmp/ai-lab-proposal/REVIEW.md",
+      "path": "docs/evidence/human-like-ai-lab/REVIEW.md",
+      "bytes": 3146,
+      "sha256": "06ccd66a38e227d642d3b3dd4b4b2d00427cdb1f564029f1a3514aaa4906a865"
+    },
+    {
+      "source": "/tmp/ai-lab-proposal/ai-lab.patch",
+      "path": "docs/evidence/human-like-ai-lab/ai-lab.patch",
+      "bytes": 48697,
+      "sha256": "3d165f82d99943da007cc074011a916e9f96c8216235811c1f799026e736bc9b"
+    },
+    {
+      "source": "/tmp/ai-lab-proposal/source-hashes.json",
+      "path": "docs/evidence/human-like-ai-lab/source-hashes.json",
+      "bytes": 844,
+      "sha256": "4103616936c85c765a7ef90739651e76789bb8f6260f7806af7b15d2c8883280"
+    }
+  ]
+}

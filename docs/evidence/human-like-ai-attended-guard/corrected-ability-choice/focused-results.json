@@ -1,0 +1,27 @@
+[
+  {
+    "test": "test-engine-ai-tactical-reaction.js",
+    "exit": 0,
+    "sha256": "ed84f1135c8c1d8816978c5ba892f2bef0645c16e51e953bf5649da82622e32b"
+  },
+  {
+    "test": "test-engine-ai-attended-guard.js",
+    "exit": 0,
+    "sha256": "cf5596b209afd99b0ca59d9dee7457f55ef325e9fc6e68762513f48812e1c8d2"
+  },
+  {
+    "test": "test-engine-ai-causal-orders.js",
+    "exit": 0,
+    "sha256": "91828dc2685d7395a15c305151f677d35b694b880ffc2c73b56e8b30d6bf5a4e"
+  },
+  {
+    "test": "test-engine-ai-priority.js",
+    "exit": 0,
+    "sha256": "167ef11e79a0ff216791b3cb634188cce210239974c69814fcfe161f6fb37331"
+  },
+  {
+    "test": "test-engine-ai-guard-ability-choice.js",
+    "exit": 0,
+    "sha256": "e8abf265d700f3cbc529968fb8d99ef350e7059c526aaea521905ec5f9a43202"
+  }
+]

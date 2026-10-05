@@ -1,10 +1,11 @@
 // Perceive one view, attend one concern, deliberate, then let the hands finish before choosing again.
 import { CELL, UNITS } from './sim.js';
-import { perceive, onScreen, startCamera, needsInspection } from './ai-perception.js';
-import { chooseConcern } from './ai-attention.js';
+import { perceive, onScreen, startCamera, needsInspection, cameraFootprint } from './ai-perception.js';
+import { chooseConcern, deferEmptyCombat, deferEmptyIdleGuard, screenEventNeedsAttention } from './ai-attention.js';
 import { createHands, advanceHands, interruptHands, enqueueDecision, queueCamera, queueInspection, groundClickable } from './ai-hands.js';
 import { random, between } from './ai-rng.js';
 import { personaFor, estimateSightings, optionBias } from './ai-persona.js';
+import { prioritizeVisit, commandServesObservedEvent, inspectionServesObservedEvent } from './ai-priority.js';
 
 const distance = (a, b) => Math.hypot(a.x - b.x, a.z - b.z);
 const movement = cmd => cmd.t === 'move' || cmd.t === 'amove';
@@ -18,6 +19,7 @@ const anchorOf = cmd => cmd.orders?.length ? {
 const eventRank = event => event.kind === 'base' ? 110 : event.kind === 'screen-damage' ? 103
   : event.kind === 'screen-contact' ? 92 : event.kind === 'air' || event.kind === 'attack' || event.kind === 'unitLost' ? 80 : 0;
 function blockedPlacement(cmd, camera, view) {
+  if (cmd.t === 'garrison' && Number.isFinite(cmd.x)) return onScreen(cmd, camera, view) ? null : cmd;
   if (!['dig', 'entrench', 'build', 'support', 'ability', 'fireat'].includes(cmd.t) || !Number.isFinite(cmd.x)) return null;
   const points = [cmd];
   if (Number.isFinite(cmd.x2)) points.push({ x: cmd.x2, z: cmd.z2 });
@@ -39,27 +41,14 @@ function placementCamera(cmd, target, camera, view) {
   return candidates.sort((a, b) => distance(a, camera) - distance(b, camera))[0] ?? null;
 }
 
-function servesEvent(cmd, event, view, slot) {
-  if (!event || economy(cmd) || fortification(cmd)) return false;
-  const ids = idsOf(cmd), own = ids.map(id => view.units.get(id)).filter(unit => unit?.owner === slot);
-  const eligible = event.responseUnits ?? (event.unitId != null ? [event.unitId] : []);
-  const at = anchorOf(cmd), target = view.units.get(cmd.target);
-  if (cmd.t === 'support') return at && distance(at, event) <= 24;
-  if (eligible.length && !ids.some(id => eligible.includes(id))) return false;
-  if (cmd.t === 'ability' && at) return distance(at, event) <= 24;
-  if (['retreat', 'ability', 'stance', 'cover', 'stop'].includes(cmd.t))
-    return own.some(unit => distance(unit, event) <= 24 || unit.id === event.unitId);
-  if (cmd.t === 'attack') return target && distance(target, event) <= 24;
-  return movement(cmd) && at && distance(at, event) <= 24 && own.some(unit => distance(unit, event) <= 48);
-}
-
-function mergeMovements(intents, view) {
+function mergeMovements(intents, view, dangerMoves) {
+  const danger = cmd => movement(cmd) && cmd.orders.some(row => { const at=dangerMoves.get(row[0]); return at && row[1]===at.x && row[2]===at.z; });
   const merged = [];
   const support = new Set(['mg', 'at', 'mortar', 'howitzer', 'rocket', 'flak']);
   const role = cmd => idsOf(cmd).every(id => support.has(view.units.get(id)?.type)) ? 'support' : 'line';
   for (const cmd of intents) {
     const at = anchorOf(cmd);
-    const batch = movement(cmd) && merged.find(old => old.t === cmd.t && !!old.queue === !!cmd.queue
+    const batch = movement(cmd) && !danger(cmd) && merged.find(old => !danger(old) && old.t === cmd.t && !!old.queue === !!cmd.queue
       && old.orders.length + cmd.orders.length <= 8 && role(old) === role(cmd) && distance(anchorOf(old), at) <= 10
       && [...idsOf(old), ...idsOf(cmd)].every(id => !view.units.get(id)?.air));
     if (batch) batch.orders.push(...cmd.orders);
@@ -101,8 +90,7 @@ function contextFor(view, concern, state) {
     event: event ? { kind: event, id: eventId,
       source: concern.eventSource ?? (event === 'minimap-contact' ? 'minimap' : concern.id.startsWith('stimulus:') ? 'screen' : 'alert'),
       onScreen: concern.eventOnScreen ?? concern.onScreen ?? onScreen(concern, state.camera, view),
-      x: concern.x, z: concern.z, unitId: recorded?.unitId, targetId: recorded?.targetId,
-      responseRequired: recorded?.responseRequired, responseUnits: recorded?.responseUnits } : undefined,
+      x: concern.x, z: concern.z, unitId: recorded?.unitId, targetId: recorded?.targetId } : undefined,
     eventTick: event ? eventTick : undefined, reactionStartTick: event ? eventTick : state.decisionStartedTick,
     cycle: state.cycle ?? 0 };
 }
@@ -114,15 +102,112 @@ function moveConcernCamera(state, hands, target, context, mode) {
   return true;
 }
 
-function responseContext(cmd, context, view, state, slot, tick) {
-  const causal = servesEvent(cmd, context.event, view, slot);
+// A short trip across the current ground footprint uses a held pan; distant visits use the minimap.
+export function cameraTravelMode(camera, target, alert = false) {
+  if (alert) return 'alert';
+  const footprint = cameraFootprint(camera), span = Math.max(...footprint.map((point, i) =>
+    distance(point, footprint[(i + 1) % footprint.length])));
+  return distance(camera, target) <= span ? 'pan' : 'minimap';
+}
+
+
+// These keys record only this commander's own accepted physical commands, not hidden game facts.
+const acceptedCommands = new WeakMap();
+function exactCommandKey(cmd) {
+  const canonical = value => {
+    if(Array.isArray(value))return value.map(canonical);
+    if(value && typeof value==='object')return Object.fromEntries(Object.keys(value).sort().filter(key=>value[key]!==undefined).map(key=>[key,canonical(value[key])]));
+    return value;
+  };
+  const copy={...cmd};
+  if(movement(cmd)) { copy.orders=cmd.orders.map(row=>[...row]);copy.queue=!!cmd.queue; }
+  else if(cmd.ids)copy.ids=[...cmd.ids];
+  return JSON.stringify(canonical(copy));
+}
+// Pair accepted actor destinations with the complete planned operation, including formation membership and order.
+function movementIntentKey(cmd, id) {
+  if (!movement(cmd)) return null;
+  const row = cmd.orders.find(row => row[0] === id);
+  return row ? exactCommandKey(cmd) : null;
+}
+function acceptedMovementIntent(cmd, planned, id) {
+  if (!planned || cmd.t !== planned.t || !!cmd.queue !== !!planned.queue
+    || !acceptedIntent(cmd, planned)) return null;
+  return movementIntentKey(planned, id);
+}
+function acceptedIntent(cmd, planned) {
+  if(!planned || cmd.t!==planned.t || cmd.target!==planned.target || cmd.kind!==planned.kind)return null;
+  const actual=[...idsOf(cmd)].sort((a,b)=>a-b), intended=[...idsOf(planned)].sort((a,b)=>a-b);
+  return actual.length===intended.length && actual.every((id,i)=>id===intended[i]) ? exactCommandKey(planned) : null;
+}
+function pendingAccepted(state, cmd, view, slot) {
+  const entries=acceptedCommands.get(state);if(!entries)return false;
+  for(const [key,entry]of entries)if(view.tick>entry.tick || entry.ids.some(id=>{
+    const unit=view.units.get(id);return !unit || unit.owner!==slot || unit.hp<=0;
+  }))entries.delete(key);
+  const key=exactCommandKey(cmd);
+  return [...entries.values()].some(entry=>entry.actual===key || entry.intended===key
+    || cmd.t === 'cover' && ['dig', 'entrench'].includes(entry.t) && entry.ids.some(id => idsOf(cmd).includes(id)));
+}
+function eligibleMovement(cmd, view, state, concern, tick, dangerMoves, reserved) {
+  if(!movement(cmd))return cmd;
+  const rows=cmd.orders.filter(row=>{
+    const id=row[0], at={x:row[1],z:row[2]}, unit=view.units.get(id), old=state.orderHistory?.get(id);
+    if(reserved.has(id))return false;
+    if(old && unit && distance(old,at)<2 && distance(unit,at)<2)return false;
+    const local=dangerMoves.get(id);
+    const danger=cmd.t==='move'&&local&&row[1]===local.x&&row[2]===local.z
+      || concern.event==='base'&&unit&&distance(unit,concern)<=48&&distance(at,concern)<=24;
+    if(!danger && old && unit && distance(unit,old)>8 && tick-old.tick<240)return false;
+    if(!danger && old && distance(old,at)>16 && old.previous?.some(target=>tick-target.tick<600&&distance(target,at)<=12))return false;
+    return true;
+  });
+  return rows.length ? {...cmd,orders:rows.map(row=>[...row])} : null;
+}
+
+// Match the complete merged operation before pruning arrived actors. A different group can form different destinations.
+function arrivedMovement(cmd, view, state, concern, dangerMoves) {
+  if (!movement(cmd)) return cmd;
+  let current = cmd;
+  while (current.orders.length) {
+    const intent = exactCommandKey(current);
+    const rows = current.orders.filter(row => {
+      const id = row[0], unit = view.units.get(id), old = state.orderHistory?.get(id);
+      if (!old?.intent || old.intent !== intent || !unit || distance(unit, old) >= 2) return true;
+      const at = { x: row[1], z: row[2] }, local = dangerMoves.get(id);
+      return cmd.t === 'move' && local && row[1] === local.x && row[2] === local.z
+        || concern.event === 'base' && distance(unit, concern) <= 48 && distance(at, concern) <= 24;
+    });
+    if (rows.length === current.orders.length) return current;
+    // Removing arrived members can restore a smaller operation already accepted for its remaining actors.
+    current = { ...current, orders: rows.map(row => [...row]) };
+  }
+  return null;
+}
+
+function responseContext(cmd, context, view, state, slot, tick, inspection = false) {
+  const serves = inspection ? inspectionServesObservedEvent : commandServesObservedEvent;
+  const causal = serves(cmd, context.event, view, slot);
   const result = causal ? { ...context } : { ...context, event: undefined, eventTick: undefined };
   result.responseEvents = (view.events ?? []).filter(event => event.tick <= tick && tick - event.tick <= 240
-    && !state.answeredEvents?.has(event.id) && servesEvent(cmd, event, view, slot))
-    .map(event => ({ ...event, responseUnits: event.responseUnits ? [...event.responseUnits] : undefined }));
+    && !state.answeredEvents?.has(event.id) && serves(cmd, event, view, slot))
+    .map(event => ({ ...event }));
   result.responseActorIds = idsOf(cmd);
   result.responseTarget = anchorOf(cmd);
   return result;
+}
+
+// The actual queued start packet contains the map size and this seat's spawn, but no actors.
+// This explicit initializer starts only the opening read. Late takeovers keep their actual first-look clock.
+export function initializePublicStart(setup, slot, mem, options = {}) {
+  const { w, h, spawn, level = 'normal', seed = 1 } = setup;
+  if (!Number.isInteger(w) || !Number.isInteger(h) || w <= 0 || h <= 0
+    || !Number.isFinite(spawn?.x) || !Number.isFinite(spawn?.z)) throw new TypeError('Invalid public start scene');
+  if (mem.human) return false;
+  const camera = startCamera({ w, h, players: { [slot]: { spawn: { x: spawn.x, z: spawn.z } } } }, slot);
+  mem.human = { camera, startedTick: 0,
+    hands: createHands({ slot, seed, level, camera, startedTick: 0, calibration: options.calibration }) };
+  return true;
 }
 
 export function runCommander(observation, slot, opts, mem, send, plan) {
@@ -157,7 +242,7 @@ export function runCommander(observation, slot, opts, mem, send, plan) {
   const cameraKey = `${state.camera.x},${state.camera.z}`;
   const selectionKey = hands.selected.join(',');
   if (!state.view || state.deliveredTick !== observation.tick || state.cameraKey !== cameraKey || state.selectionKey !== selectionKey) {
-    state.view = perceive(observation, slot, state, tick); state.deliveredTick = observation.tick;
+    state.view = perceive(observation, slot, state, tick, opts.perceptionMeasurements); state.deliveredTick = observation.tick;
     state.cameraKey = cameraKey; state.selectionKey = selectionKey;
   }
   const view = state.view;
@@ -166,12 +251,12 @@ export function runCommander(observation, slot, opts, mem, send, plan) {
   const emergency = view.newEvents?.filter(event => !state.interruptEvents.has(event.id)
     && ['base', 'air', 'attack', 'screen-damage', 'screen-contact', 'unitLost'].includes(event.kind))
     .filter(event => eventRank(event) > workingPriority
-      && (event.source !== 'screen' || event.responseRequired !== false))
+      && (event.source !== 'screen' || screenEventNeedsAttention(event)))
     .sort((a, b) => eventRank(b) - eventRank(a))[0];
   if (emergency) {
     state.interruptEvents.add(emergency.id);
     hands.queue.length = 0;
-    interruptHands(hands, tick, view);
+    interruptHands(hands, tick, view, { event: emergency });
     state.pendingEmergency = emergency;
     state.cameraVisit = null;
     state.pendingInspection = null;
@@ -189,11 +274,17 @@ export function runCommander(observation, slot, opts, mem, send, plan) {
   for (const id of state.interruptEvents) if (!liveEvents.has(id)) state.interruptEvents.delete(id);
   const fired = advanceHands(hands, tick, view, cmd => {
     const result = send(cmd);
+    if(result===undefined) {
+      const entries=acceptedCommands.get(state)??new Map();acceptedCommands.set(state,entries);
+      const actual=exactCommandKey(cmd);
+      entries.set(actual,{actual,intended:acceptedIntent(cmd,hands.active?.job.command),tick,t:cmd.t,ids:[...idsOf(cmd)]});
+    }
     if (result === undefined && movement(cmd)) for (const row of cmd.orders ?? []) {
       const old = state.orderHistory?.get(row[0]);
       const previous = [...(old?.previous ?? []), ...(old ? [{ tick: old.tick, x: old.x, z: old.z }] : [])]
         .filter(target => tick - target.tick < 600).slice(-8);
-      (state.orderHistory ??= new Map()).set(row[0], { tick, x: row[1], z: row[2], t: cmd.t, previous });
+      (state.orderHistory ??= new Map()).set(row[0], { tick, x: row[1], z: row[2], t: cmd.t,
+        intent: acceptedMovementIntent(cmd, hands.active?.job.command, row[0]), previous });
     }
     if (result === undefined && cmd.t === 'ability' && Number.isFinite(cmd.x)) for (const id of cmd.ids ?? []) {
       const unit = view.units.get(id);
@@ -220,10 +311,13 @@ export function runCommander(observation, slot, opts, mem, send, plan) {
     if (result === undefined) {
       const context = hands.active?.job.context;
       const events = [...(context?.responseEvents ?? []), ...(context?.event ? [context.event] : [])];
-      for (const event of events) if (servesEvent(cmd, event, view, slot))
+      for (const event of events) if (commandServesObservedEvent(cmd, event, view, slot))
         (state.answeredEvents ??= new Set()).add(event.id);
     }
-    if (result === undefined && cmd.t === 'buy') state.buys++;
+    if (result === undefined && cmd.t === 'buy') {
+      state.buys++;
+      state.lastAcceptedBuyTick = tick;
+    }
     if (movement(cmd)) state.didOrder = true;
     return result;
   });
@@ -243,15 +337,21 @@ export function runCommander(observation, slot, opts, mem, send, plan) {
     }
   }
   if (state.cameraVisit) {
-    const visit = state.cameraVisit; state.cameraVisit = null;
+    const visit = state.cameraVisit;
     if (visit.id === state.concern?.id) {
+      const target = cameraTarget(view, state.concern, slot);
+      // Quantized releases can leave a destination outside the frame. Finish the trip before inspecting it.
+      if (!onScreen(target, state.camera, view)
+        && queueCamera(hands, target, contextFor(view, state.concern, state),
+          cameraTravelMode(state.camera, target, state.concern.id.startsWith('alert:')))) return;
+      state.cameraVisit = null;
       state.concern.since = tick; state.concern.until = tick + visit.dwell;
       if (state.attention) { state.attention.since = tick; state.attention.until = state.concern.until; }
       state.decisionStartedTick = tick;
       const complexity = state.concern.kind === 'combat' ? 1.2 : state.concern.kind === 'production' ? 1 : .7;
       state.deliberateUntil = tick + Math.max(2, Math.round(between(hands.rng,
         ...({ easy: [8, 18], normal: [5, 10], hard: [2, 5] }[level] ?? [5, 10])) * complexity));
-    }
+    } else state.cameraVisit = null;
   }
   if (!state.concern) {
     state.concern = { id: 'production', kind: 'production', ...view.players[slot].spawn, since: tick, until: tick + 60 };
@@ -268,8 +368,8 @@ export function runCommander(observation, slot, opts, mem, send, plan) {
     state.deliberateUntil = continuing ? tick : tick + Math.max(2, Math.round(between(hands.rng,
       ...({ easy: [8, 18], normal: [5, 10], hard: [2, 5] }[level] ?? [5, 10])) * complexity));
     const target = cameraTarget(view, candidate, slot), context = contextFor(view, candidate, state);
-    if (!continuing && !candidate.eventOnScreen && !onScreen(target, state.camera, view)) {
-      moveConcernCamera(state, hands, target, context, candidate.id.startsWith('alert:') ? 'alert' : distance(target, state.camera) < 35 ? 'pan' : 'minimap');
+    if (!continuing && !onScreen(target, state.camera, view)) {
+      moveConcernCamera(state, hands, target, context, cameraTravelMode(state.camera, target, candidate.id.startsWith('alert:')));
       return;
     }
   }
@@ -278,8 +378,8 @@ export function runCommander(observation, slot, opts, mem, send, plan) {
     const target = cameraTarget(view, state.concern, slot);
     const context = contextFor(view, state.concern, state);
     state.pendingEmergency = null;
-    if (!state.concern.eventOnScreen && !onScreen(target, state.camera, view)) {
-      moveConcernCamera(state, hands, target, context, state.concern.id.startsWith('alert:') ? 'alert' : 'minimap');
+    if (!onScreen(target, state.camera, view)) {
+      moveConcernCamera(state, hands, target, context, cameraTravelMode(state.camera, target, state.concern.id.startsWith('alert:')));
       return;
     }
   }
@@ -296,8 +396,10 @@ export function runCommander(observation, slot, opts, mem, send, plan) {
   const intents = [];
   const inspections = [];
   const reservedMovement = new Set();
+  const dangerMoves = new Map();
   // Each concern sees the same tier view. Spending and micro wait until that concern has attention.
   const decisionOptions = { level, adaptive: opts.adaptive, rules: opts.rules, handoff: opts.handoff, human: true, concern,
+    requestDangerMove: (id, destination) => dangerMoves.set(id, { ...destination }),
     requestInspection: cmd => {
       if (concern.kind === 'production' || cmd.t !== 'ability') return;
       const id = idsOf(cmd)[0], unit = view.units.get(id);
@@ -309,15 +411,24 @@ export function runCommander(observation, slot, opts, mem, send, plan) {
       if (old?.ability?.cooldownSeconds > 0 && tick - old.observedTick < old.ability.cooldownSeconds * 20) return;
       if (!inspections.some(candidate => idsOf(candidate)[0] === id)) inspections.push(cmd);
     } };
-  plan({ ...view, sightings: estimates }, slot, decisionOptions, mem, cmd => {
+  plan({ ...view, sightings: estimates }, slot, decisionOptions, mem, proposed => {
+    const cmd=eligibleMovement(proposed,view,state,concern,tick,dangerMoves,reservedMovement);
+    if(!cmd)return 'commitment';
+    if(pendingAccepted(state,cmd,view,slot))return 'accepted';
     const failed = mem.failedInputs?.get(inputKey(cmd));
     if (failed && tick - failed.tick < 300) return failed.reason;
     const ids = idsOf(cmd), at = anchorOf(cmd);
+    if (cmd.t === 'garrison' && at && onScreen(at, state.camera, view) && !view.sees(at)) return 'notVisible';
     const idleActor = concern.kind === 'idle' && view.units.get(concern.unitId);
     const localMaintenance = fortification(cmd) && idleActor && ids.includes(idleActor.id)
       && at && distance(at, idleActor) <= 24;
+    const workTarget = cmd.t === 'assist' ? view.units.get(cmd.id) : at;
+    const localEngineerWork = ['build', 'assist'].includes(cmd.t) && idleActor?.type === 'engineer'
+      && ids.length === 1 && ids[0] === idleActor.id && !idleActor.inventoryOnly
+      && view.screenIds.has(idleActor.id) && workTarget && distance(workTarget, idleActor) <= 24
+      && view.sees(workTarget) && (cmd.t !== 'assist' || workTarget.owner === slot);
     if ((economy(cmd) || fortification(cmd)) && !['production', 'expansion'].includes(concern.kind)
-      && !localMaintenance) return 'attention';
+      && !localMaintenance && !localEngineerWork) return 'attention';
     if (cmd.t === 'support' && !['combat', 'support'].includes(concern.kind)) return 'attention';
     if (['ability', 'attack', 'fireat', 'retreat'].includes(cmd.t) && concern.kind === 'production') return 'attention';
     if (concern.kind === 'idle' && !ids.includes(concern.unitId)) return 'attention';
@@ -327,23 +438,6 @@ export function runCommander(observation, slot, opts, mem, send, plan) {
     const panel = ids.length && ids.every(id => view.airPanel?.some(plane => plane.id === id));
     if (ids.some(id => !view.screenIds.has(id)) && !recalled && !panel) return 'attention';
     if (movement(cmd)) {
-      if (ids.some(id => reservedMovement.has(id))) return 'commitment';
-      if (ids.every(id => {
-        const old = state.orderHistory?.get(id), unit = view.units.get(id);
-        return old && unit && distance(old, at) < 2 && distance(unit, at) < 2;
-      })) return 'arrived';
-      const danger = concern.event === 'base' && ids.every(id => {
-        const unit = view.units.get(id); return unit && distance(unit, concern) <= 48;
-      }) && at && distance(at, concern) <= 24;
-      if (!danger && ids.some(id => {
-        const old = state.orderHistory?.get(id), unit = view.units.get(id);
-        return old && unit && distance(unit, old) > 8
-          && tick - old.tick < 240;
-      })) return 'commitment';
-      if (!danger && ids.some(id => {
-        const old = state.orderHistory?.get(id);
-        return old && distance(old, at) > 16 && old.previous?.some(target => tick - target.tick < 600 && distance(target, at) <= 12);
-      })) return 'commitment';
       for (const id of ids) reservedMovement.add(id);
     }
     if (cmd.t === 'ability' && ids.some(id => {
@@ -358,21 +452,32 @@ export function runCommander(observation, slot, opts, mem, send, plan) {
     const rank = cmd => cmd.t === 'retreat' ? 0 : cmd.t === 'ability' || cmd.t === 'attack' ? 1 : movement(cmd) ? 2 : cmd.t === 'support' ? 3 : 4;
     intents.sort((a, b) => rank(a) - rank(b));
   }
+  const prioritized = prioritizeVisit(intents, inspections, view, concern, state.answeredEvents, slot, tick);
   // A useful ability needs a current HUD reading. Select one actual squad, then replan from that selection.
   // An urgent retreat can proceed without looking up an ability's cooldown first.
-  if (!intents.some(cmd => cmd.t === 'retreat')) for (const cmd of inspections) {
+  if (!intents.some(cmd => cmd.t === 'retreat')) for (const cmd of prioritized.inspections) {
     const id = idsOf(cmd)[0];
-    if (!queueInspection(hands, [id], view, responseContext(cmd, context, view, state, slot, tick))) continue;
+    if (!queueInspection(hands, [id], view, responseContext(cmd, context, view, state, slot, tick, true))) continue;
     (state.inspectionAttempts ??= new Map()).set(id, tick);
     state.pendingInspection = { id, concern: concern.id };
+    state.emptyCombatVisits?.delete(concern.id);
     state.planned = false;
     return;
   }
-  let queued = 0;
-  for (const cmd of mergeMovements(intents, view)) {
+  let queued = 0, hesitationUntil = 0;
+  for (const merged of mergeMovements(intents, view, dangerMoves)) {
+    const cmd = arrivedMovement(merged, view, state, concern, dangerMoves);
+    if (!cmd) continue;
     if (queued >= ({ easy: 2, normal: 4, hard: 6 }[level] ?? 4)) break;
-    // Hesitation belongs to risky advances, rather than cancelling an order already issued.
-    if (cmd.t === 'amove' && concern.kind === 'combat' && random(hands.rng) < ({ easy: 0.25, normal: 0.12, hard: 0.04 }[level] ?? 0.12)) continue;
+    // Decide once per attended visit. Replanning preserves the same real pause.
+    if (cmd.t === 'amove' && concern.kind === 'combat') {
+      const episode = JSON.stringify([concern.id, concern.eventId ?? null, concern.eventTick ?? null, concern.since]);
+      if (state.advanceHesitation?.episode !== episode) {
+        const hesitate = random(hands.rng) < ({ easy: 0.25, normal: 0.12, hard: 0.04 }[level] ?? 0.12);
+        state.advanceHesitation = { episode, until: tick + (hesitate ? ({ easy: 30, normal: 16, hard: 8 }[level] ?? 16) : 0) };
+      }
+      if (tick < state.advanceHesitation.until) { hesitationUntil = state.advanceHesitation.until; continue; }
+    }
     const jobContext = responseContext(cmd, context, view, state, slot, tick);
     // These are deliberate links to already perceived episodes. One local group order can address several
     // contacts, while each episode keeps its own creation time and complete population descriptor.
@@ -385,7 +490,7 @@ export function runCommander(observation, slot, opts, mem, send, plan) {
       if (!queued) {
         const target = placementCamera(cmd, hiddenGround, state.camera, view);
         if (!target) continue;
-        if (!queueCamera(hands, target, jobContext, distance(target, state.camera) < 35 ? 'pan' : 'minimap')) continue;
+        if (!queueCamera(hands, target, jobContext, cameraTravelMode(state.camera, target))) continue;
         // Keep this visit long enough to inspect the occluded placement after the real camera gesture.
         state.concern.until = Math.max(state.concern.until, tick + 60);
         if (state.attention) state.attention.until = state.concern.until;
@@ -398,7 +503,14 @@ export function runCommander(observation, slot, opts, mem, send, plan) {
   if (state.production) state.production.queuedBuys = hands.queue.filter(job => job.command?.t === 'buy').length;
   state.planned = true;
   // Empty cycles still take time. An idle squad can wait unnoticed while another concern wins attention.
-  if (!queued) state.noWorkUntil = tick + (level === 'easy' ? 30 : level === 'hard' ? 8 : 16);
+  if (!queued) {
+    state.noWorkUntil = hesitationUntil || tick + (level === 'easy' ? 30 : level === 'hard' ? 8 : 16);
+    if (!hesitationUntil && (deferEmptyCombat(view, slot, state, concern, tick, level)
+      || !intents.length && !inspections.length && deferEmptyIdleGuard(view, slot, state, concern, tick))) {
+      state.concern.until = tick;
+      if (state.attention) state.attention.until = tick;
+    }
+  } else state.emptyCombatVisits?.delete(concern.id);
 }
 
 function inputKey(cmd) {

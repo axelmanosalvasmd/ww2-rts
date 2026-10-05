@@ -1,0 +1,23 @@
+--- corrected-before/tools/ai-balance.mjs
++++ v15/tools/ai-balance.mjs
+@@ -52,7 +52,10 @@
+       const g = sim.createGame(map, order.map(i => 'AI ' + seats[i]), true, order.map((_, i) => i), factionIds, { mode: options.mode, army: options.army });
+       const spawns = g.players.map(p => map.spawns.findIndex(s => (s.x + 0.5) * sim.CELL === p.spawn.x && (s.y + 0.5) * sim.CELL === p.spawn.z));
+       const initialCache = sim.snapshotCache(g);
+-      const views = brains.map((b, slot) => b.mod.observe?.(g, slot, initialCache));
++      const views = brains.map((b, slot) => {
++        if (b.mod.humanCommander && b.mod.startCommander) { b.mod.startCommander(g, slot, { w: g.w, h: g.h, spawn: g.players[slot].spawn, level: b.level, seed: g.matchSeed ?? g.seed }); return null; }
++        return b.mod.observe?.(g, slot, initialCache);
++      });
+       for (let tick = 0; tick < maxTicks && g.winner === null; tick++) {
+         sim.step(g);
+         // All commanders consume the latest view on the same two-tick delivery beat as humans.
+@@ -60,7 +63,7 @@
+           const cache = sim.snapshotCache?.(g);
+           brains.forEach((b, slot) => { views[slot] = b.mod.observe?.(g, slot, cache); });
+         }
+-        brains.forEach((b, slot) => { if (b.mod.humanCommander || (g.tick + slot * 13) % (b.mod.thinkEvery?.(b.level) ?? 40) === 0) b.mod.think(g, slot, { level: b.level, view: views[slot] }); });
++        brains.forEach((b, slot) => { if ((!b.mod.humanCommander || views[slot]) && (b.mod.humanCommander || (g.tick + slot * 13) % (b.mod.thinkEvery?.(b.level) ?? 40) === 0)) b.mod.think(g, slot, { level: b.level, view: views[slot] }); });
+         // The all-AI server has no WebSocket recipients, but clears these transient lists on its snapshot beat.
+         if (g.tick % 2 === 0 || g.winner !== null) { g.shots = []; g.newCells = []; }
+       }

@@ -1,0 +1,141 @@
+{
+  "status": "PASS_READ_ONLY_ONE_VERIFIED_MATCH",
+  "sourceCheckpoint": "3bac0c0923bcfe622dac10a8b76783d090eaf249a4c54e3e9a89a305c9e51ae9",
+  "rawFile": "/tmp/human-ai-final-v16/raw-matches/conquest/conquest-easy-1.json",
+  "rawBytes": 110796568,
+  "stages": [
+    {
+      "name": "frozenImports",
+      "wallSeconds": 0.028856905000000006,
+      "cpuSeconds": 0.028827,
+      "rssBytes": 57843712
+    },
+    {
+      "name": "rawReadUTF8",
+      "wallSeconds": 0.189554249,
+      "cpuSeconds": 0.171034,
+      "rssBytes": 201035776
+    },
+    {
+      "name": "JSONparse",
+      "wallSeconds": 2.288891936,
+      "cpuSeconds": 2.287675,
+      "rssBytes": 799121408
+    },
+    {
+      "name": "slot0.summarizeSeat",
+      "wallSeconds": 0.03542506800000001,
+      "cpuSeconds": 0.03541,
+      "rssBytes": 805019648
+    },
+    {
+      "name": "slot0.manualResponseMetrics",
+      "wallSeconds": 0.12964028299999972,
+      "cpuSeconds": 0.129581,
+      "rssBytes": 826826752
+    },
+    {
+      "name": "slot0.deepEqual",
+      "wallSeconds": 0.03501511100000016,
+      "cpuSeconds": 0.03499,
+      "rssBytes": 827088896
+    },
+    {
+      "name": "slot0.hashJSON.log",
+      "wallSeconds": 16.816791893999998,
+      "cpuSeconds": 16.813987,
+      "rssBytes": 848650240
+    },
+    {
+      "name": "slot0.hashJSON.perceptionMeasurements",
+      "wallSeconds": 0.1638836560000018,
+      "cpuSeconds": 0.163866,
+      "rssBytes": 848281600
+    },
+    {
+      "name": "slot0.hashJSON.manualMeasurements",
+      "wallSeconds": 15.542686704999996,
+      "cpuSeconds": 15.54225,
+      "rssBytes": 848302080
+    },
+    {
+      "name": "slot1.summarizeSeat",
+      "wallSeconds": 0.014212448999998743,
+      "cpuSeconds": 0.014197,
+      "rssBytes": 848302080
+    },
+    {
+      "name": "slot1.manualResponseMetrics",
+      "wallSeconds": 0.03907170600000245,
+      "cpuSeconds": 0.03906,
+      "rssBytes": 848302080
+    },
+    {
+      "name": "slot1.deepEqual",
+      "wallSeconds": 0.01467656800000259,
+      "cpuSeconds": 0.014667,
+      "rssBytes": 848302080
+    },
+    {
+      "name": "slot1.hashJSON.log",
+      "wallSeconds": 16.711680804999997,
+      "cpuSeconds": 16.410837,
+      "rssBytes": 852750336
+    },
+    {
+      "name": "slot1.hashJSON.perceptionMeasurements",
+      "wallSeconds": 0.07792642200000409,
+      "cpuSeconds": 0.077916,
+      "rssBytes": 852836352
+    },
+    {
+      "name": "slot1.hashJSON.manualMeasurements",
+      "wallSeconds": 15.207612141000006,
+      "cpuSeconds": 15.20732,
+      "rssBytes": 852967424
+    },
+    {
+      "name": "slot2.summarizeSeat",
+      "wallSeconds": 0.013230196999997133,
+      "cpuSeconds": 0.013224,
+      "rssBytes": 852967424
+    },
+    {
+      "name": "slot2.manualResponseMetrics",
+      "wallSeconds": 0.07130623699999705,
+      "cpuSeconds": 0.071297,
+      "rssBytes": 852967424
+    },
+    {
+      "name": "slot2.deepEqual",
+      "wallSeconds": 0.026440154000010808,
+      "cpuSeconds": 0.026431,
+      "rssBytes": 852967424
+    },
+    {
+      "name": "slot2.hashJSON.log",
+      "wallSeconds": 19.487668909,
+      "cpuSeconds": 17.311065,
+      "rssBytes": 860831744
+    },
+    {
+      "name": "slot2.hashJSON.perceptionMeasurements",
+      "wallSeconds": 0.13574664499999198,
+      "cpuSeconds": 0.135738,
+      "rssBytes": 860831744
+    },
+    {
+      "name": "slot2.hashJSON.manualMeasurements",
+      "wallSeconds": 15.767977523000008,
+      "cpuSeconds": 15.767458,
+      "rssBytes": 860831744
+    },
+    {
+      "name": "gzipHashAndDecompressedHash",
+      "wallSeconds": 0.926041115,
+      "cpuSeconds": 0.925734,
+      "rssBytes": 612102144
+    }
+  ],
+  "assertions": "All frozen seat metrics, full/native/private/public stream digests and gzip/raw digests match already-verified manifest; source files unchanged."
+}

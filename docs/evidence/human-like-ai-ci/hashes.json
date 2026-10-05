@@ -1,0 +1,10 @@
+{
+  "/tmp/human-ai-ci-workflow.patch": "3401f928964bb3d09be2abb3f93de011bc09670cd16c8e94b6ae3195314724ae",
+  "/tmp/human-ai-ci-proposal/.github/workflows/tests.yml": "c3d86bfb6816ed3f6a2a9f2d170348d1701757e06a88d239b1bcf0ef85fd8ea6",
+  "/tmp/human-ai-ci-audit.md": "b0db8ab9a1d56d8e40154f79c0d696416cb6eb629e96f68435ed1a33d569cb59",
+  "/tmp/human-ai-ci-validation/proof.json": "c3e9b47df99f531629dc3c7841fbfdafc491767931bb40bfff74850f82517349",
+  "/tmp/human-ai-ci-registration-audit.json": "d750442248ac8c3d42db3ef864658b5b30fcb5e6e30277b1dba1ad6cccaafd0f",
+  "/tmp/human-ai-ci-latest-master.log": "089632c90c39da877c0e664dcae3115147d94b4d99fb642ab887c1297d995a86",
+  "/tmp/human-ai-ci-observed-failure.log": "cd7a6067cdd47ac59c561e10f31360e8c8b7e4645b34fddb7c61d01dc639726f",
+  "/tmp/human-ai-ci-runs.json": "8ff9ff60dbf902a94ef18ea446762cc6e3ae7f41a4124197498b4ac4f2e99055"
+}

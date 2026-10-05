@@ -41,7 +41,7 @@ export function createHands({ slot, seed = 1, level = 'normal', camera, log, sta
   return { slot, level: name, skill, rng, camera: cam, log, tick: startedTick,
     openingUntil: startedTick + ticks(1.5),
     openingDeadline: startedTick + ticks(handover ? Math.max(1.5, opening / 2) : opening), openingDone: false,
-    handover, queue: [], active: null, selected: [], groups: new Map(), groupUse: new Map(), inputTicks: [], resolveMinimap,
+    handover, queue: [], active: null, selected: [], groups: new Map(), groupUse: new Map(), operationHistory: new Map(), inputTicks: [], resolveMinimap,
     lastVisit: null, visitEvents: new Set(),
     lastCommandTick: -Infinity, lastCommandTarget: null, clicks: [], concern: 'opening',
     cursor: { x: cam.x, z: cam.z, fromX: cam.x, fromZ: cam.z, toX: cam.x, toZ: cam.z, startTick: startedTick, endTick: startedTick },
@@ -95,6 +95,7 @@ function emit(hands, action, command) {
   }
   if (action.camera) entry.method = action.mode;
   if (action.input) entry.input = { ...action.input };
+  if (action.earlyRelease) entry.panRelease = structuredClone(action.earlyRelease);
   if (action.motor) entry.pointer = structuredClone(action.motor);
   if (Number.isFinite(action.startedTick)) entry.inputStartedTick = action.startedTick;
   if (Number.isFinite(action.duration)) entry.motorTicks = action.duration;
@@ -112,7 +113,7 @@ function emit(hands, action, command) {
     hands.clicks = hands.clicks.filter(click => hands.tick - click.tick < 40).slice(-8);
   }
   const interrupted = hands.interruptAfterInput || hands.active?.interruptAfterCommand && action.fire;
-  if (interrupted) {
+  if (interrupted && !hands.active?.panKeys) {
     hands.interruptAfterInput = false;
     if ((hands.active?.armed || armsTargeting(action)) && !action.fire) hands.cancelTargeting = true;
     hands.active = null; hands.ready = !hands.queue.length;
@@ -136,6 +137,33 @@ function pruneGroups(hands, view) {
     if (living.length) hands.groups.set(number, living);
     else { hands.groups.delete(number); hands.groupUse.delete(number); }
   }
+}
+
+const OPERATION_MEMORY_TICKS = 1200, OPERATION_MEMORY_SETS = 32;
+const operationKey = ids => [...ids].sort((a, b) => a - b).join(',');
+function operationMembers(hands, view, ids) {
+  const units = knownOwn(view, hands.slot, ids);
+  return ids.length >= 2 && ids.length <= 8 && units.length === ids.length && new Set(ids).size === ids.length
+    && units.every(unit => UNITS[unit.type] && !UNITS[unit.type].structure && !UNITS[unit.type].air);
+}
+function pruneOperationHistory(hands, view) {
+  for (const [key, item] of hands.operationHistory) if (hands.tick - item.tick >= OPERATION_MEMORY_TICKS
+    || !operationMembers(hands, view, item.ids)) hands.operationHistory.delete(key);
+}
+function acceptedOperation(hands, active, command, view) {
+  const job = active.job, ids = command.orders?.map(row => row[0]) ?? [];
+  if (!job.context.operation || job.panel || !['move', 'amove'].includes(command.t)
+    || !sameIds(ids, hands.selected) || !operationMembers(hands, view, ids)) return;
+  const key = operationKey(ids), previous = hands.operationHistory.get(key);
+  hands.operationHistory.delete(key);
+  hands.operationHistory.set(key, { ids: [...ids], tick: hands.tick });
+  while (hands.operationHistory.size > OPERATION_MEMORY_SETS) hands.operationHistory.delete(hands.operationHistory.keys().next().value);
+  if (!previous || hands.tick - previous.tick >= OPERATION_MEMORY_TICKS || groupFor(hands, ids) !== null) return;
+  const number = groupNumber(hands), input = physicalKey(`group:set:${number}`);
+  if (!input) return;
+  // The repeated real operation succeeded. The next gesture binds its actual selection for expected reuse.
+  active.actions.splice(active.index + 1, 0, { kind: 'group-set', at: null, context: job.context,
+    ids: [...ids], group: number, input });
 }
 
 function groupNumber(hands) {
@@ -343,7 +371,9 @@ function enqueueOne(hands, cmd, view, context, at) {
   if (cmd.t !== 'buy' && (hands.active?.job?.key === key || hands.queue.some(job => job.key === key))) return false;
   // Snapshot only what the seat knew while it made this decision. A later wasted click is still a real input.
   hands.queue.push({ command: structuredClone(cmd), ids: [...ids], units: units.map(u => ({ ...u })),
-    at: isPoint(at) ? { ...at } : null, minimap, panel, group, key, context: frozenContext(context), queuedTick: hands.tick });
+    at: isPoint(at) ? { ...at } : null, minimap, panel, group, key,
+    context: frozenContext(ids.length && Array.isArray(context.responseActorIds) ? subsetContext(context, ids) : context),
+    queuedTick: hands.tick });
   return true;
 }
 
@@ -480,7 +510,24 @@ function airPanelHit(view, pixel) {
   });
 }
 
+function obsoleteQueuedStance(hands, job, view) {
+  const cmd = job.command;
+  if (hands.cancelTargeting || cmd?.t !== 'stance' || typeof cmd.on !== 'boolean'
+    || !['holdFire', 'holdPos', 'autoRetreat'].includes(cmd.key)
+    || !job.ids.length || !(view.tick > job.queuedTick)) return false;
+  // Only a newer delivered screen reading can retire an unstarted intent. Inventory and memory
+  // placeholders cannot establish that every intended actor already has this setting.
+  return job.ids.every(id => {
+    const unit = view.units.get(id);
+    return unit?.owner === hands.slot && view.screenIds?.has(id) && !unit.inventoryOnly
+      && Number.isFinite(unit.lastScreenTick) && unit.lastScreenTick >= view.tick
+      && Number.isFinite(unit.hp) && unit.hp > 0
+      && typeof unit[cmd.key] === 'boolean' && unit[cmd.key] === cmd.on;
+  });
+}
+
 function actionsFor(hands, job, view) {
+  if (obsoleteQueuedStance(hands, job, view)) return [];
   const context = job.context, actions = [];
   const add = (kind, at, extra = {}) => actions.push({ kind, at, context, ...extra });
   const key = (kind, id, extra = {}) => {
@@ -500,16 +547,29 @@ function actionsFor(hands, job, view) {
       const angle = hands.camera.yaw ?? 0, s = Math.sin(angle), c = Math.cos(angle);
       const dx = job.at.x - hands.camera.x, dz = job.at.z - hands.camera.z;
       const right = dx * c - dz * s, forward = dx * s + dz * c;
+      const axes = [{ amount: right, x: c, z: -s, positive: 'KeyD', negative: 'KeyA' },
+        { amount: forward, x: s, z: c, positive: 'KeyS', negative: 'KeyW' }]
+        .filter(axis => Math.abs(axis.amount) >= HUMAN_CAMERA.panSpeed / 20)
+        .sort((a, b) => Math.abs(b.amount) - Math.abs(a.amount));
+      if (axes.length === 2) {
+        for (const axis of axes) add('camera-pan', job.at, { camera: true, mode: 'pan',
+          input: { code: axis.amount >= 0 ? axis.positive : axis.negative },
+          panHold: ticks(Math.abs(axis.amount) / ((hands.camera.distance ?? HUMAN_CAMERA.distance) * 1.1)),
+          panAxis: { x: axis.x * Math.sign(axis.amount), z: axis.z * Math.sign(axis.amount) } });
+        return actions;
+      }
       const horizontal = Math.abs(right) >= Math.abs(forward), amount = horizontal ? right : forward;
-      const hold = ticks(Math.abs(amount) / HUMAN_CAMERA.panSpeed), travel = Math.sign(amount) * HUMAN_CAMERA.panSpeed * hold / 20;
+      const speed = (hands.camera.distance ?? HUMAN_CAMERA.distance) * 1.1;
+      const hold = ticks(Math.abs(amount) / speed), travel = Math.sign(amount) * speed * hold / 20;
       pan = { hold, code: horizontal ? amount >= 0 ? 'KeyD' : 'KeyA' : amount >= 0 ? 'KeyS' : 'KeyW',
-        at: clampPoint({ x: hands.camera.x + (horizontal ? c : s) * travel,
-          z: hands.camera.z + (horizontal ? -s : c) * travel }, view) };
+        direction: { x: (horizontal ? c : s) * Math.sign(amount), z: (horizontal ? -s : c) * Math.sign(amount) },
+        at: { x: Math.max(0, Math.min(view.w * CELL, hands.camera.x + (horizontal ? c : s) * travel)),
+          z: Math.max(0, Math.min(view.h * CELL, hands.camera.z + (horizontal ? -s : c) * travel)) } };
     }
     add(job.mode === 'pan' ? 'camera-pan' : `camera-${job.mode}`, pan?.at ?? job.at, { camera: true, mode: job.mode,
       ...(job.mode === 'minimap' ? { input: { button: 0 }, noise: true } : {}),
       ...(job.mode === 'alert' ? { input: physicalKey('alert') } : {}),
-      ...(pan ? { input: { code: pan.code }, panHold: pan.hold } : {}),
+      ...(pan ? { input: { code: pan.code }, panHold: pan.hold, panDirection: pan.direction } : {}),
       ...(job.mode === 'group' ? { ids: job.ids, group: job.group, input: physicalKey(`group:recall:${job.group}`) } : {}) });
     return actions;
   }
@@ -525,21 +585,23 @@ function actionsFor(hands, job, view) {
     else if (group !== null) key('group-recall', `group:recall:${group}`, { ids: job.ids, group });
     else {
       if (!job.units.every(u => onScreen(u, hands.camera, view))) return [];
-      const box = job.ids.length > 1 ? selectionBox(job.units, hands, view) : null;
-      if (box && sameIds(boxUnits(box, hands, view).map(u => u.id), job.ids)) add('select-box', centroid(job.units), { ids: job.ids, box, input: { button: 0 } });
-      else for (let i = 0; i < job.units.length; i++) {
-        add(i ? 'select-add-click' : 'select-click', job.units[i], { ids: job.ids.slice(0, i + 1), clickedId: job.units[i].id,
-          input: { button: 0, shift: i > 0 }, unitTarget: true, noise: true });
+      const missing = job.units.filter(unit => !hands.selected.includes(unit.id));
+      if (hands.selected.length && missing.length === 1 && hands.selected.every(id => job.ids.includes(id))) {
+        // Keep the actual local selection and add its one missing companion with a legal Shift click.
+        add('select-add-click', missing[0], { ids: job.ids, clickedId: missing[0].id,
+          input: { button: 0, shift: true }, unitTarget: true, noise: true });
+      } else {
+        const box = job.ids.length > 1 ? selectionBox(job.units, hands, view) : null;
+        if (box && sameIds(boxUnits(box, hands, view).map(u => u.id), job.ids)) add('select-box', centroid(job.units), { ids: job.ids, box, input: { button: 0 } });
+        else for (let i = 0; i < job.units.length; i++) {
+          add(i ? 'select-add-click' : 'select-click', job.units[i], { ids: job.ids.slice(0, i + 1), clickedId: job.units[i].id,
+            input: { button: 0, shift: i > 0 }, unitTarget: true, noise: true });
+        }
       }
     }
   }
   if (job.inspect) return actions;
   if (!namedActorSelected(hands, job) && !actions.some(selectsUnits)) return [];
-  if (job.context.operation && ['move', 'amove'].includes(job.command.t) && job.ids.length >= 1 && job.ids.length <= 8
-    && groupFor(hands, job.ids) === null && job.units.every(u => !UNITS[u.type]?.structure && !UNITS[u.type]?.air)) {
-    const number = groupNumber(hands);
-    key('group-set', `group:set:${number}`, { ids: job.ids, group: number });
-  }
   const cmd = job.command;
   if (isPoint(job.at) && ['ability', 'support', 'build', 'dig', 'entrench', 'fireat'].includes(cmd.t)
     && !groundClickable(job.at, hands.camera, view)) return [];
@@ -583,9 +645,107 @@ function actionsFor(hands, job, view) {
     const left = !job.minimap && ['ability', 'support', 'build', 'dig', 'entrench', 'amove', 'fireat'].includes(cmd.t);
     add(job.minimap ? 'minimap-rightclick' : left ? 'place-click' : 'rightclick', job.at,
       { fire: true, pointRole: 'target', noise: true, unitTarget, targetType,
+        ...(unitTarget && { trackingId: cmd.target ?? cmd.id }),
         input: { button: left ? 0 : 2, ...queued, ...(cmd.t === 'amove' && job.minimap ? { ctrl: true } : {}) } });
   }
   return actions;
+}
+
+const cameraPose = (camera, view) => [camera.x, camera.z, camera.y ?? groundHeight(camera, view),
+  camera.yaw ?? HUMAN_CAMERA.yaw, camera.distance ?? HUMAN_CAMERA.distance].join(',');
+
+function collectTargetSamples(hands, active, view) {
+  if (!active.targetSamples) {
+    active.targetSamples = new Map(active.actions.filter(action => action.unitTarget)
+      .map(action => action.clickedId ?? action.trackingId).filter(Number.isSafeInteger)
+      .map(id => [id, { pose: cameraPose(hands.camera, view), samples: [] }]));
+  }
+  for (const [id, history] of active.targetSamples) {
+    if (history.frozen) continue;
+    if (history.pose !== cameraPose(hands.camera, view)) { history.frozen = true; continue; }
+    const unit = view.units.get(id);
+    if (!unit || unit.hp <= 0 || unit.inventoryOnly || !view.screenIds?.has(id)
+      || !onScreen(unit, hands.camera, view)) continue;
+    if (!history.samples.length || view.tick > history.samples.at(-1).tick) {
+      history.samples.push({ tick: view.tick, point: screenPoint(unit, hands.camera, view) });
+      if (history.samples.length > 32) history.samples.shift();
+    }
+  }
+}
+
+function laggedAim(hands, action, tick, view) {
+  const tracking = action.tracking, history = tracking?.history;
+  if (!history || history.frozen) return null;
+  const unit = view.units.get(tracking.id);
+  if (!unit || unit.hp <= 0 || unit.inventoryOnly || !view.screenIds?.has(unit.id)
+    || !onScreen(unit, hands.camera, view)) return null;
+  const sample = history.samples.findLast(sample => sample.tick <= tick - tracking.lag);
+  return sample && { x: sample.point.x + tracking.error.x, y: sample.point.y + tracking.error.y };
+}
+
+function trackPointerTarget(hands, tick, view) {
+  const active = hands.active;
+  if (!active) return;
+  collectTargetSamples(hands, active, view);
+  const action = active.actions[active.index], tracking = action?.tracking;
+  if (!tracking || active.reacting || tick <= active.start || tick > active.due) return;
+  const aim = laggedAim(hands, action, tick, view);
+  if (!aim) return;
+  const endpoint = action.screenClick, d = pixelDistance(aim, endpoint);
+  if (d < 1e-8) return;
+  tracking.moved = true;
+  const budget = action.motor.width / action.duration * Math.max(0, tick - tracking.correctedAt);
+  const p = d ? Math.min(1, budget / d) : 0;
+  endpoint.x += (aim.x - endpoint.x) * p; endpoint.y += (aim.y - endpoint.y) * p;
+  tracking.correctedAt = tick;
+  hands.pointer.toX = endpoint.x; hands.pointer.toY = endpoint.y;
+  action.outsideScreen = endpoint.x < 0 || endpoint.y < 0
+    || endpoint.x > HUMAN_CAMERA.width || endpoint.y > HUMAN_CAMERA.height;
+}
+
+function trackedClick(hands, active, action, view) {
+  if (!action.tracking?.moved) return;
+  action.screenClick = { x: hands.pointer.x, y: hands.pointer.y };
+  action.motor.plannedTo = { ...action.motor.to };
+  action.motor.to = { ...action.screenClick };
+  action.motor.endpointDistance = pixelDistance(action.motor.from, action.screenClick);
+  action.at = clampPoint(unprojectPointer(action.screenClick, hands.camera, view), view);
+  if (action.pointRole === 'target') {
+    active.job.clickedAt = { ...action.at }; active.job.clickPixel = { ...action.screenClick };
+  }
+}
+
+const subsetOrders = new Set(['move', 'amove', 'attack', 'retreat', 'stop', 'cover']);
+function subsetContext(context, ids) {
+  const serves = event => event?.kind !== 'screen-damage' || ids.includes(event.unitId);
+  const copy = { ...context, responseActorIds: [...ids] };
+  if (copy.event && !serves(copy.event)) { delete copy.event; delete copy.eventTick; }
+  if (copy.responseEvents) copy.responseEvents = copy.responseEvents.filter(serves);
+  return copy;
+}
+
+function selectionContinues(hands, active, view) {
+  const job = active.job;
+  if (sameIds(hands.selected, job.ids)) return true;
+  if (job.inspect || !subsetOrders.has(job.command?.t)
+    || hands.selected.some(id => !job.ids.includes(id)) || !namedActorSelected(hands, job)) return false;
+  if (active.actions.slice(active.index + 1).some(selectsUnits)) return true;
+  if (!hands.selected.length) return false;
+  const units = knownOwn(view, hands.slot, hands.selected, job.panel);
+  if (units.length !== hands.selected.length) return false;
+  job.ids = job.ids.filter(id => hands.selected.includes(id));
+  job.units = units.map(unit => ({ ...unit }));
+  if (job.command.orders) job.command.orders = job.command.orders.filter(row => job.ids.includes(row[0]));
+  if (job.command.ids) job.command.ids = [...job.ids];
+  job.context = subsetContext(job.context, job.ids);
+  active.actions = active.actions.filter((action, index) => index <= active.index
+    || action.kind !== 'group-set' || job.ids.length >= 2);
+  const following = selectsUnits(active.actions[active.index]) ? active.index + 1 : active.index;
+  for (const action of active.actions.slice(following)) {
+    action.context = subsetContext(action.context, job.ids);
+    if (action.kind === 'group-set') action.ids = [...job.ids];
+  }
+  return true;
 }
 
 function prepareAction(hands, active) {
@@ -615,10 +775,23 @@ function prepareAction(hands, active) {
       action.motor.approachFraction = approach.seconds / action.motor.seconds;
     }
     duration = ticks(action.motor.seconds);
+    const trackingId = action.clickedId ?? action.trackingId;
+    const history = active.targetSamples?.get(trackingId);
+    if (action.unitTarget && !minimap && !action.ui && !action.box && history?.samples.length) action.tracking = {
+      id: trackingId, history,
+      // Reuse the existing motor lower bound. This is an authored tracking choice, not a human measurement.
+      lag: ticks(hands.skill.key[0]), error: { x: endpoint.x - intended.x, y: endpoint.y - intended.y },
+      correctedAt: hands.tick, pointerAt: hands.tick,
+    };
     if (!action.ui && !action.box) {
       const ground = unprojectPointer(endpoint, hands.camera, hands.lastView, { minimap });
-      action.outsideMinimap = minimap && (ground.x < 0 || ground.z < 0 || ground.x > hands.lastView.w * CELL || ground.z > hands.lastView.h * CELL);
-      const clicked = action.unitTarget ? { x: action.at.x, z: action.at.z } : clampPoint(ground, hands.lastView);
+      const minimapOrder = action.kind === 'minimap-rightclick' && ['move', 'amove', 'attack'].includes(active.job.command?.t);
+      // Human minimap right clicks dispatch anywhere inside its canvas. Formation clamps final slots to the map.
+      action.outsideMinimap = minimapOrder
+        ? endpoint.x < HUMAN_CAMERA.width - 236 || endpoint.x > HUMAN_CAMERA.width - 8
+          || endpoint.y < HUMAN_CAMERA.height - 236 || endpoint.y > HUMAN_CAMERA.height - 8
+        : minimap && (ground.x < 0 || ground.z < 0 || ground.x > hands.lastView.w * CELL || ground.z > hands.lastView.h * CELL);
+      const clicked = action.unitTarget ? { x: action.at.x, z: action.at.z } : minimapOrder ? ground : clampPoint(ground, hands.lastView);
       action.at = clicked;
       if (action.pointRole === 'anchor' || action.pointRole === 'target') active.job.clickedAt = clicked;
       if (action.pointRole === 'target') active.job.clickPixel = { ...endpoint };
@@ -635,14 +808,35 @@ function scheduleAction(hands, active, tick) {
   const duration = action.duration;
   if (action.screenClick) {
     const pointer = hands.pointer, endpoint = action.screenClick;
+    if (action.tracking) {
+      const aim = laggedAim(hands, action, tick, hands.lastView);
+      if (aim && pixelDistance(aim, endpoint) > 1e-8) {
+        action.tracking.moved = true;
+        // The approach starts at the real pointer. One target width bounds visual reacquisition.
+        const distance = pixelDistance(pointer, aim), budget = action.motor.distance + action.motor.width;
+        const fraction = distance ? Math.min(1, budget / distance) : 0;
+        endpoint.x = pointer.x + (aim.x - pointer.x) * fraction;
+        endpoint.y = pointer.y + (aim.y - pointer.y) * fraction;
+      }
+      action.tracking.pointerAt = tick;
+      action.outsideScreen = endpoint.x < 0 || endpoint.y < 0
+        || endpoint.x > HUMAN_CAMERA.width || endpoint.y > HUMAN_CAMERA.height;
+    }
     Object.assign(pointer, { fromX: pointer.x, fromY: pointer.y, toX: endpoint.x, toY: endpoint.y,
       startTick: tick, endTick: tick + duration, mode: action.ui ? 'ui' : action.kind.includes('minimap') ? 'minimap' : 'screen',
       via: action.motor.via ?? null, viaFraction: action.motor.approachFraction ?? null });
   }
   active.start = tick; active.due = tick + duration; action.startedTick = tick;
+  if (action.tracking) action.tracking.correctedAt = tick;
   if (action.screenClick && action.at) Object.assign(hands.cursor, { fromX: hands.cursor.x, fromZ: hands.cursor.z,
     toX: action.at.x, toZ: action.at.z, startTick: tick, endTick: active.due });
   if (action.camera) active.cameraFrom = { ...hands.camera };
+  if (action.panAxis) {
+    active.panKeys ??= [];
+    active.panFrom ??= { ...hands.camera };
+    active.panKeys.push({ index: active.index, action, start: tick, down: tick + action.panPrep,
+      up: active.due, last: tick, released: false });
+  }
 }
 
 function prepareOpening(hands, active) {
@@ -660,6 +854,8 @@ function prepareOpening(hands, active) {
 }
 
 function updatePointer(hands, tick, view) {
+  const action = hands.active?.actions[hands.active.index], tracking = action?.tracking;
+  const previous = { x: hands.pointer.x, y: hands.pointer.y };
   const pointer = hands.pointer, p = Math.min(1, Math.max(0, (tick - pointer.startTick) / Math.max(1, pointer.endTick - pointer.startTick)));
   if (pointer.via) {
     const press = pointer.viaFraction ?? 0.5, approaching = p < press;
@@ -671,17 +867,115 @@ function updatePointer(hands, tick, view) {
     pointer.x = pointer.fromX + (pointer.toX - pointer.fromX) * p;
     pointer.y = pointer.fromY + (pointer.toY - pointer.fromY) * p;
   }
+  if (tracking?.moved && !hands.active.reacting) {
+    const budget = (action.motor.distance + action.motor.width) / action.duration
+      * Math.max(0, tick - tracking.pointerAt);
+    const distance = pixelDistance(previous, pointer), fraction = distance ? Math.min(1, budget / distance) : 0;
+    pointer.x = previous.x + (pointer.x - previous.x) * fraction;
+    pointer.y = previous.y + (pointer.y - previous.y) * fraction;
+  }
+  if (tracking) tracking.pointerAt = tick;
   if (pointer.mode !== 'ui') {
     const at = unprojectPointer(pointer, hands.camera, view, { minimap: pointer.mode === 'minimap' });
     hands.cursor.x = at.x; hands.cursor.z = at.z;
   }
 }
 
+// Two ordinary key presses overlap their holds, as client camera.update combines W/S and A/D.
+// Each held key reserves one APM slot before its motor starts. Release costs no additional input.
+function advanceDiagonalPan(hands, active, tick, view) {
+  for (const held of active.panKeys) {
+    if (held.canceledAt !== undefined) continue;
+    const elapsed = Math.max(0, Math.min(tick, held.up) - Math.max(held.last, held.down));
+    if (elapsed) {
+      const travel = (hands.camera.distance ?? HUMAN_CAMERA.distance) * 1.1 * elapsed / 20;
+      hands.camera.x += held.action.panAxis.x * travel;
+      hands.camera.z += held.action.panAxis.z * travel;
+    }
+    held.last = tick;
+  }
+  hands.camera.x = Math.max(0, Math.min(view.w * CELL, hands.camera.x));
+  hands.camera.z = Math.max(0, Math.min(view.h * CELL, hands.camera.z));
+  updatePointer(hands, tick, view);
+  for (const held of active.panKeys) if (!held.released && tick >= held.up) {
+    active.index = held.index;
+    held.action.at = { x: hands.camera.x, z: hands.camera.z };
+    held.released = true;
+    // Keep the session until every already pressed key has completed its release.
+    emit(hands, held.action);
+  }
+  if (hands.interruptAfterInput) {
+    const pending = active.panKeys.find(held => held.index > 0 && !held.released && tick < held.down);
+    if (pending) { pending.released = true; pending.canceledAt = tick; active.actions.splice(pending.index, 1); }
+  } else if (active.panKeys.length < active.actions.length && tick >= active.panKeys[0].down) {
+    const reserved = active.panKeys.filter(held => !held.released).length;
+    hands.inputTicks = hands.inputTicks.filter(at => tick - at < 1200);
+    if (hands.inputTicks.length + reserved < hands.skill.apm[1]
+      && hands.inputTicks.filter(at => tick - at < 200).length + reserved < Math.floor(hands.skill.peak / 6)) {
+      active.index = active.panKeys.length;
+      scheduleAction(hands, active, tick);
+      return;
+    }
+  }
+  if (active.panKeys.every(held => held.released) && (hands.interruptAfterInput || active.panKeys.length === active.actions.length)) {
+    hands.active = null; hands.interruptAfterInput = false; hands.ready = !hands.queue.length;
+  }
+}
+
+function requestPanRelease(hands, active, tick, view, context) {
+  const event = context?.event;
+  // Only an actual immutable delivered public cue can drive this emergency motor cancellation.
+  if (!event || !Number.isFinite(event.tick) || event.tick > tick
+    || !(view.events ?? []).some(actual => JSON.stringify(actual) === JSON.stringify(event))) return false;
+  const action = active.actions[active.index];
+  if (active.reacting || action.mode !== 'pan' || !action.camera) return false;
+  const pressed = active.panKeys?.filter(key => !key.released && tick >= key.down && tick < key.up)
+    ?? (tick >= active.start + action.panPrep && tick < active.due
+      ? [{ action, start: active.start, down: active.start + action.panPrep, up: active.due }] : []);
+  if (!pressed.length) {
+    const waiting = active.panKeys ? active.panKeys.every(key => key.released || tick < key.down)
+      : tick < active.start + action.panPrep;
+    if (waiting) {
+      hands.active = null; hands.interruptAfterInput = false; hands.ready = !hands.queue.length;
+      return true;
+    }
+    return false;
+  }
+  if (pressed.some(key => key.action.earlyRelease)) return false;
+  const releaseMotor = ticks(skewedDelay(hands, hands.skill.key));
+  const range = event.source === 'alert' && !event.onScreen ? hands.skill.offscreen : hands.skill.reaction;
+  const deadline = event.tick + Math.max(4, ticks(skewedDelay(hands, range)));
+  const releaseStart = Math.max(tick, deadline - releaseMotor), up = releaseStart + releaseMotor;
+  for (const key of pressed) if (up < key.up) {
+    const plannedUp = key.up;
+    key.action.earlyRelease = { requestedTick: tick, releaseStartTick: releaseStart, releasedTick: up,
+      releaseMotorTicks: releaseMotor, plannedUpTick: plannedUp, keyDownTick: key.down,
+      cause: structuredClone(event) };
+    key.action.plannedPanHold = key.action.panHold;
+    key.action.panHold = up - key.down;
+    key.action.duration = up - key.start;
+    key.up = up;
+    if (!active.panKeys) active.due = up;
+  }
+  return true;
+}
+
 // A pointer approach can stop before its button press. Held drags/pans and key gestures
 // finish through the existing completion path, so no physical release is silently discarded.
-export function interruptHands(hands, tick, view = hands.lastView) {
+export function interruptHands(hands, tick, view = hands.lastView, context) {
   if (tick < hands.tick) throw new Error('AI input clock cannot run backwards');
   const active = hands.active, action = active?.actions[active.index];
+  if (active && view && requestPanRelease(hands, active, tick, view, context) && !hands.active) return true;
+  if (active?.panKeys && !active.reacting) {
+    // Stop a secondary key preparation before its press. Already pressed directions keep their real release.
+    const pending = active.panKeys.find(held => held.index > 0 && !held.released && tick < held.down);
+    if (pending) {
+      pending.released = true; pending.canceledAt = tick;
+      active.actions.splice(pending.index, 1);
+      active.index = active.panKeys.find(held => !held.released)?.index ?? 0;
+    }
+    hands.interruptAfterInput = true; return false;
+  }
   // Ctrl+minimap-click is one held-modifier gesture. Finish its click/release rather than abandon Ctrl.
   if (active && !active.reacting && (active.modifierHeld || action?.input?.code === 'ControlLeft')) {
     hands.interruptAfterInput = false; active.interruptAfterCommand = true; return false;
@@ -734,7 +1028,7 @@ function commandFor(hands, job, view) {
     else if (cmd.t === 'attack') { cmd.t = 'move'; cmd.orders = job.ids.map(id => [id, job.clickedAt.x, job.clickedAt.z]); delete cmd.ids; delete cmd.target; }
   }
   if (cmd.orders) {
-    const units = job.units.map(old => view.units.get(old.id) ?? old);
+    const units = hands.selected.map(id => view.units.get(id) ?? job.units.find(old => old.id === id)).filter(Boolean);
     cmd.orders = formation(units, job.clickedAt, { defs: UNITS, cell: CELL, width: view.w * CELL, height: view.h * CELL,
       face: cmd.face, shape: 'line', spread: 1, snap: true,
       terrainAt: (x, z) => x >= 0 && z >= 0 && x < view.w && z < view.h && !!(view.flags[z * view.w + x] & TRENCH) });
@@ -752,8 +1046,10 @@ export function advanceHands(hands, tick, view, submit) {
   hands.tick = tick;
   hands.lastView = view;
   pruneGroups(hands, view);
+  pruneOperationHistory(hands, view);
   hands.ready = tick >= hands.openingUntil && !hands.active && !hands.queue.length;
   if (view.players[hands.slot]?.out || view.winner != null) { hands.queue.length = 0; hands.active = null; return null; }
+  trackPointerTarget(hands, tick, view);
   updatePointer(hands, tick, view);
   if (hands.interruptAfterInput && (!hands.active || hands.active.reacting)) {
     hands.active = null; hands.interruptAfterInput = false;
@@ -768,13 +1064,15 @@ export function advanceHands(hands, tick, view, submit) {
     if (!actions?.length) return null;
     hands.concern = job.context.concern ?? hands.concern;
     const active = hands.active = { job, actions, index: 0 };
+    collectTargetSamples(hands, active, view);
     const opening = !hands.openingDone && actions.some(action => action.fire);
     const duration = opening ? prepareOpening(hands, active) : (prepareAction(hands, active), actions[0].duration);
     const reaction = Math.max(actions[0].camera ? 0 : minimumResponseTick(job.context) - tick - actions[0].duration,
       opening && !job.context.event && !causalLinks(job.context).length ? Math.max(0, hands.openingDeadline - tick - duration)
         : Math.max(opening ? hands.openingDeadline - tick - duration : 0,
           reactionDelay(hands, job.context, tick, actions[0].duration, !actions[0].camera)));
-    if (reaction > 0) Object.assign(active, { due: tick + reaction, reacting: true });
+    if (reaction > 0 || actions[0].panAxis && !affordableInput(hands, tick))
+      Object.assign(active, { due: tick + reaction, reacting: true });
     else scheduleAction(hands, active, tick);
     return null;
   }
@@ -783,10 +1081,12 @@ export function advanceHands(hands, tick, view, submit) {
     if (tick < active.due || (action.camera && !affordableInput(hands, tick))) return null;
     active.reacting = false; scheduleAction(hands, active, tick); return null;
   }
+  if (active.panKeys) { advanceDiagonalPan(hands, active, tick, view); return null; }
   if (action.camera && action.mode === 'pan') {
-    const p = Math.max(0, Math.min(1, (tick - active.start - action.panPrep) / action.panHold));
-    hands.camera.x = active.cameraFrom.x + (action.at.x - active.cameraFrom.x) * p;
-    hands.camera.z = active.cameraFrom.z + (action.at.z - active.cameraFrom.z) * p;
+    const elapsed = Math.max(0, Math.min(action.panHold, tick - active.start - action.panPrep));
+    const travel = (hands.camera.distance ?? HUMAN_CAMERA.distance) * 1.1 * elapsed / 20;
+    hands.camera.x = Math.max(0, Math.min(view.w * CELL, active.cameraFrom.x + action.panDirection.x * travel));
+    hands.camera.z = Math.max(0, Math.min(view.h * CELL, active.cameraFrom.z + action.panDirection.z * travel));
     updatePointer(hands, tick, view);
   }
   if (tick < active.due || !affordableInput(hands, tick)) return null;
@@ -813,8 +1113,10 @@ export function advanceHands(hands, tick, view, submit) {
     if (!latest) { emit(hands, action); hands.active = null; return null; }
     action.at = { x: latest.x, z: latest.z };
   }
+  if (action.earlyRelease && !active.panKeys) action.at = { x: hands.camera.x, z: hands.camera.z };
   if (action.camera) Object.assign(hands.camera, action.at);
   updatePointer(hands, tick, view);
+  trackedClick(hands, active, action, view);
   if (action.ids && ['select-box', 'select-click', 'select-add-click'].includes(action.kind)) {
     if (action.box) hands.selected = boxUnits(action.box, hands, view).map(u => u.id);
     else {
@@ -826,7 +1128,9 @@ export function advanceHands(hands, tick, view, submit) {
       }
     }
     hands.selectionOrigin = 'screen';
-    if (!sameIds(hands.selected, action.ids)) { emit(hands, action); hands.active = null; return null; }
+    if (!sameIds(hands.selected, action.ids) && !selectionContinues(hands, active, view)) {
+      emit(hands, action); hands.active = null; return null;
+    }
   }
   if (action.kind === 'select-air-panel') {
     const hit = airPanelHit(view, action.screenClick);
@@ -848,6 +1152,10 @@ export function advanceHands(hands, tick, view, submit) {
   }
   let cmd = null;
   if (action.fire) {
+    if (active.job.ids.length && !sameIds(hands.selected, active.job.ids)
+      && !selectionContinues(hands, active, view)) {
+      emit(hands, action); hands.active = null; hands.ready = !hands.queue.length; return null;
+    }
     const local = active.job.units.every(old => onScreen(view.units.get(old.id) ?? old, hands.camera, view));
     // The commander deliberately requires a current screen, a real group recall or a minimap order. The client
     // itself allows a persistent selection to act after walking off screen; this stricter rule wastes that input.
@@ -863,7 +1171,8 @@ export function advanceHands(hands, tick, view, submit) {
     if (selectedGroup !== null) hands.groupUse.set(selectedGroup, tick);
     cmd = commandFor(hands, active.job, view);
     hands.lastCommandTick = tick; hands.lastCommandTarget = active.job.at; hands.openingDone = true;
-    submit(cmd);
+    const result = submit(cmd);
+    if (result === undefined) acceptedOperation(hands, active, cmd, view);
   }
   const interrupted = emit(hands, action, cmd);
   if (action.kind === 'cancel-key') hands.cancelTargeting = false;

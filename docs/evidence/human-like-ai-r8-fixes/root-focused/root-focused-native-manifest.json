@@ -1,0 +1,265 @@
+{
+  "schema": "ww2-r8-native-evidence-copy-v1",
+  "originals": [
+    {
+      "originalPath": "/tmp/human-ai-r8-root-focused/checks.json",
+      "member": "original/checks.json",
+      "bytes": 6876,
+      "sha256": "d50edbd7508db995cfcacddbcc0d9daca75c8d6929194e28f53120aaa5d2287f"
+    },
+    {
+      "originalPath": "/tmp/human-ai-r8-root-focused/test-engine-ai-coherence.js.adopted.log",
+      "member": "original/test-engine-ai-coherence.js.adopted.log",
+      "bytes": 403,
+      "sha256": "7912a6a2fd0f5dde8af11c56338fdf488a67e9431f369a1e9972ed821725b5a3"
+    },
+    {
+      "originalPath": "/tmp/human-ai-r8-root-focused/test-engine-ai-cover-opportunity.js.integrated.log",
+      "member": "original/test-engine-ai-cover-opportunity.js.integrated.log",
+      "bytes": 136,
+      "sha256": "f9a4df1abe636a77292dcefc9184c5251dc42528c35f318bc4f600241d87d307"
+    },
+    {
+      "originalPath": "/tmp/human-ai-r8-root-focused/test-engine-ai-cover-opportunity.js.log",
+      "member": "original/test-engine-ai-cover-opportunity.js.log",
+      "bytes": 455,
+      "sha256": "f030edf777391455d3e70aa635536323ba9e9bfdf0f540e2e458dcbc9a65d743"
+    },
+    {
+      "originalPath": "/tmp/human-ai-r8-root-focused/test-engine-ai-diagonal-pan.js.log",
+      "member": "original/test-engine-ai-diagonal-pan.js.log",
+      "bytes": 166,
+      "sha256": "301ad4b9afa0b4803aebe6958daec3b5dc6aa54b7e78c61ca977ad05f21ff0dd"
+    },
+    {
+      "originalPath": "/tmp/human-ai-r8-root-focused/test-engine-ai-fortification-cover.js.log",
+      "member": "original/test-engine-ai-fortification-cover.js.log",
+      "bytes": 176,
+      "sha256": "f1eed39c95e194e636dcfd9691ca7524e88e73330318971fd09f7f2c7223d4f0"
+    },
+    {
+      "originalPath": "/tmp/human-ai-r8-root-focused/test-engine-ai-group-reuse.js.integrated.log",
+      "member": "original/test-engine-ai-group-reuse.js.integrated.log",
+      "bytes": 102,
+      "sha256": "0d6114fdc52f52f30c20368a25e850e559b24bff0709700d067bae49d95f50eb"
+    },
+    {
+      "originalPath": "/tmp/human-ai-r8-root-focused/test-engine-ai-hands.js.log",
+      "member": "original/test-engine-ai-hands.js.log",
+      "bytes": 108,
+      "sha256": "9cd01eb1d7cbf22bbf205c6e2556491c73fddd8cf15d6658a496aad4605e51de"
+    },
+    {
+      "originalPath": "/tmp/human-ai-r8-root-focused/test-engine-ai-hesitation.js.adopted.log",
+      "member": "original/test-engine-ai-hesitation.js.adopted.log",
+      "bytes": 141,
+      "sha256": "8004f904147d072dc0c3a280a07576e4fe73bf82097e743b0ef66d1c2c111431"
+    },
+    {
+      "originalPath": "/tmp/human-ai-r8-root-focused/test-engine-ai-human.js.adopted.log",
+      "member": "original/test-engine-ai-human.js.adopted.log",
+      "bytes": 414,
+      "sha256": "fdf3d70e7b2a664b73776c3c0a9d0c9f3189b7f3b2e4846b9d11901d390c7a9f"
+    },
+    {
+      "originalPath": "/tmp/human-ai-r8-root-focused/test-engine-ai-human.js.integrated.log",
+      "member": "original/test-engine-ai-human.js.integrated.log",
+      "bytes": 757,
+      "sha256": "a2774667ff943dea7562d9b6b96b91b4fd1b6ea209201a2fd3c9cc2a43255bd3"
+    },
+    {
+      "originalPath": "/tmp/human-ai-r8-root-focused/test-engine-ai-idle-guard-attention.js.log",
+      "member": "original/test-engine-ai-idle-guard-attention.js.log",
+      "bytes": 119,
+      "sha256": "05c0560569a3ea6138d0f8ecbfeba52e6adbc7818e584f0116a6884ef6d6570f"
+    },
+    {
+      "originalPath": "/tmp/human-ai-r8-root-focused/test-engine-ai-local-engineer.js.integrated.log",
+      "member": "original/test-engine-ai-local-engineer.js.integrated.log",
+      "bytes": 75,
+      "sha256": "4e2c17350a6d79bbd9331654fc41a81c2dff8fa4fe26bcb6a6c885bcbc01afb7"
+    },
+    {
+      "originalPath": "/tmp/human-ai-r8-root-focused/test-engine-ai-manual-response-v3.js.integrated.log",
+      "member": "original/test-engine-ai-manual-response-v3.js.integrated.log",
+      "bytes": 95,
+      "sha256": "d84d66496136784f9c462cdb37bab2e7d5e187edfbbdd1e36a51bc7986a619ee"
+    },
+    {
+      "originalPath": "/tmp/human-ai-r8-root-focused/test-engine-ai-perception.js.adopted.log",
+      "member": "original/test-engine-ai-perception.js.adopted.log",
+      "bytes": 63,
+      "sha256": "ebb3a1fcc39178638d3aca81e0965dab494dbb59a8c92f4cdaf12a68c9988871"
+    },
+    {
+      "originalPath": "/tmp/human-ai-r8-root-focused/test-engine-ai-priority.js.integrated.log",
+      "member": "original/test-engine-ai-priority.js.integrated.log",
+      "bytes": 98,
+      "sha256": "167ef11e79a0ff216791b3cb634188cce210239974c69814fcfe161f6fb37331"
+    },
+    {
+      "originalPath": "/tmp/human-ai-r8-root-focused/test-engine-ai-public-alert-v2.js.adopted.log",
+      "member": "original/test-engine-ai-public-alert-v2.js.adopted.log",
+      "bytes": 165155,
+      "sha256": "4d6488d7c28ba5b779391ea308ee5aaa686d175ed838e6ad7a452c8c36ed262a"
+    },
+    {
+      "originalPath": "/tmp/human-ai-r8-root-focused/test-engine-ai-public-alert.js.log",
+      "member": "original/test-engine-ai-public-alert.js.log",
+      "bytes": 3444,
+      "sha256": "dfd459fe62002f4c155d99934c3df89af85d57fee5c833e3072f9606d3cfe375"
+    },
+    {
+      "originalPath": "/tmp/human-ai-r8-root-focused/test-engine-ai-purpose.js.integrated.log",
+      "member": "original/test-engine-ai-purpose.js.integrated.log",
+      "bytes": 89,
+      "sha256": "3ce63b7db18dfc0c0850e686119512747446f035cbff55f657ef94bfb87526a9"
+    },
+    {
+      "originalPath": "/tmp/human-ai-r8-root-focused/test-engine-ai-response.js.log",
+      "member": "original/test-engine-ai-response.js.log",
+      "bytes": 575,
+      "sha256": "b29af6e56be6cc67c5eade3d02cdc14749c928f9036f43172bbe8ba053ace087"
+    },
+    {
+      "originalPath": "/tmp/human-ai-r8-root-focused/test-engine-ai-workload.js.adopted.log",
+      "member": "original/test-engine-ai-workload.js.adopted.log",
+      "bytes": 209,
+      "sha256": "658154a5da3186e9d5f84296ff74bf4422890641e191495709255777e9d8dcce"
+    },
+    {
+      "originalPath": "/tmp/human-ai-r8-root-room-lifecycle-receipt.json",
+      "member": "room-lifecycle/human-ai-r8-root-room-lifecycle-receipt.json",
+      "bytes": 460,
+      "sha256": "6d36b464c3798211a2936c7292e4f9a0c12fc9c74afc31c88640e04af1dc105c"
+    },
+    {
+      "originalPath": "/tmp/human-ai-r8-root-room-lifecycle.mjs",
+      "member": "room-lifecycle/human-ai-r8-root-room-lifecycle.mjs",
+      "bytes": 22944,
+      "sha256": "678661dede78ab6f058ec1225882934167ec010758c55436fb9ab0f1723b7c60"
+    },
+    {
+      "originalPath": "/tmp/human-ai-r8-root-room-lifecycle.log",
+      "member": "room-lifecycle/human-ai-r8-root-room-lifecycle.log",
+      "bytes": 66,
+      "sha256": "1c936089bf1a78535721a9ecac2634ab30b3f14cba6759695719918ea03e556b"
+    },
+    {
+      "originalPath": "/tmp/r8-durable-package/root-source-bindings-before-early-pan.json",
+      "member": "root-source-bindings-before-early-pan.json",
+      "bytes": 7524,
+      "sha256": "cdc225bfcd4a9e0475fe26467b649214c896c51f4c93796310b81d4d6f1589b3"
+    },
+    {
+      "originalPath": "/home/judiazm/.t3/worktrees/ww2-rts/ai-human-commander/test-engine-ai-coherence.js",
+      "member": "current-fixtures/test-engine-ai-coherence.js",
+      "bytes": 18595,
+      "sha256": "44fbed9b65c868b8eda066752d6e2f1e73f2163ff2d281e06b0405414f740c7e"
+    },
+    {
+      "originalPath": "/home/judiazm/.t3/worktrees/ww2-rts/ai-human-commander/test-engine-ai-cover-opportunity.js",
+      "member": "current-fixtures/test-engine-ai-cover-opportunity.js",
+      "bytes": 7476,
+      "sha256": "6c73673c99e5c7d07f3fb9908bb2ef2b0f2c26440d99c3c0d40186556567cb9c"
+    },
+    {
+      "originalPath": "/home/judiazm/.t3/worktrees/ww2-rts/ai-human-commander/test-engine-ai-diagonal-pan.js",
+      "member": "current-fixtures/test-engine-ai-diagonal-pan.js",
+      "bytes": 9086,
+      "sha256": "8bbc5c6e447d7dfa6433e81d64443c513f6aa2f9bc006910d14f050d748882a3"
+    },
+    {
+      "originalPath": "/home/judiazm/.t3/worktrees/ww2-rts/ai-human-commander/test-engine-ai-fortification-cover.js",
+      "member": "current-fixtures/test-engine-ai-fortification-cover.js",
+      "bytes": 6800,
+      "sha256": "56fb15c8737f75aaaf726558022fe87614274f5e06c9e2e180a333558ae0825c"
+    },
+    {
+      "originalPath": "/home/judiazm/.t3/worktrees/ww2-rts/ai-human-commander/test-engine-ai-group-reuse.js",
+      "member": "current-fixtures/test-engine-ai-group-reuse.js",
+      "bytes": 11667,
+      "sha256": "d5a1c5bbd3f20fc97508b7228dc6290a81bf7f6f89187efee9f950f4d43689b6"
+    },
+    {
+      "originalPath": "/home/judiazm/.t3/worktrees/ww2-rts/ai-human-commander/test-engine-ai-hands.js",
+      "member": "current-fixtures/test-engine-ai-hands.js",
+      "bytes": 75738,
+      "sha256": "01e60c381495b1f99589fbd76587b19db0c7680807445e745abc69087ba1fab5"
+    },
+    {
+      "originalPath": "/home/judiazm/.t3/worktrees/ww2-rts/ai-human-commander/test-engine-ai-hesitation.js",
+      "member": "current-fixtures/test-engine-ai-hesitation.js",
+      "bytes": 8728,
+      "sha256": "a29d8f1b7a66bfac956bb5483fbb7d16c07c8dda56def60e06eddb956d055331"
+    },
+    {
+      "originalPath": "/home/judiazm/.t3/worktrees/ww2-rts/ai-human-commander/test-engine-ai-human.js",
+      "member": "current-fixtures/test-engine-ai-human.js",
+      "bytes": 14598,
+      "sha256": "f3d74de9c48bb9916480ea7e48206833e7f57e3570225998be54111d2dd93df9"
+    },
+    {
+      "originalPath": "/home/judiazm/.t3/worktrees/ww2-rts/ai-human-commander/test-engine-ai-idle-guard-attention.js",
+      "member": "current-fixtures/test-engine-ai-idle-guard-attention.js",
+      "bytes": 10778,
+      "sha256": "92757c743866c2f1c935bdb978fd247e21c5b74a86338245c85e4709aecc373a"
+    },
+    {
+      "originalPath": "/home/judiazm/.t3/worktrees/ww2-rts/ai-human-commander/test-engine-ai-local-engineer.js",
+      "member": "current-fixtures/test-engine-ai-local-engineer.js",
+      "bytes": 7058,
+      "sha256": "04de1e48a4ac2c6a0c6e37b66ade5e30cd91452a1933968cdb98769b42aa8caf"
+    },
+    {
+      "originalPath": "/home/judiazm/.t3/worktrees/ww2-rts/ai-human-commander/test-engine-ai-manual-response-v3.js",
+      "member": "current-fixtures/test-engine-ai-manual-response-v3.js",
+      "bytes": 10682,
+      "sha256": "ee51561c9509fe0764c47c173b12ed35d161d4aa6d6ebf5985e06a9df78e9342"
+    },
+    {
+      "originalPath": "/home/judiazm/.t3/worktrees/ww2-rts/ai-human-commander/test-engine-ai-perception.js",
+      "member": "current-fixtures/test-engine-ai-perception.js",
+      "bytes": 52297,
+      "sha256": "ef8d5c10a74fc677c82b181eeedd6e1ebe98660c99ed88bff9072f7080338a43"
+    },
+    {
+      "originalPath": "/home/judiazm/.t3/worktrees/ww2-rts/ai-human-commander/test-engine-ai-priority.js",
+      "member": "current-fixtures/test-engine-ai-priority.js",
+      "bytes": 9278,
+      "sha256": "fc66fa621166266f6a555020de6701944ea8a0365fc1dd077b4197efd05670e0"
+    },
+    {
+      "originalPath": "/home/judiazm/.t3/worktrees/ww2-rts/ai-human-commander/test-engine-ai-public-alert-v2.js",
+      "member": "current-fixtures/test-engine-ai-public-alert-v2.js",
+      "bytes": 14718,
+      "sha256": "7fa24d55d97352c39d7f23fb2a97d2a9833c19332458ac8de0a08135c40cfcb6"
+    },
+    {
+      "originalPath": "/home/judiazm/.t3/worktrees/ww2-rts/ai-human-commander/test-engine-ai-public-alert.js",
+      "member": "current-fixtures/test-engine-ai-public-alert.js",
+      "bytes": 15585,
+      "sha256": "4655cc6f966bc815bc18f2d26dfc9dc10fce55875ff2e374bd3ca71292248b13"
+    },
+    {
+      "originalPath": "/home/judiazm/.t3/worktrees/ww2-rts/ai-human-commander/test-engine-ai-purpose.js",
+      "member": "current-fixtures/test-engine-ai-purpose.js",
+      "bytes": 18095,
+      "sha256": "b2d132df3dbaacc114d5616d79c8cf0cabf59375a10eee89009e43f58f02b718"
+    },
+    {
+      "originalPath": "/home/judiazm/.t3/worktrees/ww2-rts/ai-human-commander/test-engine-ai-response.js",
+      "member": "current-fixtures/test-engine-ai-response.js",
+      "bytes": 26033,
+      "sha256": "cacd3cfc34b5dd7af185c2b89cf7c7dbfa26965202c0938a4a6b6be7ce62907e"
+    },
+    {
+      "originalPath": "/home/judiazm/.t3/worktrees/ww2-rts/ai-human-commander/test-engine-ai-workload.js",
+      "member": "current-fixtures/test-engine-ai-workload.js",
+      "bytes": 22168,
+      "sha256": "fd292566291a936049ea7d8263402c30ca49f3aa10d9a4d69fc104fe6f866adf"
+    }
+  ],
+  "copiedOriginalBytes": 550030,
+  "packagingExecution": "Byte copying and checks only. No simulations or tests executed."
+}

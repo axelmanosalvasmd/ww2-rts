@@ -1,0 +1,14 @@
+{
+  "status": "PASS",
+  "qualification": "Copy integrity only. Retained source-specific results are not new checks or acceptance.",
+  "archive": "browser-flank-failed-attempt.tar.gz",
+  "archiveBytes": 384186,
+  "archiveSHA256": "60f63d03046f8750e877c2f40693a67f4f15e8ee73ef61e3d9d9afdc13360332",
+  "members": 22,
+  "originals": 19,
+  "originalCopiedBytes": 943335,
+  "payloadBytes": 951793,
+  "allOriginalBytesUnchanged": true,
+  "allRoundtripBytesMatch": true,
+  "manifestSHA256": "6ac5eed96fb09135f9459f6b8d1ccd086bc40f776f8fedacc1fb50f31e23a9d5"
+}

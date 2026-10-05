@@ -1,0 +1,198 @@
+{
+  "at": "2026-10-04T19:39:58.031642+00:00",
+  "qualification": "Explicit prospective verifier dependency only. Default collector/package hashing unchanged.50current Conquest and42historical Classic/World digest controls; no current World or campaign speed guarantee.",
+  "files": [
+    {
+      "source": "/tmp/v16-hash-repo-candidate/tools/hash-json-native.mjs",
+      "file": "tools--hash-json-native.mjs",
+      "bytes": 3875,
+      "sha256": "84d9f9c2273071831d86fe88e4244bda6013c762412ef837a5dc4c90a08e41c5"
+    },
+    {
+      "source": "/tmp/v16-hash-repo-candidate/tools/ai-humanity.mjs",
+      "file": "tools--ai-humanity.mjs",
+      "bytes": 92122,
+      "sha256": "7c80a300e54bf42b2bc495f0efcfd25321738e4c82b5fdad98112ea787e1a05e"
+    },
+    {
+      "source": "/tmp/v16-hash-repo-candidate/test-ai-humanity-storage.js",
+      "file": "v16-hash-repo-candidate--test-ai-humanity-storage.js",
+      "bytes": 18846,
+      "sha256": "b50d2668f43161b5ce79feb6b165724e89f7ec221ff0a0754a58b0369c62753b"
+    },
+    {
+      "source": "/tmp/v16-hash-repo-candidate/integration.patch",
+      "file": "v16-hash-repo-candidate--integration.patch",
+      "bytes": 15124,
+      "sha256": "9ad56f00a4899963402b4aa14321866e6e6c6d258391f067785929b95e5a004b"
+    },
+    {
+      "source": "/tmp/v16-hash-repo-candidate/future-verifier.patch",
+      "file": "v16-hash-repo-candidate--future-verifier.patch",
+      "bytes": 7155,
+      "sha256": "3006ea3d2779c747c31087b62efe4442c898a1eecfffabbcaa79373fa59b43e4"
+    },
+    {
+      "source": "/tmp/v16-hash-repo-candidate/ADOPTION.md",
+      "file": "v16-hash-repo-candidate--ADOPTION.md",
+      "bytes": 5422,
+      "sha256": "133f3000a2db75483c8ff3249447117127f4fc45c2a86245f14219a00b90b58b"
+    },
+    {
+      "source": "/tmp/v16-hash-repo-candidate/storage-test.log",
+      "file": "v16-hash-repo-candidate--storage-test.log",
+      "bytes": 265,
+      "sha256": "ade7effe309dd182561684f584cdb1ee630047c6155b89d21c38034cd92a35ba"
+    },
+    {
+      "source": "/tmp/v16-hash-repo-candidate/historical-controls.mjs",
+      "file": "v16-hash-repo-candidate--historical-controls.mjs",
+      "bytes": 2337,
+      "sha256": "063d7fdfc099f4cb5330ec6782a1206df2b57b284b36874fde63dfa7e6720a04"
+    },
+    {
+      "source": "/tmp/v16-hash-repo-candidate/historical-controls.json",
+      "file": "v16-hash-repo-candidate--historical-controls.json",
+      "bytes": 9834,
+      "sha256": "542400701bceb36c592f5f3fc493d3aa9be5bd5dfaaffd29eec4f672c856f239"
+    },
+    {
+      "source": "/tmp/v16-hash-repo-candidate/historical-controls.log",
+      "file": "v16-hash-repo-candidate--historical-controls.log",
+      "bytes": 103,
+      "sha256": "c05555c64d224820c2e815e4b1000baa32b30303a105f18ac4585fbcf7cddfea"
+    },
+    {
+      "source": "/tmp/v16-hash-repo-candidate/manifest.json",
+      "file": "v16-hash-repo-candidate--manifest.json",
+      "bytes": 2673,
+      "sha256": "b4d5a7bfb315d1b59d70e8c517c0d8210760c6b504414414da1e64e85a132612"
+    },
+    {
+      "source": "/tmp/human-ai-final-v16-v4-preparation/run-campaign.mjs",
+      "file": "human-ai-final-v16-v4-preparation--run-campaign.mjs",
+      "bytes": 15900,
+      "sha256": "5e1b5665e58f31daba55da0cb04762c538c2ed3465ab983caa9c41606f5cdeca"
+    },
+    {
+      "source": "/tmp/human-ai-v16-full-source/tools/json-stream.mjs",
+      "file": "tools--json-stream.mjs",
+      "bytes": 9588,
+      "sha256": "34f01a09d4996f356a3dafc61084aae27a4bf18cd8e6b63b2fda9e95c5168798"
+    },
+    {
+      "source": "/tmp/v16-hash-buffer-proposal/PROPOSAL.md",
+      "file": "v16-hash-buffer-proposal--PROPOSAL.md",
+      "bytes": 5967,
+      "sha256": "2edf2c4320b210300a35876bab017b07fd0697d37a82fca3560a49cce2ac499e"
+    },
+    {
+      "source": "/tmp/v16-hash-buffer-proposal/bounded-native-controls.json",
+      "file": "v16-hash-buffer-proposal--bounded-native-controls.json",
+      "bytes": 14722,
+      "sha256": "c05a8196e3ae70b68a7984475de46adeb278a477a5fdee4f3934aa8543d48690"
+    },
+    {
+      "source": "/tmp/v16-hash-buffer-proposal/bounded-native-controls.log",
+      "file": "v16-hash-buffer-proposal--bounded-native-controls.log",
+      "bytes": 10197,
+      "sha256": "0821f9a762f7582fa3674911e39923b86407d39c6456b9071cc9b743d3348ec6"
+    },
+    {
+      "source": "/tmp/v16-hash-buffer-proposal/bounded-native-controls.mjs",
+      "file": "v16-hash-buffer-proposal--bounded-native-controls.mjs",
+      "bytes": 2803,
+      "sha256": "90baa8fee79b6d466b07c3cee44be292f2e8aba3cb6309eb51a71bf6b888c9e5"
+    },
+    {
+      "source": "/tmp/v16-hash-buffer-proposal/bounded-native-edge-controls.log",
+      "file": "v16-hash-buffer-proposal--bounded-native-edge-controls.log",
+      "bytes": 168,
+      "sha256": "8e765c9d196d1ffe2a2308deab6df023103a060a437d45240917812182b36a34"
+    },
+    {
+      "source": "/tmp/v16-hash-buffer-proposal/edge-controls.log",
+      "file": "v16-hash-buffer-proposal--edge-controls.log",
+      "bytes": 139,
+      "sha256": "6de3cc9c2a1056b3bbf8e527b5ac1b7bec51f43a5d0c17896e53f57087752469"
+    },
+    {
+      "source": "/tmp/v16-hash-buffer-proposal/hash-bounded-native.mjs",
+      "file": "v16-hash-buffer-proposal--hash-bounded-native.mjs",
+      "bytes": 3875,
+      "sha256": "84d9f9c2273071831d86fe88e4244bda6013c762412ef837a5dc4c90a08e41c5"
+    },
+    {
+      "source": "/tmp/v16-hash-buffer-proposal/hash-buffer.mjs",
+      "file": "v16-hash-buffer-proposal--hash-buffer.mjs",
+      "bytes": 1074,
+      "sha256": "6fd7a00f8a462f4479a8581d320f0c1d64971a32e402993ef83d40f63718e212"
+    },
+    {
+      "source": "/tmp/v16-hash-buffer-proposal/native-controls.log",
+      "file": "v16-hash-buffer-proposal--native-controls.log",
+      "bytes": 4382,
+      "sha256": "ee908c5e7bd94e62d8593485a751bbd2b8fa06657c209fbabecd3b1887d1b875"
+    },
+    {
+      "source": "/tmp/v16-hash-buffer-proposal/native-controls.mjs",
+      "file": "v16-hash-buffer-proposal--native-controls.mjs",
+      "bytes": 2779,
+      "sha256": "a3eeca5f382acf2dc116dac76975438da064a3798d885bb462966a05532d44ba"
+    },
+    {
+      "source": "/tmp/v16-hash-buffer-proposal/run-campaign-digest-only.patch",
+      "file": "v16-hash-buffer-proposal--run-campaign-digest-only.patch",
+      "bytes": 4350,
+      "sha256": "1c708c6a40751bac8cd0ae997f07e89bb34bad42ff44e8667ec807138c2da9f8"
+    },
+    {
+      "source": "/tmp/v16-hash-buffer-proposal/test-bounded-native.mjs",
+      "file": "v16-hash-buffer-proposal--test-bounded-native.mjs",
+      "bytes": 3061,
+      "sha256": "2a4dd3139904ca9f744f4a2937d151e5b5ac64637c806c9b60deffbb951582c9"
+    },
+    {
+      "source": "/tmp/v16-hash-buffer-proposal/test-buffer.mjs",
+      "file": "v16-hash-buffer-proposal--test-buffer.mjs",
+      "bytes": 2588,
+      "sha256": "553a4d8afb4703bbcfb99bd60174942f5612d4603c17a445dbe502dc5b9b44ff"
+    },
+    {
+      "source": "/tmp/v16-verifier-proposal/profile.json",
+      "file": "v16-verifier-proposal--profile.json",
+      "bytes": 3787,
+      "sha256": "88848331f02cee1975705684c331feb042f1877ff5b6747f79bed8c00787c3d2"
+    },
+    {
+      "source": "/tmp/v16-verifier-proposal/profile.log",
+      "file": "v16-verifier-proposal--profile.log",
+      "bytes": 3209,
+      "sha256": "7bc51fcfa5322d0ae114126eecb15a11e25d80856f67d6dc853ded647a421ae6"
+    },
+    {
+      "source": "/tmp/v16-verifier-proposal/profile.mjs",
+      "file": "v16-verifier-proposal--profile.mjs",
+      "bytes": 3452,
+      "sha256": "f48801894d5859e793201dc4882bafdf415e3d28f1d3d036bab5c33ec03db20a"
+    },
+    {
+      "source": "/tmp/v16-hash-buffer-proposal/manifest.json",
+      "file": "v16-hash-buffer-proposal--manifest.json",
+      "bytes": 3740,
+      "sha256": "95cbe0447a20b68d13f1e1e2e6274f7d10b437b6b8f6bdf4924c24c4e5abf8d4"
+    },
+    {
+      "source": "/tmp/ai-v18-root-hash-checks/result.json",
+      "file": "ai-v18-root-hash-checks--result.json",
+      "bytes": 935,
+      "sha256": "81069b06522c50c6b50882f2053d0cda2b463ab6720070987a0543a86e8ad266"
+    },
+    {
+      "source": "/tmp/ai-v18-root-hash-checks/test-ai-humanity-storage.js.log",
+      "file": "ai-v18-root-hash-checks--test-ai-humanity-storage.js.log",
+      "bytes": 265,
+      "sha256": "ade7effe309dd182561684f584cdb1ee630047c6155b89d21c38034cd92a35ba"
+    }
+  ]
+}

@@ -1,0 +1,20 @@
+Living group recall: accepted pair moves 119/224, binding 227, switch 244, recall 256, accepted survivor move 265.
+Camera arrival: old deadline 80, paid pans 96/121, fresh plan 128, command 136.
+node:internal/modules/run_main:107
+    triggerUncaughtException(
+    ^
+
+AssertionError [ERR_ASSERTION]: Expected values to be strictly equal:
+
+76 !== 75
+
+    at file:///tmp/r5-camera-current-visibility/after/test-engine-ai-response.js:285:12 {
+  generatedMessage: true,
+  code: 'ERR_ASSERTION',
+  actual: 76,
+  expected: 75,
+  operator: 'strictEqual',
+  diff: 'simple'
+}
+
+Node.js v24.21.0

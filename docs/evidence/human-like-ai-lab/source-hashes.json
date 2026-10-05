@@ -1,0 +1,11 @@
+{
+  "tools/ai-lab-browser.mjs": "9017bac6153e3df8e55428a1bb89fb1586afa67402de3526d6c28e68507b49c9",
+  "tools/ai-lab-node.mjs": "3a673bac091d805ee0807862ba3c580bd6c75f36724521ceee582406529a8657",
+  "tools/ai-lab-report.mjs": "f13340cb3513a5d430ebb023947e4bc9bdede94c56c19a61155505bc6563e06e",
+  "tools/ai-lab-runner.mjs": "01020a610e714ca538ca12b81c03652d77bba31d7a99ea696aec786b97c34ea2",
+  "tools/ai-lab-server.mjs": "fb9124d7f4a0d18fbdc18a89964d190987f7e1a084807b43cc06cdefa1ac6a9a",
+  "tools/ai-lab.html": "f01569c13a0d596ea005611588bfda5e8e9641e2053ca13a283e9c3ca33cf73d",
+  "tools/ai-lab.mjs": "795be7f8db4b31d138f2f5a771e19510cbd9af128808676a1b7bf12bb104d7e4",
+  "test-ai-lab.js": "0a66b1b69804d87ef58d0f1ee03cc0d8d437c24785ae1d43d71c06a5c298fd52",
+  "docs/ai-lab.md": "5aceb0108abb99761d4037610b1fe8c93fe589726353e6c44729278021c750d7"
+}

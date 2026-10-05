@@ -1,0 +1,63 @@
+{
+  "declaredAt": "2026-10-04T13:50:21.278899+00:00",
+  "authorization": "Root explicitly authorized receipt-only followup,20seed/alllevel45s paired Conquest; reuse byte-identical original saving-guard candidate as before. No production edits or metric/band changes.",
+  "hypothesis": "An actual accepted own buy can be newer than the delivered resource frame. Suppress only newly planned buys until a strictly newer observation, retain all queued physical work and other useful intents. Existing local MP/fuel debits already project accepted proposals; no second ledger added.",
+  "before": {
+    "source": "/tmp/human-ai-opening-paired-candidate-source",
+    "report": "/tmp/human-ai-opening-paired/candidate/full.json",
+    "reportSHA256": "ad6099ee68ec87c02aeceb9ba369b3e5d748da0324c2721b756489b62fa2009b",
+    "reuse": "Complete all60matches180seats, no selection or rerun."
+  },
+  "after": {
+    "source": "/tmp/human-ai-opening-receipt-source",
+    "changedFiles": [
+      "shared/ai-commander.js",
+      "shared/ai.js"
+    ]
+  },
+  "configuration": {
+    "mode": "conquest",
+    "levels": [
+      "easy",
+      "normal",
+      "hard"
+    ],
+    "seeds": [
+      1,
+      2,
+      3,
+      4,
+      5,
+      6,
+      7,
+      8,
+      9,
+      10,
+      11,
+      12,
+      13,
+      14,
+      15,
+      16,
+      17,
+      18,
+      19,
+      20
+    ],
+    "seconds": 45,
+    "map": "default",
+    "army": "standard",
+    "screenSpan": 113,
+    "workers": 2,
+    "cpu": 6,
+    "physicalLogs": true,
+    "privateMeasurementFromMatchStart": true
+  },
+  "endpoints": [
+    "Same first-five accepted purchase-family prefix gate,>=3 prefixes,max50%,20 seeds/faction/level",
+    "All purchases/refusals categorized with native command resources",
+    "Accepted useful non-buy command totals, physical inputs/camera counts, exact spending",
+    "Original screen-v1 and observed diagnostic policy, both primary-only and linked endpoints with all censors; 45-second diagnostic, no full acceptance"
+  ],
+  "retention": "All60 new matches and180 seats, exact raw timelines and private measurements, source hashes, full gzip and compact metric report. Original trial retained byte-identical."
+}

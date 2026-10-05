@@ -1,0 +1,72 @@
+{
+  "at": "2026-10-04T21:07:14.072407+00:00",
+  "adopted": true,
+  "populationAcceptance": false,
+  "recordedTimingsSource": "Original proposals retain their own earlier source hashes. Root focused fixture results are separate.",
+  "currentSources": {
+    "shared/ai.js": "2e01129543e4095b95bdbb693f89ce278a810796528718fac192436ac7bf9f21",
+    "shared/ai-hands.js": "8bd373c3afb8261bf8ca2a53f24512522b91f0ddc6568eaa61dbf7039684b9a3",
+    "shared/ai-attention.js": "2b1f22635d43a11c40715c7859520a5eb4fc862d557ee7efb09ceb89425d92b5",
+    "shared/ai-commander.js": "19112a1e4c94da72d62564d940497d38cf7e93e3086c9bde3db9c29d088703df",
+    "tools/ai-humanity.mjs": "fac34526a548c8fec5b11e8bd10f07e28b84f6aa09b13206296c4d40a589af4c",
+    "test-engine-ai-ap-vehicles.js": "33c6174f07be1a80a9e5c53fcbf3d522ed7d6bb3a9ffc095f378d0b63dfdcd30",
+    "test-engine-ai-stale-stance.js": "e1af9650db8ac60587d13409a36987a00cbe28860e34324cae289c01e32e9aa1",
+    "test-engine-ai-public-alert.js": "0cbc147c68cc51e14db3c85a9e764deecc8ba6a0997d84a8019455eb8c47a2b5"
+  },
+  "members": [
+    {
+      "source": "/tmp/ai-lab-hard-diagnosis/REVIEW.md",
+      "path": "docs/evidence/human-like-ai-stale-stance/REVIEW.md",
+      "sourceBytes": 5184,
+      "sourceSHA256": "aced6ab2c38bbd072fd1a01a1e76ec213fd50639a4c8eea6beca9238448ae33e",
+      "storedBytes": 5184,
+      "storedSHA256": "aced6ab2c38bbd072fd1a01a1e76ec213fd50639a4c8eea6beca9238448ae33e",
+      "gzip": false
+    },
+    {
+      "source": "/tmp/ai-lab-hard-diagnosis/stance.patch",
+      "path": "docs/evidence/human-like-ai-stale-stance/stance.patch",
+      "sourceBytes": 4648,
+      "sourceSHA256": "7da25abc64218518056cb135c3baa0cc68078cf87389e37e138b762bc59fbf2f",
+      "storedBytes": 4648,
+      "storedSHA256": "7da25abc64218518056cb135c3baa0cc68078cf87389e37e138b762bc59fbf2f",
+      "gzip": false
+    },
+    {
+      "source": "/tmp/ai-lab-hard-diagnosis/stance-summary.json",
+      "path": "docs/evidence/human-like-ai-stale-stance/stance-summary.json",
+      "sourceBytes": 4874,
+      "sourceSHA256": "0479cb8588d470e1593ceed3d61ca82d31391c284266c855e9ecd45c605da419",
+      "storedBytes": 4874,
+      "storedSHA256": "0479cb8588d470e1593ceed3d61ca82d31391c284266c855e9ecd45c605da419",
+      "gzip": false
+    },
+    {
+      "source": "/tmp/ai-lab-hard-diagnosis/hands-suite.log",
+      "path": "docs/evidence/human-like-ai-stale-stance/hands-suite.log",
+      "sourceBytes": 108,
+      "sourceSHA256": "9cd01eb1d7cbf22bbf205c6e2556491c73fddd8cf15d6658a496aad4605e51de",
+      "storedBytes": 108,
+      "storedSHA256": "9cd01eb1d7cbf22bbf205c6e2556491c73fddd8cf15d6658a496aad4605e51de",
+      "gzip": false
+    },
+    {
+      "source": "/tmp/ai-lab-hard-diagnosis/stance-v3-base.json",
+      "path": "docs/evidence/human-like-ai-stale-stance/stance-v3-base.json",
+      "sourceBytes": 832105,
+      "sourceSHA256": "57c9bd72ce0c58e7cd5b11b4fed7975aa815d7ad06a5e493db0b5797ac229e4b",
+      "storedBytes": 832105,
+      "storedSHA256": "57c9bd72ce0c58e7cd5b11b4fed7975aa815d7ad06a5e493db0b5797ac229e4b",
+      "gzip": false
+    },
+    {
+      "source": "/tmp/ai-lab-hard-diagnosis/stance-v3-candidate.json",
+      "path": "docs/evidence/human-like-ai-stale-stance/stance-v3-candidate.json",
+      "sourceBytes": 789333,
+      "sourceSHA256": "727a3de3fa45953d8db94a9535e2a17ed16f2f6ee918cbb59df82acb9b4efc13",
+      "storedBytes": 789333,
+      "storedSHA256": "727a3de3fa45953d8db94a9535e2a17ed16f2f6ee918cbb59df82acb9b4efc13",
+      "gzip": false
+    }
+  ]
+}

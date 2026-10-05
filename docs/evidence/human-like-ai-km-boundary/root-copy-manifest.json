@@ -1,0 +1,12 @@
+{
+  "status": "PASS",
+  "independentRootByteVerification": true,
+  "archive": "human-ai-km-portable-package.tar.gz",
+  "bytes": 80065,
+  "sha256": "21f3b6627e20344d804f7c43ad35b09eb875baf8ee8b707dbd66ec22080bbe84",
+  "members": 19,
+  "adoptedSourcesMatch": true,
+  "portableRootChecks": 110,
+  "prospectiveVersion": "km-exact-half-v1",
+  "historicalReportsUntouched": true
+}

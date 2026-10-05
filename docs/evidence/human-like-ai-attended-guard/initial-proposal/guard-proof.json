@@ -1,0 +1,286 @@
+{
+  "sourceCheckpointSHA256": "3bac0c0923bcfe622dac10a8b76783d090eaf249a4c54e3e9a89a305c9e51ae9",
+  "rawMatchSHA256": "c37d9e114ceadf2f871ce5e2975dfbf40ef8919f362211dcbf59218653225fdd",
+  "rawSeconds": 180,
+  "seed": 1,
+  "mode": "Conquest",
+  "level": "easy",
+  "slot": 0,
+  "episode": "observed-screen:818:9",
+  "actor": 3,
+  "target": 12,
+  "baselineExactNativeReplay": true,
+  "fullBaselineReplayCommandsEqualToRaw": true,
+  "fullBaselineReplayInputsEqualToRaw": true,
+  "firstActionTick": 838,
+  "firstActionSeconds": 1,
+  "acceptedCommandTick": 852,
+  "acceptedCommandSeconds": 1.7,
+  "nativeCommandsBeforeCreationUnchanged": true,
+  "nativeInputsBeforeCreationUnchanged": true,
+  "beforeEpisodeCommands": [],
+  "afterEpisodeCommands": [
+    {
+      "tick": 852,
+      "slot": 0,
+      "command": {
+        "t": "amove",
+        "orders": [
+          [
+            3,
+            154.8561266541968,
+            82.92443710471849
+          ]
+        ],
+        "together": true
+      },
+      "accepted": true
+    }
+  ],
+  "afterEpisodeInputs": [
+    {
+      "tick": 838,
+      "kind": "attack-key",
+      "camera": {
+        "x": 150.6,
+        "z": 75.6,
+        "yaw": 1.035376784858271,
+        "distance": 60
+      },
+      "selected": 1,
+      "concern": "stimulus:observed-screen:818:9",
+      "ids": [
+        3
+      ],
+      "event": {
+        "kind": "screen-contact",
+        "id": "observed-screen:818:9",
+        "source": "screen",
+        "onScreen": true,
+        "x": 155,
+        "z": 83,
+        "targetId": 12
+      },
+      "cycle": 18,
+      "concernKind": "combat",
+      "concernTarget": {
+        "x": 155,
+        "z": 83
+      },
+      "responseActorIds": [
+        3
+      ],
+      "responseTarget": {
+        "x": 155,
+        "z": 83
+      },
+      "responseEvents": [
+        {
+          "id": "fight:4:contact",
+          "kind": "minimap-contact",
+          "source": "minimap",
+          "onScreen": false,
+          "tick": 684,
+          "x": 149.4,
+          "z": 71,
+          "provenance": "coarse-cluster-near-friendly"
+        },
+        {
+          "id": "694:4",
+          "kind": "attack",
+          "text": "MG Team under attack",
+          "x": 150.6,
+          "z": 75.6,
+          "n": 1,
+          "tick": 694,
+          "onScreen": false,
+          "source": "alert"
+        },
+        {
+          "id": "observed-screen:818:9",
+          "kind": "screen-contact",
+          "tick": 818,
+          "observationTick": 818,
+          "source": "screen",
+          "onScreen": true,
+          "x": 155,
+          "z": 83,
+          "targetId": 12,
+          "provenance": "entered-screen",
+          "observedDanger": {
+            "nearbyOwnUnits": [
+              3,
+              14
+            ],
+            "idleOwnUnits": [
+              3
+            ]
+          }
+        },
+        {
+          "id": "fight:8:contact",
+          "kind": "minimap-contact",
+          "source": "minimap",
+          "onScreen": false,
+          "tick": 818,
+          "x": 155,
+          "z": 83,
+          "provenance": "coarse-cluster-near-friendly"
+        }
+      ],
+      "input": {
+        "code": "KeyG",
+        "ctrl": false,
+        "shift": false,
+        "alt": false
+      },
+      "inputStartedTick": 834,
+      "motorTicks": 4,
+      "queuedTick": 828,
+      "reactionStartTick": 818,
+      "eventTick": 818,
+      "latency": 1
+    },
+    {
+      "tick": 852,
+      "kind": "place-click",
+      "camera": {
+        "x": 150.6,
+        "z": 75.6,
+        "yaw": 1.035376784858271,
+        "distance": 60
+      },
+      "selected": 1,
+      "concern": "stimulus:observed-screen:818:9",
+      "ids": [
+        3
+      ],
+      "target": {
+        "x": 154.8561266541968,
+        "z": 82.92443710471849
+      },
+      "event": {
+        "kind": "screen-contact",
+        "id": "observed-screen:818:9",
+        "source": "screen",
+        "onScreen": true,
+        "x": 155,
+        "z": 83,
+        "targetId": 12
+      },
+      "cycle": 18,
+      "concernKind": "combat",
+      "concernTarget": {
+        "x": 155,
+        "z": 83
+      },
+      "responseActorIds": [
+        3
+      ],
+      "responseTarget": {
+        "x": 155,
+        "z": 83
+      },
+      "responseEvents": [
+        {
+          "id": "fight:4:contact",
+          "kind": "minimap-contact",
+          "source": "minimap",
+          "onScreen": false,
+          "tick": 684,
+          "x": 149.4,
+          "z": 71,
+          "provenance": "coarse-cluster-near-friendly"
+        },
+        {
+          "id": "694:4",
+          "kind": "attack",
+          "text": "MG Team under attack",
+          "x": 150.6,
+          "z": 75.6,
+          "n": 1,
+          "tick": 694,
+          "onScreen": false,
+          "source": "alert"
+        },
+        {
+          "id": "observed-screen:818:9",
+          "kind": "screen-contact",
+          "tick": 818,
+          "observationTick": 818,
+          "source": "screen",
+          "onScreen": true,
+          "x": 155,
+          "z": 83,
+          "targetId": 12,
+          "provenance": "entered-screen",
+          "observedDanger": {
+            "nearbyOwnUnits": [
+              3,
+              14
+            ],
+            "idleOwnUnits": [
+              3
+            ]
+          }
+        },
+        {
+          "id": "fight:8:contact",
+          "kind": "minimap-contact",
+          "source": "minimap",
+          "onScreen": false,
+          "tick": 818,
+          "x": 155,
+          "z": 83,
+          "provenance": "coarse-cluster-near-friendly"
+        }
+      ],
+      "input": {
+        "button": 0
+      },
+      "pointer": {
+        "from": {
+          "x": 1795.2179224477068,
+          "y": 957.1732597271131
+        },
+        "to": {
+          "x": 855.7402109389119,
+          "y": 691.9771778102308
+        },
+        "distance": 976.1902131684521,
+        "width": 32,
+        "seconds": 0.6675307353426032
+      },
+      "inputStartedTick": 838,
+      "motorTicks": 14,
+      "queuedTick": 828,
+      "reactionStartTick": 818,
+      "eventTick": 818,
+      "latency": 1.7,
+      "command": {
+        "t": "amove",
+        "orders": [
+          [
+            3,
+            154.8561266541968,
+            82.92443710471849
+          ]
+        ],
+        "together": true
+      }
+    }
+  ],
+  "scope": "One exact episode proof and real planner fixture. No scorer rerun, campaign, performance estimate or claim all eight demands resolved.",
+  "sha256": {
+    "guard-local-defense.patch": "8027b9cd5361ebc614af6cb34fb822dba73b3dbfc077442229056be6b1ee6176",
+    "test-engine-ai-attended-guard.js": "faec59b5fe8ff5dc1cd22e424034f4d5ed6c231d19bb9644732705e8fa732f58",
+    "guard-candidate/shared/ai.js": "7a465adf01c2a2ada277ff95f92d3a9d099184509b67ec07eda980c8f79a6678",
+    "replay.json": "d842b375f0c26e3f36e1b12e4ab186d7c9bc6665c4c600bb70a4a314f90d58fc",
+    "replay-details.json": "1e8f9fe6857738bcb69d685f8c92d5ce20def9c6569b801adc5e1cdce7c95d6c",
+    "guard-replay-final.json": "5e10c61a05518b39086f01d4d42046680ff6b8d8fdf6799e3a1678836f622504",
+    "test-local-guard.mjs": "4232dff2e844b7453435f659813dc7ed1d9ad2b52aac8e31a29e16715148c1ee",
+    "guard-fixture-after.log": "cf5596b209afd99b0ca59d9dee7457f55ef325e9fc6e68762513f48812e1c8d2",
+    "REVIEW.md": "d7230f6ca11e44153b60baa02dfab2d272adfe9789beee9873dff282faed1411",
+    "permanent-fixture-after.log": "cf5596b209afd99b0ca59d9dee7457f55ef325e9fc6e68762513f48812e1c8d2"
+  }
+}

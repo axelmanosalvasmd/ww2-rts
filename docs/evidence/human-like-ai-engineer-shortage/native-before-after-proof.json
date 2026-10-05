@@ -1,0 +1,3400 @@
+{
+  "status": "PASS",
+  "scope": "Short controlled production fixtures, not historical match reruns or balance campaigns",
+  "fixtures": [
+    {
+      "module": "before",
+      "faction": 0,
+      "level": "easy",
+      "existingEngineers": 1,
+      "preexistingQueuedEngineers": 0,
+      "selection": "none",
+      "stale": false,
+      "mode": "classic",
+      "setupPurchases": [],
+      "actualSelectionAtPlan": [],
+      "queueTypeReadAttempts": 0,
+      "planned": [
+        {
+          "t": "buy",
+          "unit": "engineer"
+        }
+      ],
+      "acceptedBuys": [
+        {
+          "tick": 209,
+          "command": {
+            "t": "buy",
+            "unit": "engineer",
+            "from": 1
+          },
+          "accepted": true,
+          "reason": null,
+          "mpBefore": 2001.292400000001,
+          "mpAfter": 1941.292400000001,
+          "actualTrainingQueue": [
+            "engineer"
+          ]
+        }
+      ],
+      "nativeBuyInputCount": 1,
+      "productionDecision": {
+        "id": "200:1",
+        "tick": 200,
+        "concern": "production",
+        "cycle": 1,
+        "want": "engineer",
+        "price": {
+          "mp": 60,
+          "fuel": 0
+        },
+        "mp": 2000,
+        "fuel": 0,
+        "reason": "proposed",
+        "proposedBuys": 1,
+        "queuedBuys": 0,
+        "readiness": {
+          "roster": "1:hq,3:engineer,4:rifle",
+          "producers": "1:ready:0",
+          "pop": 2,
+          "cap": 24
+        },
+        "requiredMP": 60,
+        "mpReady": true,
+        "fuelReady": true
+      },
+      "mpAtExecutionStart": 2000
+    },
+    {
+      "module": "candidate",
+      "faction": 0,
+      "level": "easy",
+      "existingEngineers": 1,
+      "preexistingQueuedEngineers": 0,
+      "selection": "none",
+      "stale": false,
+      "mode": "classic",
+      "setupPurchases": [],
+      "actualSelectionAtPlan": [],
+      "queueTypeReadAttempts": 0,
+      "planned": [
+        {
+          "t": "buy",
+          "unit": "engineer"
+        }
+      ],
+      "acceptedBuys": [
+        {
+          "tick": 209,
+          "command": {
+            "t": "buy",
+            "unit": "engineer",
+            "from": 1
+          },
+          "accepted": true,
+          "reason": null,
+          "mpBefore": 2001.292400000001,
+          "mpAfter": 1941.292400000001,
+          "actualTrainingQueue": [
+            "engineer"
+          ]
+        }
+      ],
+      "nativeBuyInputCount": 1,
+      "productionDecision": {
+        "id": "200:1",
+        "tick": 200,
+        "concern": "production",
+        "cycle": 1,
+        "want": "engineer",
+        "price": {
+          "mp": 60,
+          "fuel": 0
+        },
+        "mp": 2000,
+        "fuel": 0,
+        "reason": "proposed",
+        "proposedBuys": 1,
+        "queuedBuys": 0,
+        "readiness": {
+          "roster": "1:hq,3:engineer,4:rifle",
+          "producers": "1:ready:0",
+          "pop": 2,
+          "cap": 24
+        },
+        "requiredMP": 60,
+        "mpReady": true,
+        "fuelReady": true
+      },
+      "mpAtExecutionStart": 2000
+    },
+    {
+      "module": "before",
+      "faction": 0,
+      "level": "normal",
+      "existingEngineers": 1,
+      "preexistingQueuedEngineers": 0,
+      "selection": "none",
+      "stale": false,
+      "mode": "classic",
+      "setupPurchases": [],
+      "actualSelectionAtPlan": [],
+      "queueTypeReadAttempts": 0,
+      "planned": [
+        {
+          "t": "buy",
+          "unit": "engineer"
+        },
+        {
+          "t": "buy",
+          "unit": "engineer"
+        }
+      ],
+      "acceptedBuys": [
+        {
+          "tick": 209,
+          "command": {
+            "t": "buy",
+            "unit": "engineer",
+            "from": 1
+          },
+          "accepted": true,
+          "reason": null,
+          "mpBefore": 2001.292400000001,
+          "mpAfter": 1941.292400000001,
+          "actualTrainingQueue": [
+            "engineer"
+          ]
+        },
+        {
+          "tick": 217,
+          "command": {
+            "t": "buy",
+            "unit": "engineer",
+            "from": 1
+          },
+          "accepted": true,
+          "reason": null,
+          "mpBefore": 1942.4412000000018,
+          "mpAfter": 1882.4412000000018,
+          "actualTrainingQueue": [
+            "engineer",
+            "engineer"
+          ]
+        }
+      ],
+      "nativeBuyInputCount": 2,
+      "productionDecision": {
+        "id": "200:1",
+        "tick": 200,
+        "concern": "production",
+        "cycle": 1,
+        "want": "engineer",
+        "price": {
+          "mp": 60,
+          "fuel": 0
+        },
+        "mp": 2000,
+        "fuel": 0,
+        "reason": "proposed",
+        "proposedBuys": 2,
+        "queuedBuys": 0,
+        "readiness": {
+          "roster": "1:hq,3:engineer,4:rifle",
+          "producers": "1:ready:0",
+          "pop": 2,
+          "cap": 24
+        },
+        "requiredMP": 60,
+        "mpReady": true,
+        "fuelReady": true
+      },
+      "mpAtExecutionStart": 2000
+    },
+    {
+      "module": "candidate",
+      "faction": 0,
+      "level": "normal",
+      "existingEngineers": 1,
+      "preexistingQueuedEngineers": 0,
+      "selection": "none",
+      "stale": false,
+      "mode": "classic",
+      "setupPurchases": [],
+      "actualSelectionAtPlan": [],
+      "queueTypeReadAttempts": 0,
+      "planned": [
+        {
+          "t": "buy",
+          "unit": "engineer"
+        }
+      ],
+      "acceptedBuys": [
+        {
+          "tick": 209,
+          "command": {
+            "t": "buy",
+            "unit": "engineer",
+            "from": 1
+          },
+          "accepted": true,
+          "reason": null,
+          "mpBefore": 2001.292400000001,
+          "mpAfter": 1941.292400000001,
+          "actualTrainingQueue": [
+            "engineer"
+          ]
+        }
+      ],
+      "nativeBuyInputCount": 1,
+      "productionDecision": {
+        "id": "200:1",
+        "tick": 200,
+        "concern": "production",
+        "cycle": 1,
+        "want": "engineer",
+        "price": {
+          "mp": 60,
+          "fuel": 0
+        },
+        "mp": 2000,
+        "fuel": 0,
+        "reason": "proposed",
+        "proposedBuys": 1,
+        "queuedBuys": 0,
+        "readiness": {
+          "roster": "1:hq,3:engineer,4:rifle",
+          "producers": "1:ready:0",
+          "pop": 2,
+          "cap": 24
+        },
+        "requiredMP": 60,
+        "mpReady": true,
+        "fuelReady": true
+      },
+      "mpAtExecutionStart": 2000
+    },
+    {
+      "module": "before",
+      "faction": 0,
+      "level": "hard",
+      "existingEngineers": 1,
+      "preexistingQueuedEngineers": 0,
+      "selection": "none",
+      "stale": false,
+      "mode": "classic",
+      "setupPurchases": [],
+      "actualSelectionAtPlan": [],
+      "queueTypeReadAttempts": 0,
+      "planned": [
+        {
+          "t": "buy",
+          "unit": "engineer"
+        },
+        {
+          "t": "buy",
+          "unit": "engineer"
+        },
+        {
+          "t": "buy",
+          "unit": "engineer"
+        }
+      ],
+      "acceptedBuys": [
+        {
+          "tick": 209,
+          "command": {
+            "t": "buy",
+            "unit": "engineer",
+            "from": 1
+          },
+          "accepted": true,
+          "reason": null,
+          "mpBefore": 2001.292400000001,
+          "mpAfter": 1941.292400000001,
+          "actualTrainingQueue": [
+            "engineer"
+          ]
+        },
+        {
+          "tick": 217,
+          "command": {
+            "t": "buy",
+            "unit": "engineer",
+            "from": 1
+          },
+          "accepted": true,
+          "reason": null,
+          "mpBefore": 1942.4412000000018,
+          "mpAfter": 1882.4412000000018,
+          "actualTrainingQueue": [
+            "engineer",
+            "engineer"
+          ]
+        },
+        {
+          "tick": 222,
+          "command": {
+            "t": "buy",
+            "unit": "engineer",
+            "from": 1
+          },
+          "accepted": true,
+          "reason": null,
+          "mpBefore": 1883.1592000000023,
+          "mpAfter": 1823.1592000000023,
+          "actualTrainingQueue": [
+            "engineer",
+            "engineer",
+            "engineer"
+          ]
+        }
+      ],
+      "nativeBuyInputCount": 3,
+      "productionDecision": {
+        "id": "200:1",
+        "tick": 200,
+        "concern": "production",
+        "cycle": 1,
+        "want": "engineer",
+        "price": {
+          "mp": 60,
+          "fuel": 0
+        },
+        "mp": 2000,
+        "fuel": 0,
+        "reason": "proposed",
+        "proposedBuys": 3,
+        "queuedBuys": 0,
+        "readiness": {
+          "roster": "1:hq,3:engineer,4:rifle",
+          "producers": "1:ready:0",
+          "pop": 2,
+          "cap": 24
+        },
+        "requiredMP": 60,
+        "mpReady": true,
+        "fuelReady": true
+      },
+      "mpAtExecutionStart": 2000
+    },
+    {
+      "module": "candidate",
+      "faction": 0,
+      "level": "hard",
+      "existingEngineers": 1,
+      "preexistingQueuedEngineers": 0,
+      "selection": "none",
+      "stale": false,
+      "mode": "classic",
+      "setupPurchases": [],
+      "actualSelectionAtPlan": [],
+      "queueTypeReadAttempts": 0,
+      "planned": [
+        {
+          "t": "buy",
+          "unit": "engineer"
+        }
+      ],
+      "acceptedBuys": [
+        {
+          "tick": 209,
+          "command": {
+            "t": "buy",
+            "unit": "engineer",
+            "from": 1
+          },
+          "accepted": true,
+          "reason": null,
+          "mpBefore": 2001.292400000001,
+          "mpAfter": 1941.292400000001,
+          "actualTrainingQueue": [
+            "engineer"
+          ]
+        }
+      ],
+      "nativeBuyInputCount": 1,
+      "productionDecision": {
+        "id": "200:1",
+        "tick": 200,
+        "concern": "production",
+        "cycle": 1,
+        "want": "engineer",
+        "price": {
+          "mp": 60,
+          "fuel": 0
+        },
+        "mp": 2000,
+        "fuel": 0,
+        "reason": "proposed",
+        "proposedBuys": 1,
+        "queuedBuys": 0,
+        "readiness": {
+          "roster": "1:hq,3:engineer,4:rifle",
+          "producers": "1:ready:0",
+          "pop": 2,
+          "cap": 24
+        },
+        "requiredMP": 60,
+        "mpReady": true,
+        "fuelReady": true
+      },
+      "mpAtExecutionStart": 2000
+    },
+    {
+      "module": "before",
+      "faction": 1,
+      "level": "easy",
+      "existingEngineers": 1,
+      "preexistingQueuedEngineers": 0,
+      "selection": "none",
+      "stale": false,
+      "mode": "classic",
+      "setupPurchases": [],
+      "actualSelectionAtPlan": [],
+      "queueTypeReadAttempts": 0,
+      "planned": [
+        {
+          "t": "buy",
+          "unit": "engineer"
+        }
+      ],
+      "acceptedBuys": [
+        {
+          "tick": 209,
+          "command": {
+            "t": "buy",
+            "unit": "engineer",
+            "from": 1
+          },
+          "accepted": true,
+          "reason": null,
+          "mpBefore": 2001.292400000001,
+          "mpAfter": 1941.292400000001,
+          "actualTrainingQueue": [
+            "engineer"
+          ]
+        }
+      ],
+      "nativeBuyInputCount": 1,
+      "productionDecision": {
+        "id": "200:1",
+        "tick": 200,
+        "concern": "production",
+        "cycle": 1,
+        "want": "engineer",
+        "price": {
+          "mp": 60,
+          "fuel": 0
+        },
+        "mp": 2000,
+        "fuel": 0,
+        "reason": "proposed",
+        "proposedBuys": 1,
+        "queuedBuys": 0,
+        "readiness": {
+          "roster": "1:hq,3:engineer,4:rifle",
+          "producers": "1:ready:0",
+          "pop": 2,
+          "cap": 24
+        },
+        "requiredMP": 60,
+        "mpReady": true,
+        "fuelReady": true
+      },
+      "mpAtExecutionStart": 2000
+    },
+    {
+      "module": "candidate",
+      "faction": 1,
+      "level": "easy",
+      "existingEngineers": 1,
+      "preexistingQueuedEngineers": 0,
+      "selection": "none",
+      "stale": false,
+      "mode": "classic",
+      "setupPurchases": [],
+      "actualSelectionAtPlan": [],
+      "queueTypeReadAttempts": 0,
+      "planned": [
+        {
+          "t": "buy",
+          "unit": "engineer"
+        }
+      ],
+      "acceptedBuys": [
+        {
+          "tick": 209,
+          "command": {
+            "t": "buy",
+            "unit": "engineer",
+            "from": 1
+          },
+          "accepted": true,
+          "reason": null,
+          "mpBefore": 2001.292400000001,
+          "mpAfter": 1941.292400000001,
+          "actualTrainingQueue": [
+            "engineer"
+          ]
+        }
+      ],
+      "nativeBuyInputCount": 1,
+      "productionDecision": {
+        "id": "200:1",
+        "tick": 200,
+        "concern": "production",
+        "cycle": 1,
+        "want": "engineer",
+        "price": {
+          "mp": 60,
+          "fuel": 0
+        },
+        "mp": 2000,
+        "fuel": 0,
+        "reason": "proposed",
+        "proposedBuys": 1,
+        "queuedBuys": 0,
+        "readiness": {
+          "roster": "1:hq,3:engineer,4:rifle",
+          "producers": "1:ready:0",
+          "pop": 2,
+          "cap": 24
+        },
+        "requiredMP": 60,
+        "mpReady": true,
+        "fuelReady": true
+      },
+      "mpAtExecutionStart": 2000
+    },
+    {
+      "module": "before",
+      "faction": 1,
+      "level": "normal",
+      "existingEngineers": 1,
+      "preexistingQueuedEngineers": 0,
+      "selection": "none",
+      "stale": false,
+      "mode": "classic",
+      "setupPurchases": [],
+      "actualSelectionAtPlan": [],
+      "queueTypeReadAttempts": 0,
+      "planned": [
+        {
+          "t": "buy",
+          "unit": "engineer"
+        },
+        {
+          "t": "buy",
+          "unit": "engineer"
+        }
+      ],
+      "acceptedBuys": [
+        {
+          "tick": 209,
+          "command": {
+            "t": "buy",
+            "unit": "engineer",
+            "from": 1
+          },
+          "accepted": true,
+          "reason": null,
+          "mpBefore": 2001.292400000001,
+          "mpAfter": 1941.292400000001,
+          "actualTrainingQueue": [
+            "engineer"
+          ]
+        },
+        {
+          "tick": 217,
+          "command": {
+            "t": "buy",
+            "unit": "engineer",
+            "from": 1
+          },
+          "accepted": true,
+          "reason": null,
+          "mpBefore": 1942.4412000000018,
+          "mpAfter": 1882.4412000000018,
+          "actualTrainingQueue": [
+            "engineer",
+            "engineer"
+          ]
+        }
+      ],
+      "nativeBuyInputCount": 2,
+      "productionDecision": {
+        "id": "200:1",
+        "tick": 200,
+        "concern": "production",
+        "cycle": 1,
+        "want": "engineer",
+        "price": {
+          "mp": 60,
+          "fuel": 0
+        },
+        "mp": 2000,
+        "fuel": 0,
+        "reason": "proposed",
+        "proposedBuys": 2,
+        "queuedBuys": 0,
+        "readiness": {
+          "roster": "1:hq,3:engineer,4:rifle",
+          "producers": "1:ready:0",
+          "pop": 2,
+          "cap": 24
+        },
+        "requiredMP": 60,
+        "mpReady": true,
+        "fuelReady": true
+      },
+      "mpAtExecutionStart": 2000
+    },
+    {
+      "module": "candidate",
+      "faction": 1,
+      "level": "normal",
+      "existingEngineers": 1,
+      "preexistingQueuedEngineers": 0,
+      "selection": "none",
+      "stale": false,
+      "mode": "classic",
+      "setupPurchases": [],
+      "actualSelectionAtPlan": [],
+      "queueTypeReadAttempts": 0,
+      "planned": [
+        {
+          "t": "buy",
+          "unit": "engineer"
+        }
+      ],
+      "acceptedBuys": [
+        {
+          "tick": 209,
+          "command": {
+            "t": "buy",
+            "unit": "engineer",
+            "from": 1
+          },
+          "accepted": true,
+          "reason": null,
+          "mpBefore": 2001.292400000001,
+          "mpAfter": 1941.292400000001,
+          "actualTrainingQueue": [
+            "engineer"
+          ]
+        }
+      ],
+      "nativeBuyInputCount": 1,
+      "productionDecision": {
+        "id": "200:1",
+        "tick": 200,
+        "concern": "production",
+        "cycle": 1,
+        "want": "engineer",
+        "price": {
+          "mp": 60,
+          "fuel": 0
+        },
+        "mp": 2000,
+        "fuel": 0,
+        "reason": "proposed",
+        "proposedBuys": 1,
+        "queuedBuys": 0,
+        "readiness": {
+          "roster": "1:hq,3:engineer,4:rifle",
+          "producers": "1:ready:0",
+          "pop": 2,
+          "cap": 24
+        },
+        "requiredMP": 60,
+        "mpReady": true,
+        "fuelReady": true
+      },
+      "mpAtExecutionStart": 2000
+    },
+    {
+      "module": "before",
+      "faction": 1,
+      "level": "hard",
+      "existingEngineers": 1,
+      "preexistingQueuedEngineers": 0,
+      "selection": "none",
+      "stale": false,
+      "mode": "classic",
+      "setupPurchases": [],
+      "actualSelectionAtPlan": [],
+      "queueTypeReadAttempts": 0,
+      "planned": [
+        {
+          "t": "buy",
+          "unit": "engineer"
+        },
+        {
+          "t": "buy",
+          "unit": "engineer"
+        },
+        {
+          "t": "buy",
+          "unit": "engineer"
+        }
+      ],
+      "acceptedBuys": [
+        {
+          "tick": 209,
+          "command": {
+            "t": "buy",
+            "unit": "engineer",
+            "from": 1
+          },
+          "accepted": true,
+          "reason": null,
+          "mpBefore": 2001.292400000001,
+          "mpAfter": 1941.292400000001,
+          "actualTrainingQueue": [
+            "engineer"
+          ]
+        },
+        {
+          "tick": 217,
+          "command": {
+            "t": "buy",
+            "unit": "engineer",
+            "from": 1
+          },
+          "accepted": true,
+          "reason": null,
+          "mpBefore": 1942.4412000000018,
+          "mpAfter": 1882.4412000000018,
+          "actualTrainingQueue": [
+            "engineer",
+            "engineer"
+          ]
+        },
+        {
+          "tick": 222,
+          "command": {
+            "t": "buy",
+            "unit": "engineer",
+            "from": 1
+          },
+          "accepted": true,
+          "reason": null,
+          "mpBefore": 1883.1592000000023,
+          "mpAfter": 1823.1592000000023,
+          "actualTrainingQueue": [
+            "engineer",
+            "engineer",
+            "engineer"
+          ]
+        }
+      ],
+      "nativeBuyInputCount": 3,
+      "productionDecision": {
+        "id": "200:1",
+        "tick": 200,
+        "concern": "production",
+        "cycle": 1,
+        "want": "engineer",
+        "price": {
+          "mp": 60,
+          "fuel": 0
+        },
+        "mp": 2000,
+        "fuel": 0,
+        "reason": "proposed",
+        "proposedBuys": 3,
+        "queuedBuys": 0,
+        "readiness": {
+          "roster": "1:hq,3:engineer,4:rifle",
+          "producers": "1:ready:0",
+          "pop": 2,
+          "cap": 24
+        },
+        "requiredMP": 60,
+        "mpReady": true,
+        "fuelReady": true
+      },
+      "mpAtExecutionStart": 2000
+    },
+    {
+      "module": "candidate",
+      "faction": 1,
+      "level": "hard",
+      "existingEngineers": 1,
+      "preexistingQueuedEngineers": 0,
+      "selection": "none",
+      "stale": false,
+      "mode": "classic",
+      "setupPurchases": [],
+      "actualSelectionAtPlan": [],
+      "queueTypeReadAttempts": 0,
+      "planned": [
+        {
+          "t": "buy",
+          "unit": "engineer"
+        }
+      ],
+      "acceptedBuys": [
+        {
+          "tick": 209,
+          "command": {
+            "t": "buy",
+            "unit": "engineer",
+            "from": 1
+          },
+          "accepted": true,
+          "reason": null,
+          "mpBefore": 2001.292400000001,
+          "mpAfter": 1941.292400000001,
+          "actualTrainingQueue": [
+            "engineer"
+          ]
+        }
+      ],
+      "nativeBuyInputCount": 1,
+      "productionDecision": {
+        "id": "200:1",
+        "tick": 200,
+        "concern": "production",
+        "cycle": 1,
+        "want": "engineer",
+        "price": {
+          "mp": 60,
+          "fuel": 0
+        },
+        "mp": 2000,
+        "fuel": 0,
+        "reason": "proposed",
+        "proposedBuys": 1,
+        "queuedBuys": 0,
+        "readiness": {
+          "roster": "1:hq,3:engineer,4:rifle",
+          "producers": "1:ready:0",
+          "pop": 2,
+          "cap": 24
+        },
+        "requiredMP": 60,
+        "mpReady": true,
+        "fuelReady": true
+      },
+      "mpAtExecutionStart": 2000
+    },
+    {
+      "module": "before",
+      "faction": 2,
+      "level": "easy",
+      "existingEngineers": 1,
+      "preexistingQueuedEngineers": 0,
+      "selection": "none",
+      "stale": false,
+      "mode": "classic",
+      "setupPurchases": [],
+      "actualSelectionAtPlan": [],
+      "queueTypeReadAttempts": 0,
+      "planned": [
+        {
+          "t": "buy",
+          "unit": "engineer"
+        }
+      ],
+      "acceptedBuys": [
+        {
+          "tick": 209,
+          "command": {
+            "t": "buy",
+            "unit": "engineer",
+            "from": 1
+          },
+          "accepted": true,
+          "reason": null,
+          "mpBefore": 2001.292400000001,
+          "mpAfter": 1941.292400000001,
+          "actualTrainingQueue": [
+            "engineer"
+          ]
+        }
+      ],
+      "nativeBuyInputCount": 1,
+      "productionDecision": {
+        "id": "200:1",
+        "tick": 200,
+        "concern": "production",
+        "cycle": 1,
+        "want": "engineer",
+        "price": {
+          "mp": 60,
+          "fuel": 0
+        },
+        "mp": 2000,
+        "fuel": 0,
+        "reason": "proposed",
+        "proposedBuys": 1,
+        "queuedBuys": 0,
+        "readiness": {
+          "roster": "1:hq,3:engineer,4:rifle",
+          "producers": "1:ready:0",
+          "pop": 2,
+          "cap": 24
+        },
+        "requiredMP": 60,
+        "mpReady": true,
+        "fuelReady": true
+      },
+      "mpAtExecutionStart": 2000
+    },
+    {
+      "module": "candidate",
+      "faction": 2,
+      "level": "easy",
+      "existingEngineers": 1,
+      "preexistingQueuedEngineers": 0,
+      "selection": "none",
+      "stale": false,
+      "mode": "classic",
+      "setupPurchases": [],
+      "actualSelectionAtPlan": [],
+      "queueTypeReadAttempts": 0,
+      "planned": [
+        {
+          "t": "buy",
+          "unit": "engineer"
+        }
+      ],
+      "acceptedBuys": [
+        {
+          "tick": 209,
+          "command": {
+            "t": "buy",
+            "unit": "engineer",
+            "from": 1
+          },
+          "accepted": true,
+          "reason": null,
+          "mpBefore": 2001.292400000001,
+          "mpAfter": 1941.292400000001,
+          "actualTrainingQueue": [
+            "engineer"
+          ]
+        }
+      ],
+      "nativeBuyInputCount": 1,
+      "productionDecision": {
+        "id": "200:1",
+        "tick": 200,
+        "concern": "production",
+        "cycle": 1,
+        "want": "engineer",
+        "price": {
+          "mp": 60,
+          "fuel": 0
+        },
+        "mp": 2000,
+        "fuel": 0,
+        "reason": "proposed",
+        "proposedBuys": 1,
+        "queuedBuys": 0,
+        "readiness": {
+          "roster": "1:hq,3:engineer,4:rifle",
+          "producers": "1:ready:0",
+          "pop": 2,
+          "cap": 24
+        },
+        "requiredMP": 60,
+        "mpReady": true,
+        "fuelReady": true
+      },
+      "mpAtExecutionStart": 2000
+    },
+    {
+      "module": "before",
+      "faction": 2,
+      "level": "normal",
+      "existingEngineers": 1,
+      "preexistingQueuedEngineers": 0,
+      "selection": "none",
+      "stale": false,
+      "mode": "classic",
+      "setupPurchases": [],
+      "actualSelectionAtPlan": [],
+      "queueTypeReadAttempts": 0,
+      "planned": [
+        {
+          "t": "buy",
+          "unit": "engineer"
+        },
+        {
+          "t": "buy",
+          "unit": "engineer"
+        }
+      ],
+      "acceptedBuys": [
+        {
+          "tick": 209,
+          "command": {
+            "t": "buy",
+            "unit": "engineer",
+            "from": 1
+          },
+          "accepted": true,
+          "reason": null,
+          "mpBefore": 2001.292400000001,
+          "mpAfter": 1941.292400000001,
+          "actualTrainingQueue": [
+            "engineer"
+          ]
+        },
+        {
+          "tick": 217,
+          "command": {
+            "t": "buy",
+            "unit": "engineer",
+            "from": 1
+          },
+          "accepted": true,
+          "reason": null,
+          "mpBefore": 1942.4412000000018,
+          "mpAfter": 1882.4412000000018,
+          "actualTrainingQueue": [
+            "engineer",
+            "engineer"
+          ]
+        }
+      ],
+      "nativeBuyInputCount": 2,
+      "productionDecision": {
+        "id": "200:1",
+        "tick": 200,
+        "concern": "production",
+        "cycle": 1,
+        "want": "engineer",
+        "price": {
+          "mp": 60,
+          "fuel": 0
+        },
+        "mp": 2000,
+        "fuel": 0,
+        "reason": "proposed",
+        "proposedBuys": 2,
+        "queuedBuys": 0,
+        "readiness": {
+          "roster": "1:hq,3:engineer,4:rifle",
+          "producers": "1:ready:0",
+          "pop": 2,
+          "cap": 24
+        },
+        "requiredMP": 60,
+        "mpReady": true,
+        "fuelReady": true
+      },
+      "mpAtExecutionStart": 2000
+    },
+    {
+      "module": "candidate",
+      "faction": 2,
+      "level": "normal",
+      "existingEngineers": 1,
+      "preexistingQueuedEngineers": 0,
+      "selection": "none",
+      "stale": false,
+      "mode": "classic",
+      "setupPurchases": [],
+      "actualSelectionAtPlan": [],
+      "queueTypeReadAttempts": 0,
+      "planned": [
+        {
+          "t": "buy",
+          "unit": "engineer"
+        }
+      ],
+      "acceptedBuys": [
+        {
+          "tick": 209,
+          "command": {
+            "t": "buy",
+            "unit": "engineer",
+            "from": 1
+          },
+          "accepted": true,
+          "reason": null,
+          "mpBefore": 2001.292400000001,
+          "mpAfter": 1941.292400000001,
+          "actualTrainingQueue": [
+            "engineer"
+          ]
+        }
+      ],
+      "nativeBuyInputCount": 1,
+      "productionDecision": {
+        "id": "200:1",
+        "tick": 200,
+        "concern": "production",
+        "cycle": 1,
+        "want": "engineer",
+        "price": {
+          "mp": 60,
+          "fuel": 0
+        },
+        "mp": 2000,
+        "fuel": 0,
+        "reason": "proposed",
+        "proposedBuys": 1,
+        "queuedBuys": 0,
+        "readiness": {
+          "roster": "1:hq,3:engineer,4:rifle",
+          "producers": "1:ready:0",
+          "pop": 2,
+          "cap": 24
+        },
+        "requiredMP": 60,
+        "mpReady": true,
+        "fuelReady": true
+      },
+      "mpAtExecutionStart": 2000
+    },
+    {
+      "module": "before",
+      "faction": 2,
+      "level": "hard",
+      "existingEngineers": 1,
+      "preexistingQueuedEngineers": 0,
+      "selection": "none",
+      "stale": false,
+      "mode": "classic",
+      "setupPurchases": [],
+      "actualSelectionAtPlan": [],
+      "queueTypeReadAttempts": 0,
+      "planned": [
+        {
+          "t": "buy",
+          "unit": "engineer"
+        },
+        {
+          "t": "buy",
+          "unit": "engineer"
+        },
+        {
+          "t": "buy",
+          "unit": "engineer"
+        }
+      ],
+      "acceptedBuys": [
+        {
+          "tick": 209,
+          "command": {
+            "t": "buy",
+            "unit": "engineer",
+            "from": 1
+          },
+          "accepted": true,
+          "reason": null,
+          "mpBefore": 2001.292400000001,
+          "mpAfter": 1941.292400000001,
+          "actualTrainingQueue": [
+            "engineer"
+          ]
+        },
+        {
+          "tick": 217,
+          "command": {
+            "t": "buy",
+            "unit": "engineer",
+            "from": 1
+          },
+          "accepted": true,
+          "reason": null,
+          "mpBefore": 1942.4412000000018,
+          "mpAfter": 1882.4412000000018,
+          "actualTrainingQueue": [
+            "engineer",
+            "engineer"
+          ]
+        },
+        {
+          "tick": 222,
+          "command": {
+            "t": "buy",
+            "unit": "engineer",
+            "from": 1
+          },
+          "accepted": true,
+          "reason": null,
+          "mpBefore": 1883.1592000000023,
+          "mpAfter": 1823.1592000000023,
+          "actualTrainingQueue": [
+            "engineer",
+            "engineer",
+            "engineer"
+          ]
+        }
+      ],
+      "nativeBuyInputCount": 3,
+      "productionDecision": {
+        "id": "200:1",
+        "tick": 200,
+        "concern": "production",
+        "cycle": 1,
+        "want": "engineer",
+        "price": {
+          "mp": 60,
+          "fuel": 0
+        },
+        "mp": 2000,
+        "fuel": 0,
+        "reason": "proposed",
+        "proposedBuys": 3,
+        "queuedBuys": 0,
+        "readiness": {
+          "roster": "1:hq,3:engineer,4:rifle",
+          "producers": "1:ready:0",
+          "pop": 2,
+          "cap": 24
+        },
+        "requiredMP": 60,
+        "mpReady": true,
+        "fuelReady": true
+      },
+      "mpAtExecutionStart": 2000
+    },
+    {
+      "module": "candidate",
+      "faction": 2,
+      "level": "hard",
+      "existingEngineers": 1,
+      "preexistingQueuedEngineers": 0,
+      "selection": "none",
+      "stale": false,
+      "mode": "classic",
+      "setupPurchases": [],
+      "actualSelectionAtPlan": [],
+      "queueTypeReadAttempts": 0,
+      "planned": [
+        {
+          "t": "buy",
+          "unit": "engineer"
+        }
+      ],
+      "acceptedBuys": [
+        {
+          "tick": 209,
+          "command": {
+            "t": "buy",
+            "unit": "engineer",
+            "from": 1
+          },
+          "accepted": true,
+          "reason": null,
+          "mpBefore": 2001.292400000001,
+          "mpAfter": 1941.292400000001,
+          "actualTrainingQueue": [
+            "engineer"
+          ]
+        }
+      ],
+      "nativeBuyInputCount": 1,
+      "productionDecision": {
+        "id": "200:1",
+        "tick": 200,
+        "concern": "production",
+        "cycle": 1,
+        "want": "engineer",
+        "price": {
+          "mp": 60,
+          "fuel": 0
+        },
+        "mp": 2000,
+        "fuel": 0,
+        "reason": "proposed",
+        "proposedBuys": 1,
+        "queuedBuys": 0,
+        "readiness": {
+          "roster": "1:hq,3:engineer,4:rifle",
+          "producers": "1:ready:0",
+          "pop": 2,
+          "cap": 24
+        },
+        "requiredMP": 60,
+        "mpReady": true,
+        "fuelReady": true
+      },
+      "mpAtExecutionStart": 2000
+    },
+    {
+      "module": "before",
+      "faction": 0,
+      "level": "normal",
+      "existingEngineers": 0,
+      "preexistingQueuedEngineers": 0,
+      "selection": "none",
+      "stale": false,
+      "mode": "classic",
+      "setupPurchases": [],
+      "actualSelectionAtPlan": [],
+      "queueTypeReadAttempts": 0,
+      "planned": [
+        {
+          "t": "buy",
+          "unit": "engineer"
+        },
+        {
+          "t": "buy",
+          "unit": "engineer"
+        }
+      ],
+      "acceptedBuys": [
+        {
+          "tick": 209,
+          "command": {
+            "t": "buy",
+            "unit": "engineer",
+            "from": 1
+          },
+          "accepted": true,
+          "reason": null,
+          "mpBefore": 2001.3139999999996,
+          "mpAfter": 1941.3139999999996,
+          "actualTrainingQueue": [
+            "engineer"
+          ]
+        },
+        {
+          "tick": 217,
+          "command": {
+            "t": "buy",
+            "unit": "engineer",
+            "from": 1
+          },
+          "accepted": true,
+          "reason": null,
+          "mpBefore": 1942.4819999999993,
+          "mpAfter": 1882.4819999999993,
+          "actualTrainingQueue": [
+            "engineer",
+            "engineer"
+          ]
+        }
+      ],
+      "nativeBuyInputCount": 2,
+      "productionDecision": {
+        "id": "200:1",
+        "tick": 200,
+        "concern": "production",
+        "cycle": 1,
+        "want": "engineer",
+        "price": {
+          "mp": 60,
+          "fuel": 0
+        },
+        "mp": 2000,
+        "fuel": 0,
+        "reason": "proposed",
+        "proposedBuys": 2,
+        "queuedBuys": 0,
+        "readiness": {
+          "roster": "1:hq,4:rifle",
+          "producers": "1:ready:0",
+          "pop": 1,
+          "cap": 24
+        },
+        "requiredMP": 60,
+        "mpReady": true,
+        "fuelReady": true
+      },
+      "mpAtExecutionStart": 2000
+    },
+    {
+      "module": "candidate",
+      "faction": 0,
+      "level": "normal",
+      "existingEngineers": 0,
+      "preexistingQueuedEngineers": 0,
+      "selection": "none",
+      "stale": false,
+      "mode": "classic",
+      "setupPurchases": [],
+      "actualSelectionAtPlan": [],
+      "queueTypeReadAttempts": 0,
+      "planned": [
+        {
+          "t": "buy",
+          "unit": "engineer"
+        },
+        {
+          "t": "buy",
+          "unit": "engineer"
+        }
+      ],
+      "acceptedBuys": [
+        {
+          "tick": 209,
+          "command": {
+            "t": "buy",
+            "unit": "engineer",
+            "from": 1
+          },
+          "accepted": true,
+          "reason": null,
+          "mpBefore": 2001.3139999999996,
+          "mpAfter": 1941.3139999999996,
+          "actualTrainingQueue": [
+            "engineer"
+          ]
+        },
+        {
+          "tick": 217,
+          "command": {
+            "t": "buy",
+            "unit": "engineer",
+            "from": 1
+          },
+          "accepted": true,
+          "reason": null,
+          "mpBefore": 1942.4819999999993,
+          "mpAfter": 1882.4819999999993,
+          "actualTrainingQueue": [
+            "engineer",
+            "engineer"
+          ]
+        }
+      ],
+      "nativeBuyInputCount": 2,
+      "productionDecision": {
+        "id": "200:1",
+        "tick": 200,
+        "concern": "production",
+        "cycle": 1,
+        "want": "engineer",
+        "price": {
+          "mp": 60,
+          "fuel": 0
+        },
+        "mp": 2000,
+        "fuel": 0,
+        "reason": "proposed",
+        "proposedBuys": 2,
+        "queuedBuys": 0,
+        "readiness": {
+          "roster": "1:hq,4:rifle",
+          "producers": "1:ready:0",
+          "pop": 1,
+          "cap": 24
+        },
+        "requiredMP": 60,
+        "mpReady": true,
+        "fuelReady": true
+      },
+      "mpAtExecutionStart": 2000
+    },
+    {
+      "module": "candidate",
+      "faction": 0,
+      "level": "normal",
+      "existingEngineers": 1,
+      "preexistingQueuedEngineers": 1,
+      "selection": "hq",
+      "stale": false,
+      "mode": "classic",
+      "setupPurchases": [
+        {
+          "tick": 209,
+          "command": {
+            "t": "buy",
+            "unit": "engineer",
+            "from": 1
+          },
+          "accepted": true
+        }
+      ],
+      "actualSelectionAtPlan": [
+        1
+      ],
+      "queueTypeReadAttempts": 1,
+      "planned": [
+        {
+          "t": "buy",
+          "unit": "rifle"
+        },
+        {
+          "t": "buy",
+          "unit": "rifle"
+        }
+      ],
+      "acceptedBuys": [
+        {
+          "tick": 217,
+          "command": {
+            "t": "buy",
+            "unit": "rifle",
+            "from": 1
+          },
+          "accepted": true,
+          "reason": null,
+          "mpBefore": 1942.4412000000018,
+          "mpAfter": 1842.4412000000018,
+          "actualTrainingQueue": [
+            "engineer",
+            "rifle"
+          ]
+        },
+        {
+          "tick": 222,
+          "command": {
+            "t": "buy",
+            "unit": "rifle",
+            "from": 1
+          },
+          "accepted": true,
+          "reason": null,
+          "mpBefore": 1843.1592000000023,
+          "mpAfter": 1743.1592000000023,
+          "actualTrainingQueue": [
+            "engineer",
+            "rifle",
+            "rifle"
+          ]
+        }
+      ],
+      "nativeBuyInputCount": 2,
+      "productionDecision": {
+        "id": "209:1",
+        "tick": 209,
+        "concern": "production",
+        "cycle": 1,
+        "want": "rifle",
+        "price": {
+          "mp": 100,
+          "fuel": 0
+        },
+        "mp": 1941,
+        "fuel": 0,
+        "reason": "proposed",
+        "proposedBuys": 2,
+        "queuedBuys": 0,
+        "readiness": {
+          "roster": "1:hq,3:engineer,4:rifle",
+          "producers": "1:ready:1",
+          "pop": 2,
+          "cap": 24
+        },
+        "requiredMP": 100,
+        "mpReady": true,
+        "fuelReady": true
+      },
+      "mpAtExecutionStart": 1941.292400000001
+    },
+    {
+      "module": "candidate",
+      "faction": 0,
+      "level": "normal",
+      "existingEngineers": 1,
+      "preexistingQueuedEngineers": 1,
+      "selection": "none",
+      "stale": false,
+      "mode": "classic",
+      "setupPurchases": [],
+      "actualSelectionAtPlan": [],
+      "queueTypeReadAttempts": 0,
+      "planned": [
+        {
+          "t": "buy",
+          "unit": "engineer"
+        }
+      ],
+      "acceptedBuys": [
+        {
+          "tick": 209,
+          "command": {
+            "t": "buy",
+            "unit": "engineer",
+            "from": 1
+          },
+          "accepted": true,
+          "reason": null,
+          "mpBefore": 1941.292400000001,
+          "mpAfter": 1881.292400000001,
+          "actualTrainingQueue": [
+            "engineer",
+            "engineer"
+          ]
+        }
+      ],
+      "nativeBuyInputCount": 1,
+      "productionDecision": {
+        "id": "200:1",
+        "tick": 200,
+        "concern": "production",
+        "cycle": 1,
+        "want": "engineer",
+        "price": {
+          "mp": 60,
+          "fuel": 0
+        },
+        "mp": 1940,
+        "fuel": 0,
+        "reason": "proposed",
+        "proposedBuys": 1,
+        "queuedBuys": 0,
+        "readiness": {
+          "roster": "1:hq,3:engineer,4:rifle",
+          "producers": "1:ready:1",
+          "pop": 2,
+          "cap": 24
+        },
+        "requiredMP": 60,
+        "mpReady": true,
+        "fuelReady": true
+      },
+      "mpAtExecutionStart": 1940
+    },
+    {
+      "module": "candidate",
+      "faction": 0,
+      "level": "normal",
+      "existingEngineers": 1,
+      "preexistingQueuedEngineers": 1,
+      "selection": "rifle",
+      "stale": false,
+      "mode": "classic",
+      "setupPurchases": [],
+      "actualSelectionAtPlan": [
+        4
+      ],
+      "queueTypeReadAttempts": 0,
+      "planned": [
+        {
+          "t": "buy",
+          "unit": "engineer"
+        }
+      ],
+      "acceptedBuys": [
+        {
+          "tick": 218,
+          "command": {
+            "t": "buy",
+            "unit": "engineer",
+            "from": 1
+          },
+          "accepted": true,
+          "reason": null,
+          "mpBefore": 1942.584800000002,
+          "mpAfter": 1882.584800000002,
+          "actualTrainingQueue": [
+            "engineer",
+            "engineer"
+          ]
+        }
+      ],
+      "nativeBuyInputCount": 1,
+      "productionDecision": {
+        "id": "208:1",
+        "tick": 208,
+        "concern": "production",
+        "cycle": 1,
+        "want": "engineer",
+        "price": {
+          "mp": 60,
+          "fuel": 0
+        },
+        "mp": 1941,
+        "fuel": 0,
+        "reason": "proposed",
+        "proposedBuys": 1,
+        "queuedBuys": 0,
+        "readiness": {
+          "roster": "1:hq,3:engineer,4:rifle",
+          "producers": "1:ready:1",
+          "pop": 2,
+          "cap": 24
+        },
+        "requiredMP": 60,
+        "mpReady": true,
+        "fuelReady": true
+      },
+      "mpAtExecutionStart": 1941.1488000000008
+    },
+    {
+      "module": "candidate",
+      "faction": 0,
+      "level": "normal",
+      "existingEngineers": 1,
+      "preexistingQueuedEngineers": 1,
+      "selection": "hq",
+      "stale": true,
+      "mode": "classic",
+      "setupPurchases": [
+        {
+          "tick": 209,
+          "command": {
+            "t": "buy",
+            "unit": "engineer",
+            "from": 1
+          },
+          "accepted": true
+        }
+      ],
+      "actualSelectionAtPlan": [
+        1
+      ],
+      "queueTypeReadAttempts": 0,
+      "planned": [
+        {
+          "t": "buy",
+          "unit": "engineer"
+        }
+      ],
+      "acceptedBuys": [
+        {
+          "tick": 217,
+          "command": {
+            "t": "buy",
+            "unit": "engineer",
+            "from": 1
+          },
+          "accepted": true,
+          "reason": null,
+          "mpBefore": 1942.4412000000018,
+          "mpAfter": 1882.4412000000018,
+          "actualTrainingQueue": [
+            "engineer",
+            "engineer"
+          ]
+        }
+      ],
+      "nativeBuyInputCount": 1,
+      "productionDecision": {
+        "id": "209:1",
+        "tick": 209,
+        "concern": "production",
+        "cycle": 1,
+        "want": "engineer",
+        "price": {
+          "mp": 60,
+          "fuel": 0
+        },
+        "mp": 1941,
+        "fuel": 0,
+        "reason": "proposed",
+        "proposedBuys": 1,
+        "queuedBuys": 0,
+        "readiness": {
+          "roster": "1:hq,3:engineer,4:rifle",
+          "producers": "1:ready:1",
+          "pop": 2,
+          "cap": 24
+        },
+        "requiredMP": 60,
+        "mpReady": true,
+        "fuelReady": true
+      },
+      "mpAtExecutionStart": 1941.292400000001
+    },
+    {
+      "module": "candidate",
+      "faction": 0,
+      "level": "normal",
+      "existingEngineers": 1,
+      "preexistingQueuedEngineers": 1,
+      "selection": "missing-hud",
+      "stale": false,
+      "mode": "classic",
+      "setupPurchases": [
+        {
+          "tick": 209,
+          "command": {
+            "t": "buy",
+            "unit": "engineer",
+            "from": 1
+          },
+          "accepted": true
+        }
+      ],
+      "actualSelectionAtPlan": [],
+      "queueTypeReadAttempts": 0,
+      "planned": [
+        {
+          "t": "buy",
+          "unit": "engineer"
+        }
+      ],
+      "acceptedBuys": [
+        {
+          "tick": 217,
+          "command": {
+            "t": "buy",
+            "unit": "engineer",
+            "from": 1
+          },
+          "accepted": true,
+          "reason": null,
+          "mpBefore": 1942.4412000000018,
+          "mpAfter": 1882.4412000000018,
+          "actualTrainingQueue": [
+            "engineer",
+            "engineer"
+          ]
+        }
+      ],
+      "nativeBuyInputCount": 1,
+      "productionDecision": {
+        "id": "209:1",
+        "tick": 209,
+        "concern": "production",
+        "cycle": 1,
+        "want": "engineer",
+        "price": {
+          "mp": 60,
+          "fuel": 0
+        },
+        "mp": 1941,
+        "fuel": 0,
+        "reason": "proposed",
+        "proposedBuys": 1,
+        "queuedBuys": 0,
+        "readiness": {
+          "roster": "1:hq,3:engineer,4:rifle",
+          "producers": "1:ready:1",
+          "pop": 2,
+          "cap": 24
+        },
+        "requiredMP": 60,
+        "mpReady": true,
+        "fuelReady": true
+      },
+      "mpAtExecutionStart": 1941.292400000001
+    },
+    {
+      "module": "candidate",
+      "faction": 0,
+      "level": "normal",
+      "existingEngineers": 1,
+      "preexistingQueuedEngineers": 1,
+      "selection": "wrong-slot",
+      "stale": false,
+      "mode": "classic",
+      "setupPurchases": [
+        {
+          "tick": 209,
+          "command": {
+            "t": "buy",
+            "unit": "engineer",
+            "from": 1
+          },
+          "accepted": true
+        }
+      ],
+      "actualSelectionAtPlan": [
+        1
+      ],
+      "queueTypeReadAttempts": 0,
+      "planned": [
+        {
+          "t": "buy",
+          "unit": "engineer"
+        }
+      ],
+      "acceptedBuys": [
+        {
+          "tick": 217,
+          "command": {
+            "t": "buy",
+            "unit": "engineer",
+            "from": 1
+          },
+          "accepted": true,
+          "reason": null,
+          "mpBefore": 1942.4412000000018,
+          "mpAfter": 1882.4412000000018,
+          "actualTrainingQueue": [
+            "engineer",
+            "engineer"
+          ]
+        }
+      ],
+      "nativeBuyInputCount": 1,
+      "productionDecision": {
+        "id": "209:1",
+        "tick": 209,
+        "concern": "production",
+        "cycle": 1,
+        "want": "engineer",
+        "price": {
+          "mp": 60,
+          "fuel": 0
+        },
+        "mp": 1941,
+        "fuel": 0,
+        "reason": "proposed",
+        "proposedBuys": 1,
+        "queuedBuys": 0,
+        "readiness": {
+          "roster": "1:hq,3:engineer,4:rifle",
+          "producers": "1:ready:1",
+          "pop": 2,
+          "cap": 24
+        },
+        "requiredMP": 60,
+        "mpReady": true,
+        "fuelReady": true
+      },
+      "mpAtExecutionStart": 1941.292400000001
+    },
+    {
+      "module": "candidate",
+      "faction": 0,
+      "level": "normal",
+      "existingEngineers": 1,
+      "preexistingQueuedEngineers": 1,
+      "selection": "offscreen",
+      "stale": false,
+      "mode": "classic",
+      "setupPurchases": [
+        {
+          "tick": 209,
+          "command": {
+            "t": "buy",
+            "unit": "engineer",
+            "from": 1
+          },
+          "accepted": true
+        }
+      ],
+      "actualSelectionAtPlan": [
+        1
+      ],
+      "queueTypeReadAttempts": 0,
+      "planned": [
+        {
+          "t": "buy",
+          "unit": "engineer"
+        }
+      ],
+      "acceptedBuys": [
+        {
+          "tick": 241,
+          "command": {
+            "t": "buy",
+            "unit": "engineer",
+            "from": 1
+          },
+          "accepted": true,
+          "reason": null,
+          "mpBefore": 1945.8876000000043,
+          "mpAfter": 1885.8876000000043,
+          "actualTrainingQueue": [
+            "engineer",
+            "engineer"
+          ]
+        }
+      ],
+      "nativeBuyInputCount": 1,
+      "productionDecision": {
+        "id": "220:1",
+        "tick": 220,
+        "concern": "production",
+        "cycle": 1,
+        "want": "engineer",
+        "price": {
+          "mp": 60,
+          "fuel": 0
+        },
+        "mp": 1942,
+        "fuel": 0,
+        "reason": "proposed",
+        "proposedBuys": 1,
+        "queuedBuys": 0,
+        "readiness": {
+          "roster": "1:hq,3:engineer,4:rifle",
+          "producers": "1:ready:1",
+          "pop": 2,
+          "cap": 24
+        },
+        "requiredMP": 60,
+        "mpReady": true,
+        "fuelReady": true
+      },
+      "mpAtExecutionStart": 1942.8720000000021
+    },
+    {
+      "module": "candidate",
+      "faction": 0,
+      "level": "normal",
+      "existingEngineers": 1,
+      "preexistingQueuedEngineers": 1,
+      "selection": "multi-buildings",
+      "stale": false,
+      "mode": "classic",
+      "setupPurchases": [
+        {
+          "tick": 209,
+          "command": {
+            "t": "buy",
+            "unit": "engineer",
+            "from": 1
+          },
+          "accepted": true
+        }
+      ],
+      "actualSelectionAtPlan": [
+        1,
+        7
+      ],
+      "queueTypeReadAttempts": 0,
+      "planned": [
+        {
+          "t": "buy",
+          "unit": "engineer"
+        }
+      ],
+      "acceptedBuys": [
+        {
+          "tick": 242,
+          "command": {
+            "t": "buy",
+            "unit": "engineer",
+            "from": 1
+          },
+          "accepted": true,
+          "reason": null,
+          "mpBefore": 1946.0312000000044,
+          "mpAfter": 1886.0312000000044,
+          "actualTrainingQueue": [
+            "engineer",
+            "engineer"
+          ]
+        }
+      ],
+      "nativeBuyInputCount": 1,
+      "productionDecision": {
+        "id": "227:1",
+        "tick": 227,
+        "concern": "production",
+        "cycle": 1,
+        "want": "engineer",
+        "price": {
+          "mp": 60,
+          "fuel": 0
+        },
+        "mp": 1943,
+        "fuel": 0,
+        "reason": "proposed",
+        "proposedBuys": 1,
+        "queuedBuys": 0,
+        "readiness": {
+          "roster": "1:hq,3:engineer,4:rifle,7:barracks",
+          "producers": "1:ready:1,7:ready:0",
+          "pop": 2,
+          "cap": 24
+        },
+        "requiredMP": 60,
+        "mpReady": true,
+        "fuelReady": true
+      },
+      "mpAtExecutionStart": 1943.8772000000029
+    },
+    {
+      "module": "candidate",
+      "faction": 0,
+      "level": "normal",
+      "existingEngineers": 1,
+      "preexistingQueuedEngineers": 1,
+      "selection": "building-unit",
+      "stale": false,
+      "mode": "classic",
+      "setupPurchases": [
+        {
+          "tick": 209,
+          "command": {
+            "t": "buy",
+            "unit": "engineer",
+            "from": 1
+          },
+          "accepted": true
+        }
+      ],
+      "actualSelectionAtPlan": [
+        1,
+        4
+      ],
+      "queueTypeReadAttempts": 0,
+      "planned": [
+        {
+          "t": "buy",
+          "unit": "engineer"
+        }
+      ],
+      "acceptedBuys": [
+        {
+          "tick": 242,
+          "command": {
+            "t": "buy",
+            "unit": "engineer",
+            "from": 1
+          },
+          "accepted": true,
+          "reason": null,
+          "mpBefore": 1946.0312000000044,
+          "mpAfter": 1886.0312000000044,
+          "actualTrainingQueue": [
+            "engineer",
+            "engineer"
+          ]
+        }
+      ],
+      "nativeBuyInputCount": 1,
+      "productionDecision": {
+        "id": "227:1",
+        "tick": 227,
+        "concern": "production",
+        "cycle": 1,
+        "want": "engineer",
+        "price": {
+          "mp": 60,
+          "fuel": 0
+        },
+        "mp": 1943,
+        "fuel": 0,
+        "reason": "proposed",
+        "proposedBuys": 1,
+        "queuedBuys": 0,
+        "readiness": {
+          "roster": "1:hq,3:engineer,4:rifle",
+          "producers": "1:ready:1",
+          "pop": 2,
+          "cap": 24
+        },
+        "requiredMP": 60,
+        "mpReady": true,
+        "fuelReady": true
+      },
+      "mpAtExecutionStart": 1943.8772000000029
+    },
+    {
+      "module": "before",
+      "faction": 0,
+      "level": "normal",
+      "existingEngineers": 1,
+      "preexistingQueuedEngineers": 0,
+      "selection": "none",
+      "stale": false,
+      "mode": "conquest",
+      "setupPurchases": [],
+      "actualSelectionAtPlan": [],
+      "queueTypeReadAttempts": 0,
+      "planned": [
+        {
+          "t": "buy",
+          "unit": "ranger"
+        },
+        {
+          "t": "buy",
+          "unit": "ranger"
+        }
+      ],
+      "acceptedBuys": [
+        {
+          "tick": 206,
+          "command": {
+            "t": "buy",
+            "unit": "ranger"
+          },
+          "accepted": true,
+          "reason": null,
+          "mpBefore": 2001.2000000000003,
+          "mpAfter": 1801.2000000000003,
+          "actualTrainingQueue": null
+        },
+        {
+          "tick": 216,
+          "command": {
+            "t": "buy",
+            "unit": "ranger"
+          },
+          "accepted": true,
+          "reason": null,
+          "mpBefore": 1803.2000000000007,
+          "mpAfter": 1603.2000000000007,
+          "actualTrainingQueue": null
+        }
+      ],
+      "nativeBuyInputCount": 2,
+      "productionDecision": {
+        "id": "200:1",
+        "tick": 200,
+        "concern": "production",
+        "cycle": 1,
+        "want": "ranger",
+        "price": {
+          "mp": 200,
+          "fuel": 0
+        },
+        "mp": 2000,
+        "fuel": 0,
+        "reason": "proposed",
+        "proposedBuys": 2,
+        "queuedBuys": 0,
+        "readiness": {
+          "roster": "1:rifle,2:rifle,3:mg",
+          "producers": "",
+          "pop": 3,
+          "cap": 12
+        },
+        "requiredMP": 200,
+        "mpReady": true,
+        "fuelReady": true
+      },
+      "mpAtExecutionStart": 2000
+    },
+    {
+      "module": "candidate",
+      "faction": 0,
+      "level": "normal",
+      "existingEngineers": 1,
+      "preexistingQueuedEngineers": 0,
+      "selection": "none",
+      "stale": false,
+      "mode": "conquest",
+      "setupPurchases": [],
+      "actualSelectionAtPlan": [],
+      "queueTypeReadAttempts": 0,
+      "planned": [
+        {
+          "t": "buy",
+          "unit": "ranger"
+        },
+        {
+          "t": "buy",
+          "unit": "ranger"
+        }
+      ],
+      "acceptedBuys": [
+        {
+          "tick": 206,
+          "command": {
+            "t": "buy",
+            "unit": "ranger"
+          },
+          "accepted": true,
+          "reason": null,
+          "mpBefore": 2001.2000000000003,
+          "mpAfter": 1801.2000000000003,
+          "actualTrainingQueue": null
+        },
+        {
+          "tick": 216,
+          "command": {
+            "t": "buy",
+            "unit": "ranger"
+          },
+          "accepted": true,
+          "reason": null,
+          "mpBefore": 1803.2000000000007,
+          "mpAfter": 1603.2000000000007,
+          "actualTrainingQueue": null
+        }
+      ],
+      "nativeBuyInputCount": 2,
+      "productionDecision": {
+        "id": "200:1",
+        "tick": 200,
+        "concern": "production",
+        "cycle": 1,
+        "want": "ranger",
+        "price": {
+          "mp": 200,
+          "fuel": 0
+        },
+        "mp": 2000,
+        "fuel": 0,
+        "reason": "proposed",
+        "proposedBuys": 2,
+        "queuedBuys": 0,
+        "readiness": {
+          "roster": "1:rifle,2:rifle,3:mg",
+          "producers": "",
+          "pop": 3,
+          "cap": 12
+        },
+        "requiredMP": 200,
+        "mpReady": true,
+        "fuelReady": true
+      },
+      "mpAtExecutionStart": 2000
+    },
+    {
+      "module": "before",
+      "faction": 0,
+      "level": "hard",
+      "existingEngineers": 0,
+      "preexistingQueuedEngineers": 0,
+      "selection": "none",
+      "stale": false,
+      "mode": "classic",
+      "setupPurchases": [],
+      "actualSelectionAtPlan": [],
+      "queueTypeReadAttempts": 0,
+      "planned": [
+        {
+          "t": "buy",
+          "unit": "engineer"
+        },
+        {
+          "t": "buy",
+          "unit": "engineer"
+        },
+        {
+          "t": "buy",
+          "unit": "engineer"
+        }
+      ],
+      "acceptedBuys": [
+        {
+          "tick": 209,
+          "command": {
+            "t": "buy",
+            "unit": "engineer",
+            "from": 1
+          },
+          "accepted": true,
+          "reason": null,
+          "mpBefore": 2001.3139999999996,
+          "mpAfter": 1941.3139999999996,
+          "actualTrainingQueue": [
+            "engineer"
+          ]
+        },
+        {
+          "tick": 217,
+          "command": {
+            "t": "buy",
+            "unit": "engineer",
+            "from": 1
+          },
+          "accepted": true,
+          "reason": null,
+          "mpBefore": 1942.4819999999993,
+          "mpAfter": 1882.4819999999993,
+          "actualTrainingQueue": [
+            "engineer",
+            "engineer"
+          ]
+        },
+        {
+          "tick": 222,
+          "command": {
+            "t": "buy",
+            "unit": "engineer",
+            "from": 1
+          },
+          "accepted": true,
+          "reason": null,
+          "mpBefore": 1883.211999999999,
+          "mpAfter": 1823.211999999999,
+          "actualTrainingQueue": [
+            "engineer",
+            "engineer",
+            "engineer"
+          ]
+        }
+      ],
+      "nativeBuyInputCount": 3,
+      "productionDecision": {
+        "id": "200:1",
+        "tick": 200,
+        "concern": "production",
+        "cycle": 1,
+        "want": "engineer",
+        "price": {
+          "mp": 60,
+          "fuel": 0
+        },
+        "mp": 2000,
+        "fuel": 0,
+        "reason": "proposed",
+        "proposedBuys": 3,
+        "queuedBuys": 0,
+        "readiness": {
+          "roster": "1:hq,4:rifle",
+          "producers": "1:ready:0",
+          "pop": 1,
+          "cap": 24
+        },
+        "requiredMP": 60,
+        "mpReady": true,
+        "fuelReady": true
+      },
+      "mpAtExecutionStart": 2000
+    },
+    {
+      "module": "candidate",
+      "faction": 0,
+      "level": "hard",
+      "existingEngineers": 0,
+      "preexistingQueuedEngineers": 0,
+      "selection": "none",
+      "stale": false,
+      "mode": "classic",
+      "setupPurchases": [],
+      "actualSelectionAtPlan": [],
+      "queueTypeReadAttempts": 0,
+      "planned": [
+        {
+          "t": "buy",
+          "unit": "engineer"
+        },
+        {
+          "t": "buy",
+          "unit": "engineer"
+        }
+      ],
+      "acceptedBuys": [
+        {
+          "tick": 209,
+          "command": {
+            "t": "buy",
+            "unit": "engineer",
+            "from": 1
+          },
+          "accepted": true,
+          "reason": null,
+          "mpBefore": 2001.3139999999996,
+          "mpAfter": 1941.3139999999996,
+          "actualTrainingQueue": [
+            "engineer"
+          ]
+        },
+        {
+          "tick": 217,
+          "command": {
+            "t": "buy",
+            "unit": "engineer",
+            "from": 1
+          },
+          "accepted": true,
+          "reason": null,
+          "mpBefore": 1942.4819999999993,
+          "mpAfter": 1882.4819999999993,
+          "actualTrainingQueue": [
+            "engineer",
+            "engineer"
+          ]
+        }
+      ],
+      "nativeBuyInputCount": 2,
+      "productionDecision": {
+        "id": "200:1",
+        "tick": 200,
+        "concern": "production",
+        "cycle": 1,
+        "want": "engineer",
+        "price": {
+          "mp": 60,
+          "fuel": 0
+        },
+        "mp": 2000,
+        "fuel": 0,
+        "reason": "proposed",
+        "proposedBuys": 2,
+        "queuedBuys": 0,
+        "readiness": {
+          "roster": "1:hq,4:rifle",
+          "producers": "1:ready:0",
+          "pop": 1,
+          "cap": 24
+        },
+        "requiredMP": 60,
+        "mpReady": true,
+        "fuelReady": true
+      },
+      "mpAtExecutionStart": 2000
+    },
+    {
+      "module": "candidate",
+      "faction": 0,
+      "level": "hard",
+      "existingEngineers": 1,
+      "preexistingQueuedEngineers": 1,
+      "selection": "hq",
+      "stale": false,
+      "mode": "classic",
+      "setupPurchases": [
+        {
+          "tick": 209,
+          "command": {
+            "t": "buy",
+            "unit": "engineer",
+            "from": 1
+          },
+          "accepted": true
+        }
+      ],
+      "actualSelectionAtPlan": [
+        1
+      ],
+      "queueTypeReadAttempts": 1,
+      "planned": [
+        {
+          "t": "buy",
+          "unit": "rifle"
+        },
+        {
+          "t": "buy",
+          "unit": "rifle"
+        },
+        {
+          "t": "buy",
+          "unit": "rifle"
+        }
+      ],
+      "acceptedBuys": [
+        {
+          "tick": 217,
+          "command": {
+            "t": "buy",
+            "unit": "rifle",
+            "from": 1
+          },
+          "accepted": true,
+          "reason": null,
+          "mpBefore": 1942.4412000000018,
+          "mpAfter": 1842.4412000000018,
+          "actualTrainingQueue": [
+            "engineer",
+            "rifle"
+          ]
+        },
+        {
+          "tick": 222,
+          "command": {
+            "t": "buy",
+            "unit": "rifle",
+            "from": 1
+          },
+          "accepted": true,
+          "reason": null,
+          "mpBefore": 1843.1592000000023,
+          "mpAfter": 1743.1592000000023,
+          "actualTrainingQueue": [
+            "engineer",
+            "rifle",
+            "rifle"
+          ]
+        },
+        {
+          "tick": 228,
+          "command": {
+            "t": "buy",
+            "unit": "rifle",
+            "from": 1
+          },
+          "accepted": true,
+          "reason": null,
+          "mpBefore": 1744.020800000003,
+          "mpAfter": 1644.020800000003,
+          "actualTrainingQueue": [
+            "engineer",
+            "rifle",
+            "rifle",
+            "rifle"
+          ]
+        }
+      ],
+      "nativeBuyInputCount": 3,
+      "productionDecision": {
+        "id": "209:1",
+        "tick": 209,
+        "concern": "production",
+        "cycle": 1,
+        "want": "rifle",
+        "price": {
+          "mp": 100,
+          "fuel": 0
+        },
+        "mp": 1941,
+        "fuel": 0,
+        "reason": "proposed",
+        "proposedBuys": 3,
+        "queuedBuys": 0,
+        "readiness": {
+          "roster": "1:hq,3:engineer,4:rifle",
+          "producers": "1:ready:1",
+          "pop": 2,
+          "cap": 24
+        },
+        "requiredMP": 100,
+        "mpReady": true,
+        "fuelReady": true
+      },
+      "mpAtExecutionStart": 1941.292400000001
+    },
+    {
+      "module": "candidate",
+      "faction": 0,
+      "level": "hard",
+      "existingEngineers": 1,
+      "preexistingQueuedEngineers": 1,
+      "selection": "none",
+      "stale": false,
+      "mode": "classic",
+      "setupPurchases": [],
+      "actualSelectionAtPlan": [],
+      "queueTypeReadAttempts": 0,
+      "planned": [
+        {
+          "t": "buy",
+          "unit": "engineer"
+        }
+      ],
+      "acceptedBuys": [
+        {
+          "tick": 209,
+          "command": {
+            "t": "buy",
+            "unit": "engineer",
+            "from": 1
+          },
+          "accepted": true,
+          "reason": null,
+          "mpBefore": 1941.292400000001,
+          "mpAfter": 1881.292400000001,
+          "actualTrainingQueue": [
+            "engineer",
+            "engineer"
+          ]
+        }
+      ],
+      "nativeBuyInputCount": 1,
+      "productionDecision": {
+        "id": "200:1",
+        "tick": 200,
+        "concern": "production",
+        "cycle": 1,
+        "want": "engineer",
+        "price": {
+          "mp": 60,
+          "fuel": 0
+        },
+        "mp": 1940,
+        "fuel": 0,
+        "reason": "proposed",
+        "proposedBuys": 1,
+        "queuedBuys": 0,
+        "readiness": {
+          "roster": "1:hq,3:engineer,4:rifle",
+          "producers": "1:ready:1",
+          "pop": 2,
+          "cap": 24
+        },
+        "requiredMP": 60,
+        "mpReady": true,
+        "fuelReady": true
+      },
+      "mpAtExecutionStart": 1940
+    },
+    {
+      "module": "candidate",
+      "faction": 0,
+      "level": "hard",
+      "existingEngineers": 1,
+      "preexistingQueuedEngineers": 1,
+      "selection": "rifle",
+      "stale": false,
+      "mode": "classic",
+      "setupPurchases": [],
+      "actualSelectionAtPlan": [
+        4
+      ],
+      "queueTypeReadAttempts": 0,
+      "planned": [
+        {
+          "t": "buy",
+          "unit": "engineer"
+        }
+      ],
+      "acceptedBuys": [
+        {
+          "tick": 218,
+          "command": {
+            "t": "buy",
+            "unit": "engineer",
+            "from": 1
+          },
+          "accepted": true,
+          "reason": null,
+          "mpBefore": 1942.584800000002,
+          "mpAfter": 1882.584800000002,
+          "actualTrainingQueue": [
+            "engineer",
+            "engineer"
+          ]
+        }
+      ],
+      "nativeBuyInputCount": 1,
+      "productionDecision": {
+        "id": "208:1",
+        "tick": 208,
+        "concern": "production",
+        "cycle": 1,
+        "want": "engineer",
+        "price": {
+          "mp": 60,
+          "fuel": 0
+        },
+        "mp": 1941,
+        "fuel": 0,
+        "reason": "proposed",
+        "proposedBuys": 1,
+        "queuedBuys": 0,
+        "readiness": {
+          "roster": "1:hq,3:engineer,4:rifle",
+          "producers": "1:ready:1",
+          "pop": 2,
+          "cap": 24
+        },
+        "requiredMP": 60,
+        "mpReady": true,
+        "fuelReady": true
+      },
+      "mpAtExecutionStart": 1941.1488000000008
+    },
+    {
+      "module": "candidate",
+      "faction": 0,
+      "level": "hard",
+      "existingEngineers": 1,
+      "preexistingQueuedEngineers": 1,
+      "selection": "hq",
+      "stale": true,
+      "mode": "classic",
+      "setupPurchases": [
+        {
+          "tick": 209,
+          "command": {
+            "t": "buy",
+            "unit": "engineer",
+            "from": 1
+          },
+          "accepted": true
+        }
+      ],
+      "actualSelectionAtPlan": [
+        1
+      ],
+      "queueTypeReadAttempts": 0,
+      "planned": [
+        {
+          "t": "buy",
+          "unit": "engineer"
+        }
+      ],
+      "acceptedBuys": [
+        {
+          "tick": 217,
+          "command": {
+            "t": "buy",
+            "unit": "engineer",
+            "from": 1
+          },
+          "accepted": true,
+          "reason": null,
+          "mpBefore": 1942.4412000000018,
+          "mpAfter": 1882.4412000000018,
+          "actualTrainingQueue": [
+            "engineer",
+            "engineer"
+          ]
+        }
+      ],
+      "nativeBuyInputCount": 1,
+      "productionDecision": {
+        "id": "209:1",
+        "tick": 209,
+        "concern": "production",
+        "cycle": 1,
+        "want": "engineer",
+        "price": {
+          "mp": 60,
+          "fuel": 0
+        },
+        "mp": 1941,
+        "fuel": 0,
+        "reason": "proposed",
+        "proposedBuys": 1,
+        "queuedBuys": 0,
+        "readiness": {
+          "roster": "1:hq,3:engineer,4:rifle",
+          "producers": "1:ready:1",
+          "pop": 2,
+          "cap": 24
+        },
+        "requiredMP": 60,
+        "mpReady": true,
+        "fuelReady": true
+      },
+      "mpAtExecutionStart": 1941.292400000001
+    },
+    {
+      "module": "candidate",
+      "faction": 0,
+      "level": "hard",
+      "existingEngineers": 1,
+      "preexistingQueuedEngineers": 1,
+      "selection": "missing-hud",
+      "stale": false,
+      "mode": "classic",
+      "setupPurchases": [
+        {
+          "tick": 209,
+          "command": {
+            "t": "buy",
+            "unit": "engineer",
+            "from": 1
+          },
+          "accepted": true
+        }
+      ],
+      "actualSelectionAtPlan": [],
+      "queueTypeReadAttempts": 0,
+      "planned": [
+        {
+          "t": "buy",
+          "unit": "engineer"
+        }
+      ],
+      "acceptedBuys": [
+        {
+          "tick": 217,
+          "command": {
+            "t": "buy",
+            "unit": "engineer",
+            "from": 1
+          },
+          "accepted": true,
+          "reason": null,
+          "mpBefore": 1942.4412000000018,
+          "mpAfter": 1882.4412000000018,
+          "actualTrainingQueue": [
+            "engineer",
+            "engineer"
+          ]
+        }
+      ],
+      "nativeBuyInputCount": 1,
+      "productionDecision": {
+        "id": "209:1",
+        "tick": 209,
+        "concern": "production",
+        "cycle": 1,
+        "want": "engineer",
+        "price": {
+          "mp": 60,
+          "fuel": 0
+        },
+        "mp": 1941,
+        "fuel": 0,
+        "reason": "proposed",
+        "proposedBuys": 1,
+        "queuedBuys": 0,
+        "readiness": {
+          "roster": "1:hq,3:engineer,4:rifle",
+          "producers": "1:ready:1",
+          "pop": 2,
+          "cap": 24
+        },
+        "requiredMP": 60,
+        "mpReady": true,
+        "fuelReady": true
+      },
+      "mpAtExecutionStart": 1941.292400000001
+    },
+    {
+      "module": "candidate",
+      "faction": 0,
+      "level": "hard",
+      "existingEngineers": 1,
+      "preexistingQueuedEngineers": 1,
+      "selection": "wrong-slot",
+      "stale": false,
+      "mode": "classic",
+      "setupPurchases": [
+        {
+          "tick": 209,
+          "command": {
+            "t": "buy",
+            "unit": "engineer",
+            "from": 1
+          },
+          "accepted": true
+        }
+      ],
+      "actualSelectionAtPlan": [
+        1
+      ],
+      "queueTypeReadAttempts": 0,
+      "planned": [
+        {
+          "t": "buy",
+          "unit": "engineer"
+        }
+      ],
+      "acceptedBuys": [
+        {
+          "tick": 217,
+          "command": {
+            "t": "buy",
+            "unit": "engineer",
+            "from": 1
+          },
+          "accepted": true,
+          "reason": null,
+          "mpBefore": 1942.4412000000018,
+          "mpAfter": 1882.4412000000018,
+          "actualTrainingQueue": [
+            "engineer",
+            "engineer"
+          ]
+        }
+      ],
+      "nativeBuyInputCount": 1,
+      "productionDecision": {
+        "id": "209:1",
+        "tick": 209,
+        "concern": "production",
+        "cycle": 1,
+        "want": "engineer",
+        "price": {
+          "mp": 60,
+          "fuel": 0
+        },
+        "mp": 1941,
+        "fuel": 0,
+        "reason": "proposed",
+        "proposedBuys": 1,
+        "queuedBuys": 0,
+        "readiness": {
+          "roster": "1:hq,3:engineer,4:rifle",
+          "producers": "1:ready:1",
+          "pop": 2,
+          "cap": 24
+        },
+        "requiredMP": 60,
+        "mpReady": true,
+        "fuelReady": true
+      },
+      "mpAtExecutionStart": 1941.292400000001
+    },
+    {
+      "module": "candidate",
+      "faction": 0,
+      "level": "hard",
+      "existingEngineers": 1,
+      "preexistingQueuedEngineers": 1,
+      "selection": "offscreen",
+      "stale": false,
+      "mode": "classic",
+      "setupPurchases": [
+        {
+          "tick": 209,
+          "command": {
+            "t": "buy",
+            "unit": "engineer",
+            "from": 1
+          },
+          "accepted": true
+        }
+      ],
+      "actualSelectionAtPlan": [
+        1
+      ],
+      "queueTypeReadAttempts": 0,
+      "planned": [
+        {
+          "t": "buy",
+          "unit": "engineer"
+        }
+      ],
+      "acceptedBuys": [
+        {
+          "tick": 241,
+          "command": {
+            "t": "buy",
+            "unit": "engineer",
+            "from": 1
+          },
+          "accepted": true,
+          "reason": null,
+          "mpBefore": 1945.8876000000043,
+          "mpAfter": 1885.8876000000043,
+          "actualTrainingQueue": [
+            "engineer",
+            "engineer"
+          ]
+        }
+      ],
+      "nativeBuyInputCount": 1,
+      "productionDecision": {
+        "id": "220:1",
+        "tick": 220,
+        "concern": "production",
+        "cycle": 1,
+        "want": "engineer",
+        "price": {
+          "mp": 60,
+          "fuel": 0
+        },
+        "mp": 1942,
+        "fuel": 0,
+        "reason": "proposed",
+        "proposedBuys": 1,
+        "queuedBuys": 0,
+        "readiness": {
+          "roster": "1:hq,3:engineer,4:rifle",
+          "producers": "1:ready:1",
+          "pop": 2,
+          "cap": 24
+        },
+        "requiredMP": 60,
+        "mpReady": true,
+        "fuelReady": true
+      },
+      "mpAtExecutionStart": 1942.8720000000021
+    },
+    {
+      "module": "candidate",
+      "faction": 0,
+      "level": "hard",
+      "existingEngineers": 1,
+      "preexistingQueuedEngineers": 1,
+      "selection": "multi-buildings",
+      "stale": false,
+      "mode": "classic",
+      "setupPurchases": [
+        {
+          "tick": 209,
+          "command": {
+            "t": "buy",
+            "unit": "engineer",
+            "from": 1
+          },
+          "accepted": true
+        }
+      ],
+      "actualSelectionAtPlan": [
+        1,
+        7
+      ],
+      "queueTypeReadAttempts": 0,
+      "planned": [
+        {
+          "t": "buy",
+          "unit": "engineer"
+        }
+      ],
+      "acceptedBuys": [
+        {
+          "tick": 242,
+          "command": {
+            "t": "buy",
+            "unit": "engineer",
+            "from": 1
+          },
+          "accepted": true,
+          "reason": null,
+          "mpBefore": 1946.0312000000044,
+          "mpAfter": 1886.0312000000044,
+          "actualTrainingQueue": [
+            "engineer",
+            "engineer"
+          ]
+        }
+      ],
+      "nativeBuyInputCount": 1,
+      "productionDecision": {
+        "id": "227:1",
+        "tick": 227,
+        "concern": "production",
+        "cycle": 1,
+        "want": "engineer",
+        "price": {
+          "mp": 60,
+          "fuel": 0
+        },
+        "mp": 1943,
+        "fuel": 0,
+        "reason": "proposed",
+        "proposedBuys": 1,
+        "queuedBuys": 0,
+        "readiness": {
+          "roster": "1:hq,3:engineer,4:rifle,7:barracks",
+          "producers": "1:ready:1,7:ready:0",
+          "pop": 2,
+          "cap": 24
+        },
+        "requiredMP": 60,
+        "mpReady": true,
+        "fuelReady": true
+      },
+      "mpAtExecutionStart": 1943.8772000000029
+    },
+    {
+      "module": "candidate",
+      "faction": 0,
+      "level": "hard",
+      "existingEngineers": 1,
+      "preexistingQueuedEngineers": 1,
+      "selection": "building-unit",
+      "stale": false,
+      "mode": "classic",
+      "setupPurchases": [
+        {
+          "tick": 209,
+          "command": {
+            "t": "buy",
+            "unit": "engineer",
+            "from": 1
+          },
+          "accepted": true
+        }
+      ],
+      "actualSelectionAtPlan": [
+        1,
+        4
+      ],
+      "queueTypeReadAttempts": 0,
+      "planned": [
+        {
+          "t": "buy",
+          "unit": "engineer"
+        }
+      ],
+      "acceptedBuys": [
+        {
+          "tick": 242,
+          "command": {
+            "t": "buy",
+            "unit": "engineer",
+            "from": 1
+          },
+          "accepted": true,
+          "reason": null,
+          "mpBefore": 1946.0312000000044,
+          "mpAfter": 1886.0312000000044,
+          "actualTrainingQueue": [
+            "engineer",
+            "engineer"
+          ]
+        }
+      ],
+      "nativeBuyInputCount": 1,
+      "productionDecision": {
+        "id": "227:1",
+        "tick": 227,
+        "concern": "production",
+        "cycle": 1,
+        "want": "engineer",
+        "price": {
+          "mp": 60,
+          "fuel": 0
+        },
+        "mp": 1943,
+        "fuel": 0,
+        "reason": "proposed",
+        "proposedBuys": 1,
+        "queuedBuys": 0,
+        "readiness": {
+          "roster": "1:hq,3:engineer,4:rifle",
+          "producers": "1:ready:1",
+          "pop": 2,
+          "cap": 24
+        },
+        "requiredMP": 60,
+        "mpReady": true,
+        "fuelReady": true
+      },
+      "mpAtExecutionStart": 1943.8772000000029
+    },
+    {
+      "module": "before",
+      "faction": 0,
+      "level": "hard",
+      "existingEngineers": 1,
+      "preexistingQueuedEngineers": 0,
+      "selection": "none",
+      "stale": false,
+      "mode": "conquest",
+      "setupPurchases": [],
+      "actualSelectionAtPlan": [],
+      "queueTypeReadAttempts": 0,
+      "planned": [
+        {
+          "t": "buy",
+          "unit": "ranger"
+        },
+        {
+          "t": "buy",
+          "unit": "ranger"
+        },
+        {
+          "t": "buy",
+          "unit": "ranger"
+        }
+      ],
+      "acceptedBuys": [
+        {
+          "tick": 206,
+          "command": {
+            "t": "buy",
+            "unit": "ranger"
+          },
+          "accepted": true,
+          "reason": null,
+          "mpBefore": 2001.2000000000003,
+          "mpAfter": 1801.2000000000003,
+          "actualTrainingQueue": null
+        },
+        {
+          "tick": 216,
+          "command": {
+            "t": "buy",
+            "unit": "ranger"
+          },
+          "accepted": true,
+          "reason": null,
+          "mpBefore": 1803.2000000000007,
+          "mpAfter": 1603.2000000000007,
+          "actualTrainingQueue": null
+        },
+        {
+          "tick": 221,
+          "command": {
+            "t": "buy",
+            "unit": "ranger"
+          },
+          "accepted": true,
+          "reason": null,
+          "mpBefore": 1604.200000000001,
+          "mpAfter": 1404.200000000001,
+          "actualTrainingQueue": null
+        }
+      ],
+      "nativeBuyInputCount": 3,
+      "productionDecision": {
+        "id": "200:1",
+        "tick": 200,
+        "concern": "production",
+        "cycle": 1,
+        "want": "ranger",
+        "price": {
+          "mp": 200,
+          "fuel": 0
+        },
+        "mp": 2000,
+        "fuel": 0,
+        "reason": "proposed",
+        "proposedBuys": 3,
+        "queuedBuys": 0,
+        "readiness": {
+          "roster": "1:rifle,2:rifle,3:mg",
+          "producers": "",
+          "pop": 3,
+          "cap": 12
+        },
+        "requiredMP": 200,
+        "mpReady": true,
+        "fuelReady": true
+      },
+      "mpAtExecutionStart": 2000
+    },
+    {
+      "module": "candidate",
+      "faction": 0,
+      "level": "hard",
+      "existingEngineers": 1,
+      "preexistingQueuedEngineers": 0,
+      "selection": "none",
+      "stale": false,
+      "mode": "conquest",
+      "setupPurchases": [],
+      "actualSelectionAtPlan": [],
+      "queueTypeReadAttempts": 0,
+      "planned": [
+        {
+          "t": "buy",
+          "unit": "ranger"
+        },
+        {
+          "t": "buy",
+          "unit": "ranger"
+        },
+        {
+          "t": "buy",
+          "unit": "ranger"
+        }
+      ],
+      "acceptedBuys": [
+        {
+          "tick": 206,
+          "command": {
+            "t": "buy",
+            "unit": "ranger"
+          },
+          "accepted": true,
+          "reason": null,
+          "mpBefore": 2001.2000000000003,
+          "mpAfter": 1801.2000000000003,
+          "actualTrainingQueue": null
+        },
+        {
+          "tick": 216,
+          "command": {
+            "t": "buy",
+            "unit": "ranger"
+          },
+          "accepted": true,
+          "reason": null,
+          "mpBefore": 1803.2000000000007,
+          "mpAfter": 1603.2000000000007,
+          "actualTrainingQueue": null
+        },
+        {
+          "tick": 221,
+          "command": {
+            "t": "buy",
+            "unit": "ranger"
+          },
+          "accepted": true,
+          "reason": null,
+          "mpBefore": 1604.200000000001,
+          "mpAfter": 1404.200000000001,
+          "actualTrainingQueue": null
+        }
+      ],
+      "nativeBuyInputCount": 3,
+      "productionDecision": {
+        "id": "200:1",
+        "tick": 200,
+        "concern": "production",
+        "cycle": 1,
+        "want": "ranger",
+        "price": {
+          "mp": 200,
+          "fuel": 0
+        },
+        "mp": 2000,
+        "fuel": 0,
+        "reason": "proposed",
+        "proposedBuys": 3,
+        "queuedBuys": 0,
+        "readiness": {
+          "roster": "1:rifle,2:rifle,3:mg",
+          "producers": "",
+          "pop": 3,
+          "cap": 12
+        },
+        "requiredMP": 200,
+        "mpReady": true,
+        "fuelReady": true
+      },
+      "mpAtExecutionStart": 2000
+    }
+  ]
+}

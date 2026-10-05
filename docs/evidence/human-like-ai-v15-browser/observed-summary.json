@@ -1,0 +1,74 @@
+{
+  "samples": 90,
+  "firstTick": 1364,
+  "lastTick": 10052,
+  "finalTick": 10136,
+  "applicationErrors": [],
+  "watching": true,
+  "overlayEnabled": true,
+  "graphics": "Graphics: Low",
+  "concerns": {
+    "0": [
+      "alert",
+      "fight",
+      "idle",
+      "point",
+      "production",
+      "stimulus"
+    ],
+    "1": [
+      "air",
+      "alert",
+      "fight",
+      "idle",
+      "point",
+      "production",
+      "stimulus"
+    ],
+    "2": [
+      "alert",
+      "fight",
+      "idle",
+      "point",
+      "production",
+      "stimulus"
+    ]
+  },
+  "uniquePhysicalMarkers": {
+    "2": 106,
+    "1": 117,
+    "0": 117
+  },
+  "samplesDuringCursorTravel": {
+    "0": 18,
+    "1": 15,
+    "2": 15
+  },
+  "snapshotKeys": [
+    "aiHands",
+    "army",
+    "cells",
+    "falling",
+    "fires",
+    "flights",
+    "foundMines",
+    "held",
+    "nodes",
+    "online",
+    "out",
+    "ping",
+    "points",
+    "shots",
+    "smokes",
+    "strikes",
+    "t",
+    "tick",
+    "units",
+    "vp",
+    "weather",
+    "winner",
+    "wrecks",
+    "wx"
+  ],
+  "privateFieldsObserved": []
+}

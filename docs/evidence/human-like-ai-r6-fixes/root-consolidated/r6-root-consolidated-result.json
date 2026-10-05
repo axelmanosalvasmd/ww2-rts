@@ -1,0 +1,67 @@
+{
+  "source": {
+    "shared/ai.js": "038bba2d8b69ee158f6cf6014a3ba6a245441d16c27b2376715027dbee3e82ed",
+    "shared/ai-commander.js": "145ebe7f589fd6daf09db41865d237d4f5fe69c3b0cbb6ff1a2f839e21ff1527",
+    "shared/ai-hands.js": "69eb15070dbf3e3839f4a264bc24d5010033f6d745bc1cf53ba285fc362323d6",
+    "test.js": "5f6d63c32c6629c1ed774e51be44c9a1073261ca9f36d71993247db77c2df2e0"
+  },
+  "sourceUnchanged": true,
+  "rows": [
+    {
+      "file": "test-engine-ai-local-engineer.js",
+      "exitCode": 0,
+      "start": "2026-10-04T16:27:33.776724+00:00",
+      "end": "2026-10-04T16:27:36.317754+00:00",
+      "log": "/tmp/r6-root-consolidated-test-engine-ai-local-engineer.js.log",
+      "logSha256": "4e2c17350a6d79bbd9331654fc41a81c2dff8fa4fe26bcb6a6c885bcbc01afb7"
+    },
+    {
+      "file": "test-engine-ai-accepted-destinations.js",
+      "exitCode": 0,
+      "start": "2026-10-04T16:27:36.317931+00:00",
+      "end": "2026-10-04T16:27:39.277433+00:00",
+      "log": "/tmp/r6-root-consolidated-test-engine-ai-accepted-destinations.js.log",
+      "logSha256": "92712b3e415e2cd6bb32ea609e21e009d394ef1770cf9d3a59f3cce22e02849e"
+    },
+    {
+      "file": "test-engine-ai-attended-danger.js",
+      "exitCode": 0,
+      "start": "2026-10-04T16:27:39.277637+00:00",
+      "end": "2026-10-04T16:27:39.783551+00:00",
+      "log": "/tmp/r6-root-consolidated-test-engine-ai-attended-danger.js.log",
+      "logSha256": "31ad665dd4be9733a97f39ea8d8376788e4013828d5eb6b918775c0968b4590d"
+    },
+    {
+      "file": "test-engine-ai-causal-orders.js",
+      "exitCode": 0,
+      "start": "2026-10-04T16:27:39.783745+00:00",
+      "end": "2026-10-04T16:27:40.313675+00:00",
+      "log": "/tmp/r6-root-consolidated-test-engine-ai-causal-orders.js.log",
+      "logSha256": "91828dc2685d7395a15c305151f677d35b694b880ffc2c73b56e8b30d6bf5a4e"
+    },
+    {
+      "file": "test-engine-ai-tactical-reaction.js",
+      "exitCode": 0,
+      "start": "2026-10-04T16:27:40.313877+00:00",
+      "end": "2026-10-04T16:27:40.857463+00:00",
+      "log": "/tmp/r6-root-consolidated-test-engine-ai-tactical-reaction.js.log",
+      "logSha256": "ed84f1135c8c1d8816978c5ba892f2bef0645c16e51e953bf5649da82622e32b"
+    },
+    {
+      "file": "test-engine-ai-response.js",
+      "exitCode": 0,
+      "start": "2026-10-04T16:27:40.857677+00:00",
+      "end": "2026-10-04T16:27:41.876645+00:00",
+      "log": "/tmp/r6-root-consolidated-test-engine-ai-response.js.log",
+      "logSha256": "166fe6cacdb9a9b72c84ed79f1fe2165529e99f8a913b195c91cd5797a2faa87"
+    },
+    {
+      "file": "test-engine-ai-selected-hud.js",
+      "exitCode": 0,
+      "start": "2026-10-04T16:27:41.876848+00:00",
+      "end": "2026-10-04T16:27:42.490531+00:00",
+      "log": "/tmp/r6-root-consolidated-test-engine-ai-selected-hud.js.log",
+      "logSha256": "4e5a4b0568eabff6cee08f48283b9b886c3ca1f06522c7aa2fe45047502ed19b"
+    }
+  ]
+}

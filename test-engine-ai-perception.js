@@ -7,8 +7,19 @@ import { viewFor } from './shared/ai-view.js';
 import { perceive, onScreen, cameraFootprint, HUMAN_CAMERA, startCamera, detachedCopy } from './shared/ai-perception.js';
 import { chooseConcern } from './shared/ai-attention.js';
 import { createRelief } from './client/relief.js';
+import { perceive as screenV1Oracle } from './tools/ai-screen-v1-oracle.js';
 import { deriveAlertEvents } from './shared/alert-events.js';
 
+// Original population expectations are unchanged and consume the external diagnostic stream.
+const oracleFrames = new WeakMap();
+const measureOriginal = (observation, slot, state, eventTick = observation.tick) => {
+  let frame;
+  const runtime = perceive(observation, slot, state, eventTick, {
+    measureRaw: screenV1Oracle, onMeasurements: value => { frame = value; },
+  });
+  oracleFrames.set(state, frame);
+  return { ...runtime, events: frame.original.events, newEvents: frame.original.newEvents, runtime };
+};
 const map = { w: 160, h: 160, rows: Array(160).fill('.'.repeat(160)), spawns: [{ x: 20, y: 20 }, { x: 140, y: 140 }], points: [{ x: 80, y: 80 }] };
 const fixture = () => {
   const game = createGame(map, ['AI', 'enemy'], false, [0, 1], [0, 1]); game.units.clear();
@@ -452,28 +463,31 @@ const normalized = view => ({ units: [...view.units], visible: [...view.players[
   assert.equal(state.screenMemory.has(plane.id), false); assert.equal(perceived.units.get(plane.id).inventoryOnly, true);
 }
 {
-  const { view, own } = fixture(), event = perceive(view, 0, { camera: { x: 210, z: 210 } }).newEvents.find(event => event.kind === 'screen-contact');
+  const { view, own } = fixture(), event = measureOriginal(view, 0, { camera: { x: 210, z: 210 } }).newEvents.find(event => event.kind === 'screen-contact');
   assert.equal(event.responsePolicy, 'screen-v1'); assert.equal(event.responseRequired, true); assert.equal(event.responseReason, 'idle-combat-contact');
   assert.deepEqual(event.responseUnits, [own.id]);
+  const observedContact = perceive(view, 0, { camera: { x: 210, z: 210 } }).newEvents.find(event => event.kind === 'screen-contact');
+  assert.deepEqual(observedContact.observedDanger.idleOwnUnits, [own.id]);
+  assert.equal(Object.hasOwn(observedContact, 'responseRequired'), false);
   const busy = { ...view, units: new Map([...view.units].map(([id, unit]) => [id, { ...structuredClone(unit), ...(id === own.id && { path: [{ x: 240, z: 240 }] }) }])) };
-  const monitoring = perceive(busy, 0, { camera: { x: 210, z: 210 } }).newEvents.find(event => event.kind === 'screen-contact');
+  const monitoring = measureOriginal(busy, 0, { camera: { x: 210, z: 210 } }).newEvents.find(event => event.kind === 'screen-contact');
   assert.equal(monitoring.responseRequired, false); assert.equal(monitoring.responseReason, 'monitoring-contact'); assert.deepEqual(monitoring.responseUnits, []);
   const state = { camera: { x: 210, z: 210 } };
   const hurt = (tick, hp, fields = {}) => ({ ...view, tick, units: new Map([...view.units].map(([id, unit]) => [id, { ...structuredClone(unit), ...(id === own.id && { hp, autoRetreat: false, ...fields }) }])) });
-  perceive(hurt(0, 40), 0, state);
-  const small = perceive(hurt(10, 39), 0, state).newEvents.find(event => event.kind === 'screen-damage');
+  measureOriginal(hurt(0, 40), 0, state);
+  const small = measureOriginal(hurt(10, 39), 0, state).newEvents.find(event => event.kind === 'screen-damage');
   assert.equal(small.responseRequired, false); assert.equal(small.responseReason, 'monitoring-damage');
-  const risk = perceive(hurt(20, 34), 0, state).newEvents.find(event => event.kind === 'screen-damage');
+  const risk = measureOriginal(hurt(20, 34), 0, state).newEvents.find(event => event.kind === 'screen-damage');
   assert.equal(risk.responseRequired, true); assert.equal(risk.responseReason, 'retreat-risk-crossing'); assert.deepEqual(risk.responseUnits, [own.id]);
   assert.equal(risk.episode, small.episode, 'meaningful risk crossing is reported within a continuous damage episode');
-  const retreat = perceive(hurt(30, 5, { retreating: true, flags: 1 }), 0, state).newEvents.find(event => event.kind === 'screen-damage');
+  const retreat = measureOriginal(hurt(30, 5, { retreating: true, flags: 1 }), 0, state).newEvents.find(event => event.kind === 'screen-damage');
   assert.equal(retreat.responseRequired, false); assert.equal(retreat.responseReason, 'already-retreating');
-  assert.ok(state.events.some(event => event.id === small.id), 'monitoring events remain in the all-stimuli population');
+  assert.ok(oracleFrames.get(state).original.events.some(event => event.id === small.id), 'monitoring events remain in the all-stimuli population');
 }
 {
   const { game, view, own } = fixture(), state = { camera: { x: own.x, z: own.z } };
-  perceive(view, 0, state); own.hp = 30; game.tick = 1;
-  const covered = perceive(viewFor(game, 0, {}), 0, state).newEvents.find(event => event.kind === 'screen-damage');
+  measureOriginal(view, 0, state); own.hp = 30; game.tick = 1;
+  const covered = measureOriginal(viewFor(game, 0, {}), 0, state).newEvents.find(event => event.kind === 'screen-damage');
   assert.equal(covered.responseRequired, false); assert.equal(covered.responseReason, 'auto-retreat-enabled');
   step(game);
   assert.equal(own.retreating, true, 'the actual simulation begins retreat on its next step without a human command');
@@ -483,22 +497,22 @@ const normalized = view => ({ units: [...view.units], visible: [...view.players[
     units: new Map([...view.units].map(([id, unit]) => [id, { ...structuredClone(unit), ...(id === own.id && { hp, ...fields }) }])) });
   const response = (fields = {}, mode = view.mode, spawn) => {
     const memory = { camera: { x: own.x, z: own.z } };
-    perceive(hurt(100, fields, mode, spawn), 0, memory);
-    return perceive({ ...hurt(30, fields, mode, spawn), tick: 10 }, 0, memory).newEvents.find(event => event.kind === 'screen-damage');
+    measureOriginal(hurt(100, fields, mode, spawn), 0, memory);
+    return measureOriginal({ ...hurt(30, fields, mode, spawn), tick: 10 }, 0, memory).newEvents.find(event => event.kind === 'screen-damage');
   };
   assert.equal(response({ autoRetreat: false }).responseRequired, true, 'disabled auto-retreat cannot exempt risk');
   assert.equal(response({}, view.mode, { x: 210, z: 210 }).responseRequired, true, 'the engine does not auto-retreat within the home radius');
   assert.equal(response({}, { kind: 'world' }).responseRequired, true, 'an unknown World retreat home cannot be treated as proof of automatic handling');
   assert.equal(response({}, { kind: 'horde', slot: 0 }).responseRequired, true, 'the scripted wave owner is excluded by the actual auto-retreat branch');
-  assert.ok(state.events.some(event => event.id === covered.id), 'automatically handled damage remains in the all-stimuli history');
+  assert.ok(oracleFrames.get(state).original.events.some(event => event.id === covered.id), 'automatically handled damage remains in the all-stimuli history');
 }
 {
   const { game, own, enemy } = fixture(); own.autoRetreat = false; enemy.holdFire = true;
   step(game);
   assert.equal(own.targetId, enemy.id, 'the real engine acquires a firing target without an attack command');
   const view = viewFor(game, 0, {}), state = { camera: { x: own.x, z: own.z } };
-  perceive(view, 0, state); own.hp -= 30; game.tick++;
-  const engaged = perceive(viewFor(game, 0, {}), 0, state).newEvents.find(event => event.kind === 'screen-damage');
+  measureOriginal(view, 0, state); own.hp -= 30; game.tick++;
+  const engaged = measureOriginal(viewFor(game, 0, {}), 0, state).newEvents.find(event => event.kind === 'screen-damage');
   assert.equal(engaged.responseRequired, false); assert.equal(engaged.responseReason, 'already-engaged');
   let shots = 0;
   for (let i = 0; i < 40; i++) { step(game); shots += game.shots.filter(shot => shot.f === own.id).length; }
@@ -509,34 +523,34 @@ const normalized = view => ({ units: [...view.units], visible: [...view.players[
     const observation = amount => ({ ...view, tick: amount === full ? view.tick : view.tick + 10,
       units: new Map([...view.units].map(([id, unit]) => [id, { ...structuredClone(unit),
         ...(id === own.id && { hp: amount, autoRetreat: false, ...fields }), ...(id === enemy.id && enemyFields) }])) });
-    perceive(observation(full), 0, memory);
-    return perceive(observation(hp), 0, memory).newEvents.find(event => event.kind === 'screen-damage');
+    measureOriginal(observation(full), 0, memory);
+    return measureOriginal(observation(hp), 0, memory).newEvents.find(event => event.kind === 'screen-damage');
   };
   assert.equal(response({}, 30).responseRequired, true, 'firing never exempts retreat risk without auto-retreat coverage');
   assert.equal(response({ holdFire: true, attackId: 0 }).responseRequired, true, 'hold-fire prevents the automatic firing exemption');
   assert.equal(response({ type: 'mg', path: [{ x: 240, z: 210 }] }, 45).responseRequired, true, 'a moving weapon without move-fire is not already firing');
   assert.equal(response({}, 70, { x: 270, z: 210 }).responseRequired, true, 'an out-of-range target cannot justify continued automatic fire');
-  assert.ok(state.events.some(event => event.id === engaged.id), 'continued-combat damage remains recorded as monitoring');
+  assert.ok(oracleFrames.get(state).original.events.some(event => event.id === engaged.id), 'continued-combat damage remains recorded as monitoring');
 }
 {
   const { view, own, enemy } = fixture(), state = { camera: { x: 210, z: 210 } };
-  const initial = perceive(view, 0, state, 5), contact = initial.newEvents.find(event => event.kind === 'screen-contact');
+  const initial = measureOriginal(view, 0, state, 5), contact = initial.newEvents.find(event => event.kind === 'screen-contact');
   assert.equal(contact.tick, 5); assert.equal(contact.observationTick, 0); assert.equal(contact.onScreen, true); assert.equal(contact.targetId, enemy.id);
-  assert.equal(perceive(view, 0, state, 7).newEvents.length, 0, 'a retained snapshot cannot redeliver the screen contact');
+  assert.equal(measureOriginal(view, 0, state, 7).newEvents.length, 0, 'a retained snapshot cannot redeliver the screen contact');
   const damage = (tick, hp) => ({ ...view, tick, units: new Map([...view.units].map(([id, unit]) => [id, { ...structuredClone(unit), ...(id === own.id && { hp }) }])) });
-  const first = perceive(damage(10, 90), 0, state, 12).newEvents.find(event => event.kind === 'screen-damage');
+  const first = measureOriginal(damage(10, 90), 0, state, 12).newEvents.find(event => event.kind === 'screen-damage');
   assert.equal(first.tick, 12); assert.equal(first.onScreen, true); assert.equal(first.unitId, own.id); assert.equal(first.provenance, 'first-damage-after-quiet');
-  assert.equal(perceive(damage(20, 89), 0, state, 22).newEvents.some(event => event.kind === 'screen-damage'), false, 'continuous small hits belong to one damage episode');
-  const later = perceive(damage(80, 88), 0, state, 82).newEvents.find(event => event.kind === 'screen-damage');
+  assert.equal(measureOriginal(damage(20, 89), 0, state, 22).newEvents.some(event => event.kind === 'screen-damage'), false, 'continuous small hits belong to one damage episode');
+  const later = measureOriginal(damage(80, 88), 0, state, 82).newEvents.find(event => event.kind === 'screen-damage');
   assert.notEqual(later.episode, first.episode, 'three seconds of quiet end an episode');
-  const heavy = perceive(damage(90, 58), 0, state, 92).newEvents.find(event => event.kind === 'screen-damage');
+  const heavy = measureOriginal(damage(90, 58), 0, state, 92).newEvents.find(event => event.kind === 'screen-damage');
   assert.equal(heavy.provenance, 'heavy-damage'); assert.equal(heavy.episode, later.episode);
-  state.camera = { x: 40, z: 40 }; perceive(damage(100, 40), 0, state, 102);
+  state.camera = { x: 40, z: 40 }; measureOriginal(damage(100, 40), 0, state, 102);
   state.camera = { x: 210, z: 210 };
-  assert.equal(perceive(damage(110, 30), 0, state, 112).newEvents.some(event => event.kind === 'screen-damage'), false, 'damage discovered after an off-screen interval is not stamped as on-screen damage');
-  const attention = chooseConcern(initial, 0, {}, 'hard', () => .5);
-  assert.equal(attention.eventId, contact.id); assert.equal(attention.eventTick, contact.tick); assert.equal(attention.eventOnScreen, true);
-  assert.ok(state.events.some(event => event.id === contact.id), 'unanswered events remain in the diagnostic population');
+  assert.equal(measureOriginal(damage(110, 30), 0, state, 112).newEvents.some(event => event.kind === 'screen-damage'), false, 'damage discovered after an off-screen interval is not stamped as on-screen damage');
+  const attention = chooseConcern(initial.runtime, 0, {}, 'hard', () => .5);
+  assert.equal(attention.eventId, initial.runtime.newEvents.find(event => event.kind === 'screen-contact').id); assert.equal(attention.eventTick, contact.tick); assert.equal(attention.eventOnScreen, true);
+  assert.ok(oracleFrames.get(state).original.events.some(event => event.id === contact.id), 'unanswered events remain in the diagnostic population');
 }
 {
   const { view } = fixture(), state = { camera: { x: 210, z: 210 } };
@@ -555,7 +569,7 @@ const normalized = view => ({ units: [...view.units], visible: [...view.players[
   perceived.minimap = []; perceived.points = []; perceived.players[0].mp = 0; perceived.players[0].sup = {};
   perceived.events = [{ id: 'base-high', kind: 'base', source: 'alert', tick: 0, onScreen: false, x: 210, z: 210 },
     { id: 'contact-lower', kind: 'screen-contact', source: 'screen', tick: 0, onScreen: true, x: 215, z: 210,
-      responseRequired: true, responsePolicy: 'screen-v1', responseReason: 'idle-combat-contact', responseUnits: [] }];
+      observedDanger: { nearbyOwnUnits: [1], idleOwnUnits: [1] } }];
   const memory = {}, concern = chooseConcern(perceived, 0, memory, 'easy', () => 0);
   assert.equal(memory.concernCapacity, 1); assert.equal(concern.eventId, 'base-high', 'a weaker emergency cannot evict the urgent base alert from capacity one');
   assert.equal(memory.attention.working.get(concern.id).urgency, 110);
@@ -567,7 +581,7 @@ const normalized = view => ({ units: [...view.units], visible: [...view.players[
   const memory = {}, visits = [];
   for (let tick = 0; tick <= 2400; tick += 80) {
     const event = { id: `watch:${tick}`, kind: 'screen-damage', source: 'screen', tick, onScreen: true, x: 210, z: 210,
-      responseRequired: false, responsePolicy: 'screen-v1', responseReason: 'already-engaged', responseUnits: [] };
+      observedDanger: { healthShare: .7, lossShare: .1, retreatRisk: false, alreadyEngaged: true, alreadyRetreating: false, autoRetreatCovered: false } };
     const concern = chooseConcern({ ...perceived, tick, events: [event] }, 0, memory, 'hard', () => .5);
     visits.push(concern.kind);
     const monitored = memory.concerns.find(candidate => candidate.eventId === event.id);

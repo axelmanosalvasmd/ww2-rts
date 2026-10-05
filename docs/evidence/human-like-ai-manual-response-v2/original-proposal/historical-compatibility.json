@@ -1,0 +1,1 @@
+{"status":"PASS","scope":"native fixture only; no V15 re-score","reducers":["summarizeSeat","reactionMetrics","reactionScoringComparison","measurementScoringViews"],"nativeLogUnchanged":true}

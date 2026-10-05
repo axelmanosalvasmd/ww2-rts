@@ -5,6 +5,7 @@ import { think } from './shared/ai.js';
 import { viewFor } from './shared/ai-view.js';
 import { onScreen } from './shared/ai-perception.js';
 import { HUMAN_SKILLS } from './shared/ai-hands.js';
+import { commandServesObservedEvent } from './shared/ai-priority.js';
 
 const map = { w: 80, h: 80, rows: Array(80).fill('.'.repeat(80)),
   spawns: [{ x: 5, y: 5 }, { x: 75, y: 75 }], points: [{ x: 30, y: 30 }, { x: 50, y: 50 }] };
@@ -23,6 +24,7 @@ function run(level, seed, ticks = 2400, startedTick = 0, handoff = false) {
     Math.random = () => { combatSeed = (Math.imul(combatSeed, 1664525) + 1013904223) >>> 0; return combatSeed / 2 ** 32; };
     try { return run(); } finally { Math.random = original; }
   };
+  const queuedFrames = new Map();
   let delivered = null, lastSelection = null, lastCommandTick = -1;
   const record = entry => {
     inputs.push(structuredClone(entry));
@@ -77,18 +79,22 @@ function run(level, seed, ticks = 2400, startedTick = 0, handoff = false) {
     }
   };
   for (let i = 0; i < ticks && g.winner === null; i++) {
-    // A real, passive enemy group enters one own squad's sight after the opening.
+    // Author a camera-local idle contact after the opening, using native stop and stance commands.
     if (i === 200) {
       g.players[0].mp = 600;
       const enemies = [...g.units.values()].filter(u => u.owner === 1);
       const observers = [...g.units.values()].filter(u => u.owner === 0 && u.type === 'rifle');
-      // A handed-over squad may have marched to the screen edge. Keep this deliberate contact on the actual camera.
-      const observer = handoff ? observers.filter(u => onScreen(u, memory.human.camera, delivered))
+      // Place this authored contact inside the actual camera for every difficulty and handover.
+      const observer = observers.filter(u => onScreen(u, memory.human.camera, delivered))
         .sort((a, b) => Math.hypot(a.x - memory.human.camera.x, a.z - memory.human.camera.z)
           - Math.hypot(b.x - memory.human.camera.x, b.z - memory.human.camera.z))
-        .find(u => enemies.every((enemy, j) => onScreen({ x: Math.min(map.w * 2 - 2, u.x + 12 + j), z: u.z }, memory.human.camera, delivered)))
-        : observers[0];
+        .find(u => enemies.every((enemy, j) => onScreen({ x: Math.min(map.w * 2 - 2, u.x + 12 + j), z: u.z }, memory.human.camera, delivered)));
       assert.ok(observer, 'contact fixture retains an own observer');
+      // This authored camera scene pauses local rifles so the contact requires a new useful response.
+      const local = observers.filter(u => onScreen(u, memory.human.camera, delivered)).map(u => u.id);
+      assert.ok(local.length, 'the authored cue has actual camera-local rifles');
+      assert.equal(command(g, 0, { t: 'stop', ids: local }), undefined);
+      assert.equal(command(g, 0, { t: 'stance', ids: local, key: 'holdFire', on: true }), undefined);
       enemies.forEach((u, j) => Object.assign(u, {
         x: Math.min(map.w * 2 - 2, observer.x + 12 + j), z: observer.z, path: [], orders: [],
         amove: null, holdFire: true, holdPos: true, auto: false, autoRetreat: false,
@@ -99,13 +105,36 @@ function run(level, seed, ticks = 2400, startedTick = 0, handoff = false) {
     Math.random = () => assert.fail('the commander must use its own seeded RNG');
     try {
       think(g, 0, { memory, view: delivered, level, seed, inputLog: record, ...(handoff && i === 0 ? { handoff: true } : {}),
-        submit: cmd => { commands.push({ tick: g.tick, command: structuredClone(cmd) }); return simulate(() => command(g, 0, cmd)); } });
+        submit: cmd => { const result=simulate(() => command(g,0,cmd)); commands.push({tick:g.tick,command:structuredClone(cmd),accepted:result===undefined});return result; } });
     } finally { Math.random = original; }
+    const screen = memory.human.view;
+    queuedFrames.set(g.tick, Object.freeze({ w: screen.w, h: screen.h, tick: screen.tick,
+      flags: structuredClone(screen.flags), height: structuredClone(screen.height), smokes: structuredClone(screen.smokes),
+      units: structuredClone(screen.units), players: structuredClone(screen.players),
+      screenIds: new Set(screen.screenIds), events: structuredClone(memory.human.events) }));
     simulate(() => step(g));
   }
   assert.ok(commands.length > 0 && inputs.some(entry => entry.command), `${level}: the integration fixture executes real commands`);
   assert.equal(inputs.filter(entry => entry.command).length, commands.length, 'every submitted command has a physical input record');
-  assert.ok(inputs.some(entry => entry.command && Number.isFinite(entry.eventTick)), 'reaction-floor proof includes a command tied to an observed event');
+  const causalInputs = inputs.filter(entry => entry.command && commands.some(cmd=>cmd.tick===entry.tick&&cmd.accepted) && (Number.isFinite(entry.eventTick)
+    || entry.responseEvents?.some(event => Number.isFinite(event.tick))));
+  assert.ok(causalInputs.length, 'reaction-floor proof includes an actual command tied to a primary or explicit secondary observed event');
+  for (const input of causalInputs) {
+    assert.ok(commands.some(entry => entry.tick === input.tick && JSON.stringify(entry.command) === JSON.stringify(input.command)),
+      'causal proof uses a command actually submitted through the native hands');
+    const frame = queuedFrames.get(input.queuedTick);
+    assert.ok(frame, 'the actual delivered planning frame is retained for causal verification');
+    const events = [...(input.responseEvents ?? []), ...(input.event ? [{...input.event,tick:input.eventTick}] : [])];
+    assert.ok(events.length, 'finite event creation metadata accompanies an actual source event');
+    for (const event of events) {
+      const source = frame.events.find(candidate => candidate.id === event.id);
+      assert.ok(source && source.tick === event.tick && source.kind === event.kind, `every linked event exists in its queued delivered frame: ${JSON.stringify({input:input.tick,queued:input.queuedTick,event,ids:frame.events.map(e=>e.id)})}`);
+      assert.ok(commandServesObservedEvent(input.command, source, frame, 0), 'the actual physical command serves each linked event under the strict shared predicate');
+      assert.ok(input.tick - source.tick >= 4, 'every linked source event respects the physical reaction floor');
+    }
+  }
+  assert.ok(memory.human.events.some(event => event.kind === 'screen-contact' && event.tick >= startedTick + 200
+    && event.observedDanger.idleOwnUnits.length > 0), 'the authored contact exposes a genuine idle response opportunity');
   if (handoff) assert.ok(memory.human.events.some(event => event.kind === 'screen-contact' && event.tick >= startedTick + 200),
     'the handover reaction proof includes a genuinely delivered camera contact');
   assert.ok(commands.every(entry => entry.tick >= memory.human.hands.openingUntil), 'no command precedes the opening look');

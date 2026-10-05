@@ -1,0 +1,18 @@
+--- a/shared/ai-commander.js
++++ b/shared/ai-commander.js
+@@ -19,6 +19,7 @@
+ const eventRank = event => event.kind === 'base' ? 110 : event.kind === 'screen-damage' ? 103
+   : event.kind === 'screen-contact' ? 92 : event.kind === 'air' || event.kind === 'attack' || event.kind === 'unitLost' ? 80 : 0;
+ function blockedPlacement(cmd, camera, view) {
++  if (cmd.t === 'garrison' && Number.isFinite(cmd.x)) return onScreen(cmd, camera, view) ? null : cmd;
+   if (!['dig', 'entrench', 'build', 'support', 'ability', 'fireat'].includes(cmd.t) || !Number.isFinite(cmd.x)) return null;
+   const points = [cmd];
+   if (Number.isFinite(cmd.x2)) points.push({ x: cmd.x2, z: cmd.z2 });
+@@ -415,6 +416,7 @@
+     const failed = mem.failedInputs?.get(inputKey(cmd));
+     if (failed && tick - failed.tick < 300) return failed.reason;
+     const ids = idsOf(cmd), at = anchorOf(cmd);
++    if (cmd.t === 'garrison' && at && onScreen(at, state.camera, view) && !view.sees(at)) return 'notVisible';
+     const idleActor = concern.kind === 'idle' && view.units.get(concern.unitId);
+     const localMaintenance = fortification(cmd) && idleActor && ids.includes(idleActor.id)
+       && at && distance(at, idleActor) <= 24;

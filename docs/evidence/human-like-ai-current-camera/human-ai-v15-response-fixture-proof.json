@@ -1,0 +1,28 @@
+{
+  "runtimeFilesCompared": 469,
+  "runtimeMatchesImmutableV15Archive": true,
+  "runtimeManifestSHA256": "e76d7239e78f4db874e5ecd1df6cc7a510b56253412435465694f6eb067c4a67",
+  "files": {
+    "baselineTest": "8f935950b6f68621b351427d54eef7fb69cfeab5a12942518235abf852f868ed",
+    "candidateTest": "2c9a7bb4dfaae89024564cd79cf6b4130f2719f703605811efe6fecc3d317789",
+    "patch": "b1f66b36d373b77d147c057ab5e67ff4097128d3a0a851fe51a93a338c23d8e2",
+    "hands": "69eb15070dbf3e3839f4a264bc24d5010033f6d745bc1cf53ba285fc362323d6",
+    "commander": "48a3f5014aa52b0b86e616515a176890bf3908d4495025cc35763a97eaba55d4",
+    "baselineLog": "3c226c03ab7226d8922daf38371248b0c56119fac6aa0e7bb89edc6daeee6ffd",
+    "groupPrefixLog": "88789965c83e359a7b44ebc61cb1f073fea72ffa625ffbaea3c472d7370f65de",
+    "correctedFullModuleLog": "fad9212a3f8719235a7ef18a72fa1d9168aab1fac0e6bcc2db6c319ead1e4c27"
+  },
+  "repositoryTestStillMatchesArchive": true,
+  "baselineExit": 1,
+  "correctedFullModuleExit": 1,
+  "correctedGroupAndEarlierCausalChecksExit": 0,
+  "groupTimeline": {
+    "firstAccepted": 119,
+    "secondAccepted": 224,
+    "paidBinding": 227,
+    "selectionSwitchAccepted": 244,
+    "paidRecall": 256,
+    "survivingMoveAccepted": 265
+  },
+  "otherOldFirstUseBindingAssumptionsFound": false
+}

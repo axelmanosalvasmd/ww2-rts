@@ -1,0 +1,22 @@
+MERGEDDEBUG [{"tick":153,"cmd":{"t":"move","orders":[[8,119.13645395991873,58.231211665411955],[7,119,63]],"together":true},"planned":{"t":"move","orders":[[7,119,60.6],[8,119,60.6]]}},{"tick":172,"cmd":{"t":"move","orders":[[8,119,63]],"together":true},"planned":{"t":"move","orders":[[8,119,60.6]]}},{"tick":208,"cmd":{"t":"move","orders":[[8,119,63]],"together":true},"planned":{"t":"move","orders":[[8,119,60.6]]}},{"tick":223,"cmd":{"t":"move","orders":[[8,119,63]],"together":true},"planned":{"t":"move","orders":[[8,119,60.6]]}},{"tick":237,"cmd":{"t":"move","orders":[[8,119,63]],"together":true},"planned":{"t":"move","orders":[[8,119,60.6]]}},{"tick":250,"cmd":{"t":"move","orders":[[8,119,63]],"together":true},"planned":{"t":"move","orders":[[8,119,60.6]]}},{"tick":265,"cmd":{"t":"move","orders":[[8,119,63]],"together":true},"planned":{"t":"move","orders":[[8,119,60.6]]}},{"tick":282,"cmd":{"t":"move","orders":[[8,119,63]],"together":true},"planned":{"t":"move","orders":[[8,119,60.6]]}},{"tick":296,"cmd":{"t":"move","orders":[[8,119,63]],"together":true},"planned":{"t":"move","orders":[[8,119,60.6]]}},{"tick":310,"cmd":{"t":"move","orders":[[8,119,63]],"together":true},"planned":{"t":"move","orders":[[8,119,60.6]]}},{"tick":324,"cmd":{"t":"move","orders":[[8,119,63]],"together":true},"planned":{"t":"move","orders":[[8,119,60.6]]}},{"tick":338,"cmd":{"t":"move","orders":[[8,119,63]],"together":true},"planned":{"t":"move","orders":[[8,119,60.6]]}},{"tick":355,"cmd":{"t":"move","orders":[[8,119,63]],"together":true},"planned":{"t":"move","orders":[[8,119,60.6]]}},{"tick":369,"cmd":{"t":"move","orders":[[8,119,63]],"together":true},"planned":{"t":"move","orders":[[8,119,60.6]]}}] [[8,{"tick":369,"x":119,"z":63,"t":"move","intent":"{\"orders\":[[8,119,60.6]],\"queue\":false,\"t\":\"move\"}","previous":[{"tick":250,"x":119,"z":63},{"tick":265,"x":119,"z":63},{"tick":282,"x":119,"z":63},{"tick":296,"x":119,"z":63},{"tick":310,"x":119,"z":63},{"tick":324,"x":119,"z":63},{"tick":338,"x":119,"z":63},{"tick":355,"x":119,"z":63}]}],[7,{"tick":153,"x":119,"z":63,"t":"move","intent":"{\"orders\":[[7,119,60.6],[8,119,60.6]],\"queue\":false,\"t\":\"move\"}","previous":[]}]]
+node:internal/modules/run_main:107
+    triggerUncaughtException(
+    ^
+
+AssertionError [ERR_ASSERTION]: same formed operation is checked after merging, so original individual planner calls still stop after native arrival
+
+14 !== 5
+
+    at file:///tmp/r6-repeat-intent/root-proposed/debug-merged.js:58:361
+    at ModuleJob.run (node:internal/modules/esm/module_job:561:25)
+    at async node:internal/modules/esm/loader:647:26
+    at async asyncRunEntryPointWithESMLoader (node:internal/modules/run_main:101:5) {
+  generatedMessage: false,
+  code: 'ERR_ASSERTION',
+  actual: 14,
+  expected: 5,
+  operator: 'strictEqual',
+  diff: 'simple'
+}
+
+Node.js v24.21.0

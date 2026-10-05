@@ -1,0 +1,164 @@
+{
+  "schema": "ww2-public-alert-native-provenance-v1",
+  "scope": "scratch only; no gameplay, thresholds, old scores or manual modules changed",
+  "nativeCommand": "taskset -c 1 nice -n 19 node /tmp/ai-alert-policy-proposal/native/test-engine-ai-public-alert.js",
+  "checks": "PASS",
+  "existingOracleEquality": true,
+  "source": [
+    {
+      "path": "/home/judiazm/.t3/worktrees/ww2-rts/ai-human-commander/shared/ai.js",
+      "bytes": 87405,
+      "sha256": "76f02609cb675070fb3f02476ed12158c8660e14aea5f242ce912b188f4d4d70",
+      "nativeFixtureCopyMatches": true
+    },
+    {
+      "path": "/home/judiazm/.t3/worktrees/ww2-rts/ai-human-commander/shared/ai-commander.js",
+      "bytes": 30709,
+      "sha256": "19112a1e4c94da72d62564d940497d38cf7e93e3086c9bde3db9c29d088703df",
+      "nativeFixtureCopyMatches": true
+    },
+    {
+      "path": "/home/judiazm/.t3/worktrees/ww2-rts/ai-human-commander/shared/ai-hands.js",
+      "bytes": 62704,
+      "sha256": "69eb15070dbf3e3839f4a264bc24d5010033f6d745bc1cf53ba285fc362323d6",
+      "nativeFixtureCopyMatches": true
+    },
+    {
+      "path": "/home/judiazm/.t3/worktrees/ww2-rts/ai-human-commander/shared/ai-perception.js",
+      "bytes": 34765,
+      "sha256": "50e611a932728940c5047a61bf4fd7554c696f93880d7907a952d8b39fdcf3fd",
+      "nativeFixtureCopyMatches": true
+    },
+    {
+      "path": "/home/judiazm/.t3/worktrees/ww2-rts/ai-human-commander/shared/ai-view.js",
+      "bytes": 13620,
+      "sha256": "ca4c85c25ea800eb43f33977b3c02f3989a8eebc60142f88e52740b3d422ae59",
+      "nativeFixtureCopyMatches": true
+    },
+    {
+      "path": "/home/judiazm/.t3/worktrees/ww2-rts/ai-human-commander/shared/alert-events.js",
+      "bytes": 8219,
+      "sha256": "df5f0ae98145034e6893ce0b70c2df8938a2d786cc8de37a1fbbc1a9c8b634b0",
+      "nativeFixtureCopyMatches": true
+    },
+    {
+      "path": "/home/judiazm/.t3/worktrees/ww2-rts/ai-human-commander/shared/sim.js",
+      "bytes": 350222,
+      "sha256": "7bc57ac179b4982bdb94b469ce029e2e2178567fcb23fa1756476a17f791f018",
+      "nativeFixtureCopyMatches": true
+    },
+    {
+      "path": "/home/judiazm/.t3/worktrees/ww2-rts/ai-human-commander/client/alerts.js",
+      "bytes": 8935,
+      "sha256": "d3b69d54bafe2ae45bea10c7678823e17937ad3e6bd5a686ada2e3ac8fa2e23f",
+      "nativeFixtureCopyMatches": true
+    },
+    {
+      "path": "/home/judiazm/.t3/worktrees/ww2-rts/ai-human-commander/tools/ai-humanity.mjs",
+      "bytes": 92743,
+      "sha256": "f2f0819439bb45e6241d2f4aba5f2f8c45cd93fa073a9930bd6368eb9ef838a8"
+    },
+    {
+      "path": "/home/judiazm/.t3/worktrees/ww2-rts/ai-human-commander/tools/ai-screen-v1-oracle.js",
+      "bytes": 28180,
+      "sha256": "6b3894b551f3bf9151372b048b2efc77ffc86a6a173d0871278b27417358b398",
+      "nativeFixtureCopyMatches": true
+    },
+    {
+      "path": "/home/judiazm/.t3/worktrees/ww2-rts/ai-human-commander/test.js",
+      "bytes": 592712,
+      "sha256": "cd2e6f9fd8969666c31ae07add4fe6226588f856e3490ca0c84331218ab00b55"
+    }
+  ],
+  "artifacts": [
+    {
+      "path": "/tmp/ai-alert-policy-proposal/native/tools/ai-public-alert-response.mjs",
+      "bytes": 15049,
+      "sha256": "f548de11aef467e7655c0beaa66d22ad1de1c9d1f252f1048ca81e06b3a87c4a"
+    },
+    {
+      "path": "/tmp/ai-alert-policy-proposal/native/test-engine-ai-public-alert.js",
+      "bytes": 13580,
+      "sha256": "0cbc147c68cc51e14db3c85a9e764deecc8ba6a0997d84a8019455eb8c47a2b5"
+    },
+    {
+      "path": "/tmp/ai-alert-policy-proposal/native/docs/ai-public-alert-response-v1.md",
+      "bytes": 4782,
+      "sha256": "98767849733e84552261e6231a86e4f90dbb66eb3ef023ed17d9b09dbd2a2db0"
+    },
+    {
+      "path": "/tmp/ai-alert-policy-proposal/native-focused-result.json",
+      "bytes": 3433,
+      "sha256": "6ee6055c0fe14573fd2f6aff53ec6ca236c8f578de7665242120dc6a360c7b77"
+    },
+    {
+      "path": "/tmp/ai-alert-policy-proposal/native-module-fixture.patch",
+      "bytes": 34034,
+      "sha256": "988b3040224633be26ebf099efa24567ebef90ea53a9aaba8ce20ee39b10271d"
+    },
+    {
+      "path": "/tmp/ai-alert-policy-proposal/collector-integration.patch",
+      "bytes": 14906,
+      "sha256": "4603f4519660ba6ac41f111de246abc68d4e7a205911ec6090aa298ec0a64e25"
+    },
+    {
+      "path": "/tmp/ai-alert-policy-proposal/test-registration.patch",
+      "bytes": 3192,
+      "sha256": "c3a73bb88af84d39f6c2fb13459bd460fd6ecb97b1efabb30f9525c881b6db18"
+    },
+    {
+      "path": "/tmp/ai-alert-policy-proposal/collector-original.mjs",
+      "bytes": 92743,
+      "sha256": "f2f0819439bb45e6241d2f4aba5f2f8c45cd93fa073a9930bd6368eb9ef838a8"
+    },
+    {
+      "path": "/tmp/ai-alert-policy-proposal/collector-candidate.mjs",
+      "bytes": 95252,
+      "sha256": "fac34526a548c8fec5b11e8bd10f07e28b84f6aa09b13206296c4d40a589af4c"
+    },
+    {
+      "path": "/tmp/ai-alert-policy-proposal/native-pan-final.stderr",
+      "bytes": 0,
+      "sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+    }
+  ],
+  "nativePan": {
+    "supported": true,
+    "arrival": "Actual paid native completion only, never an earlier continuous visibility tick",
+    "stopAfterInput": "Metadata only; useful finished input retains credit",
+    "censors": [
+      "canceled native waiting pan",
+      "completed diagonal partial pan",
+      "completed interrupted diagonal partial pan"
+    ],
+    "isolation": "Full native hands/perception state, inputs/events and continuous motion equal with and without capture"
+  },
+  "simulationProofScope": {
+    "defaultCommanderCalls": 181,
+    "simulationSteps": 0,
+    "tickAssignment": "manually assigned",
+    "cues": "authored public hurt-shot descriptors with own HP decrease; no native weapon firing claim"
+  },
+  "retainedSupersededTrials": [
+    {
+      "path": "/tmp/ai-alert-policy-proposal/native-pan-trial-1.stderr",
+      "reason": "Independent game creation used different random matchSeed; corrected by deterministic fixture creation, with full state equality retained."
+    },
+    {
+      "path": "/tmp/ai-alert-policy-proposal/native-pan-superseded-interruption-gate.json",
+      "reason": "Superseded source interpretation incorrectly withheld useful completed held-pan credit; retained and corrected after reviewing interruptHands and emit."
+    },
+    {
+      "path": "/tmp/ai-alert-policy-proposal/native-pan-superseded-interruption-gate.mjs",
+      "reason": "Superseded adapter source retained for audit."
+    },
+    {
+      "path": "/tmp/ai-alert-policy-proposal/native-focused-before-pan.json",
+      "reason": "Original successful pre-pan proof retained."
+    },
+    {
+      "path": "/tmp/ai-alert-policy-proposal/native-module-fixture-before-pan.patch",
+      "reason": "Original pre-pan module and fixture source retained."
+    }
+  ]
+}

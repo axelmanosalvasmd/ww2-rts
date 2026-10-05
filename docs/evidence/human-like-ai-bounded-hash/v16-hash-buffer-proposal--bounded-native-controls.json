@@ -1,0 +1,398 @@
+{
+  "status": "PASS",
+  "sourceCheckpoint": "3bac0c0923bcfe622dac10a8b76783d090eaf249a4c54e3e9a89a305c9e51ae9",
+  "cases": [
+    {
+      "level": "easy",
+      "seed": 1,
+      "rawBytes": 110796568,
+      "originalWholeMatchSHA256": "c37d9e114ceadf2f871ce5e2975dfbf40ef8919f362211dcbf59218653225fdd",
+      "whole": {
+        "name": "easy/1.completeNativeMatch",
+        "wallSeconds": 6.361352247999999,
+        "cpuSeconds": 6.360233,
+        "sha256": "c37d9e114ceadf2f871ce5e2975dfbf40ef8919f362211dcbf59218653225fdd",
+        "bytes": 110796568
+      },
+      "native": [
+        {
+          "name": "easy/1.slot0.log",
+          "wallSeconds": 1.889387526999999,
+          "cpuSeconds": 1.889254,
+          "sha256": "94c189535213878bcb7b4cc31bc1dc28ed9ab1d6051aaaf7d06540279f9ec9a0",
+          "bytes": 36078001
+        },
+        {
+          "name": "easy/1.slot0.perceptionMeasurements",
+          "wallSeconds": 0.010649015999999392,
+          "cpuSeconds": 0.010631,
+          "sha256": "6172425ce8e78d36fa494d0e9d9e8d3fe1746304c2aa298147bdd3c5b5853a0c",
+          "bytes": 659261
+        },
+        {
+          "name": "easy/1.slot0.manualMeasurements",
+          "wallSeconds": 1.8279055690000006,
+          "cpuSeconds": 1.82764,
+          "sha256": "a06e0bf58dd8a3eddfe225e36786c6159f920e419885e812c7d41de9a9a2ae33",
+          "bytes": 35305359
+        },
+        {
+          "name": "easy/1.slot1.log",
+          "wallSeconds": 1.8426343930000002,
+          "cpuSeconds": 1.842191,
+          "sha256": "4dc0b04fac9ba817f04c47b98f66380199bd0ec649b0b3db5edd04e6698a373b",
+          "bytes": 34435167
+        },
+        {
+          "name": "easy/1.slot1.perceptionMeasurements",
+          "wallSeconds": 0.005113715000001321,
+          "cpuSeconds": 0.005071,
+          "sha256": "a6c861fc2720f361abb3701588199b5c1c9fd1c42836a8c7a2133017c5d318b4",
+          "bytes": 295629
+        },
+        {
+          "name": "easy/1.slot1.manualMeasurements",
+          "wallSeconds": 1.821391196999999,
+          "cpuSeconds": 1.821078,
+          "sha256": "03b8f6bce44ba6bb5130d78ade061b4bc3054b23fefc2282246864de89b7cc3e",
+          "bytes": 34041906
+        },
+        {
+          "name": "easy/1.slot2.log",
+          "wallSeconds": 1.7476329540000006,
+          "cpuSeconds": 1.74757,
+          "sha256": "2e3b2a6408ce94c619805f51aeb010e20db09dc24eaa8e0dae384d091aae4f1c",
+          "bytes": 36365973
+        },
+        {
+          "name": "easy/1.slot2.perceptionMeasurements",
+          "wallSeconds": 0.011293666000001394,
+          "cpuSeconds": 0.011281,
+          "sha256": "6a4a719779fa3d9e0da190c87ef6c6130534ef067a73c9e5cf7edf185a268f7c",
+          "bytes": 726830
+        },
+        {
+          "name": "easy/1.slot2.manualMeasurements",
+          "wallSeconds": 1.7828106260000023,
+          "cpuSeconds": 1.782643,
+          "sha256": "43f84a110fae744fc2d50086d4f1e8b07e076e9ee40af78da1e5e9cf76ada123",
+          "bytes": 35544003
+        }
+      ]
+    },
+    {
+      "level": "easy",
+      "seed": 20,
+      "rawBytes": 103218330,
+      "originalWholeMatchSHA256": "bb6f232d906153444cc6fd16129caa35876756310ad0b41772937315ff2cc1dc",
+      "whole": {
+        "name": "easy/20.completeNativeMatch",
+        "wallSeconds": 5.379794107000001,
+        "cpuSeconds": 5.379577,
+        "sha256": "bb6f232d906153444cc6fd16129caa35876756310ad0b41772937315ff2cc1dc",
+        "bytes": 103218330
+      },
+      "native": [
+        {
+          "name": "easy/20.slot0.log",
+          "wallSeconds": 1.6988693600000007,
+          "cpuSeconds": 1.698818,
+          "sha256": "d2255a510812fcf072e76757166bbe1d62416c1c2b2e1ad1c041dae6a3b4fce0",
+          "bytes": 33350889
+        },
+        {
+          "name": "easy/20.slot0.perceptionMeasurements",
+          "wallSeconds": 0.007914499999998952,
+          "cpuSeconds": 0.007895,
+          "sha256": "b10e4d79a738b93088835d1af5e2a667920072b64be88df0aaaffcc94bb195fb",
+          "bytes": 541681
+        },
+        {
+          "name": "easy/20.slot0.manualMeasurements",
+          "wallSeconds": 1.6999387800000003,
+          "cpuSeconds": 1.699893,
+          "sha256": "a8fc35c32b590a115803a1f20755fe672c952d73c7cfddc7177f77b1cca5c3f4",
+          "bytes": 32709625
+        },
+        {
+          "name": "easy/20.slot1.log",
+          "wallSeconds": 1.7380589029999973,
+          "cpuSeconds": 1.738001,
+          "sha256": "c38c34103f81b81b7e6cfa69b125c425bca2f44d523c9ea5ef0644539545e0ba",
+          "bytes": 33643605
+        },
+        {
+          "name": "easy/20.slot1.perceptionMeasurements",
+          "wallSeconds": 0.005459703000000446,
+          "cpuSeconds": 0.005452,
+          "sha256": "5486e614dfff5698d409416912a394dedfb78950d058444b8a792c9d9d1f1fc8",
+          "bytes": 369660
+        },
+        {
+          "name": "easy/20.slot1.manualMeasurements",
+          "wallSeconds": 1.740853207,
+          "cpuSeconds": 1.740761,
+          "sha256": "1bd7c671a6cd5f3a943e2bf9e9bd60e1af1d8765d420b5b6cf0ffb3ec9c2c27a",
+          "bytes": 33204774
+        },
+        {
+          "name": "easy/20.slot2.log",
+          "wallSeconds": 1.7482098030000053,
+          "cpuSeconds": 1.747744,
+          "sha256": "d13db8c69c357706f6e778977fe943ff042589d168ebbb423aa665dd33955e09",
+          "bytes": 32881527
+        },
+        {
+          "name": "easy/20.slot2.perceptionMeasurements",
+          "wallSeconds": 0.0034664450000054785,
+          "cpuSeconds": 0.00346,
+          "sha256": "b804e3f063d64263958f0de3deadbfad0bc5ba6da1a9c54d41b51e5468c1da43",
+          "bytes": 236525
+        },
+        {
+          "name": "easy/20.slot2.manualMeasurements",
+          "wallSeconds": 2.4238754869999974,
+          "cpuSeconds": 2.423623,
+          "sha256": "1ca926057342744d25f1899115ffe9bb48b9f0aeaa6b63da90aedb365499a746",
+          "bytes": 32558548
+        }
+      ]
+    },
+    {
+      "level": "normal",
+      "seed": 1,
+      "rawBytes": 129831337,
+      "originalWholeMatchSHA256": "505d4ead9ac07e5e73366c551fb2ce67292ef5310ef256d3736e097211a6f61c",
+      "whole": {
+        "name": "normal/1.completeNativeMatch",
+        "wallSeconds": 8.248276567999994,
+        "cpuSeconds": 8.158515,
+        "sha256": "505d4ead9ac07e5e73366c551fb2ce67292ef5310ef256d3736e097211a6f61c",
+        "bytes": 129831337
+      },
+      "native": [
+        {
+          "name": "normal/1.slot0.log",
+          "wallSeconds": 1.9866138030000002,
+          "cpuSeconds": 1.986549,
+          "sha256": "6712f6d90b0851bdb70a9047a64a41e50d7dfa08a3f8ff5998fa472ba8104371",
+          "bytes": 40021762
+        },
+        {
+          "name": "normal/1.slot0.perceptionMeasurements",
+          "wallSeconds": 0.026112786999998208,
+          "cpuSeconds": 0.026103,
+          "sha256": "a2689fe5c9c97818bddfa7e863554402cd05950f3d20d36ff4a0e3a4b78b3794",
+          "bytes": 1541770
+        },
+        {
+          "name": "normal/1.slot0.manualMeasurements",
+          "wallSeconds": 1.9369615239999984,
+          "cpuSeconds": 1.936905,
+          "sha256": "0bb946d49e59b3da24760f1774c38abbade120073fdccd14074ef2755865ba5f",
+          "bytes": 38270126
+        },
+        {
+          "name": "normal/1.slot1.log",
+          "wallSeconds": 2.3009381070000017,
+          "cpuSeconds": 1.988782,
+          "sha256": "5dad0eb3885e4287a0fc445f035eeddc9281a4ce50f5e95e435a3f1d6299df02",
+          "bytes": 41399865
+        },
+        {
+          "name": "normal/1.slot1.perceptionMeasurements",
+          "wallSeconds": 0.0960421109999952,
+          "cpuSeconds": 0.031869,
+          "sha256": "5714b16a366f6837344f92c03fcebf060b5e2e9ae1d80487f21ef699244050ba",
+          "bytes": 1856842
+        },
+        {
+          "name": "normal/1.slot1.manualMeasurements",
+          "wallSeconds": 5.134536283000001,
+          "cpuSeconds": 2.112647,
+          "sha256": "90b7c2c6534941b486710e4d28ee6228d9632771be8d2a6f1cae433573f57ae1",
+          "bytes": 39368425
+        },
+        {
+          "name": "normal/1.slot2.log",
+          "wallSeconds": 5.084872191000002,
+          "cpuSeconds": 2.115694,
+          "sha256": "0e0370e455633969d1252fa48c8e477e89051a5512bff6e8d72fad1c3d47a05a",
+          "bytes": 40678193
+        },
+        {
+          "name": "normal/1.slot2.perceptionMeasurements",
+          "wallSeconds": 0.044799752999999325,
+          "cpuSeconds": 0.020854,
+          "sha256": "cca8fcbc9bb8be8e3ad40ef00b50b5667622d584ad69b2b84b62705d23951788",
+          "bytes": 1308886
+        },
+        {
+          "name": "normal/1.slot2.manualMeasurements",
+          "wallSeconds": 4.988830601999987,
+          "cpuSeconds": 2.088821,
+          "sha256": "ed2b34e5aa0b861bf40afe2a12e041bb0f1770b39fd370ff723faf3265cde53f",
+          "bytes": 39208171
+        }
+      ]
+    },
+    {
+      "level": "normal",
+      "seed": 20,
+      "rawBytes": 119486288,
+      "originalWholeMatchSHA256": "ee5635d971ddf270b3e30079850382f30def78371e28aed56875ea74f2780015",
+      "whole": {
+        "name": "normal/20.completeNativeMatch",
+        "wallSeconds": 17.503710338999998,
+        "cpuSeconds": 6.986856,
+        "sha256": "ee5635d971ddf270b3e30079850382f30def78371e28aed56875ea74f2780015",
+        "bytes": 119486288
+      },
+      "native": [
+        {
+          "name": "normal/20.slot0.log",
+          "wallSeconds": 4.707978822000005,
+          "cpuSeconds": 1.999877,
+          "sha256": "c9892e575b3380aa96dc4d6579966f27cfa272614caf1ee7fb37c93b7ae32b2e",
+          "bytes": 38812602
+        },
+        {
+          "name": "normal/20.slot0.perceptionMeasurements",
+          "wallSeconds": 0.07038993100001244,
+          "cpuSeconds": 0.016744,
+          "sha256": "24dcd090de0ea09af2ec9081b30c0123438453bcb1514196496efc9475bebbb9",
+          "bytes": 1064483
+        },
+        {
+          "name": "normal/20.slot0.manualMeasurements",
+          "wallSeconds": 4.487452154999992,
+          "cpuSeconds": 1.933335,
+          "sha256": "ee7d0a78951e1e5e047e340f6a694fca1616f58f31f1dee0d18a1953ffcc6c58",
+          "bytes": 37591842
+        },
+        {
+          "name": "normal/20.slot1.log",
+          "wallSeconds": 4.964799075999996,
+          "cpuSeconds": 1.985119,
+          "sha256": "07ba85ca2a6fa919716136e87f91f92df1b74d2236ffabd00bb3d813ed123fd5",
+          "bytes": 38278195
+        },
+        {
+          "name": "normal/20.slot1.perceptionMeasurements",
+          "wallSeconds": 0.019944005999990622,
+          "cpuSeconds": 0.010079,
+          "sha256": "9ac2e7a464d2e35ebe6aae2b14f8d250a4304a51a579a6898d4471b2398264ad",
+          "bytes": 606195
+        },
+        {
+          "name": "normal/20.slot1.manualMeasurements",
+          "wallSeconds": 4.487486191999997,
+          "cpuSeconds": 1.949995,
+          "sha256": "0961bbd3bc42f429a29f083f6eadd8cdddfd370b34f67191f2b339479bbbecd1",
+          "bytes": 37529257
+        },
+        {
+          "name": "normal/20.slot2.log",
+          "wallSeconds": 4.790857480999999,
+          "cpuSeconds": 1.931615,
+          "sha256": "3d655446ca616cf2cb425c552b8a11eb0c94f9d950a7ee7ad639dcb5a78aeea9",
+          "bytes": 37259180
+        },
+        {
+          "name": "normal/20.slot2.perceptionMeasurements",
+          "wallSeconds": 0.06292303399999219,
+          "cpuSeconds": 0.013264,
+          "sha256": "9a780fd4cd25c1319808e9d5c843dbe6454ede59d7ab0c85d45e1eab948c222e",
+          "bytes": 790928
+        },
+        {
+          "name": "normal/20.slot2.manualMeasurements",
+          "wallSeconds": 4.405349224000005,
+          "cpuSeconds": 1.931004,
+          "sha256": "ca4a433df1b627cdb5621af57aace79b4b1fd69c7e48f205d51170c26a01bc20",
+          "bytes": 36350890
+        }
+      ]
+    },
+    {
+      "level": "hard",
+      "seed": 1,
+      "rawBytes": 141399002,
+      "originalWholeMatchSHA256": "b48e03e73dcba3e9de5b818e135f6b930811bf02a58a339c263246a26fcf4ab3",
+      "whole": {
+        "name": "hard/1.completeNativeMatch",
+        "wallSeconds": 13.792020283999998,
+        "cpuSeconds": 9.806336,
+        "sha256": "b48e03e73dcba3e9de5b818e135f6b930811bf02a58a339c263246a26fcf4ab3",
+        "bytes": 141399002
+      },
+      "native": [
+        {
+          "name": "hard/1.slot0.log",
+          "wallSeconds": 2.117641598999995,
+          "cpuSeconds": 2.11754,
+          "sha256": "9c63c0a113810ea513599d55905c8516554e5dc0701dbcaa171232c1b0404d4d",
+          "bytes": 43609890
+        },
+        {
+          "name": "hard/1.slot0.perceptionMeasurements",
+          "wallSeconds": 0.021581946999998762,
+          "cpuSeconds": 0.021574,
+          "sha256": "da7b11bb2ffad149dd64b85cd07def768970cf6a9c1ac13fd3c20e36d096547a",
+          "bytes": 1397630
+        },
+        {
+          "name": "hard/1.slot0.manualMeasurements",
+          "wallSeconds": 2.2784320979999904,
+          "cpuSeconds": 2.116024,
+          "sha256": "b3f57f6059fc546b34d84e6ebf32b02813d428c50facde6b359ac41982c3baec",
+          "bytes": 41999403
+        },
+        {
+          "name": "hard/1.slot1.log",
+          "wallSeconds": 2.115810511000018,
+          "cpuSeconds": 2.115739,
+          "sha256": "1e8279d57432ba2622923259a6ac61e353baaeb531f37e2ebd1ae54dfb4862c0",
+          "bytes": 44180721
+        },
+        {
+          "name": "hard/1.slot1.perceptionMeasurements",
+          "wallSeconds": 0.026295497999992222,
+          "cpuSeconds": 0.026288,
+          "sha256": "b7d93d4008d6bc881621bf96c1afb5b6c69e31f832ded0b6788a144d06635543",
+          "bytes": 1691967
+        },
+        {
+          "name": "hard/1.slot1.manualMeasurements",
+          "wallSeconds": 2.093517970999994,
+          "cpuSeconds": 2.093442,
+          "sha256": "93adc8087784173e3e84f4c99818529d5f880306266560505838a7965672d7f9",
+          "bytes": 42264508
+        },
+        {
+          "name": "hard/1.slot2.log",
+          "wallSeconds": 2.0312152019999923,
+          "cpuSeconds": 2.03115,
+          "sha256": "12c94a708a3c987d6f89f3115646d78419ad4dcf8a6d2ff0d14b772b24af51d7",
+          "bytes": 45840053
+        },
+        {
+          "name": "hard/1.slot2.perceptionMeasurements",
+          "wallSeconds": 0.019725797000020976,
+          "cpuSeconds": 0.01972,
+          "sha256": "3db98f890facfed2c03ada5a0c67371b18b1a95659cc691d25107319e5b43c42",
+          "bytes": 2209888
+        },
+        {
+          "name": "hard/1.slot2.manualMeasurements",
+          "wallSeconds": 2.0212025180000057,
+          "cpuSeconds": 2.021137,
+          "sha256": "a93635ce5cb8ae2ad20366ff1e7c9b65caec6604a9880c5e52e80b4a2eb38a1d",
+          "bytes": 43406284
+        }
+      ]
+    }
+  ],
+  "sourceAndRawFilesUnchanged": true,
+  "originalDigestSource": "Completed immutable campaign manifest; complete match bytes emitted by frozen writeJSON(jsonChunks(jsonPieces)); per-log and each private/manual stream hashJSON recomputed by unchanged live verifier."
+}

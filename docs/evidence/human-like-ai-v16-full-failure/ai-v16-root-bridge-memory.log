@@ -1,0 +1,31 @@
+Forty seeded native bridge repairs within sixty seconds: {
+  seeds: 40,
+  maxSecondsAfterBreak: 52,
+  formerFailureSeeds: [
+    {
+      seed: 11,
+      matchSeed: 1032213998,
+      secondsAfterBreak: 46.95,
+      nativeInputs: 29,
+      acceptedRepairJobs: 4,
+      rejectedRepairJobs: 0
+    },
+    {
+      seed: 23,
+      matchSeed: 1052188298,
+      secondsAfterBreak: 38.4,
+      nativeInputs: 22,
+      acceptedRepairJobs: 3,
+      rejectedRepairJobs: 0
+    },
+    {
+      seed: 39,
+      matchSeed: 1078820698,
+      secondsAfterBreak: 38.9,
+      nativeInputs: 22,
+      acceptedRepairJobs: 3,
+      rejectedRepairJobs: 0
+    }
+  ]
+}
+Watched repair cue boundaries and unseen full-span inspection passed.

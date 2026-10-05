@@ -1,0 +1,121 @@
+{
+  "copiedAtUnix": 1791148772.8368578,
+  "entries": [
+    {
+      "source": "/tmp/human-ai-v16-balance-final-readout-20261004T210723Z.json",
+      "member": "human-ai-v16-balance-final-readout-20261004T210723Z.json",
+      "bytes": 77498,
+      "sha256": "7135e6429dac2ec9b94b1657d8ae3b8f0ba1ba27fb977578b58e1da28147194c"
+    },
+    {
+      "source": "/tmp/human-ai-prospective-v16-balance-v3-final.json",
+      "member": "human-ai-prospective-v16-balance-v3-final.json",
+      "bytes": 22905,
+      "sha256": "46c7fe00f6731356ca5cf54fbfe3fec14bb9da402b52b0f5fc361e51ff0dd421"
+    },
+    {
+      "source": "/tmp/human-ai-v16-balance-supervisor-v3-final.py",
+      "member": "human-ai-v16-balance-supervisor-v3-final.py",
+      "bytes": 10246,
+      "sha256": "dae1656b90326bf7429af287a4f892025afe667480331c9ba1f6acf971274014"
+    },
+    {
+      "source": "/tmp/human-ai-v16-final-balance/supervision.json",
+      "member": "supervision.json",
+      "bytes": 29762,
+      "sha256": "95699c74712d3a26d79f3a8a39a3f55f12c11fad757fffbaa8c6fc63fd11f941"
+    },
+    {
+      "source": "/tmp/human-ai-v16-final-balance/conquest.json",
+      "member": "conquest.json",
+      "bytes": 28519,
+      "sha256": "efee56d7b2de07d654c20387f73ed54788f77d75e0b15d0e0a2a8490f3a6ce91"
+    },
+    {
+      "source": "/tmp/human-ai-v16-final-balance/conquest-checkpoint.json",
+      "member": "conquest-checkpoint.json",
+      "bytes": 27868,
+      "sha256": "3b20b7e76bc1f6d8aba2a2d666923e5f5c117454d8f84e6c28370958b576d806"
+    },
+    {
+      "source": "/tmp/human-ai-v16-final-balance/conquest.log",
+      "member": "conquest.log",
+      "bytes": 18292,
+      "sha256": "ffee663256e519338e63934c3be3dcb9613ffc1c290e3b9401428b747ed8cdca"
+    },
+    {
+      "source": "/tmp/human-ai-v16-final-balance/classic.json",
+      "member": "classic.json",
+      "bytes": 15873,
+      "sha256": "35d8063553036043620f75c6f061b10da177d05a3bb7d5067bb8ec210ad396fc"
+    },
+    {
+      "source": "/tmp/human-ai-v16-final-balance/classic-checkpoint.json",
+      "member": "classic-checkpoint.json",
+      "bytes": 15287,
+      "sha256": "8dea3443e97897f8b14e7722a9f665e2980ef75fdfd4d88b5b29ccda5dc4894a"
+    },
+    {
+      "source": "/tmp/human-ai-v16-final-balance/classic.log",
+      "member": "classic.log",
+      "bytes": 10623,
+      "sha256": "215964949091932db429668f8b54f7ccd4f2300f406ea5dfa7c6907dbfdc4314"
+    },
+    {
+      "source": "/tmp/human-ai-v16-final-balance/easy20.json",
+      "member": "easy20.json",
+      "bytes": 12844,
+      "sha256": "ecb7061222d4347dbc3634626374e92bb3b473c4a1e46fcea6d9b8bcbfc565e9"
+    },
+    {
+      "source": "/tmp/human-ai-v16-final-balance/easy20-checkpoint.json",
+      "member": "easy20-checkpoint.json",
+      "bytes": 12190,
+      "sha256": "7efb7acd48752b060764e9b900f158a8b17c259192a5c5437e13e965360a63d2"
+    },
+    {
+      "source": "/tmp/human-ai-v16-final-balance/easy20.log",
+      "member": "easy20.log",
+      "bytes": 9659,
+      "sha256": "f130f85a05588cd4300110cca73aa80485ca55f3423e44ac5d2e9b96dad323f8"
+    },
+    {
+      "source": "/tmp/human-ai-v16-final-balance/normal20.json",
+      "member": "normal20.json",
+      "bytes": 12870,
+      "sha256": "f81108466c4f3e7bf40edd71e6e7d37344dd732e2d26dd029e5ffd8ba2ff4e92"
+    },
+    {
+      "source": "/tmp/human-ai-v16-final-balance/normal20-checkpoint.json",
+      "member": "normal20-checkpoint.json",
+      "bytes": 12216,
+      "sha256": "4a395e93b1436aa70d4399c3b73e88ed5c7aabaaafc651ba2fbe7cd969436c8d"
+    },
+    {
+      "source": "/tmp/human-ai-v16-final-balance/normal20.log",
+      "member": "normal20.log",
+      "bytes": 9685,
+      "sha256": "968face24fe7a608d4d49cc381593f0b7bf4ff2fedab3a9a12a83e69ee480133"
+    },
+    {
+      "source": "/tmp/human-ai-v16-final-balance/hard20.json",
+      "member": "hard20.json",
+      "bytes": 12848,
+      "sha256": "bad063cfaf1287cfc6e6f9be736b89de3cb477f378e380193cf44a120182d60c"
+    },
+    {
+      "source": "/tmp/human-ai-v16-final-balance/hard20-checkpoint.json",
+      "member": "hard20-checkpoint.json",
+      "bytes": 12194,
+      "sha256": "bf10bd9dd8bf154a7e6faae06d64a1278c1de8df0de51abb052e58cf5846bc6a"
+    },
+    {
+      "source": "/tmp/human-ai-v16-final-balance/hard20.log",
+      "member": "hard20.log",
+      "bytes": 9663,
+      "sha256": "c4f252c2a3dc370f7c7fac31512ca0e0426962bada5822caf5f7733b0596da35"
+    }
+  ],
+  "archiveSHA256": "c381a5e4a09cc8ee882dc9c9ca381c6f90330d418de0de4a381c4b54308fb803",
+  "allMembersByteIdentical": true
+}

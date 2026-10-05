@@ -1,0 +1,24 @@
+--- a/run-campaign.mjs
++++ b/run-campaign.mjs
+@@ -6,10 +6,12 @@
+ import {createGunzip} from 'node:zlib';
+ import {spawn} from 'node:child_process';
+ import {performance} from 'node:perf_hooks';
++import {createBoundedNativeHasher} from './hash-bounded-native.mjs';
+ const planIndex=process.argv.indexOf('--protocol');assert.ok(planIndex>0);assert.ok(process.argv.includes('--launch-authorized'),'Requires root campaign launch authorization.');
+ const plan=JSON.parse(await readFile(process.argv[planIndex+1],'utf8'));
+ assert.equal(plan.matches,120);assert.equal(plan.requestedSeconds,180);assert.equal(plan.workers,2);assert.deepEqual(plan.workerCPUs,[6,10]);assert.ok(plan.freezeAnnouncement);assert.ok(plan.sourceArchiveDirectory);assert.equal(plan.manualPolicy?.approved,true,'Manual policy needs root-approved public rule and finalized collector option.');assert.equal(plan.sourceApproved,true,'Final V16 source approval is required.');assert.equal(plan.manualPolicy.name,'screen-manual-v2');assert.equal(plan.manualPolicy.streamSchema,'ww2-public-manual-response-v2');assert.equal(plan.manualPolicy.ruleDeclarationPath,`${plan.sourceArchiveDirectory}/docs/human-like-ai-manual-response-v2.md`);assert.equal(plan.manualPolicy.ruleDeclarationSHA256,'88b35c9f241b60af78fbadd7392d3f14203869c18b4d7e931ce64112f6d91030');assert.ok(plan.manualPolicy.helperSHA256);assert.ok(plan.manualPolicy.adapterSHA256);assert.ok(plan.manualPolicy.perceptionSHA256);assert.ok(plan.manualPolicy.collectorSHA256);
+ const source=plan.sourceArchiveDirectory,dir=plan.evidenceDirectory,tool=await import(`${source}/tools/ai-humanity.mjs`),storage=await import(`${source}/tools/json-stream.mjs`),expected=plan.expectedRuntimeCheckpointSHA256;
++const hashVerifierJSON=createBoundedNativeHasher(storage.hashJSON);
+ let frozenRules;
+ async function recomputeSeat(log,seconds){frozenRules ??= Promise.all([import(`${source}/shared/sim.js`),import(`${source}/client/keys.js`)]);const[sim,keys]=await frozenRules;return {...tool.summarizeSeat(log,seconds,113),manualResponsePolicy:tool.manualResponseMetrics(log,seconds,{...sim,bindings:keys.bindings})};}
+ function frozenDefinitions(text){const marker='definitions: {',start=text.indexOf(marker,text.indexOf('const summary = aggregate(results)'));assert.ok(start>=0);const end=text.indexOf('}, elapsedSeconds:',start);assert.ok(end>start);return Function(`return (${text.slice(start+12,end+1)});`)();}
+@@ -69,7 +71,7 @@
+   finally{await staged.staged.cleanup();}
+   const graph=JSON.parse(await readFile(spoolFile,'utf8'));assert.equal(graph.logs.length,result.seats.length);
+   const digests=[];
+-  for(const seat of result.seats){const log=graph.logs[seat.slot];assert.deepEqual(await recomputeSeat(log,graph.seconds),seat.metrics);const manual=manualIssue(seat,log);if(manual.length)manualCoverageIssues.push({mode,level:result.level,seed:result.seed,slot:seat.slot,issues:manual});digests.push({slot:seat.slot,sha256:(await storage.hashJSON(log)).sha256,commands:log.commands.length,inputs:log.inputs.length,events:log.events?.length??0,measurementFrames:log.perceptionMeasurements?.frames?.length??0,measurementStreamSHA256:log.perceptionMeasurements?(await storage.hashJSON(log.perceptionMeasurements)).sha256:null,manualStreamSHA256:log.manualMeasurements?(await storage.hashJSON(log.manualMeasurements)).sha256:null});}
++  for(const seat of result.seats){const log=graph.logs[seat.slot];assert.deepEqual(await recomputeSeat(log,graph.seconds),seat.metrics);const manual=manualIssue(seat,log);if(manual.length)manualCoverageIssues.push({mode,level:result.level,seed:result.seed,slot:seat.slot,issues:manual});digests.push({slot:seat.slot,sha256:(await hashVerifierJSON(log)).sha256,commands:log.commands.length,inputs:log.inputs.length,events:log.events?.length??0,measurementFrames:log.perceptionMeasurements?.frames?.length??0,measurementStreamSHA256:log.perceptionMeasurements?(await hashVerifierJSON(log.perceptionMeasurements)).sha256:null,manualStreamSHA256:log.manualMeasurements?(await hashVerifierJSON(log.manualMeasurements)).sha256:null});}
+   results.push(result);rawFiles.set(result,spoolFile);
+   archives.push({mode,level:result.level,seed:result.seed,file:spoolFile,gzipFile:archive,raw:staged.raw,gzip:staged.gzip,timelineDigests:digests});
+   await write(`${dir}/${mode}-raw-manifest.json`,archives);

@@ -1,0 +1,2706 @@
+{
+  "copiedAt": "2026-10-04T18:12:01.688792+00:00",
+  "qualification": "Prospective public capture completeness correction. Old and corrected native damage/events/inputs retained. Root native162assertions pass. Earlier27controls remain their original-adapter proof; final frozen suite rechecks current adapter. No timing thresholds or historical grades changed.",
+  "files": [
+    {
+      "source": "/tmp/manual-v2-camera-baseline-repro/QUALIFICATION.md",
+      "destination": "docs/evidence/human-like-ai-manual-response-v2/camera-baseline/QUALIFICATION.md",
+      "bytes": 1338,
+      "sha256": "8d74414a855ad3b32d8297f8085d02665ed6814db6518deb3305cd0650c13d64"
+    },
+    {
+      "source": "/tmp/manual-v2-camera-baseline-repro/client/ai-overlay.js",
+      "destination": "docs/evidence/human-like-ai-manual-response-v2/camera-baseline/client/ai-overlay.js",
+      "bytes": 4459,
+      "sha256": "9042e20afef01299e50d6116eb5f887dfe622dfc4eaaeb04767fd94f20a0845a"
+    },
+    {
+      "source": "/tmp/manual-v2-camera-baseline-repro/client/aircraft.js",
+      "destination": "docs/evidence/human-like-ai-manual-response-v2/camera-baseline/client/aircraft.js",
+      "bytes": 32807,
+      "sha256": "332efcfebdce10ccdf127162d4058912000b75c0337e0409f2eb7c4af9cbd493"
+    },
+    {
+      "source": "/tmp/manual-v2-camera-baseline-repro/client/alert-history.js",
+      "destination": "docs/evidence/human-like-ai-manual-response-v2/camera-baseline/client/alert-history.js",
+      "bytes": 1506,
+      "sha256": "9456ba8c95e29370bfe869372b337bd6e17f2d4d5f17e54b5672fe58648fde5e"
+    },
+    {
+      "source": "/tmp/manual-v2-camera-baseline-repro/client/alerts.css",
+      "destination": "docs/evidence/human-like-ai-manual-response-v2/camera-baseline/client/alerts.css",
+      "bytes": 3886,
+      "sha256": "0342277ce2e5acfc88421ec77d7bcace735f680b0c0c9886c61307a69e7ba799"
+    },
+    {
+      "source": "/tmp/manual-v2-camera-baseline-repro/client/alerts.js",
+      "destination": "docs/evidence/human-like-ai-manual-response-v2/camera-baseline/client/alerts.js",
+      "bytes": 8935,
+      "sha256": "d3b69d54bafe2ae45bea10c7678823e17937ad3e6bd5a686ada2e3ac8fa2e23f"
+    },
+    {
+      "source": "/tmp/manual-v2-camera-baseline-repro/client/apron.js",
+      "destination": "docs/evidence/human-like-ai-manual-response-v2/camera-baseline/client/apron.js",
+      "bytes": 21952,
+      "sha256": "f6a950928fd0b7a37d68171b104fde11c916888469c0039ce7cf96f6026e58cf"
+    },
+    {
+      "source": "/tmp/manual-v2-camera-baseline-repro/client/atmosphere.js",
+      "destination": "docs/evidence/human-like-ai-manual-response-v2/camera-baseline/client/atmosphere.js",
+      "bytes": 31451,
+      "sha256": "984f1baf17a574f011b64963145db4661491fd9b6aea68ce9feefc4880516012"
+    },
+    {
+      "source": "/tmp/manual-v2-camera-baseline-repro/client/audio/index.json",
+      "destination": "docs/evidence/human-like-ai-manual-response-v2/camera-baseline/client/audio/index.json",
+      "bytes": 4737,
+      "sha256": "21c2f12acb1f824e42f9a3c9791938d236edee6b6c94907da06e4803c9020d18"
+    },
+    {
+      "source": "/tmp/manual-v2-camera-baseline-repro/client/audio/sfx/alert_air.mp3",
+      "destination": "docs/evidence/human-like-ai-manual-response-v2/camera-baseline/client/audio/sfx/alert_air.mp3",
+      "bytes": 24764,
+      "sha256": "d2458474b18337e42eeed5e698713e59c686fa034a005a67e5643420e2fea10b"
+    },
+    {
+      "source": "/tmp/manual-v2-camera-baseline-repro/client/audio/sfx/alert_attack.mp3",
+      "destination": "docs/evidence/human-like-ai-manual-response-v2/camera-baseline/client/audio/sfx/alert_attack.mp3",
+      "bytes": 18494,
+      "sha256": "291be502e92dd8d1ca45a09a2dee830f3450935cd4d57893a038b58c5b0d3e72"
+    },
+    {
+      "source": "/tmp/manual-v2-camera-baseline-repro/client/audio/sfx/alert_point_lost.mp3",
+      "destination": "docs/evidence/human-like-ai-manual-response-v2/camera-baseline/client/audio/sfx/alert_point_lost.mp3",
+      "bytes": 15046,
+      "sha256": "053e29aebc218d4cbe182bf33b829d9009629df699651e2a4630ef0fbdfd0055"
+    },
+    {
+      "source": "/tmp/manual-v2-camera-baseline-repro/client/audio/sfx/alert_point_won.mp3",
+      "destination": "docs/evidence/human-like-ai-manual-response-v2/camera-baseline/client/audio/sfx/alert_point_won.mp3",
+      "bytes": 15046,
+      "sha256": "206b4b971b569708e2a9b827805ff9ecf4a92719d3dd1114c7017d54d29a1893"
+    },
+    {
+      "source": "/tmp/manual-v2-camera-baseline-repro/client/audio/sfx/alert_ready.mp3",
+      "destination": "docs/evidence/human-like-ai-manual-response-v2/camera-baseline/client/audio/sfx/alert_ready.mp3",
+      "bytes": 12225,
+      "sha256": "a202f47473bb18dba375bffa2410e4bfc5b1a18840a998653c6afc02bcf67975"
+    },
+    {
+      "source": "/tmp/manual-v2-camera-baseline-repro/client/audio/sfx/alert_unit_lost.mp3",
+      "destination": "docs/evidence/human-like-ai-manual-response-v2/camera-baseline/client/audio/sfx/alert_unit_lost.mp3",
+      "bytes": 12538,
+      "sha256": "d8f61cd230f44d010cb3c1ab3b826799a48c1946b759133daa93e4d021507a72"
+    },
+    {
+      "source": "/tmp/manual-v2-camera-baseline-repro/client/audio/sfx/ambient.mp3",
+      "destination": "docs/evidence/human-like-ai-manual-response-v2/camera-baseline/client/audio/sfx/ambient.mp3",
+      "bytes": 216920,
+      "sha256": "b84f2fc131b4925c23b5e9c78e0c7e86323776bfa2a939021e5b4a368bd258ef"
+    },
+    {
+      "source": "/tmp/manual-v2-camera-baseline-repro/client/audio/sfx/atgun.mp3",
+      "destination": "docs/evidence/human-like-ai-manual-response-v2/camera-baseline/client/audio/sfx/atgun.mp3",
+      "bytes": 24764,
+      "sha256": "8434249b449473815af9c13508baac42e6e9954dc751815c505754dced114407"
+    },
+    {
+      "source": "/tmp/manual-v2-camera-baseline-repro/client/audio/sfx/blast_large.mp3",
+      "destination": "docs/evidence/human-like-ai-manual-response-v2/camera-baseline/client/audio/sfx/blast_large.mp3",
+      "bytes": 36675,
+      "sha256": "53d2a2f67176ad96e060b06bd65a7427be4682e8b14ab7782be832a8a2e19710"
+    },
+    {
+      "source": "/tmp/manual-v2-camera-baseline-repro/client/audio/sfx/blast_small.mp3",
+      "destination": "docs/evidence/human-like-ai-manual-response-v2/camera-baseline/client/audio/sfx/blast_small.mp3",
+      "bytes": 19435,
+      "sha256": "5001b992d067b32c7434d194c053da5e97d7e94206779610528a848f2999af9f"
+    },
+    {
+      "source": "/tmp/manual-v2-camera-baseline-repro/client/audio/sfx/bomb.mp3",
+      "destination": "docs/evidence/human-like-ai-manual-response-v2/camera-baseline/client/audio/sfx/bomb.mp3",
+      "bytes": 42631,
+      "sha256": "25271da81aabd6c80a5c26db939ce239442ed25ddbfb665ca920e0de23568683"
+    },
+    {
+      "source": "/tmp/manual-v2-camera-baseline-repro/client/audio/sfx/bomber.mp3",
+      "destination": "docs/evidence/human-like-ai-manual-response-v2/camera-baseline/client/audio/sfx/bomber.mp3",
+      "bytes": 72724,
+      "sha256": "8a655f1716e1631d8e461060438849547a322eed8dd5f157862f45f227495326"
+    },
+    {
+      "source": "/tmp/manual-v2-camera-baseline-repro/client/audio/sfx/build.mp3",
+      "destination": "docs/evidence/human-like-ai-manual-response-v2/camera-baseline/client/audio/sfx/build.mp3",
+      "bytes": 28839,
+      "sha256": "1e28672fd5db6d38b6a38202e32a40ac8d97afe87c03e78a1e932a363e56f09f"
+    },
+    {
+      "source": "/tmp/manual-v2-camera-baseline-repro/client/audio/sfx/collapse.mp3",
+      "destination": "docs/evidence/human-like-ai-manual-response-v2/camera-baseline/client/audio/sfx/collapse.mp3",
+      "bytes": 25704,
+      "sha256": "c6356eae9743ad065e0f0d87a8119a05699b93e973005fed0eb0f145537e0ddf"
+    },
+    {
+      "source": "/tmp/manual-v2-camera-baseline-repro/client/audio/sfx/dig.mp3",
+      "destination": "docs/evidence/human-like-ai-manual-response-v2/camera-baseline/client/audio/sfx/dig.mp3",
+      "bytes": 19435,
+      "sha256": "9eb3e6d904a3636c4178642b96deec0e630e14210e326a3a10340e7bf26c1902"
+    },
+    {
+      "source": "/tmp/manual-v2-camera-baseline-repro/client/audio/sfx/fire_loop.mp3",
+      "destination": "docs/evidence/human-like-ai-manual-response-v2/camera-baseline/client/audio/sfx/fire_loop.mp3",
+      "bytes": 66769,
+      "sha256": "56f984eea6d71a5205adcb365937c0d8eb497ef88a310eb8cf3f1d4e2f910239"
+    },
+    {
+      "source": "/tmp/manual-v2-camera-baseline-repro/client/audio/sfx/flak.mp3",
+      "destination": "docs/evidence/human-like-ai-manual-response-v2/camera-baseline/client/audio/sfx/flak.mp3",
+      "bytes": 30406,
+      "sha256": "b766f82e89bf6501750061b0369f734abfae4288b09042fa0ed82223d991d5a3"
+    },
+    {
+      "source": "/tmp/manual-v2-camera-baseline-repro/client/audio/sfx/match_start.mp3",
+      "destination": "docs/evidence/human-like-ai-manual-response-v2/camera-baseline/client/audio/sfx/match_start.mp3",
+      "bytes": 17554,
+      "sha256": "12915fc2bcfd4795dce545cc865bb806886338bf7b61ed65a91dd1f7b88aa7fc"
+    },
+    {
+      "source": "/tmp/manual-v2-camera-baseline-repro/client/audio/sfx/mg.mp3",
+      "destination": "docs/evidence/human-like-ai-manual-response-v2/camera-baseline/client/audio/sfx/mg.mp3",
+      "bytes": 20062,
+      "sha256": "c452e4a2c792b7b3dbcb5cbf5f5420b770157a6f9913c475bd0283ce3f3a9ce8"
+    },
+    {
+      "source": "/tmp/manual-v2-camera-baseline-repro/client/audio/sfx/mortar.mp3",
+      "destination": "docs/evidence/human-like-ai-manual-response-v2/camera-baseline/client/audio/sfx/mortar.mp3",
+      "bytes": 6896,
+      "sha256": "05ac1bf441c1af05d50da0b029256f8ec2da70e4bba077ce2899985945b127e9"
+    },
+    {
+      "source": "/tmp/manual-v2-camera-baseline-repro/client/audio/sfx/plane_flyby.mp3",
+      "destination": "docs/evidence/human-like-ai-manual-response-v2/camera-baseline/client/audio/sfx/plane_flyby.mp3",
+      "bytes": 48901,
+      "sha256": "66a3c05fe8352ef8ae424fbc7518cb5069e62125afeca6a90a3cc36e76c8afca"
+    },
+    {
+      "source": "/tmp/manual-v2-camera-baseline-repro/client/audio/sfx/ricochet.mp3",
+      "destination": "docs/evidence/human-like-ai-manual-response-v2/camera-baseline/client/audio/sfx/ricochet.mp3",
+      "bytes": 5329,
+      "sha256": "84d387457926d27bd5cd3e179b7cf9321179912914a28880f4dfdfbfb046cdf9"
+    },
+    {
+      "source": "/tmp/manual-v2-camera-baseline-repro/client/audio/sfx/rifle.mp3",
+      "destination": "docs/evidence/human-like-ai-manual-response-v2/camera-baseline/client/audio/sfx/rifle.mp3",
+      "bytes": 8777,
+      "sha256": "9a1db7b46d8b78f08952f08552e1ad7c046efa659308a14b8ff9c4b920181a49"
+    },
+    {
+      "source": "/tmp/manual-v2-camera-baseline-repro/client/audio/sfx/rockets.mp3",
+      "destination": "docs/evidence/human-like-ai-manual-response-v2/camera-baseline/client/audio/sfx/rockets.mp3",
+      "bytes": 36675,
+      "sha256": "c322f9eda97deb601bb8d25dc33b6c8dff5e99b5789aa41aac5c8577c73402fb"
+    },
+    {
+      "source": "/tmp/manual-v2-camera-baseline-repro/client/audio/sfx/smg.mp3",
+      "destination": "docs/evidence/human-like-ai-manual-response-v2/camera-baseline/client/audio/sfx/smg.mp3",
+      "bytes": 15046,
+      "sha256": "aed16d2ee09ec733510e5f1b7bf2c3bcd967a93df13037094e95ce3e90d9d191"
+    },
+    {
+      "source": "/tmp/manual-v2-camera-baseline-repro/client/audio/sfx/smoke.mp3",
+      "destination": "docs/evidence/human-like-ai-manual-response-v2/camera-baseline/client/audio/sfx/smoke.mp3",
+      "bytes": 23510,
+      "sha256": "1840d3ebcd4866f831e5250fd5b6e14256bcffdea1c3e22b32f85be0b32e36b5"
+    },
+    {
+      "source": "/tmp/manual-v2-camera-baseline-repro/client/audio/sfx/sniper.mp3",
+      "destination": "docs/evidence/human-like-ai-manual-response-v2/camera-baseline/client/audio/sfx/sniper.mp3",
+      "bytes": 24764,
+      "sha256": "b3e59aa25a13333158ce41c22027f1e2d2297674d2331fbaff068e12456c4b26"
+    },
+    {
+      "source": "/tmp/manual-v2-camera-baseline-repro/client/audio/sfx/strafe.mp3",
+      "destination": "docs/evidence/human-like-ai-manual-response-v2/camera-baseline/client/audio/sfx/strafe.mp3",
+      "bytes": 17867,
+      "sha256": "680b118ae01a54ebe77674bc69f2b33cfac8c6867d1106bf08bcf6af763946ab"
+    },
+    {
+      "source": "/tmp/manual-v2-camera-baseline-repro/client/audio/sfx/tank_engine.mp3",
+      "destination": "docs/evidence/human-like-ai-manual-response-v2/camera-baseline/client/audio/sfx/tank_engine.mp3",
+      "bytes": 45139,
+      "sha256": "a575f11b4a4f69848e6ea6f517864b37f5acdcff1840fa1854331c2ff93dcd5b"
+    },
+    {
+      "source": "/tmp/manual-v2-camera-baseline-repro/client/audio/sfx/tankgun.mp3",
+      "destination": "docs/evidence/human-like-ai-manual-response-v2/camera-baseline/client/audio/sfx/tankgun.mp3",
+      "bytes": 30406,
+      "sha256": "741c25860ccb8a7a5bd4efbdd2c77264c102bb639f6991cc34a7bf30d6bafb60"
+    },
+    {
+      "source": "/tmp/manual-v2-camera-baseline-repro/client/audio/sfx/ui_click.mp3",
+      "destination": "docs/evidence/human-like-ai-manual-response-v2/camera-baseline/client/audio/sfx/ui_click.mp3",
+      "bytes": 3761,
+      "sha256": "6832329ae9076b9219c4092524b36566bd98374ff1970f7ed5faf749e0c0c0c3"
+    },
+    {
+      "source": "/tmp/manual-v2-camera-baseline-repro/client/audio/sfx/ui_error.mp3",
+      "destination": "docs/evidence/human-like-ai-manual-response-v2/camera-baseline/client/audio/sfx/ui_error.mp3",
+      "bytes": 4702,
+      "sha256": "78efff687c5a03869dae8477878ce06ef1278537a14bec27c8c2bd87177f73aa"
+    },
+    {
+      "source": "/tmp/manual-v2-camera-baseline-repro/client/audio/sfx/ui_recruit.mp3",
+      "destination": "docs/evidence/human-like-ai-manual-response-v2/camera-baseline/client/audio/sfx/ui_recruit.mp3",
+      "bytes": 3761,
+      "sha256": "c5c888d1fe23f6c3ffbe5e4d8904b6712a282e4827f1399374e9a328b77cf733"
+    },
+    {
+      "source": "/tmp/manual-v2-camera-baseline-repro/client/audio/sfx/vehicle_destroyed.mp3",
+      "destination": "docs/evidence/human-like-ai-manual-response-v2/camera-baseline/client/audio/sfx/vehicle_destroyed.mp3",
+      "bytes": 36049,
+      "sha256": "454b7cce81b4a7883e429e5274ec0721bb5fae3c9e104afc197f86ca4e2304e0"
+    },
+    {
+      "source": "/tmp/manual-v2-camera-baseline-repro/client/audio/sfx/whistle.mp3",
+      "destination": "docs/evidence/human-like-ai-manual-response-v2/camera-baseline/client/audio/sfx/whistle.mp3",
+      "bytes": 21942,
+      "sha256": "02fbed3dc03a75585747790bd70abe35b1b16821c585f0a7ec6cccb238f463f3"
+    },
+    {
+      "source": "/tmp/manual-v2-camera-baseline-repro/client/audio/voice/de/callum_attack1_t1.mp3",
+      "destination": "docs/evidence/human-like-ai-manual-response-v2/camera-baseline/client/audio/voice/de/callum_attack1_t1.mp3",
+      "bytes": 18181,
+      "sha256": "afb45db91c3bebad24300a19ba8b013784b8f8f8ab235f6c85fd949cc88be53e"
+    },
+    {
+      "source": "/tmp/manual-v2-camera-baseline-repro/client/audio/voice/de/callum_attack1_t2.mp3",
+      "destination": "docs/evidence/human-like-ai-manual-response-v2/camera-baseline/client/audio/voice/de/callum_attack1_t2.mp3",
+      "bytes": 18808,
+      "sha256": "9c0a2a98c927f8b379ec5e893fa251129e9482cab2421ff7dd5d0c591804f00f"
+    },
+    {
+      "source": "/tmp/manual-v2-camera-baseline-repro/client/audio/voice/de/callum_attack2_t1.mp3",
+      "destination": "docs/evidence/human-like-ai-manual-response-v2/camera-baseline/client/audio/voice/de/callum_attack2_t1.mp3",
+      "bytes": 9090,
+      "sha256": "0cf74e3c05493e643b0c407d4e9287cdb6683e538425be2d210ea995b5502d90"
+    },
+    {
+      "source": "/tmp/manual-v2-camera-baseline-repro/client/audio/voice/de/callum_attack2_t2.mp3",
+      "destination": "docs/evidence/human-like-ai-manual-response-v2/camera-baseline/client/audio/voice/de/callum_attack2_t2.mp3",
+      "bytes": 9090,
+      "sha256": "0151c4e07ac16766c2e0cb037d6ba7fe3cd6a7c1bb5cf72110aa4b5d74f5f469"
+    },
+    {
+      "source": "/tmp/manual-v2-camera-baseline-repro/client/audio/voice/de/callum_attack3_t1.mp3",
+      "destination": "docs/evidence/human-like-ai-manual-response-v2/camera-baseline/client/audio/voice/de/callum_attack3_t1.mp3",
+      "bytes": 10031,
+      "sha256": "c75dac359e1a0104f1599e6223f26f4b3f55e12b57539b553b654bfd7dd31251"
+    },
+    {
+      "source": "/tmp/manual-v2-camera-baseline-repro/client/audio/voice/de/callum_attack3_t2.mp3",
+      "destination": "docs/evidence/human-like-ai-manual-response-v2/camera-baseline/client/audio/voice/de/callum_attack3_t2.mp3",
+      "bytes": 10344,
+      "sha256": "33168c89fa38eb85cea6e7e410e94db064d434350968d8ddc955529a5f7e1bf6"
+    },
+    {
+      "source": "/tmp/manual-v2-camera-baseline-repro/client/audio/voice/de/callum_fire1_t1.mp3",
+      "destination": "docs/evidence/human-like-ai-manual-response-v2/camera-baseline/client/audio/voice/de/callum_fire1_t1.mp3",
+      "bytes": 15673,
+      "sha256": "ea27ed8536b5e7cea2361d43be17dbadf6f847c98551f2fd0a561f357d7ae36a"
+    },
+    {
+      "source": "/tmp/manual-v2-camera-baseline-repro/client/audio/voice/de/callum_fire1_t2.mp3",
+      "destination": "docs/evidence/human-like-ai-manual-response-v2/camera-baseline/client/audio/voice/de/callum_fire1_t2.mp3",
+      "bytes": 16300,
+      "sha256": "009621fc6b078bb4ba4d51af32157a92b57b2414af8739e08219d80f8e31df2e"
+    },
+    {
+      "source": "/tmp/manual-v2-camera-baseline-repro/client/audio/voice/de/callum_fire2_t1.mp3",
+      "destination": "docs/evidence/human-like-ai-manual-response-v2/camera-baseline/client/audio/voice/de/callum_fire2_t1.mp3",
+      "bytes": 9090,
+      "sha256": "2751a20ef50cb47d83ade6d40fc43dc375f19fef2af9d9598c8a0f656c7e406e"
+    },
+    {
+      "source": "/tmp/manual-v2-camera-baseline-repro/client/audio/voice/de/callum_fire2_t2.mp3",
+      "destination": "docs/evidence/human-like-ai-manual-response-v2/camera-baseline/client/audio/voice/de/callum_fire2_t2.mp3",
+      "bytes": 9717,
+      "sha256": "4bc1e998e7e755ee4f08f99c56a55f3ebb5b99fc8e445c88fde09b30d5f6153c"
+    },
+    {
+      "source": "/tmp/manual-v2-camera-baseline-repro/client/audio/voice/de/callum_lost1_t1.mp3",
+      "destination": "docs/evidence/human-like-ai-manual-response-v2/camera-baseline/client/audio/voice/de/callum_lost1_t1.mp3",
+      "bytes": 23510,
+      "sha256": "0a6d3622d5c5f0a8a8e67043f2b18c59d058133acfbd7883573b77fa744ed2a2"
+    },
+    {
+      "source": "/tmp/manual-v2-camera-baseline-repro/client/audio/voice/de/callum_lost1_t2.mp3",
+      "destination": "docs/evidence/human-like-ai-manual-response-v2/camera-baseline/client/audio/voice/de/callum_lost1_t2.mp3",
+      "bytes": 22256,
+      "sha256": "0cc05e9e0644cab753f78beb521437cd35160c82b746bbdcc079f597976cdf09"
+    },
+    {
+      "source": "/tmp/manual-v2-camera-baseline-repro/client/audio/voice/de/callum_move1_t1.mp3",
+      "destination": "docs/evidence/human-like-ai-manual-response-v2/camera-baseline/client/audio/voice/de/callum_move1_t1.mp3",
+      "bytes": 10971,
+      "sha256": "70cdeb0fc1c360c7e162c50b8fd24e9299845dd16ea73df65f6ce684363fc0d2"
+    },
+    {
+      "source": "/tmp/manual-v2-camera-baseline-repro/client/audio/voice/de/callum_move1_t2.mp3",
+      "destination": "docs/evidence/human-like-ai-manual-response-v2/camera-baseline/client/audio/voice/de/callum_move1_t2.mp3",
+      "bytes": 10658,
+      "sha256": "d5f80e82ec63d5ca08f24995d5e93755d15cf362a8f6b854cce760148f955185"
+    },
+    {
+      "source": "/tmp/manual-v2-camera-baseline-repro/client/audio/voice/de/callum_move2_t1.mp3",
+      "destination": "docs/evidence/human-like-ai-manual-response-v2/camera-baseline/client/audio/voice/de/callum_move2_t1.mp3",
+      "bytes": 12538,
+      "sha256": "089a403b244c80a75a5ea28500f844ad209354265a5ca3ca6e7974101820fd1a"
+    },
+    {
+      "source": "/tmp/manual-v2-camera-baseline-repro/client/audio/voice/de/callum_move2_t2.mp3",
+      "destination": "docs/evidence/human-like-ai-manual-response-v2/camera-baseline/client/audio/voice/de/callum_move2_t2.mp3",
+      "bytes": 12538,
+      "sha256": "486596f34e3d75359dd932fbe7814452dc2314faa682f33bebd79971ee794b08"
+    },
+    {
+      "source": "/tmp/manual-v2-camera-baseline-repro/client/audio/voice/de/callum_move3_t1.mp3",
+      "destination": "docs/evidence/human-like-ai-manual-response-v2/camera-baseline/client/audio/voice/de/callum_move3_t1.mp3",
+      "bytes": 10971,
+      "sha256": "1f0415c226e51c75aca937c3e1b17b25693c7065e671a6d0da48a0009b56a6f1"
+    },
+    {
+      "source": "/tmp/manual-v2-camera-baseline-repro/client/audio/voice/de/callum_move3_t2.mp3",
+      "destination": "docs/evidence/human-like-ai-manual-response-v2/camera-baseline/client/audio/voice/de/callum_move3_t2.mp3",
+      "bytes": 11284,
+      "sha256": "8fbd100c4a16927241bc558c695b0434c05f97df85c49e32556cc91acc65a2a5"
+    },
+    {
+      "source": "/tmp/manual-v2-camera-baseline-repro/client/audio/voice/de/callum_move4_t1.mp3",
+      "destination": "docs/evidence/human-like-ai-manual-response-v2/camera-baseline/client/audio/voice/de/callum_move4_t1.mp3",
+      "bytes": 13165,
+      "sha256": "fea7c2ea9d3f837803ad2fe687bc9a0838f7d698ccd1a3e1540d6e21670191e5"
+    },
+    {
+      "source": "/tmp/manual-v2-camera-baseline-repro/client/audio/voice/de/callum_move4_t2.mp3",
+      "destination": "docs/evidence/human-like-ai-manual-response-v2/camera-baseline/client/audio/voice/de/callum_move4_t2.mp3",
+      "bytes": 13165,
+      "sha256": "258891071677688c1db24d02301789528ee3ed9c7edb4055778c959636dc99c4"
+    },
+    {
+      "source": "/tmp/manual-v2-camera-baseline-repro/client/audio/voice/de/callum_retreat1_t1.mp3",
+      "destination": "docs/evidence/human-like-ai-manual-response-v2/camera-baseline/client/audio/voice/de/callum_retreat1_t1.mp3",
+      "bytes": 18808,
+      "sha256": "f4c36b146dcf99a1f026d26e770b93300d7bd5b42142e16993ee707cbf6fa773"
+    },
+    {
+      "source": "/tmp/manual-v2-camera-baseline-repro/client/audio/voice/de/callum_retreat1_t2.mp3",
+      "destination": "docs/evidence/human-like-ai-manual-response-v2/camera-baseline/client/audio/voice/de/callum_retreat1_t2.mp3",
+      "bytes": 18808,
+      "sha256": "eab794b2643b27907abf6fe6f6b48e62c4dfb71bc2ad4e94f87e924c9c55f059"
+    },
+    {
+      "source": "/tmp/manual-v2-camera-baseline-repro/client/audio/voice/de/callum_retreat2_t1.mp3",
+      "destination": "docs/evidence/human-like-ai-manual-response-v2/camera-baseline/client/audio/voice/de/callum_retreat2_t1.mp3",
+      "bytes": 24764,
+      "sha256": "cb4afe17a8b172d6cf969a32b96c8a138efdd74141beef9dc061ac6ef07904e7"
+    },
+    {
+      "source": "/tmp/manual-v2-camera-baseline-repro/client/audio/voice/de/callum_retreat2_t2.mp3",
+      "destination": "docs/evidence/human-like-ai-manual-response-v2/camera-baseline/client/audio/voice/de/callum_retreat2_t2.mp3",
+      "bytes": 23510,
+      "sha256": "b70d663b48881cd93fd3ac607592fe2ede12a11d13b1ed893d31f1c17308c24c"
+    },
+    {
+      "source": "/tmp/manual-v2-camera-baseline-repro/client/audio/voice/de/daniel_attack1_t1.mp3",
+      "destination": "docs/evidence/human-like-ai-manual-response-v2/camera-baseline/client/audio/voice/de/daniel_attack1_t1.mp3",
+      "bytes": 17867,
+      "sha256": "c47760f88807cef9fc989267052d50e98d4b86bc80d1e711da702ca7f4e94ceb"
+    },
+    {
+      "source": "/tmp/manual-v2-camera-baseline-repro/client/audio/voice/de/daniel_attack1_t2.mp3",
+      "destination": "docs/evidence/human-like-ai-manual-response-v2/camera-baseline/client/audio/voice/de/daniel_attack1_t2.mp3",
+      "bytes": 17867,
+      "sha256": "2a90879773c57a1d07ad5088ae30f04854cc84ffd8f52814567955f18470ba10"
+    },
+    {
+      "source": "/tmp/manual-v2-camera-baseline-repro/client/audio/voice/de/daniel_attack2_t1.mp3",
+      "destination": "docs/evidence/human-like-ai-manual-response-v2/camera-baseline/client/audio/voice/de/daniel_attack2_t1.mp3",
+      "bytes": 10031,
+      "sha256": "16de5e30056eb79dfcd9f721a10cfb2de2d7f83ed88c53a6cb00f7a896958ffc"
+    },
+    {
+      "source": "/tmp/manual-v2-camera-baseline-repro/client/audio/voice/de/daniel_attack2_t2.mp3",
+      "destination": "docs/evidence/human-like-ai-manual-response-v2/camera-baseline/client/audio/voice/de/daniel_attack2_t2.mp3",
+      "bytes": 10031,
+      "sha256": "ce184f6fea0b3922ec52d32c22b575a5060cca6bc557f457895d44f1210c1402"
+    },
+    {
+      "source": "/tmp/manual-v2-camera-baseline-repro/client/audio/voice/de/daniel_attack3_t1.mp3",
+      "destination": "docs/evidence/human-like-ai-manual-response-v2/camera-baseline/client/audio/voice/de/daniel_attack3_t1.mp3",
+      "bytes": 10658,
+      "sha256": "35b68a0a518c2cdf309f314ce5a7e559b96e096d5fae3e098be0a96d26a3dd19"
+    },
+    {
+      "source": "/tmp/manual-v2-camera-baseline-repro/client/audio/voice/de/daniel_attack3_t2.mp3",
+      "destination": "docs/evidence/human-like-ai-manual-response-v2/camera-baseline/client/audio/voice/de/daniel_attack3_t2.mp3",
+      "bytes": 10031,
+      "sha256": "530096645fe798d5d89fa51230c0446fd7c5f91db14ff76d447c52fe5113b43c"
+    },
+    {
+      "source": "/tmp/manual-v2-camera-baseline-repro/client/audio/voice/de/daniel_fire1_t1.mp3",
+      "destination": "docs/evidence/human-like-ai-manual-response-v2/camera-baseline/client/audio/voice/de/daniel_fire1_t1.mp3",
+      "bytes": 15673,
+      "sha256": "e6858644869742e6338abcb8c1fabfd62a07fa7c2a338417080933e61672dabd"
+    },
+    {
+      "source": "/tmp/manual-v2-camera-baseline-repro/client/audio/voice/de/daniel_fire1_t2.mp3",
+      "destination": "docs/evidence/human-like-ai-manual-response-v2/camera-baseline/client/audio/voice/de/daniel_fire1_t2.mp3",
+      "bytes": 16300,
+      "sha256": "0aa8e83e742674f002cbe3daca7a67c1a139e92a255ea3101b492005916d5fef"
+    },
+    {
+      "source": "/tmp/manual-v2-camera-baseline-repro/client/audio/voice/de/daniel_fire2_t1.mp3",
+      "destination": "docs/evidence/human-like-ai-manual-response-v2/camera-baseline/client/audio/voice/de/daniel_fire2_t1.mp3",
+      "bytes": 9717,
+      "sha256": "d699c06da68c977e30c8b2974fb8fe93a1afc80743028a8f6de1dea9e95c0b43"
+    },
+    {
+      "source": "/tmp/manual-v2-camera-baseline-repro/client/audio/voice/de/daniel_fire2_t2.mp3",
+      "destination": "docs/evidence/human-like-ai-manual-response-v2/camera-baseline/client/audio/voice/de/daniel_fire2_t2.mp3",
+      "bytes": 9404,
+      "sha256": "3572db47c3a67a44a3160640dfc11b8470c7b975fe153b90339e2d315ea20120"
+    },
+    {
+      "source": "/tmp/manual-v2-camera-baseline-repro/client/audio/voice/de/daniel_lost1_t1.mp3",
+      "destination": "docs/evidence/human-like-ai-manual-response-v2/camera-baseline/client/audio/voice/de/daniel_lost1_t1.mp3",
+      "bytes": 22883,
+      "sha256": "a7c5541bcc3cb942eb7b164dd59a409a84e7ff33aeff9b11b76a1ef2df9c6d8d"
+    },
+    {
+      "source": "/tmp/manual-v2-camera-baseline-repro/client/audio/voice/de/daniel_lost1_t2.mp3",
+      "destination": "docs/evidence/human-like-ai-manual-response-v2/camera-baseline/client/audio/voice/de/daniel_lost1_t2.mp3",
+      "bytes": 22883,
+      "sha256": "c34dfaaceeed48da5cb348898b53b983623656a39c605e51794d24e22c54b5f5"
+    },
+    {
+      "source": "/tmp/manual-v2-camera-baseline-repro/client/audio/voice/de/daniel_move1_t1.mp3",
+      "destination": "docs/evidence/human-like-ai-manual-response-v2/camera-baseline/client/audio/voice/de/daniel_move1_t1.mp3",
+      "bytes": 11598,
+      "sha256": "ac7cbfb2e79561448241cc0cb8f05599b230958408df8d840f16c9b19759782d"
+    },
+    {
+      "source": "/tmp/manual-v2-camera-baseline-repro/client/audio/voice/de/daniel_move1_t2.mp3",
+      "destination": "docs/evidence/human-like-ai-manual-response-v2/camera-baseline/client/audio/voice/de/daniel_move1_t2.mp3",
+      "bytes": 11284,
+      "sha256": "458cf9de60bb4ecffad3201f7b334811448025398409cc156170316edcd4a248"
+    },
+    {
+      "source": "/tmp/manual-v2-camera-baseline-repro/client/audio/voice/de/daniel_move2_t1.mp3",
+      "destination": "docs/evidence/human-like-ai-manual-response-v2/camera-baseline/client/audio/voice/de/daniel_move2_t1.mp3",
+      "bytes": 11911,
+      "sha256": "47d93b2aa48affa2d24c6a847d3db0114208c0cfeeafd99be24222bc9717054a"
+    },
+    {
+      "source": "/tmp/manual-v2-camera-baseline-repro/client/audio/voice/de/daniel_move2_t2.mp3",
+      "destination": "docs/evidence/human-like-ai-manual-response-v2/camera-baseline/client/audio/voice/de/daniel_move2_t2.mp3",
+      "bytes": 12852,
+      "sha256": "9c670e7d7a59476f0370eb00b35082687aa0c724e928c267eb5378eb4a6954ce"
+    },
+    {
+      "source": "/tmp/manual-v2-camera-baseline-repro/client/audio/voice/de/daniel_move3_t1.mp3",
+      "destination": "docs/evidence/human-like-ai-manual-response-v2/camera-baseline/client/audio/voice/de/daniel_move3_t1.mp3",
+      "bytes": 10658,
+      "sha256": "891966fd4abb7cf2d624ed9f16a4ce4288808504c0ff3cae8330b89948f68385"
+    },
+    {
+      "source": "/tmp/manual-v2-camera-baseline-repro/client/audio/voice/de/daniel_move3_t2.mp3",
+      "destination": "docs/evidence/human-like-ai-manual-response-v2/camera-baseline/client/audio/voice/de/daniel_move3_t2.mp3",
+      "bytes": 10658,
+      "sha256": "f73d22253150e453f888b4f1fbbf324abd92ba274e022fd56f8979f7f9b03ca1"
+    },
+    {
+      "source": "/tmp/manual-v2-camera-baseline-repro/client/audio/voice/de/daniel_move4_t1.mp3",
+      "destination": "docs/evidence/human-like-ai-manual-response-v2/camera-baseline/client/audio/voice/de/daniel_move4_t1.mp3",
+      "bytes": 13479,
+      "sha256": "986aaeae03e39866e496f7cd50459a5b0f24d83b2cc38158253fa2599258fe69"
+    },
+    {
+      "source": "/tmp/manual-v2-camera-baseline-repro/client/audio/voice/de/daniel_move4_t2.mp3",
+      "destination": "docs/evidence/human-like-ai-manual-response-v2/camera-baseline/client/audio/voice/de/daniel_move4_t2.mp3",
+      "bytes": 11911,
+      "sha256": "bc4e2753fcb1293dc882ec503e16958d20c4ab533855893e704762714c76d38b"
+    },
+    {
+      "source": "/tmp/manual-v2-camera-baseline-repro/client/audio/voice/de/daniel_retreat1_t1.mp3",
+      "destination": "docs/evidence/human-like-ai-manual-response-v2/camera-baseline/client/audio/voice/de/daniel_retreat1_t1.mp3",
+      "bytes": 19748,
+      "sha256": "6af46b0ee14b7c813bcd8eabe3bfcf8bde5b35169ec3fcb415b764b8f6366485"
+    },
+    {
+      "source": "/tmp/manual-v2-camera-baseline-repro/client/audio/voice/de/daniel_retreat1_t2.mp3",
+      "destination": "docs/evidence/human-like-ai-manual-response-v2/camera-baseline/client/audio/voice/de/daniel_retreat1_t2.mp3",
+      "bytes": 18808,
+      "sha256": "c7e5618496776ad69eb6060024614a545b04a361857d8b07e49b114e560dd4d8"
+    },
+    {
+      "source": "/tmp/manual-v2-camera-baseline-repro/client/audio/voice/de/daniel_retreat2_t1.mp3",
+      "destination": "docs/evidence/human-like-ai-manual-response-v2/camera-baseline/client/audio/voice/de/daniel_retreat2_t1.mp3",
+      "bytes": 24450,
+      "sha256": "c85fed773d687d4d49df7801581c9d1d72f27f45ef96dd11bdb81aa4d49220e1"
+    },
+    {
+      "source": "/tmp/manual-v2-camera-baseline-repro/client/audio/voice/de/daniel_retreat2_t2.mp3",
+      "destination": "docs/evidence/human-like-ai-manual-response-v2/camera-baseline/client/audio/voice/de/daniel_retreat2_t2.mp3",
+      "bytes": 24450,
+      "sha256": "349c304d78c1d1a79ff502c2e7cb049e6a4c057edf78d23fba716e14ef2a7f4e"
+    },
+    {
+      "source": "/tmp/manual-v2-camera-baseline-repro/client/audio/voice/ru/brian_attack1_t1.mp3",
+      "destination": "docs/evidence/human-like-ai-manual-response-v2/camera-baseline/client/audio/voice/ru/brian_attack1_t1.mp3",
+      "bytes": 13165,
+      "sha256": "80c0f425cda6d03c9de79b0ae1436b9a81805e2957d7d476f944cf34d5888f9f"
+    },
+    {
+      "source": "/tmp/manual-v2-camera-baseline-repro/client/audio/voice/ru/brian_attack1_t2.mp3",
+      "destination": "docs/evidence/human-like-ai-manual-response-v2/camera-baseline/client/audio/voice/ru/brian_attack1_t2.mp3",
+      "bytes": 12538,
+      "sha256": "c124c844bdaa53724126181771d81588b78cd1f2a8ce7d2983e0a84adf22f289"
+    },
+    {
+      "source": "/tmp/manual-v2-camera-baseline-repro/client/audio/voice/ru/brian_attack2_t1.mp3",
+      "destination": "docs/evidence/human-like-ai-manual-response-v2/camera-baseline/client/audio/voice/ru/brian_attack2_t1.mp3",
+      "bytes": 13165,
+      "sha256": "9178a73f11f93ee3e39ea5d01c8a4a0badefe5c8b9781cce4942f47068233eff"
+    },
+    {
+      "source": "/tmp/manual-v2-camera-baseline-repro/client/audio/voice/ru/brian_attack2_t2.mp3",
+      "destination": "docs/evidence/human-like-ai-manual-response-v2/camera-baseline/client/audio/voice/ru/brian_attack2_t2.mp3",
+      "bytes": 13165,
+      "sha256": "09c9bf271a59f61e8671e1ba5714a0baf5e6df4137780308da651ef43b7abbc0"
+    },
+    {
+      "source": "/tmp/manual-v2-camera-baseline-repro/client/audio/voice/ru/brian_attack3_t1.mp3",
+      "destination": "docs/evidence/human-like-ai-manual-response-v2/camera-baseline/client/audio/voice/ru/brian_attack3_t1.mp3",
+      "bytes": 34168,
+      "sha256": "1f3169b9cfe619b359b699d5375cab22c6277705c1eaa680279b2a0333c686f1"
+    },
+    {
+      "source": "/tmp/manual-v2-camera-baseline-repro/client/audio/voice/ru/brian_attack3_t2.mp3",
+      "destination": "docs/evidence/human-like-ai-manual-response-v2/camera-baseline/client/audio/voice/ru/brian_attack3_t2.mp3",
+      "bytes": 18494,
+      "sha256": "02fa6b02bc214a6502130b49961251365b567653f67c75f7f12fe890c5bceebf"
+    },
+    {
+      "source": "/tmp/manual-v2-camera-baseline-repro/client/audio/voice/ru/brian_fire1_t1.mp3",
+      "destination": "docs/evidence/human-like-ai-manual-response-v2/camera-baseline/client/audio/voice/ru/brian_fire1_t1.mp3",
+      "bytes": 16300,
+      "sha256": "0db418bd279176313a95cf563c3d18a9d821c03aa66308d57d3a90b751b15075"
+    },
+    {
+      "source": "/tmp/manual-v2-camera-baseline-repro/client/audio/voice/ru/brian_fire1_t2.mp3",
+      "destination": "docs/evidence/human-like-ai-manual-response-v2/camera-baseline/client/audio/voice/ru/brian_fire1_t2.mp3",
+      "bytes": 16300,
+      "sha256": "8cd5cae12f36e9d906bb53cd9a758062129641efe7ef6f2cf539723bd860e622"
+    },
+    {
+      "source": "/tmp/manual-v2-camera-baseline-repro/client/audio/voice/ru/brian_fire2_t1.mp3",
+      "destination": "docs/evidence/human-like-ai-manual-response-v2/camera-baseline/client/audio/voice/ru/brian_fire2_t1.mp3",
+      "bytes": 12225,
+      "sha256": "9f8a1d1ead137cfd906b11aecd4566a0471b7dae043ce06050e17686ed9d512e"
+    },
+    {
+      "source": "/tmp/manual-v2-camera-baseline-repro/client/audio/voice/ru/brian_fire2_t2.mp3",
+      "destination": "docs/evidence/human-like-ai-manual-response-v2/camera-baseline/client/audio/voice/ru/brian_fire2_t2.mp3",
+      "bytes": 10344,
+      "sha256": "a6b50ede1ce5b18c7d37bd9950f33393050d47f5a87837f5023910fe9590f25c"
+    },
+    {
+      "source": "/tmp/manual-v2-camera-baseline-repro/client/audio/voice/ru/brian_lost1_t1.mp3",
+      "destination": "docs/evidence/human-like-ai-manual-response-v2/camera-baseline/client/audio/voice/ru/brian_lost1_t1.mp3",
+      "bytes": 23510,
+      "sha256": "a8b4cd48b60dc4ad59fcaad06a83a6139e85703ccc6b7dca59d722e4dd048b6d"
+    },
+    {
+      "source": "/tmp/manual-v2-camera-baseline-repro/client/audio/voice/ru/brian_lost1_t2.mp3",
+      "destination": "docs/evidence/human-like-ai-manual-response-v2/camera-baseline/client/audio/voice/ru/brian_lost1_t2.mp3",
+      "bytes": 22256,
+      "sha256": "14c3d37ed482556524bf1092190cdf1f8982eb00d2b85a829ff4cb18c0cece12"
+    },
+    {
+      "source": "/tmp/manual-v2-camera-baseline-repro/client/audio/voice/ru/brian_move1_t1.mp3",
+      "destination": "docs/evidence/human-like-ai-manual-response-v2/camera-baseline/client/audio/voice/ru/brian_move1_t1.mp3",
+      "bytes": 21942,
+      "sha256": "6a20e43e8ba4db36992f1ab3864bbc4a3114e04c1701e8c9b2e4326e33ad51f2"
+    },
+    {
+      "source": "/tmp/manual-v2-camera-baseline-repro/client/audio/voice/ru/brian_move1_t2.mp3",
+      "destination": "docs/evidence/human-like-ai-manual-response-v2/camera-baseline/client/audio/voice/ru/brian_move1_t2.mp3",
+      "bytes": 11284,
+      "sha256": "50f015fc0334b3f2d156240cb102ee64be1be894147b354146f98117fa3a9d1c"
+    },
+    {
+      "source": "/tmp/manual-v2-camera-baseline-repro/client/audio/voice/ru/brian_move2_t1.mp3",
+      "destination": "docs/evidence/human-like-ai-manual-response-v2/camera-baseline/client/audio/voice/ru/brian_move2_t1.mp3",
+      "bytes": 11284,
+      "sha256": "c86bf7ccada1ed1d6c6dcecfd9eafd4ff6fad91ea49161140346946ae1c462cb"
+    },
+    {
+      "source": "/tmp/manual-v2-camera-baseline-repro/client/audio/voice/ru/brian_move2_t2.mp3",
+      "destination": "docs/evidence/human-like-ai-manual-response-v2/camera-baseline/client/audio/voice/ru/brian_move2_t2.mp3",
+      "bytes": 10971,
+      "sha256": "321329613cb195e0fbe9fe1aa5e6bdc8ee0d90f6e8a43ead93e016550487ae10"
+    },
+    {
+      "source": "/tmp/manual-v2-camera-baseline-repro/client/audio/voice/ru/brian_move3_t1.mp3",
+      "destination": "docs/evidence/human-like-ai-manual-response-v2/camera-baseline/client/audio/voice/ru/brian_move3_t1.mp3",
+      "bytes": 10658,
+      "sha256": "db38b62db7871a2859f865b1e62243d3e7e8956d4d9a096bea72a65d87baa9c4"
+    },
+    {
+      "source": "/tmp/manual-v2-camera-baseline-repro/client/audio/voice/ru/brian_move3_t2.mp3",
+      "destination": "docs/evidence/human-like-ai-manual-response-v2/camera-baseline/client/audio/voice/ru/brian_move3_t2.mp3",
+      "bytes": 11284,
+      "sha256": "b3f4ce8343e0380efae894a3958199817920a38929f71b4252c0f03e27f4313a"
+    },
+    {
+      "source": "/tmp/manual-v2-camera-baseline-repro/client/audio/voice/ru/brian_move4_t1.mp3",
+      "destination": "docs/evidence/human-like-ai-manual-response-v2/camera-baseline/client/audio/voice/ru/brian_move4_t1.mp3",
+      "bytes": 14419,
+      "sha256": "59ef53eb90bbc6e0c1e5a2029c6fcf44195df7ad39691d93c5509445a2665fe5"
+    },
+    {
+      "source": "/tmp/manual-v2-camera-baseline-repro/client/audio/voice/ru/brian_move4_t2.mp3",
+      "destination": "docs/evidence/human-like-ai-manual-response-v2/camera-baseline/client/audio/voice/ru/brian_move4_t2.mp3",
+      "bytes": 14106,
+      "sha256": "33bab9f5e0b22cf272ab14cd85801291ad330a052fbe53c380b2d717c15d5bc9"
+    },
+    {
+      "source": "/tmp/manual-v2-camera-baseline-repro/client/audio/voice/ru/brian_retreat1_t1.mp3",
+      "destination": "docs/evidence/human-like-ai-manual-response-v2/camera-baseline/client/audio/voice/ru/brian_retreat1_t1.mp3",
+      "bytes": 20689,
+      "sha256": "6a115cb09eaf21932c117c598c2f9bdbf2873b1b462a5a2783fbc350a8f9d723"
+    },
+    {
+      "source": "/tmp/manual-v2-camera-baseline-repro/client/audio/voice/ru/brian_retreat1_t2.mp3",
+      "destination": "docs/evidence/human-like-ai-manual-response-v2/camera-baseline/client/audio/voice/ru/brian_retreat1_t2.mp3",
+      "bytes": 20689,
+      "sha256": "30bef1aea9ad9c5a27084d1cd33037e9ad382a8b7ad4f56bf16124e20dcf777e"
+    },
+    {
+      "source": "/tmp/manual-v2-camera-baseline-repro/client/audio/voice/ru/brian_retreat2_t1.mp3",
+      "destination": "docs/evidence/human-like-ai-manual-response-v2/camera-baseline/client/audio/voice/ru/brian_retreat2_t1.mp3",
+      "bytes": 18808,
+      "sha256": "aea88b181cb77e17182c2eb91f40ad01416516b9cad8c4bcd367c7fd1d321672"
+    },
+    {
+      "source": "/tmp/manual-v2-camera-baseline-repro/client/audio/voice/ru/brian_retreat2_t2.mp3",
+      "destination": "docs/evidence/human-like-ai-manual-response-v2/camera-baseline/client/audio/voice/ru/brian_retreat2_t2.mp3",
+      "bytes": 19435,
+      "sha256": "9e3dfda42ad02ee10f56508c3ce384560567dfa223803241353bed100e83986a"
+    },
+    {
+      "source": "/tmp/manual-v2-camera-baseline-repro/client/audio/voice/ru/charlie_attack1_t1.mp3",
+      "destination": "docs/evidence/human-like-ai-manual-response-v2/camera-baseline/client/audio/voice/ru/charlie_attack1_t1.mp3",
+      "bytes": 12225,
+      "sha256": "c3b9e7b65e61ab68f310e579c91912438880ec5b6266562f88d3cf4cabad9e48"
+    },
+    {
+      "source": "/tmp/manual-v2-camera-baseline-repro/client/audio/voice/ru/charlie_attack1_t2.mp3",
+      "destination": "docs/evidence/human-like-ai-manual-response-v2/camera-baseline/client/audio/voice/ru/charlie_attack1_t2.mp3",
+      "bytes": 13479,
+      "sha256": "8d010e4bbcef2299d2f88206c0d9df30b1c34ce5fa97bda2c9de123d09c80efe"
+    },
+    {
+      "source": "/tmp/manual-v2-camera-baseline-repro/client/audio/voice/ru/charlie_attack2_t1.mp3",
+      "destination": "docs/evidence/human-like-ai-manual-response-v2/camera-baseline/client/audio/voice/ru/charlie_attack2_t1.mp3",
+      "bytes": 21002,
+      "sha256": "1aaafb10bd1e6d29d70f71b2a9a579510a3b690c8502415e3190b4aeb998ba70"
+    },
+    {
+      "source": "/tmp/manual-v2-camera-baseline-repro/client/audio/voice/ru/charlie_attack2_t2.mp3",
+      "destination": "docs/evidence/human-like-ai-manual-response-v2/camera-baseline/client/audio/voice/ru/charlie_attack2_t2.mp3",
+      "bytes": 17867,
+      "sha256": "ee538506708bf97ee5631d00b70ad23bbab5eee1f6508d2b15ff2696acbc007c"
+    },
+    {
+      "source": "/tmp/manual-v2-camera-baseline-repro/client/audio/voice/ru/charlie_attack3_t1.mp3",
+      "destination": "docs/evidence/human-like-ai-manual-response-v2/camera-baseline/client/audio/voice/ru/charlie_attack3_t1.mp3",
+      "bytes": 35735,
+      "sha256": "52f90b23f36bd2c7f262eee4ccd457d1c6697503a135e294ca7babe5bcf1f963"
+    },
+    {
+      "source": "/tmp/manual-v2-camera-baseline-repro/client/audio/voice/ru/charlie_attack3_t2.mp3",
+      "destination": "docs/evidence/human-like-ai-manual-response-v2/camera-baseline/client/audio/voice/ru/charlie_attack3_t2.mp3",
+      "bytes": 34481,
+      "sha256": "2782d0f68eabbe70ace63be524e0144e86af442b218f7a4da7a2efa4c53bcba2"
+    },
+    {
+      "source": "/tmp/manual-v2-camera-baseline-repro/client/audio/voice/ru/charlie_fire1_t1.mp3",
+      "destination": "docs/evidence/human-like-ai-manual-response-v2/camera-baseline/client/audio/voice/ru/charlie_fire1_t1.mp3",
+      "bytes": 16927,
+      "sha256": "eb8563e47f43d0f442d6fc9f04c97820d9e178152730aff36d6572b325f98f50"
+    },
+    {
+      "source": "/tmp/manual-v2-camera-baseline-repro/client/audio/voice/ru/charlie_fire1_t2.mp3",
+      "destination": "docs/evidence/human-like-ai-manual-response-v2/camera-baseline/client/audio/voice/ru/charlie_fire1_t2.mp3",
+      "bytes": 17240,
+      "sha256": "ce6d5a9026aa84c73dc8ef8b7698bada2d17c88d5aeabf7afdd42773e0a79d74"
+    },
+    {
+      "source": "/tmp/manual-v2-camera-baseline-repro/client/audio/voice/ru/charlie_fire2_t1.mp3",
+      "destination": "docs/evidence/human-like-ai-manual-response-v2/camera-baseline/client/audio/voice/ru/charlie_fire2_t1.mp3",
+      "bytes": 10658,
+      "sha256": "8bc5e8b4aca8eab829b0045c9a44794c6054e748b950ba92b5ab2a615d39eb3b"
+    },
+    {
+      "source": "/tmp/manual-v2-camera-baseline-repro/client/audio/voice/ru/charlie_fire2_t2.mp3",
+      "destination": "docs/evidence/human-like-ai-manual-response-v2/camera-baseline/client/audio/voice/ru/charlie_fire2_t2.mp3",
+      "bytes": 10971,
+      "sha256": "e9b382c57d09abef3036e9aea1475e0d17be1d47e5b70cb0a2da5185573a7e94"
+    },
+    {
+      "source": "/tmp/manual-v2-camera-baseline-repro/client/audio/voice/ru/charlie_lost1_t1.mp3",
+      "destination": "docs/evidence/human-like-ai-manual-response-v2/camera-baseline/client/audio/voice/ru/charlie_lost1_t1.mp3",
+      "bytes": 22569,
+      "sha256": "de6abbbb666188c96fd1f02667c502bfcd9b3326ca40af847adf8c57f0beb699"
+    },
+    {
+      "source": "/tmp/manual-v2-camera-baseline-repro/client/audio/voice/ru/charlie_lost1_t2.mp3",
+      "destination": "docs/evidence/human-like-ai-manual-response-v2/camera-baseline/client/audio/voice/ru/charlie_lost1_t2.mp3",
+      "bytes": 21629,
+      "sha256": "0f7ef480cf91a6a36632b95e91d0e58894e1149f23ddce15313132adc2f8a228"
+    },
+    {
+      "source": "/tmp/manual-v2-camera-baseline-repro/client/audio/voice/ru/charlie_move1_t1.mp3",
+      "destination": "docs/evidence/human-like-ai-manual-response-v2/camera-baseline/client/audio/voice/ru/charlie_move1_t1.mp3",
+      "bytes": 10031,
+      "sha256": "34362a0e8fa3f022345c3665fa1fdcfb3234cb24bf496a1d6ddea4206d8f1f85"
+    },
+    {
+      "source": "/tmp/manual-v2-camera-baseline-repro/client/audio/voice/ru/charlie_move1_t2.mp3",
+      "destination": "docs/evidence/human-like-ai-manual-response-v2/camera-baseline/client/audio/voice/ru/charlie_move1_t2.mp3",
+      "bytes": 10344,
+      "sha256": "219f7afdb1db35e02ce5f1826954839534276dd68aab6cf61792e2c12a33d7e8"
+    },
+    {
+      "source": "/tmp/manual-v2-camera-baseline-repro/client/audio/voice/ru/charlie_move2_t1.mp3",
+      "destination": "docs/evidence/human-like-ai-manual-response-v2/camera-baseline/client/audio/voice/ru/charlie_move2_t1.mp3",
+      "bytes": 11284,
+      "sha256": "8df490f9b4c2dd9cd4d37355b1bd68313213c225ab6d5c2bba0fb2316fb05876"
+    },
+    {
+      "source": "/tmp/manual-v2-camera-baseline-repro/client/audio/voice/ru/charlie_move2_t2.mp3",
+      "destination": "docs/evidence/human-like-ai-manual-response-v2/camera-baseline/client/audio/voice/ru/charlie_move2_t2.mp3",
+      "bytes": 10031,
+      "sha256": "6cb0ab8c0836ecc81a2d2a66e489433ac6b28ae9c63aae6a2a3f9c4c425358e8"
+    },
+    {
+      "source": "/tmp/manual-v2-camera-baseline-repro/client/audio/voice/ru/charlie_move3_t1.mp3",
+      "destination": "docs/evidence/human-like-ai-manual-response-v2/camera-baseline/client/audio/voice/ru/charlie_move3_t1.mp3",
+      "bytes": 10658,
+      "sha256": "de71d171fd5e6dd70987bd1c6979661d3b91840882025f0f5c4019e832de3373"
+    },
+    {
+      "source": "/tmp/manual-v2-camera-baseline-repro/client/audio/voice/ru/charlie_move3_t2.mp3",
+      "destination": "docs/evidence/human-like-ai-manual-response-v2/camera-baseline/client/audio/voice/ru/charlie_move3_t2.mp3",
+      "bytes": 10031,
+      "sha256": "7e0e0dd7d3c7f07a524c297dcac24ccbd3ef93c1867261b450cfe0e1720ce50c"
+    },
+    {
+      "source": "/tmp/manual-v2-camera-baseline-repro/client/audio/voice/ru/charlie_move4_t1.mp3",
+      "destination": "docs/evidence/human-like-ai-manual-response-v2/camera-baseline/client/audio/voice/ru/charlie_move4_t1.mp3",
+      "bytes": 13479,
+      "sha256": "46c13ab3adda77f8119f243617c6d5496c4bfd1fa0def1f26372f2a1bf4b6df4"
+    },
+    {
+      "source": "/tmp/manual-v2-camera-baseline-repro/client/audio/voice/ru/charlie_move4_t2.mp3",
+      "destination": "docs/evidence/human-like-ai-manual-response-v2/camera-baseline/client/audio/voice/ru/charlie_move4_t2.mp3",
+      "bytes": 14106,
+      "sha256": "b87fb35e1d30c476dd5b4bd7e4a3f7baca4352c7c6089de6710b8ebd33489cf1"
+    },
+    {
+      "source": "/tmp/manual-v2-camera-baseline-repro/client/audio/voice/ru/charlie_retreat1_t1.mp3",
+      "destination": "docs/evidence/human-like-ai-manual-response-v2/camera-baseline/client/audio/voice/ru/charlie_retreat1_t1.mp3",
+      "bytes": 20062,
+      "sha256": "f186f3dc1fa6e1c0eb6dcdabcc181dcd3aa69c2ab08a427e1b5ccae1aae50765"
+    },
+    {
+      "source": "/tmp/manual-v2-camera-baseline-repro/client/audio/voice/ru/charlie_retreat1_t2.mp3",
+      "destination": "docs/evidence/human-like-ai-manual-response-v2/camera-baseline/client/audio/voice/ru/charlie_retreat1_t2.mp3",
+      "bytes": 21629,
+      "sha256": "fc15c35f97f2c8f23a171715082ba7c4f8ceb67456849531e8bc7570aa233ee7"
+    },
+    {
+      "source": "/tmp/manual-v2-camera-baseline-repro/client/audio/voice/ru/charlie_retreat2_t1.mp3",
+      "destination": "docs/evidence/human-like-ai-manual-response-v2/camera-baseline/client/audio/voice/ru/charlie_retreat2_t1.mp3",
+      "bytes": 20062,
+      "sha256": "c0ecf19103f7deff0cf3c98504e8dfe38d36c28e81900d52d488c6b1b82e86d9"
+    },
+    {
+      "source": "/tmp/manual-v2-camera-baseline-repro/client/audio/voice/ru/charlie_retreat2_t2.mp3",
+      "destination": "docs/evidence/human-like-ai-manual-response-v2/camera-baseline/client/audio/voice/ru/charlie_retreat2_t2.mp3",
+      "bytes": 20375,
+      "sha256": "6117bfcec64a4a7d52d1aebe0b20df8bec26875f844c200a162e3405d1803831"
+    },
+    {
+      "source": "/tmp/manual-v2-camera-baseline-repro/client/audio/voice/us/adam_attack1_t1.mp3",
+      "destination": "docs/evidence/human-like-ai-manual-response-v2/camera-baseline/client/audio/voice/us/adam_attack1_t1.mp3",
+      "bytes": 15673,
+      "sha256": "1b7ed39fea261489456fcdecc1a674ca425cc5eb0f19883ee0e0a2e8422c2ce8"
+    },
+    {
+      "source": "/tmp/manual-v2-camera-baseline-repro/client/audio/voice/us/adam_attack1_t2.mp3",
+      "destination": "docs/evidence/human-like-ai-manual-response-v2/camera-baseline/client/audio/voice/us/adam_attack1_t2.mp3",
+      "bytes": 15673,
+      "sha256": "124f950630b17befae5e3b541f0ca11fc1c91c69647d81b55fd841eb800925ba"
+    },
+    {
+      "source": "/tmp/manual-v2-camera-baseline-repro/client/audio/voice/us/adam_attack2_t1.mp3",
+      "destination": "docs/evidence/human-like-ai-manual-response-v2/camera-baseline/client/audio/voice/us/adam_attack2_t1.mp3",
+      "bytes": 21942,
+      "sha256": "1a92a4c34372efa2c2922b5d223c1c20a56b395920f3c8b200b2a5eb330769d5"
+    },
+    {
+      "source": "/tmp/manual-v2-camera-baseline-repro/client/audio/voice/us/adam_attack2_t2.mp3",
+      "destination": "docs/evidence/human-like-ai-manual-response-v2/camera-baseline/client/audio/voice/us/adam_attack2_t2.mp3",
+      "bytes": 22256,
+      "sha256": "5aca7effaa70a9d844438ac54ef179e75004cbbf5d1002ccbd1ed68f5afa6a21"
+    },
+    {
+      "source": "/tmp/manual-v2-camera-baseline-repro/client/audio/voice/us/adam_attack3_t1.mp3",
+      "destination": "docs/evidence/human-like-ai-manual-response-v2/camera-baseline/client/audio/voice/us/adam_attack3_t1.mp3",
+      "bytes": 14106,
+      "sha256": "c5f44496c67b251720878bdccb641a540277b34712bfe3dd9735231aad7d7176"
+    },
+    {
+      "source": "/tmp/manual-v2-camera-baseline-repro/client/audio/voice/us/adam_attack3_t2.mp3",
+      "destination": "docs/evidence/human-like-ai-manual-response-v2/camera-baseline/client/audio/voice/us/adam_attack3_t2.mp3",
+      "bytes": 13479,
+      "sha256": "c5ec632e1128985a665e9bbd5cb2ebe2d9af5c9ba8404c152c5b9a2105da91a6"
+    },
+    {
+      "source": "/tmp/manual-v2-camera-baseline-repro/client/audio/voice/us/adam_fire1_t1.mp3",
+      "destination": "docs/evidence/human-like-ai-manual-response-v2/camera-baseline/client/audio/voice/us/adam_fire1_t1.mp3",
+      "bytes": 13792,
+      "sha256": "9e2f5c655c7e21d4c37e78b3b560cc9aa0d97f7be7017ff007a63f35b25d9ac3"
+    },
+    {
+      "source": "/tmp/manual-v2-camera-baseline-repro/client/audio/voice/us/adam_fire1_t2.mp3",
+      "destination": "docs/evidence/human-like-ai-manual-response-v2/camera-baseline/client/audio/voice/us/adam_fire1_t2.mp3",
+      "bytes": 15046,
+      "sha256": "13de51e6e49691c5185097dda70166d5f6b6bacbe0144cc7af10613e0643baf4"
+    },
+    {
+      "source": "/tmp/manual-v2-camera-baseline-repro/client/audio/voice/us/adam_fire2_t1.mp3",
+      "destination": "docs/evidence/human-like-ai-manual-response-v2/camera-baseline/client/audio/voice/us/adam_fire2_t1.mp3",
+      "bytes": 12225,
+      "sha256": "f636507f6009e18e4027b8c0c6b6e41652d828644491d8a44e63c3c7941feaa5"
+    },
+    {
+      "source": "/tmp/manual-v2-camera-baseline-repro/client/audio/voice/us/adam_fire2_t2.mp3",
+      "destination": "docs/evidence/human-like-ai-manual-response-v2/camera-baseline/client/audio/voice/us/adam_fire2_t2.mp3",
+      "bytes": 10658,
+      "sha256": "dde0c5d4618c9be057bfafd337117d02d124404bb181d198b81d733cbfe8893d"
+    },
+    {
+      "source": "/tmp/manual-v2-camera-baseline-repro/client/audio/voice/us/adam_lost1_t1.mp3",
+      "destination": "docs/evidence/human-like-ai-manual-response-v2/camera-baseline/client/audio/voice/us/adam_lost1_t1.mp3",
+      "bytes": 17554,
+      "sha256": "2c9f8c3a3b1a0f9e7a433e5a20759dbf1516abdca73adad2c94181d30225d897"
+    },
+    {
+      "source": "/tmp/manual-v2-camera-baseline-repro/client/audio/voice/us/adam_lost1_t2.mp3",
+      "destination": "docs/evidence/human-like-ai-manual-response-v2/camera-baseline/client/audio/voice/us/adam_lost1_t2.mp3",
+      "bytes": 17867,
+      "sha256": "5791aa0879f4a860444994431040b57c787af5da22835a86eb4a9fe2823c1fd1"
+    },
+    {
+      "source": "/tmp/manual-v2-camera-baseline-repro/client/audio/voice/us/adam_move1_t1.mp3",
+      "destination": "docs/evidence/human-like-ai-manual-response-v2/camera-baseline/client/audio/voice/us/adam_move1_t1.mp3",
+      "bytes": 9404,
+      "sha256": "d2d26db018d0dc170e883e4227a1af3b376a5338aa6ad4b618690dddc224cef8"
+    },
+    {
+      "source": "/tmp/manual-v2-camera-baseline-repro/client/audio/voice/us/adam_move1_t2.mp3",
+      "destination": "docs/evidence/human-like-ai-manual-response-v2/camera-baseline/client/audio/voice/us/adam_move1_t2.mp3",
+      "bytes": 9404,
+      "sha256": "bbb9fe10babd1ef66d3fff3c45c3bca45e3b8210e7f1e1c04909d7ff76b59704"
+    },
+    {
+      "source": "/tmp/manual-v2-camera-baseline-repro/client/audio/voice/us/adam_move2_t1.mp3",
+      "destination": "docs/evidence/human-like-ai-manual-response-v2/camera-baseline/client/audio/voice/us/adam_move2_t1.mp3",
+      "bytes": 11911,
+      "sha256": "9e38ee836750eb9599fd0ce87347a6fcb624fd775334758ef1a9909decbfd92c"
+    },
+    {
+      "source": "/tmp/manual-v2-camera-baseline-repro/client/audio/voice/us/adam_move2_t2.mp3",
+      "destination": "docs/evidence/human-like-ai-manual-response-v2/camera-baseline/client/audio/voice/us/adam_move2_t2.mp3",
+      "bytes": 11911,
+      "sha256": "1c7585ebb98bb0d760e069f86dfbe2ae5ee0e8dbb8d23f7862bcce6605b6b4e3"
+    },
+    {
+      "source": "/tmp/manual-v2-camera-baseline-repro/client/audio/voice/us/adam_move3_t1.mp3",
+      "destination": "docs/evidence/human-like-ai-manual-response-v2/camera-baseline/client/audio/voice/us/adam_move3_t1.mp3",
+      "bytes": 11284,
+      "sha256": "01e698a6b87f10b3439fe0ff404e5b6cdd72642a028ad4d36f8a07b83be56a24"
+    },
+    {
+      "source": "/tmp/manual-v2-camera-baseline-repro/client/audio/voice/us/adam_move3_t2.mp3",
+      "destination": "docs/evidence/human-like-ai-manual-response-v2/camera-baseline/client/audio/voice/us/adam_move3_t2.mp3",
+      "bytes": 12538,
+      "sha256": "3958dba4800e7e7acfcdd4d30bffc98e8a766de43fca96970b9ac483527f9f5e"
+    },
+    {
+      "source": "/tmp/manual-v2-camera-baseline-repro/client/audio/voice/us/adam_move4_t1.mp3",
+      "destination": "docs/evidence/human-like-ai-manual-response-v2/camera-baseline/client/audio/voice/us/adam_move4_t1.mp3",
+      "bytes": 13479,
+      "sha256": "2c60a421a2aa57a3372fb8dd49021681680b2668efa76ddf272e8465f15c9222"
+    },
+    {
+      "source": "/tmp/manual-v2-camera-baseline-repro/client/audio/voice/us/adam_move4_t2.mp3",
+      "destination": "docs/evidence/human-like-ai-manual-response-v2/camera-baseline/client/audio/voice/us/adam_move4_t2.mp3",
+      "bytes": 12852,
+      "sha256": "31a5fdff0778edcd1456edebd8d136b8f97e7116f8a1373985656ce3ccda46f8"
+    },
+    {
+      "source": "/tmp/manual-v2-camera-baseline-repro/client/audio/voice/us/adam_retreat1_t1.mp3",
+      "destination": "docs/evidence/human-like-ai-manual-response-v2/camera-baseline/client/audio/voice/us/adam_retreat1_t1.mp3",
+      "bytes": 22569,
+      "sha256": "ad06c6b7162e0a6300f0bbd6a9684b16090a2bc9441c9cb6d5a5c9bf485ef7d9"
+    },
+    {
+      "source": "/tmp/manual-v2-camera-baseline-repro/client/audio/voice/us/adam_retreat1_t2.mp3",
+      "destination": "docs/evidence/human-like-ai-manual-response-v2/camera-baseline/client/audio/voice/us/adam_retreat1_t2.mp3",
+      "bytes": 22256,
+      "sha256": "dfdb04466833296105a3d686f32d48fd3e9b6f9ccc51eca2c434c82b073c721c"
+    },
+    {
+      "source": "/tmp/manual-v2-camera-baseline-repro/client/audio/voice/us/adam_retreat2_t1.mp3",
+      "destination": "docs/evidence/human-like-ai-manual-response-v2/camera-baseline/client/audio/voice/us/adam_retreat2_t1.mp3",
+      "bytes": 22883,
+      "sha256": "7f71b74643fd3c0b8c8127fdf3188efc97f2013c7f3e04969002360e1711b3f0"
+    },
+    {
+      "source": "/tmp/manual-v2-camera-baseline-repro/client/audio/voice/us/adam_retreat2_t2.mp3",
+      "destination": "docs/evidence/human-like-ai-manual-response-v2/camera-baseline/client/audio/voice/us/adam_retreat2_t2.mp3",
+      "bytes": 22883,
+      "sha256": "92272a775bcf740371751044af4573e8f18bfeee70b435760d6650ac3cc530e1"
+    },
+    {
+      "source": "/tmp/manual-v2-camera-baseline-repro/client/audio/voice/us/harry_attack1_t1.mp3",
+      "destination": "docs/evidence/human-like-ai-manual-response-v2/camera-baseline/client/audio/voice/us/harry_attack1_t1.mp3",
+      "bytes": 13792,
+      "sha256": "310e055df3b20320ca082807597c8450328759a9a60a7e1c031a3d54e869a4e6"
+    },
+    {
+      "source": "/tmp/manual-v2-camera-baseline-repro/client/audio/voice/us/harry_attack1_t2.mp3",
+      "destination": "docs/evidence/human-like-ai-manual-response-v2/camera-baseline/client/audio/voice/us/harry_attack1_t2.mp3",
+      "bytes": 14733,
+      "sha256": "aa9aeea2da7ba48fe6468bb72e1f4ab3df9de7d14ec55263bddc4683a3cf8e1a"
+    },
+    {
+      "source": "/tmp/manual-v2-camera-baseline-repro/client/audio/voice/us/harry_attack2_t1.mp3",
+      "destination": "docs/evidence/human-like-ai-manual-response-v2/camera-baseline/client/audio/voice/us/harry_attack2_t1.mp3",
+      "bytes": 21315,
+      "sha256": "6ef5026cacfbeb5e2e73b380eee7c9fa6d3bb6cd55c2e2a8bf88ddd1a1966f99"
+    },
+    {
+      "source": "/tmp/manual-v2-camera-baseline-repro/client/audio/voice/us/harry_attack2_t2.mp3",
+      "destination": "docs/evidence/human-like-ai-manual-response-v2/camera-baseline/client/audio/voice/us/harry_attack2_t2.mp3",
+      "bytes": 19748,
+      "sha256": "2967098ef90917bcd6dbd0f8a9acd168f75474e1604fd9b816f5f98f8cd5ab8b"
+    },
+    {
+      "source": "/tmp/manual-v2-camera-baseline-repro/client/audio/voice/us/harry_attack3_t1.mp3",
+      "destination": "docs/evidence/human-like-ai-manual-response-v2/camera-baseline/client/audio/voice/us/harry_attack3_t1.mp3",
+      "bytes": 13479,
+      "sha256": "36763ac62f97f947c1caee729c1caac023a80de717d3e31bd513908793e48668"
+    },
+    {
+      "source": "/tmp/manual-v2-camera-baseline-repro/client/audio/voice/us/harry_attack3_t2.mp3",
+      "destination": "docs/evidence/human-like-ai-manual-response-v2/camera-baseline/client/audio/voice/us/harry_attack3_t2.mp3",
+      "bytes": 13165,
+      "sha256": "00316c5d1f4787538749f2c99c081d17124a6132d45b06bdf3fc487fb52a2ff4"
+    },
+    {
+      "source": "/tmp/manual-v2-camera-baseline-repro/client/audio/voice/us/harry_fire1_t1.mp3",
+      "destination": "docs/evidence/human-like-ai-manual-response-v2/camera-baseline/client/audio/voice/us/harry_fire1_t1.mp3",
+      "bytes": 14733,
+      "sha256": "7b6bba25e0777d44474314e23b3d04223c9de84bdd0fbd723d65c4f42a090921"
+    },
+    {
+      "source": "/tmp/manual-v2-camera-baseline-repro/client/audio/voice/us/harry_fire1_t2.mp3",
+      "destination": "docs/evidence/human-like-ai-manual-response-v2/camera-baseline/client/audio/voice/us/harry_fire1_t2.mp3",
+      "bytes": 15046,
+      "sha256": "6d5eb4d672dc8a24e183748c180a67ebc76e82d819d45815e2676de1cd79d408"
+    },
+    {
+      "source": "/tmp/manual-v2-camera-baseline-repro/client/audio/voice/us/harry_fire2_t1.mp3",
+      "destination": "docs/evidence/human-like-ai-manual-response-v2/camera-baseline/client/audio/voice/us/harry_fire2_t1.mp3",
+      "bytes": 10031,
+      "sha256": "3ad558e567e62f85d3971ba6fa30dc3c023063ccfae2b7412e463ec4d8df4d8e"
+    },
+    {
+      "source": "/tmp/manual-v2-camera-baseline-repro/client/audio/voice/us/harry_fire2_t2.mp3",
+      "destination": "docs/evidence/human-like-ai-manual-response-v2/camera-baseline/client/audio/voice/us/harry_fire2_t2.mp3",
+      "bytes": 10031,
+      "sha256": "beec964718abd8e22098d9100af2fcb37d0c607dd6d14624cb3f0aa20df3fcbc"
+    },
+    {
+      "source": "/tmp/manual-v2-camera-baseline-repro/client/audio/voice/us/harry_lost1_t1.mp3",
+      "destination": "docs/evidence/human-like-ai-manual-response-v2/camera-baseline/client/audio/voice/us/harry_lost1_t1.mp3",
+      "bytes": 16613,
+      "sha256": "f0e5edbbddd85929f592615e1f3681c92bdb15996ffc7c2384897cf16e34edbe"
+    },
+    {
+      "source": "/tmp/manual-v2-camera-baseline-repro/client/audio/voice/us/harry_lost1_t2.mp3",
+      "destination": "docs/evidence/human-like-ai-manual-response-v2/camera-baseline/client/audio/voice/us/harry_lost1_t2.mp3",
+      "bytes": 15986,
+      "sha256": "23bc876cacb266bd4251dd934ea2ddbd8d34ffbdcb1af0e149a27cae9954d912"
+    },
+    {
+      "source": "/tmp/manual-v2-camera-baseline-repro/client/audio/voice/us/harry_move1_t1.mp3",
+      "destination": "docs/evidence/human-like-ai-manual-response-v2/camera-baseline/client/audio/voice/us/harry_move1_t1.mp3",
+      "bytes": 9090,
+      "sha256": "3c604374b472f1e0e81e296e1b9d8f6c5c75d29f4eea60ab6c98ff32d93a04dd"
+    },
+    {
+      "source": "/tmp/manual-v2-camera-baseline-repro/client/audio/voice/us/harry_move1_t2.mp3",
+      "destination": "docs/evidence/human-like-ai-manual-response-v2/camera-baseline/client/audio/voice/us/harry_move1_t2.mp3",
+      "bytes": 8777,
+      "sha256": "4be08be491b81d82553cd2df1becc062ad47af09eff336ee0fd845e8ef9c6758"
+    },
+    {
+      "source": "/tmp/manual-v2-camera-baseline-repro/client/audio/voice/us/harry_move2_t1.mp3",
+      "destination": "docs/evidence/human-like-ai-manual-response-v2/camera-baseline/client/audio/voice/us/harry_move2_t1.mp3",
+      "bytes": 11284,
+      "sha256": "fbcf245678d30d8a1a6106475081480818631765edb8a1a76f2e6981a91f4c7d"
+    },
+    {
+      "source": "/tmp/manual-v2-camera-baseline-repro/client/audio/voice/us/harry_move2_t2.mp3",
+      "destination": "docs/evidence/human-like-ai-manual-response-v2/camera-baseline/client/audio/voice/us/harry_move2_t2.mp3",
+      "bytes": 10658,
+      "sha256": "00d8f833e05fc2baece634ab7864d68610a87a5f4e09e5b831fba49073ea2953"
+    },
+    {
+      "source": "/tmp/manual-v2-camera-baseline-repro/client/audio/voice/us/harry_move3_t1.mp3",
+      "destination": "docs/evidence/human-like-ai-manual-response-v2/camera-baseline/client/audio/voice/us/harry_move3_t1.mp3",
+      "bytes": 11284,
+      "sha256": "cdfff8b7877d6035ad2c011efe66b1313db006bf3a38ddf2ef9ca16fe475ea7f"
+    },
+    {
+      "source": "/tmp/manual-v2-camera-baseline-repro/client/audio/voice/us/harry_move3_t2.mp3",
+      "destination": "docs/evidence/human-like-ai-manual-response-v2/camera-baseline/client/audio/voice/us/harry_move3_t2.mp3",
+      "bytes": 10971,
+      "sha256": "92bff536c34252caf0b77a9a485f4a95346c34867b5d009824a0e39d71ce36c4"
+    },
+    {
+      "source": "/tmp/manual-v2-camera-baseline-repro/client/audio/voice/us/harry_move4_t1.mp3",
+      "destination": "docs/evidence/human-like-ai-manual-response-v2/camera-baseline/client/audio/voice/us/harry_move4_t1.mp3",
+      "bytes": 12538,
+      "sha256": "eb017376e121cf80b756b2f1b75115df8bd9bc8900c1ef45330f7c62e2ea1300"
+    },
+    {
+      "source": "/tmp/manual-v2-camera-baseline-repro/client/audio/voice/us/harry_move4_t2.mp3",
+      "destination": "docs/evidence/human-like-ai-manual-response-v2/camera-baseline/client/audio/voice/us/harry_move4_t2.mp3",
+      "bytes": 12225,
+      "sha256": "29c295b1bf234d4def3f8e5d2bd8482ec925b7a088c90aa626a7397571d1d151"
+    },
+    {
+      "source": "/tmp/manual-v2-camera-baseline-repro/client/audio/voice/us/harry_retreat1_t1.mp3",
+      "destination": "docs/evidence/human-like-ai-manual-response-v2/camera-baseline/client/audio/voice/us/harry_retreat1_t1.mp3",
+      "bytes": 22883,
+      "sha256": "64da036336af23ddc58263770882b3828979f8fcc750211dfdc016a15e06f6f6"
+    },
+    {
+      "source": "/tmp/manual-v2-camera-baseline-repro/client/audio/voice/us/harry_retreat1_t2.mp3",
+      "destination": "docs/evidence/human-like-ai-manual-response-v2/camera-baseline/client/audio/voice/us/harry_retreat1_t2.mp3",
+      "bytes": 21942,
+      "sha256": "26ad3d507f4b8fa5fd784898f2259b144c002c36d4469326bcb9bea5f622ea24"
+    },
+    {
+      "source": "/tmp/manual-v2-camera-baseline-repro/client/audio/voice/us/harry_retreat2_t1.mp3",
+      "destination": "docs/evidence/human-like-ai-manual-response-v2/camera-baseline/client/audio/voice/us/harry_retreat2_t1.mp3",
+      "bytes": 21942,
+      "sha256": "11661146414a4f97d208dfd560afdd8df2b9e83663e490978ec09154a00fb480"
+    },
+    {
+      "source": "/tmp/manual-v2-camera-baseline-repro/client/audio/voice/us/harry_retreat2_t2.mp3",
+      "destination": "docs/evidence/human-like-ai-manual-response-v2/camera-baseline/client/audio/voice/us/harry_retreat2_t2.mp3",
+      "bytes": 22256,
+      "sha256": "35c0edaa9b2091cabe5470f0fc2492fb958ec9b9639a1e78aa224f5ebccf3353"
+    },
+    {
+      "source": "/tmp/manual-v2-camera-baseline-repro/client/audio.js",
+      "destination": "docs/evidence/human-like-ai-manual-response-v2/camera-baseline/client/audio.js",
+      "bytes": 18746,
+      "sha256": "709fded0a4030bb04db49f148e325dd1abaa4912cdfed1e8bcb161bb7448c063"
+    },
+    {
+      "source": "/tmp/manual-v2-camera-baseline-repro/client/autocast.js",
+      "destination": "docs/evidence/human-like-ai-manual-response-v2/camera-baseline/client/autocast.js",
+      "bytes": 1950,
+      "sha256": "274c870aab9a27b95d3850c8d086e6b5dafda0be2887a0ebe8bf6377af715bfc"
+    },
+    {
+      "source": "/tmp/manual-v2-camera-baseline-repro/client/availability.js",
+      "destination": "docs/evidence/human-like-ai-manual-response-v2/camera-baseline/client/availability.js",
+      "bytes": 10112,
+      "sha256": "b56d151aa16f90cb86b61d1f34fa66621da3262a79c4e2c8d2dd819a82f4fd12"
+    },
+    {
+      "source": "/tmp/manual-v2-camera-baseline-repro/client/battle-sound.js",
+      "destination": "docs/evidence/human-like-ai-manual-response-v2/camera-baseline/client/battle-sound.js",
+      "bytes": 1537,
+      "sha256": "5e73cd538d6b578ddce884e9126be38398fc426e2fbbd7dd6d33a91329e453c9"
+    },
+    {
+      "source": "/tmp/manual-v2-camera-baseline-repro/client/camera.js",
+      "destination": "docs/evidence/human-like-ai-manual-response-v2/camera-baseline/client/camera.js",
+      "bytes": 16347,
+      "sha256": "2d485f27106c60f1ab37703810f9b3243bed80aaa205025777bc3109d35e410c"
+    },
+    {
+      "source": "/tmp/manual-v2-camera-baseline-repro/client/connection.css",
+      "destination": "docs/evidence/human-like-ai-manual-response-v2/camera-baseline/client/connection.css",
+      "bytes": 1693,
+      "sha256": "fe13a041240bb562ce0b91f64db01512d4b3f0e426e82b4cbd2589e52a741d5a"
+    },
+    {
+      "source": "/tmp/manual-v2-camera-baseline-repro/client/connection.js",
+      "destination": "docs/evidence/human-like-ai-manual-response-v2/camera-baseline/client/connection.js",
+      "bytes": 3061,
+      "sha256": "7569af1bba9cfc1770be8c2936d08812d2455b7d559f70c4a9147d6c30f6f309"
+    },
+    {
+      "source": "/tmp/manual-v2-camera-baseline-repro/client/cover-preview.js",
+      "destination": "docs/evidence/human-like-ai-manual-response-v2/camera-baseline/client/cover-preview.js",
+      "bytes": 20794,
+      "sha256": "3007688808dd6c13dd4c5a0e30c3845ddd99ebc5974e40dade4dcbdefdd12ed8"
+    },
+    {
+      "source": "/tmp/manual-v2-camera-baseline-repro/client/debris.js",
+      "destination": "docs/evidence/human-like-ai-manual-response-v2/camera-baseline/client/debris.js",
+      "bytes": 1804,
+      "sha256": "4eb7fbfec6049772d017f2b9a30257608b325558eb0e7f619b23fb46e73d034c"
+    },
+    {
+      "source": "/tmp/manual-v2-camera-baseline-repro/client/editor.js",
+      "destination": "docs/evidence/human-like-ai-manual-response-v2/camera-baseline/client/editor.js",
+      "bytes": 28034,
+      "sha256": "f1c738e3cc787bdbde44461bb6cec621fea82715188ffe922d8ea2bc29e93879"
+    },
+    {
+      "source": "/tmp/manual-v2-camera-baseline-repro/client/endgame.css",
+      "destination": "docs/evidence/human-like-ai-manual-response-v2/camera-baseline/client/endgame.css",
+      "bytes": 922,
+      "sha256": "1c6b0636517bb548c36732c82fdb97ed3cff87f669d752626bf7622426207630"
+    },
+    {
+      "source": "/tmp/manual-v2-camera-baseline-repro/client/endgame.js",
+      "destination": "docs/evidence/human-like-ai-manual-response-v2/camera-baseline/client/endgame.js",
+      "bytes": 6339,
+      "sha256": "8d6db960c41a89e58627815899d767cf5ee2cd9e7273f8d00332fb9347c0f9e0"
+    },
+    {
+      "source": "/tmp/manual-v2-camera-baseline-repro/client/engine-presentation.js",
+      "destination": "docs/evidence/human-like-ai-manual-response-v2/camera-baseline/client/engine-presentation.js",
+      "bytes": 10242,
+      "sha256": "89810c7b150a8202258478a93656a809cda2cb213b81d2b4c0694afb638ef241"
+    },
+    {
+      "source": "/tmp/manual-v2-camera-baseline-repro/client/epilogue.js",
+      "destination": "docs/evidence/human-like-ai-manual-response-v2/camera-baseline/client/epilogue.js",
+      "bytes": 5668,
+      "sha256": "648bc5470e6e9445974a0f5b8c5c0531a58e036e181d7c0a4843ab46d10c6ee0"
+    },
+    {
+      "source": "/tmp/manual-v2-camera-baseline-repro/client/es.js",
+      "destination": "docs/evidence/human-like-ai-manual-response-v2/camera-baseline/client/es.js",
+      "bytes": 86506,
+      "sha256": "2fb7219aadf2de133c05a99081e50540210ed44eb909ad8039d9d4a92ed9d564"
+    },
+    {
+      "source": "/tmp/manual-v2-camera-baseline-repro/client/fairness.js",
+      "destination": "docs/evidence/human-like-ai-manual-response-v2/camera-baseline/client/fairness.js",
+      "bytes": 1899,
+      "sha256": "b539d9d9fabb3c4f40be51b7209bff0411bcaf1c8e626e92148bf2a591ae7792"
+    },
+    {
+      "source": "/tmp/manual-v2-camera-baseline-repro/client/feedback.js",
+      "destination": "docs/evidence/human-like-ai-manual-response-v2/camera-baseline/client/feedback.js",
+      "bytes": 3157,
+      "sha256": "0d2dad9c96d0b993eba6352ee5541486d53b96a21f4cb19b01fd5f9ca2cf468f"
+    },
+    {
+      "source": "/tmp/manual-v2-camera-baseline-repro/client/fog.js",
+      "destination": "docs/evidence/human-like-ai-manual-response-v2/camera-baseline/client/fog.js",
+      "bytes": 6035,
+      "sha256": "5e977f56a514cbd775ace5453e1f243bc91caf14de318d99b4a9a1734734c473"
+    },
+    {
+      "source": "/tmp/manual-v2-camera-baseline-repro/client/foliage.js",
+      "destination": "docs/evidence/human-like-ai-manual-response-v2/camera-baseline/client/foliage.js",
+      "bytes": 16139,
+      "sha256": "7180d28db346245d63ed922a95095cbd287c4c9ad40dedc9a18688c042264009"
+    },
+    {
+      "source": "/tmp/manual-v2-camera-baseline-repro/client/formation-preview.js",
+      "destination": "docs/evidence/human-like-ai-manual-response-v2/camera-baseline/client/formation-preview.js",
+      "bytes": 2771,
+      "sha256": "071dd1a99ff8cdc926e27b920f2873f3b20f90b0f0102a2e9d6a9b3c97ca2173"
+    },
+    {
+      "source": "/tmp/manual-v2-camera-baseline-repro/client/fx.js",
+      "destination": "docs/evidence/human-like-ai-manual-response-v2/camera-baseline/client/fx.js",
+      "bytes": 78917,
+      "sha256": "3c804031f699fc1234c6922fcea82644984fa9763f64674f3bd2180864548260"
+    },
+    {
+      "source": "/tmp/manual-v2-camera-baseline-repro/client/gfx.js",
+      "destination": "docs/evidence/human-like-ai-manual-response-v2/camera-baseline/client/gfx.js",
+      "bytes": 2026,
+      "sha256": "cf463692489f09529bec0d78425914b397a8e132aefe87227f7084db14d5c18f"
+    },
+    {
+      "source": "/tmp/manual-v2-camera-baseline-repro/client/ground.js",
+      "destination": "docs/evidence/human-like-ai-manual-response-v2/camera-baseline/client/ground.js",
+      "bytes": 39671,
+      "sha256": "a93abe417b7e5d41e4db57111c832c3620bd0ee3037080501a0fff2e7cb00b32"
+    },
+    {
+      "source": "/tmp/manual-v2-camera-baseline-repro/client/hud.js",
+      "destination": "docs/evidence/human-like-ai-manual-response-v2/camera-baseline/client/hud.js",
+      "bytes": 47969,
+      "sha256": "b2339e22105f65cb4b4ae186e6c2e7746e10a58dfcac7a7b3567ec9d83f7b36d"
+    },
+    {
+      "source": "/tmp/manual-v2-camera-baseline-repro/client/i18n.js",
+      "destination": "docs/evidence/human-like-ai-manual-response-v2/camera-baseline/client/i18n.js",
+      "bytes": 5189,
+      "sha256": "bd146a0ce7f53261c11eaac00a37274fd45f53c988426b6d18e11c53dc818f2c"
+    },
+    {
+      "source": "/tmp/manual-v2-camera-baseline-repro/client/index.html",
+      "destination": "docs/evidence/human-like-ai-manual-response-v2/camera-baseline/client/index.html",
+      "bytes": 40857,
+      "sha256": "60638f18d0cb226a51022b0285f3cf7876d4e79856e99a6fde7bbd915614133c"
+    },
+    {
+      "source": "/tmp/manual-v2-camera-baseline-repro/client/infantry-material.js",
+      "destination": "docs/evidence/human-like-ai-manual-response-v2/camera-baseline/client/infantry-material.js",
+      "bytes": 3511,
+      "sha256": "a0c7c7961cfa58ba38157623b918355ae78c6bc84bcf16c80da9305ea2255931"
+    },
+    {
+      "source": "/tmp/manual-v2-camera-baseline-repro/client/keys.js",
+      "destination": "docs/evidence/human-like-ai-manual-response-v2/camera-baseline/client/keys.js",
+      "bytes": 7361,
+      "sha256": "867e3105b7e4665f8a313c2ab46e23fc3df9407f2163fd6862bb537a01ecd276"
+    },
+    {
+      "source": "/tmp/manual-v2-camera-baseline-repro/client/layer-edit.js",
+      "destination": "docs/evidence/human-like-ai-manual-response-v2/camera-baseline/client/layer-edit.js",
+      "bytes": 4437,
+      "sha256": "19bb52073ea431a45a2842f51e913e89b880dfdc7f4b4a77f23e9c004ff68e78"
+    },
+    {
+      "source": "/tmp/manual-v2-camera-baseline-repro/client/light.js",
+      "destination": "docs/evidence/human-like-ai-manual-response-v2/camera-baseline/client/light.js",
+      "bytes": 9385,
+      "sha256": "3f73e6e112c1974bd1b5b191155408f5a8a4c35542e712edf7f79dea64ad8b4b"
+    },
+    {
+      "source": "/tmp/manual-v2-camera-baseline-repro/client/lobby-view.js",
+      "destination": "docs/evidence/human-like-ai-manual-response-v2/camera-baseline/client/lobby-view.js",
+      "bytes": 8073,
+      "sha256": "2496072ab524294309b8aa3c8e136b94ce4ac54de117ede206918cd246e9100b"
+    },
+    {
+      "source": "/tmp/manual-v2-camera-baseline-repro/client/main.js",
+      "destination": "docs/evidence/human-like-ai-manual-response-v2/camera-baseline/client/main.js",
+      "bytes": 127936,
+      "sha256": "277e2b2b7300f48fe2e17d3f3b64796b912eab9ec9c8a1ebc95beae0bcaa5e59"
+    },
+    {
+      "source": "/tmp/manual-v2-camera-baseline-repro/client/map-view.js",
+      "destination": "docs/evidence/human-like-ai-manual-response-v2/camera-baseline/client/map-view.js",
+      "bytes": 20941,
+      "sha256": "095777fe2ece1b74882f5cd1e0df03f4afdd52139ff53102ff4885b5c7287175"
+    },
+    {
+      "source": "/tmp/manual-v2-camera-baseline-repro/client/markers.js",
+      "destination": "docs/evidence/human-like-ai-manual-response-v2/camera-baseline/client/markers.js",
+      "bytes": 26313,
+      "sha256": "8867651b6f59c3c1005ea13e1d63fb18ecfcee0cd9e3aadd2be93fa936be662d"
+    },
+    {
+      "source": "/tmp/manual-v2-camera-baseline-repro/client/model-motion.js",
+      "destination": "docs/evidence/human-like-ai-manual-response-v2/camera-baseline/client/model-motion.js",
+      "bytes": 3162,
+      "sha256": "75360a147cbf389fd7e4e694275067ea00a4e1b979e297479c17fdfdcaf61c67"
+    },
+    {
+      "source": "/tmp/manual-v2-camera-baseline-repro/client/model-textures.js",
+      "destination": "docs/evidence/human-like-ai-manual-response-v2/camera-baseline/client/model-textures.js",
+      "bytes": 16493,
+      "sha256": "b256add6358527700ba1d88d627aa88d59b322e149e2c81c65e623eba6e3a624"
+    },
+    {
+      "source": "/tmp/manual-v2-camera-baseline-repro/client/models/armor-lightheavy.js",
+      "destination": "docs/evidence/human-like-ai-manual-response-v2/camera-baseline/client/models/armor-lightheavy.js",
+      "bytes": 68656,
+      "sha256": "58b2d3694e9e0d82ec0f93efa993d809962621fbaa19a2b7a203203916343bdd"
+    },
+    {
+      "source": "/tmp/manual-v2-camera-baseline-repro/client/models/armor-medium.js",
+      "destination": "docs/evidence/human-like-ai-manual-response-v2/camera-baseline/client/models/armor-medium.js",
+      "bytes": 86903,
+      "sha256": "992bfc023d600516333fd8ddb9ab39940eb59d7dc8e989727271de43e10043ea"
+    },
+    {
+      "source": "/tmp/manual-v2-camera-baseline-repro/client/models/blender-baked.js",
+      "destination": "docs/evidence/human-like-ai-manual-response-v2/camera-baseline/client/models/blender-baked.js",
+      "bytes": 2794,
+      "sha256": "98f80906a0912e5e4a3acd0acb701b2fc5711bb9f594bbd8c5ae4577697b21f0"
+    },
+    {
+      "source": "/tmp/manual-v2-camera-baseline-repro/client/models/churchill.js",
+      "destination": "docs/evidence/human-like-ai-manual-response-v2/camera-baseline/client/models/churchill.js",
+      "bytes": 35298,
+      "sha256": "97da5545e0f34043c723e80e2e177fb9a27c337301822164801202bb5508c419"
+    },
+    {
+      "source": "/tmp/manual-v2-camera-baseline-repro/client/models/cromwell.js",
+      "destination": "docs/evidence/human-like-ai-manual-response-v2/camera-baseline/client/models/cromwell.js",
+      "bytes": 38912,
+      "sha256": "3a532e8cb225697d93e98d172439a4761cc402711013983995aa5ca26c8be937"
+    },
+    {
+      "source": "/tmp/manual-v2-camera-baseline-repro/client/models/geom.js",
+      "destination": "docs/evidence/human-like-ai-manual-response-v2/camera-baseline/client/models/geom.js",
+      "bytes": 44397,
+      "sha256": "f224b34cd050f04cdd758cc23dc7d59ea8b8efa5dff8fe3df2174c88c21a9624"
+    },
+    {
+      "source": "/tmp/manual-v2-camera-baseline-repro/client/models/guns.js",
+      "destination": "docs/evidence/human-like-ai-manual-response-v2/camera-baseline/client/models/guns.js",
+      "bytes": 101971,
+      "sha256": "b493e003a39126019f334074fd402c5b8a8a6ebaeff9bb3ab3e075b3a91da1c7"
+    },
+    {
+      "source": "/tmp/manual-v2-camera-baseline-repro/client/models/infantry-authored-data.js",
+      "destination": "docs/evidence/human-like-ai-manual-response-v2/camera-baseline/client/models/infantry-authored-data.js",
+      "bytes": 711890,
+      "sha256": "9209a37dfd63b09c6a0bcc785917a1ba1dabb705d57192ce3f426b91483d2719"
+    },
+    {
+      "source": "/tmp/manual-v2-camera-baseline-repro/client/models/infantry-authored.js",
+      "destination": "docs/evidence/human-like-ai-manual-response-v2/camera-baseline/client/models/infantry-authored.js",
+      "bytes": 4869,
+      "sha256": "32d2b00459367dd97c57ef05b8c5b97c742c14439cfaac907c0bac0a9dffa522"
+    },
+    {
+      "source": "/tmp/manual-v2-camera-baseline-repro/client/models/infantry.js",
+      "destination": "docs/evidence/human-like-ai-manual-response-v2/camera-baseline/client/models/infantry.js",
+      "bytes": 73169,
+      "sha256": "425abd7502c91342877db977d93f7f534b8c4cf9fae7a6ec3a0c9c5196456fec"
+    },
+    {
+      "source": "/tmp/manual-v2-camera-baseline-repro/client/models/naval-finished-data.js",
+      "destination": "docs/evidence/human-like-ai-manual-response-v2/camera-baseline/client/models/naval-finished-data.js",
+      "bytes": 3776929,
+      "sha256": "ce6fd8af48bb49d8ba1ff77684521b1c02c52b2a3fb8ccb70e4a56c9df2bf21c"
+    },
+    {
+      "source": "/tmp/manual-v2-camera-baseline-repro/client/models/naval.js",
+      "destination": "docs/evidence/human-like-ai-manual-response-v2/camera-baseline/client/models/naval.js",
+      "bytes": 26828,
+      "sha256": "a7d9fed07242a0a046afd0b043b8edb7b60a00307d429d1c4ad7ca01dfa125e5"
+    },
+    {
+      "source": "/tmp/manual-v2-camera-baseline-repro/client/models/planes.js",
+      "destination": "docs/evidence/human-like-ai-manual-response-v2/camera-baseline/client/models/planes.js",
+      "bytes": 98205,
+      "sha256": "8f2982b700847b73e4d553756ca58b28e0dfe5ef3e0dbe5b5ae244d2c50e9a8d"
+    },
+    {
+      "source": "/tmp/manual-v2-camera-baseline-repro/client/models/track-data.js",
+      "destination": "docs/evidence/human-like-ai-manual-response-v2/camera-baseline/client/models/track-data.js",
+      "bytes": 3797,
+      "sha256": "ed2d59bad774af2ebf1b308d44339477a60451f5de714656260955c6384c35f1"
+    },
+    {
+      "source": "/tmp/manual-v2-camera-baseline-repro/client/models/wheeled.js",
+      "destination": "docs/evidence/human-like-ai-manual-response-v2/camera-baseline/client/models/wheeled.js",
+      "bytes": 65843,
+      "sha256": "b5e15eb14726b396d4acde2ead20a5dafef71048e5615f57979e8045c01ec38d"
+    },
+    {
+      "source": "/tmp/manual-v2-camera-baseline-repro/client/moods.js",
+      "destination": "docs/evidence/human-like-ai-manual-response-v2/camera-baseline/client/moods.js",
+      "bytes": 4326,
+      "sha256": "b7e50ed3d8e45f30f34a4dae8c6989109cef9efb0c288c40ff5cd27af55f6596"
+    },
+    {
+      "source": "/tmp/manual-v2-camera-baseline-repro/client/objectives.css",
+      "destination": "docs/evidence/human-like-ai-manual-response-v2/camera-baseline/client/objectives.css",
+      "bytes": 1015,
+      "sha256": "53ca5509db78e0fe28bad2ebe45b6abbe7bd49fa8f335bfbdde2e725d31c243c"
+    },
+    {
+      "source": "/tmp/manual-v2-camera-baseline-repro/client/objectives.js",
+      "destination": "docs/evidence/human-like-ai-manual-response-v2/camera-baseline/client/objectives.js",
+      "bytes": 6894,
+      "sha256": "31f2e8b7f6d2e1494533f70c0cef672e4461569a43794c001a803471f15570db"
+    },
+    {
+      "source": "/tmp/manual-v2-camera-baseline-repro/client/orders.js",
+      "destination": "docs/evidence/human-like-ai-manual-response-v2/camera-baseline/client/orders.js",
+      "bytes": 4530,
+      "sha256": "90bf9666bc2b958aacf0f72f07dd4f68f2cf6ec8e93ce1e02eae1df3af1de9f5"
+    },
+    {
+      "source": "/tmp/manual-v2-camera-baseline-repro/client/overlay.js",
+      "destination": "docs/evidence/human-like-ai-manual-response-v2/camera-baseline/client/overlay.js",
+      "bytes": 16179,
+      "sha256": "2f28b6f766e3944aeda5052584bb2502ca09ceba6e26c5f0efbd1fb171190625"
+    },
+    {
+      "source": "/tmp/manual-v2-camera-baseline-repro/client/perf.js",
+      "destination": "docs/evidence/human-like-ai-manual-response-v2/camera-baseline/client/perf.js",
+      "bytes": 4813,
+      "sha256": "c312e5f9e40d2497b4025d3b502bdc41378f48cbb38762fb5c4e452c804de32b"
+    },
+    {
+      "source": "/tmp/manual-v2-camera-baseline-repro/client/pings.js",
+      "destination": "docs/evidence/human-like-ai-manual-response-v2/camera-baseline/client/pings.js",
+      "bytes": 2255,
+      "sha256": "5bf85b965824eb7bb988cf4ce37c3810f259d2e7e01bd832d5a9501dd8cbd80b"
+    },
+    {
+      "source": "/tmp/manual-v2-camera-baseline-repro/client/pointer.js",
+      "destination": "docs/evidence/human-like-ai-manual-response-v2/camera-baseline/client/pointer.js",
+      "bytes": 16776,
+      "sha256": "0c8c8a1e1d0813340840a9f76645277222ec221593167dc76b695fafdfe311c6"
+    },
+    {
+      "source": "/tmp/manual-v2-camera-baseline-repro/client/portraits.js",
+      "destination": "docs/evidence/human-like-ai-manual-response-v2/camera-baseline/client/portraits.js",
+      "bytes": 8640,
+      "sha256": "caecbdf253e5e631e6e7ea47252817d1ed022ad875b8f0f0ef11eba9759775fa"
+    },
+    {
+      "source": "/tmp/manual-v2-camera-baseline-repro/client/projectiles.js",
+      "destination": "docs/evidence/human-like-ai-manual-response-v2/camera-baseline/client/projectiles.js",
+      "bytes": 2303,
+      "sha256": "1d80c04df70134ff8f859d360593a244fb2aa70c15a8b290c806d156c9c82303"
+    },
+    {
+      "source": "/tmp/manual-v2-camera-baseline-repro/client/props.js",
+      "destination": "docs/evidence/human-like-ai-manual-response-v2/camera-baseline/client/props.js",
+      "bytes": 21176,
+      "sha256": "73ef815e00a3ead6341588efff93fde5f8e818a2bfcffa847f02d96d4c0392c8"
+    },
+    {
+      "source": "/tmp/manual-v2-camera-baseline-repro/client/public-lobby.css",
+      "destination": "docs/evidence/human-like-ai-manual-response-v2/camera-baseline/client/public-lobby.css",
+      "bytes": 4042,
+      "sha256": "874453f8063646a0c8f500e8a91c9b251dffcbdd0792fa5760b0b3ba9b2fc61f"
+    },
+    {
+      "source": "/tmp/manual-v2-camera-baseline-repro/client/public-lobby.html",
+      "destination": "docs/evidence/human-like-ai-manual-response-v2/camera-baseline/client/public-lobby.html",
+      "bytes": 3990,
+      "sha256": "3f6badb0deed5cd1ffdb33556bdd4e5c356bd990ef76d8f8f99eb53bf302a71c"
+    },
+    {
+      "source": "/tmp/manual-v2-camera-baseline-repro/client/public-lobby.js",
+      "destination": "docs/evidence/human-like-ai-manual-response-v2/camera-baseline/client/public-lobby.js",
+      "bytes": 5125,
+      "sha256": "8f2c98746743ac74638e2a1b2c9dc76b3cb66fd5ff5abfd6b63d8a9057165b50"
+    },
+    {
+      "source": "/tmp/manual-v2-camera-baseline-repro/client/relief-material.js",
+      "destination": "docs/evidence/human-like-ai-manual-response-v2/camera-baseline/client/relief-material.js",
+      "bytes": 12256,
+      "sha256": "e197d3c1fdb1580e2b917f2ca0119d45db7d047459a168043b41737910035d19"
+    },
+    {
+      "source": "/tmp/manual-v2-camera-baseline-repro/client/relief.js",
+      "destination": "docs/evidence/human-like-ai-manual-response-v2/camera-baseline/client/relief.js",
+      "bytes": 42938,
+      "sha256": "c00b2eae1d0dbd27b02b192f499e7f94b11ef5dd8f09741e957ad6bb8f196ac6"
+    },
+    {
+      "source": "/tmp/manual-v2-camera-baseline-repro/client/report.js",
+      "destination": "docs/evidence/human-like-ai-manual-response-v2/camera-baseline/client/report.js",
+      "bytes": 7765,
+      "sha256": "f35c4e78152c495d32da39316788355ff82ede8442d18da577b1df67c5a9df50"
+    },
+    {
+      "source": "/tmp/manual-v2-camera-baseline-repro/client/room-session.js",
+      "destination": "docs/evidence/human-like-ai-manual-response-v2/camera-baseline/client/room-session.js",
+      "bytes": 2183,
+      "sha256": "8f68228dfe542beb04ec43b8366c01f063ad0502405447cca17ab300eb92f1d1"
+    },
+    {
+      "source": "/tmp/manual-v2-camera-baseline-repro/client/rubble-decals.js",
+      "destination": "docs/evidence/human-like-ai-manual-response-v2/camera-baseline/client/rubble-decals.js",
+      "bytes": 4815,
+      "sha256": "1054801276fb18778116db5cc5f4a169314c2bbb988dbbf7e5558da2b18b8a4b"
+    },
+    {
+      "source": "/tmp/manual-v2-camera-baseline-repro/client/scenario-editor.js",
+      "destination": "docs/evidence/human-like-ai-manual-response-v2/camera-baseline/client/scenario-editor.js",
+      "bytes": 18770,
+      "sha256": "d56619b58c070c378a7202abc3957e3a51e917c2b878b4d87946e82d0385ed54"
+    },
+    {
+      "source": "/tmp/manual-v2-camera-baseline-repro/client/selection-view.js",
+      "destination": "docs/evidence/human-like-ai-manual-response-v2/camera-baseline/client/selection-view.js",
+      "bytes": 2967,
+      "sha256": "a8d5da61d68ba7b6e4cc6ffeea572537f55f97e71c10ea29cceb4df5de738ce2"
+    },
+    {
+      "source": "/tmp/manual-v2-camera-baseline-repro/client/selection.js",
+      "destination": "docs/evidence/human-like-ai-manual-response-v2/camera-baseline/client/selection.js",
+      "bytes": 5275,
+      "sha256": "c866bfb6b16b295930fab0fd930445011551d5e2e141408874fad3a95d6fbc6f"
+    },
+    {
+      "source": "/tmp/manual-v2-camera-baseline-repro/client/squad-motion.js",
+      "destination": "docs/evidence/human-like-ai-manual-response-v2/camera-baseline/client/squad-motion.js",
+      "bytes": 4543,
+      "sha256": "34c18bbda59f4723b6e3f884eb0041b6ae5afd4fcde08e65eb3d83cb0bea0597"
+    },
+    {
+      "source": "/tmp/manual-v2-camera-baseline-repro/client/stats.css",
+      "destination": "docs/evidence/human-like-ai-manual-response-v2/camera-baseline/client/stats.css",
+      "bytes": 4281,
+      "sha256": "3912ecde6de073f66554551af8ce52f5009974994b174f1b981f177cf807ba91"
+    },
+    {
+      "source": "/tmp/manual-v2-camera-baseline-repro/client/stats.js",
+      "destination": "docs/evidence/human-like-ai-manual-response-v2/camera-baseline/client/stats.js",
+      "bytes": 10372,
+      "sha256": "ce39cfe496b81260276c517ad9ff3aa0022f4450dfdc26e0e0f3db938b1ed693"
+    },
+    {
+      "source": "/tmp/manual-v2-camera-baseline-repro/client/structure-editor.js",
+      "destination": "docs/evidence/human-like-ai-manual-response-v2/camera-baseline/client/structure-editor.js",
+      "bytes": 5669,
+      "sha256": "7ae9b37ecaccb807a47b8fb9d3d3f10a5a6b5a8b6111d5c02c92d6384cffd3c9"
+    },
+    {
+      "source": "/tmp/manual-v2-camera-baseline-repro/client/structures.js",
+      "destination": "docs/evidence/human-like-ai-manual-response-v2/camera-baseline/client/structures.js",
+      "bytes": 79339,
+      "sha256": "aaa698e594f92187f2787deaed026e687f5eaa364e28c69bb9bf69bb735fde41"
+    },
+    {
+      "source": "/tmp/manual-v2-camera-baseline-repro/client/surfaces.js",
+      "destination": "docs/evidence/human-like-ai-manual-response-v2/camera-baseline/client/surfaces.js",
+      "bytes": 9462,
+      "sha256": "7a481dba5dabda816b7e1d59857dd9502a938cdfcdd60a05e40064ec72ebfcfc"
+    },
+    {
+      "source": "/tmp/manual-v2-camera-baseline-repro/client/symbols.js",
+      "destination": "docs/evidence/human-like-ai-manual-response-v2/camera-baseline/client/symbols.js",
+      "bytes": 43153,
+      "sha256": "135b70642b1b60fae270e3a78168238b5ef1436726d523a9cccedf10faa174e5"
+    },
+    {
+      "source": "/tmp/manual-v2-camera-baseline-repro/client/textures/bark.jpg",
+      "destination": "docs/evidence/human-like-ai-manual-response-v2/camera-baseline/client/textures/bark.jpg",
+      "bytes": 121843,
+      "sha256": "67e3b5ffcb33be345a6d2560a55f3cab50d376e236d5673ace1b73175674c220"
+    },
+    {
+      "source": "/tmp/manual-v2-camera-baseline-repro/client/textures/burlap.jpg",
+      "destination": "docs/evidence/human-like-ai-manual-response-v2/camera-baseline/client/textures/burlap.jpg",
+      "bytes": 112735,
+      "sha256": "16e8d39bf3f09d2fd25e9744ec55173535bce00babb2ffbef8f261737c6513b4"
+    },
+    {
+      "source": "/tmp/manual-v2-camera-baseline-repro/client/textures/canvas.jpg",
+      "destination": "docs/evidence/human-like-ai-manual-response-v2/camera-baseline/client/textures/canvas.jpg",
+      "bytes": 65896,
+      "sha256": "02be1605774e0bbd113278a24f5f667c1585dedd8559f0b38dfccbf731fe4794"
+    },
+    {
+      "source": "/tmp/manual-v2-camera-baseline-repro/client/textures/detail.jpg",
+      "destination": "docs/evidence/human-like-ai-manual-response-v2/camera-baseline/client/textures/detail.jpg",
+      "bytes": 213791,
+      "sha256": "155d35b62fd173b4cbfac77d1a1c0508b857f0aa869f770b70412827c159a1b3"
+    },
+    {
+      "source": "/tmp/manual-v2-camera-baseline-repro/client/textures/dirt.jpg",
+      "destination": "docs/evidence/human-like-ai-manual-response-v2/camera-baseline/client/textures/dirt.jpg",
+      "bytes": 92872,
+      "sha256": "220ff829479e008f2671b4b053a04576d6f8a4dbdb24ca006b4431c325eee7a0"
+    },
+    {
+      "source": "/tmp/manual-v2-camera-baseline-repro/client/textures/earth.jpg",
+      "destination": "docs/evidence/human-like-ai-manual-response-v2/camera-baseline/client/textures/earth.jpg",
+      "bytes": 21477,
+      "sha256": "86864af523cea9550a4524b1957c2680722329db14a67ece8707ee73dc4e9b1d"
+    },
+    {
+      "source": "/tmp/manual-v2-camera-baseline-repro/client/textures/field.jpg",
+      "destination": "docs/evidence/human-like-ai-manual-response-v2/camera-baseline/client/textures/field.jpg",
+      "bytes": 82036,
+      "sha256": "3e8aaa7f77702f160d00d5dff24794d070957d747b09d048dc7e4f8f961bdcbf"
+    },
+    {
+      "source": "/tmp/manual-v2-camera-baseline-repro/client/textures/foliage.webp",
+      "destination": "docs/evidence/human-like-ai-manual-response-v2/camera-baseline/client/textures/foliage.webp",
+      "bytes": 265522,
+      "sha256": "1b75c4c8eab15e4c066595679df34e9a6528e1fcd725cd04a0ac3d3fa2d9e59d"
+    },
+    {
+      "source": "/tmp/manual-v2-camera-baseline-repro/client/textures/fx-atlas.webp",
+      "destination": "docs/evidence/human-like-ai-manual-response-v2/camera-baseline/client/textures/fx-atlas.webp",
+      "bytes": 902520,
+      "sha256": "6e66e5c2d5915f68bf989c27fb69f419614feb09897c71a906926fc4c67182f6"
+    },
+    {
+      "source": "/tmp/manual-v2-camera-baseline-repro/client/textures/fx-crater.webp",
+      "destination": "docs/evidence/human-like-ai-manual-response-v2/camera-baseline/client/textures/fx-crater.webp",
+      "bytes": 100388,
+      "sha256": "e4acb4cde44d664a0219b7e92df45f852b0cf6c50df1f2d66d008588e588ab44"
+    },
+    {
+      "source": "/tmp/manual-v2-camera-baseline-repro/client/textures/fx-rubble-materials-v1.webp",
+      "destination": "docs/evidence/human-like-ai-manual-response-v2/camera-baseline/client/textures/fx-rubble-materials-v1.webp",
+      "bytes": 256082,
+      "sha256": "3e0659b947f03c9fe71bdf4b001cb5098314cc3ed4afd30a4c1fac4e3f9a86c6"
+    },
+    {
+      "source": "/tmp/manual-v2-camera-baseline-repro/client/textures/grass.jpg",
+      "destination": "docs/evidence/human-like-ai-manual-response-v2/camera-baseline/client/textures/grass.jpg",
+      "bytes": 76864,
+      "sha256": "e2b9903d827912100b072ac5592742db35b3b512b84e019fa31fb756fb69de6d"
+    },
+    {
+      "source": "/tmp/manual-v2-camera-baseline-repro/client/textures/hedge.jpg",
+      "destination": "docs/evidence/human-like-ai-manual-response-v2/camera-baseline/client/textures/hedge.jpg",
+      "bytes": 24201,
+      "sha256": "ee4cb2245573379638421746de0a1ebaa0b38b45f5f01e75d13ed443fa35b669"
+    },
+    {
+      "source": "/tmp/manual-v2-camera-baseline-repro/client/textures/models/aircraft-paint.jpg",
+      "destination": "docs/evidence/human-like-ai-manual-response-v2/camera-baseline/client/textures/models/aircraft-paint.jpg",
+      "bytes": 23205,
+      "sha256": "01770a7f6e548cea728c2bbc965f8c29b9a9103418638555f887a2d66326f20d"
+    },
+    {
+      "source": "/tmp/manual-v2-camera-baseline-repro/client/textures/models/aluminum.jpg",
+      "destination": "docs/evidence/human-like-ai-manual-response-v2/camera-baseline/client/textures/models/aluminum.jpg",
+      "bytes": 59392,
+      "sha256": "6838d3864a7416cfd8dc0429b4397a9a64ecd654b7a438adcfda4b05b665d024"
+    },
+    {
+      "source": "/tmp/manual-v2-camera-baseline-repro/client/textures/models/armor-paint-refined.jpg",
+      "destination": "docs/evidence/human-like-ai-manual-response-v2/camera-baseline/client/textures/models/armor-paint-refined.jpg",
+      "bytes": 88250,
+      "sha256": "921fd3d45b2a2fa3fd191ea77ee5ebe5e0b3bae6f9ff558a9f84941326b57288"
+    },
+    {
+      "source": "/tmp/manual-v2-camera-baseline-repro/client/textures/models/armor-paint.jpg",
+      "destination": "docs/evidence/human-like-ai-manual-response-v2/camera-baseline/client/textures/models/armor-paint.jpg",
+      "bytes": 70197,
+      "sha256": "dae2705e9ef6b7641c51f7143a92ea156c9260248f7dddd5351d2885b47911bd"
+    },
+    {
+      "source": "/tmp/manual-v2-camera-baseline-repro/client/textures/models/canvas.jpg",
+      "destination": "docs/evidence/human-like-ai-manual-response-v2/camera-baseline/client/textures/models/canvas.jpg",
+      "bytes": 101543,
+      "sha256": "708f8868d561443f9e43d0c29fb8a7c5d25196e9100351192313df0b74e0e8a0"
+    },
+    {
+      "source": "/tmp/manual-v2-camera-baseline-repro/client/textures/models/cast-armor.jpg",
+      "destination": "docs/evidence/human-like-ai-manual-response-v2/camera-baseline/client/textures/models/cast-armor.jpg",
+      "bytes": 100187,
+      "sha256": "ecc864fc73008da17019f1ad877591fe3a78d4292fa721d243549f7da431a66a"
+    },
+    {
+      "source": "/tmp/manual-v2-camera-baseline-repro/client/textures/models/gunmetal.jpg",
+      "destination": "docs/evidence/human-like-ai-manual-response-v2/camera-baseline/client/textures/models/gunmetal.jpg",
+      "bytes": 77315,
+      "sha256": "46ce7321e9697f9baad404302834e9701ab1e43a7d9782343083d6a47949a759"
+    },
+    {
+      "source": "/tmp/manual-v2-camera-baseline-repro/client/textures/models/infantry-v3-color.jpg",
+      "destination": "docs/evidence/human-like-ai-manual-response-v2/camera-baseline/client/textures/models/infantry-v3-color.jpg",
+      "bytes": 1304543,
+      "sha256": "43983c18867048971551c07b6eeaf5e5a54178f71c865ae89440c1983c23d5f2"
+    },
+    {
+      "source": "/tmp/manual-v2-camera-baseline-repro/client/textures/models/infantry-v3-normal.jpg",
+      "destination": "docs/evidence/human-like-ai-manual-response-v2/camera-baseline/client/textures/models/infantry-v3-normal.jpg",
+      "bytes": 759087,
+      "sha256": "52c2ff4209c3dab117fb1ab1bccf7eacf935fca363a6b5fc85c45aa2af48e75e"
+    },
+    {
+      "source": "/tmp/manual-v2-camera-baseline-repro/client/textures/models/leather.jpg",
+      "destination": "docs/evidence/human-like-ai-manual-response-v2/camera-baseline/client/textures/models/leather.jpg",
+      "bytes": 87473,
+      "sha256": "72b9eb08b0ac6e431295df6687b7eaca2174f54a6238042a9c59c543f328d51c"
+    },
+    {
+      "source": "/tmp/manual-v2-camera-baseline-repro/client/textures/models/mud.jpg",
+      "destination": "docs/evidence/human-like-ai-manual-response-v2/camera-baseline/client/textures/models/mud.jpg",
+      "bytes": 123720,
+      "sha256": "fbd4941b87c340148fd71b7b0bf0131a61af9922f27367e6ca83ce193a88b5f3"
+    },
+    {
+      "source": "/tmp/manual-v2-camera-baseline-repro/client/textures/models/rubber.jpg",
+      "destination": "docs/evidence/human-like-ai-manual-response-v2/camera-baseline/client/textures/models/rubber.jpg",
+      "bytes": 91621,
+      "sha256": "b70b5b625051ebf55bf04660185b30ec398c6bf2acbd2c41b06eff137cdeb211"
+    },
+    {
+      "source": "/tmp/manual-v2-camera-baseline-repro/client/textures/models/track-steel.jpg",
+      "destination": "docs/evidence/human-like-ai-manual-response-v2/camera-baseline/client/textures/models/track-steel.jpg",
+      "bytes": 126567,
+      "sha256": "24c7bc02792510b8ebe14f03cd3d414efe07e1407784e8e9697beb7bad6d6b4a"
+    },
+    {
+      "source": "/tmp/manual-v2-camera-baseline-repro/client/textures/models/wood.jpg",
+      "destination": "docs/evidence/human-like-ai-manual-response-v2/camera-baseline/client/textures/models/wood.jpg",
+      "bytes": 75727,
+      "sha256": "49f85e40746dfb1271b0fea674fb97d666a2ef9e5f18299c02ee41ba0cfa02f2"
+    },
+    {
+      "source": "/tmp/manual-v2-camera-baseline-repro/client/textures/models/wool.jpg",
+      "destination": "docs/evidence/human-like-ai-manual-response-v2/camera-baseline/client/textures/models/wool.jpg",
+      "bytes": 110076,
+      "sha256": "de3d4d61cd7e05df916c3e9b33728c2d3f480b819920fae4cb6cde623393e926"
+    },
+    {
+      "source": "/tmp/manual-v2-camera-baseline-repro/client/textures/mud.jpg",
+      "destination": "docs/evidence/human-like-ai-manual-response-v2/camera-baseline/client/textures/mud.jpg",
+      "bytes": 88918,
+      "sha256": "320f28c8db50a4e7668523de71c0df5e6ad664e107533f6101d4c83217abdc5e"
+    },
+    {
+      "source": "/tmp/manual-v2-camera-baseline-repro/client/textures/planks.jpg",
+      "destination": "docs/evidence/human-like-ai-manual-response-v2/camera-baseline/client/textures/planks.jpg",
+      "bytes": 18492,
+      "sha256": "25e155212fd2f1fc32093d22ec0cf074cf7ce86a7582f5ed80e87dd1450ac90e"
+    },
+    {
+      "source": "/tmp/manual-v2-camera-baseline-repro/client/textures/plaster.jpg",
+      "destination": "docs/evidence/human-like-ai-manual-response-v2/camera-baseline/client/textures/plaster.jpg",
+      "bytes": 307341,
+      "sha256": "dbab6aa583c97db6cccb79c498ba5a602e315e3916b2999c647936245e7d9ffa"
+    },
+    {
+      "source": "/tmp/manual-v2-camera-baseline-repro/client/textures/road.jpg",
+      "destination": "docs/evidence/human-like-ai-manual-response-v2/camera-baseline/client/textures/road.jpg",
+      "bytes": 92284,
+      "sha256": "f4200e0904d21496fe28bc48c9542e35b4ce08db6461911977d9e5e40bfbbdc9"
+    },
+    {
+      "source": "/tmp/manual-v2-camera-baseline-repro/client/textures/roof.jpg",
+      "destination": "docs/evidence/human-like-ai-manual-response-v2/camera-baseline/client/textures/roof.jpg",
+      "bytes": 391359,
+      "sha256": "2327e9fab2a8c64c65918fecb10d23d22f39534f9c57068ef2b3191cf71fb3d7"
+    },
+    {
+      "source": "/tmp/manual-v2-camera-baseline-repro/client/textures/rubble.jpg",
+      "destination": "docs/evidence/human-like-ai-manual-response-v2/camera-baseline/client/textures/rubble.jpg",
+      "bytes": 97255,
+      "sha256": "0310ae707e8f87d716fe882a2054ec07f9021a1bab7f95fe82b4f3c6eef4bab2"
+    },
+    {
+      "source": "/tmp/manual-v2-camera-baseline-repro/client/textures/sandbag.jpg",
+      "destination": "docs/evidence/human-like-ai-manual-response-v2/camera-baseline/client/textures/sandbag.jpg",
+      "bytes": 19734,
+      "sha256": "110ec093768c56944d7c56efbbbabb7ea8c46b0db6836beea054701c593395c3"
+    },
+    {
+      "source": "/tmp/manual-v2-camera-baseline-repro/client/textures/shelled.jpg",
+      "destination": "docs/evidence/human-like-ai-manual-response-v2/camera-baseline/client/textures/shelled.jpg",
+      "bytes": 94631,
+      "sha256": "3f3b9df36bec84b0f246d4bd72c4aea938b23fca76b6452d9f307aa35b21aaa7"
+    },
+    {
+      "source": "/tmp/manual-v2-camera-baseline-repro/client/textures/steel.jpg",
+      "destination": "docs/evidence/human-like-ai-manual-response-v2/camera-baseline/client/textures/steel.jpg",
+      "bytes": 14293,
+      "sha256": "31c76d2eec4d2d1e70b66ccbe3616dd47b505c4cbc2681ecfb7d60d83b5cc460"
+    },
+    {
+      "source": "/tmp/manual-v2-camera-baseline-repro/client/textures/stone.jpg",
+      "destination": "docs/evidence/human-like-ai-manual-response-v2/camera-baseline/client/textures/stone.jpg",
+      "bytes": 23593,
+      "sha256": "f4e7709ba7858fe24a3a2802464b1c8081d49348f139abd95af73b684895069c"
+    },
+    {
+      "source": "/tmp/manual-v2-camera-baseline-repro/client/textures/water.jpg",
+      "destination": "docs/evidence/human-like-ai-manual-response-v2/camera-baseline/client/textures/water.jpg",
+      "bytes": 44797,
+      "sha256": "65ab4749576b1289718924b65feea0090b7b0198455e41eafbb9ca99bc2569c4"
+    },
+    {
+      "source": "/tmp/manual-v2-camera-baseline-repro/client/track-motion.js",
+      "destination": "docs/evidence/human-like-ai-manual-response-v2/camera-baseline/client/track-motion.js",
+      "bytes": 3823,
+      "sha256": "a0bbb12b69a6b4febc0e64bf1ffe3b2cb06f21fc735c5793fea16aed7d68a4d7"
+    },
+    {
+      "source": "/tmp/manual-v2-camera-baseline-repro/client/unit-models.js",
+      "destination": "docs/evidence/human-like-ai-manual-response-v2/camera-baseline/client/unit-models.js",
+      "bytes": 55808,
+      "sha256": "3ed376b095b54a86e2cc5bb13fe2259407959b49fb59b23e588bab04524e9429"
+    },
+    {
+      "source": "/tmp/manual-v2-camera-baseline-repro/client/unit-roles.js",
+      "destination": "docs/evidence/human-like-ai-manual-response-v2/camera-baseline/client/unit-roles.js",
+      "bytes": 1504,
+      "sha256": "02d1940bb06c1c680245d99594d36b7f185145ec43711e0c1ed775759deaf09d"
+    },
+    {
+      "source": "/tmp/manual-v2-camera-baseline-repro/client/upkeep.js",
+      "destination": "docs/evidence/human-like-ai-manual-response-v2/camera-baseline/client/upkeep.js",
+      "bytes": 881,
+      "sha256": "8bfb63cb64eaf21e92bc8aa46d001c7f1c5178b14a3c76968cb9f8dfdbcb051e"
+    },
+    {
+      "source": "/tmp/manual-v2-camera-baseline-repro/client/viewer.html",
+      "destination": "docs/evidence/human-like-ai-manual-response-v2/camera-baseline/client/viewer.html",
+      "bytes": 2597,
+      "sha256": "4cc6dc06bb043e692049510f5685cee0d49561382322be11e01330fa713cb5e1"
+    },
+    {
+      "source": "/tmp/manual-v2-camera-baseline-repro/client/viewer.js",
+      "destination": "docs/evidence/human-like-ai-manual-response-v2/camera-baseline/client/viewer.js",
+      "bytes": 29717,
+      "sha256": "5450b175a280b97eaf3058ff02f28f973ba3846198df8bd241d85c33c9487190"
+    },
+    {
+      "source": "/tmp/manual-v2-camera-baseline-repro/client/water-levels.js",
+      "destination": "docs/evidence/human-like-ai-manual-response-v2/camera-baseline/client/water-levels.js",
+      "bytes": 2462,
+      "sha256": "34cbfd0650a0f4fc5f2e3433c606b4a5a9974d5273ac6af02f34b25e1d0fd584"
+    },
+    {
+      "source": "/tmp/manual-v2-camera-baseline-repro/client/water.js",
+      "destination": "docs/evidence/human-like-ai-manual-response-v2/camera-baseline/client/water.js",
+      "bytes": 20187,
+      "sha256": "804f60a6578d46a95e2f203811fa36318691538b04e1f2f13a09719f02c55f5c"
+    },
+    {
+      "source": "/tmp/manual-v2-camera-baseline-repro/client/weather-view.js",
+      "destination": "docs/evidence/human-like-ai-manual-response-v2/camera-baseline/client/weather-view.js",
+      "bytes": 4797,
+      "sha256": "62aefbb8771ab352f4d7e27f80590d3c9f538219695a47a19b4b174b22c59fe9"
+    },
+    {
+      "source": "/tmp/manual-v2-camera-baseline-repro/client/wheel-motion.js",
+      "destination": "docs/evidence/human-like-ai-manual-response-v2/camera-baseline/client/wheel-motion.js",
+      "bytes": 6171,
+      "sha256": "21820f5a3a9e2a5c126c9a7dc80b993ea0c87af1b13b210e8c3d68f4060c0a26"
+    },
+    {
+      "source": "/tmp/manual-v2-camera-baseline-repro/client/wind.js",
+      "destination": "docs/evidence/human-like-ai-manual-response-v2/camera-baseline/client/wind.js",
+      "bytes": 368,
+      "sha256": "c7284f161338da409405ecb36e280c1d4a439f0b3dffa0d9ee66c078ff492f57"
+    },
+    {
+      "source": "/tmp/manual-v2-camera-baseline-repro/client/world-authoring-error.js",
+      "destination": "docs/evidence/human-like-ai-manual-response-v2/camera-baseline/client/world-authoring-error.js",
+      "bytes": 6776,
+      "sha256": "1d4af8825b492e4a2763c9cd95766420f8e345ca7f05554686b904105d3d2b79"
+    },
+    {
+      "source": "/tmp/manual-v2-camera-baseline-repro/client/world-regions.js",
+      "destination": "docs/evidence/human-like-ai-manual-response-v2/camera-baseline/client/world-regions.js",
+      "bytes": 3668,
+      "sha256": "f9cba7b8ead001a7434fb60a06ca64c129f3ce689c4b65dc1ff400c43889309b"
+    },
+    {
+      "source": "/tmp/manual-v2-camera-baseline-repro/coverage.patch",
+      "destination": "docs/evidence/human-like-ai-manual-response-v2/camera-baseline/coverage.patch",
+      "bytes": 5436,
+      "sha256": "9913459eaa7ee74a5e22c3a6489a401250c44f36599098204a99e96ac5db10fc"
+    },
+    {
+      "source": "/tmp/manual-v2-camera-baseline-repro/latest-adapter-regression.log",
+      "destination": "docs/evidence/human-like-ai-manual-response-v2/camera-baseline/latest-adapter-regression.log",
+      "bytes": 99,
+      "sha256": "88f87ac28a6688ed10a45adcf374d7ae1be650d06eb379ab6e1f30071647bc46"
+    },
+    {
+      "source": "/tmp/manual-v2-camera-baseline-repro/manifest.json",
+      "destination": "docs/evidence/human-like-ai-manual-response-v2/camera-baseline/manifest.json",
+      "bytes": 867,
+      "sha256": "1984389a23653118e85c270b75d8be5445e2dfd7ee56dd0611f25dc9d3765619"
+    },
+    {
+      "source": "/tmp/manual-v2-camera-baseline-repro/package.json",
+      "destination": "docs/evidence/human-like-ai-manual-response-v2/camera-baseline/package.json",
+      "bytes": 211,
+      "sha256": "38b34423b2e37b851381576f5dd67d9103d951ab7c7ddcf5cacb4112507b34db"
+    },
+    {
+      "source": "/tmp/manual-v2-camera-baseline-repro/repro.mjs",
+      "destination": "docs/evidence/human-like-ai-manual-response-v2/camera-baseline/repro.mjs",
+      "bytes": 5574,
+      "sha256": "b80365eacf98433d0dc427afa7fc9f5512b19bf2639adf375a507e06debc1ae6"
+    },
+    {
+      "source": "/tmp/manual-v2-camera-baseline-repro/results.json",
+      "destination": "docs/evidence/human-like-ai-manual-response-v2/camera-baseline/results.json",
+      "bytes": 14511,
+      "sha256": "bdc3b60e673f88d301821bb514f18f78470dec6f373f6efd689fcde219bc2e3f"
+    },
+    {
+      "source": "/tmp/manual-v2-camera-baseline-repro/shared/ai-attention.js",
+      "destination": "docs/evidence/human-like-ai-manual-response-v2/camera-baseline/shared/ai-attention.js",
+      "bytes": 27254,
+      "sha256": "2b1f22635d43a11c40715c7859520a5eb4fc862d557ee7efb09ceb89425d92b5"
+    },
+    {
+      "source": "/tmp/manual-v2-camera-baseline-repro/shared/ai-commander.js",
+      "destination": "docs/evidence/human-like-ai-manual-response-v2/camera-baseline/shared/ai-commander.js",
+      "bytes": 30216,
+      "sha256": "214cfdf199c02afbba40a2958a8df05a95c3588f4bd0d1cc08c5bcbe6dc9ae01"
+    },
+    {
+      "source": "/tmp/manual-v2-camera-baseline-repro/shared/ai-hands.js",
+      "destination": "docs/evidence/human-like-ai-manual-response-v2/camera-baseline/shared/ai-hands.js",
+      "bytes": 62704,
+      "sha256": "69eb15070dbf3e3839f4a264bc24d5010033f6d745bc1cf53ba285fc362323d6"
+    },
+    {
+      "source": "/tmp/manual-v2-camera-baseline-repro/shared/ai-mind.js",
+      "destination": "docs/evidence/human-like-ai-manual-response-v2/camera-baseline/shared/ai-mind.js",
+      "bytes": 19553,
+      "sha256": "18bb411cb1d057ce8cffe0b042c21f64b71238ae157b584242df206d708e6b92"
+    },
+    {
+      "source": "/tmp/manual-v2-camera-baseline-repro/shared/ai-perception.js",
+      "destination": "docs/evidence/human-like-ai-manual-response-v2/camera-baseline/shared/ai-perception.js",
+      "bytes": 34168,
+      "sha256": "75b5f4877b5c4509a762028c880b45691a7c9e8d1923a7815e026f2174d33c9c"
+    },
+    {
+      "source": "/tmp/manual-v2-camera-baseline-repro/shared/ai-persona.js",
+      "destination": "docs/evidence/human-like-ai-manual-response-v2/camera-baseline/shared/ai-persona.js",
+      "bytes": 3586,
+      "sha256": "34de5882046129d2000e5502e354123786f3ad7b7133f31e93863dcc36ba66cf"
+    },
+    {
+      "source": "/tmp/manual-v2-camera-baseline-repro/shared/ai-priority.js",
+      "destination": "docs/evidence/human-like-ai-manual-response-v2/camera-baseline/shared/ai-priority.js",
+      "bytes": 5884,
+      "sha256": "6b5d5a8a22968209fe03c8235648a859b36919b9eafd44cd390a8252ab6b3542"
+    },
+    {
+      "source": "/tmp/manual-v2-camera-baseline-repro/shared/ai-rng.js",
+      "destination": "docs/evidence/human-like-ai-manual-response-v2/camera-baseline/shared/ai-rng.js",
+      "bytes": 641,
+      "sha256": "2d2f95266eda45ec4fa4862cb01079fc8464a98d8c88fa97ca89b54a5d6f8b90"
+    },
+    {
+      "source": "/tmp/manual-v2-camera-baseline-repro/shared/ai-view.js",
+      "destination": "docs/evidence/human-like-ai-manual-response-v2/camera-baseline/shared/ai-view.js",
+      "bytes": 13620,
+      "sha256": "ca4c85c25ea800eb43f33977b3c02f3989a8eebc60142f88e52740b3d422ae59"
+    },
+    {
+      "source": "/tmp/manual-v2-camera-baseline-repro/shared/ai.js",
+      "destination": "docs/evidence/human-like-ai-manual-response-v2/camera-baseline/shared/ai.js",
+      "bytes": 84599,
+      "sha256": "038bba2d8b69ee158f6cf6014a3ba6a245441d16c27b2376715027dbee3e82ed"
+    },
+    {
+      "source": "/tmp/manual-v2-camera-baseline-repro/shared/alert-events.js",
+      "destination": "docs/evidence/human-like-ai-manual-response-v2/camera-baseline/shared/alert-events.js",
+      "bytes": 8219,
+      "sha256": "df5f0ae98145034e6893ce0b70c2df8938a2d786cc8de37a1fbbc1a9c8b634b0"
+    },
+    {
+      "source": "/tmp/manual-v2-camera-baseline-repro/shared/command-feedback.js",
+      "destination": "docs/evidence/human-like-ai-manual-response-v2/camera-baseline/shared/command-feedback.js",
+      "bytes": 303,
+      "sha256": "e851bb8f7e48291bd75f09be66fdeecbe7dca68dcc82c839c5c033083ce77a07"
+    },
+    {
+      "source": "/tmp/manual-v2-camera-baseline-repro/shared/debris-motion.js",
+      "destination": "docs/evidence/human-like-ai-manual-response-v2/camera-baseline/shared/debris-motion.js",
+      "bytes": 4384,
+      "sha256": "d6a0f330f958ec6d78cfcc7f95b209aa5c099369576bf15dfd1c84770287b3b4"
+    },
+    {
+      "source": "/tmp/manual-v2-camera-baseline-repro/shared/formation.js",
+      "destination": "docs/evidence/human-like-ai-manual-response-v2/camera-baseline/shared/formation.js",
+      "bytes": 4865,
+      "sha256": "265fa63c8c72588f6c8f67057921fd4daa88f96e9d823faa2e41ba10a7dba005"
+    },
+    {
+      "source": "/tmp/manual-v2-camera-baseline-repro/shared/grid.js",
+      "destination": "docs/evidence/human-like-ai-manual-response-v2/camera-baseline/shared/grid.js",
+      "bytes": 2873,
+      "sha256": "30b0a5d67d99e54548d189374684e6b28863ecb7bf92de5221359e5c24fc5afc"
+    },
+    {
+      "source": "/tmp/manual-v2-camera-baseline-repro/shared/human-input.js",
+      "destination": "docs/evidence/human-like-ai-manual-response-v2/camera-baseline/shared/human-input.js",
+      "bytes": 7966,
+      "sha256": "dec728db485690620e527f912fa2a0b491f545c5bbdaafc4dc25fd1e425763ff"
+    },
+    {
+      "source": "/tmp/manual-v2-camera-baseline-repro/shared/local-traffic.js",
+      "destination": "docs/evidence/human-like-ai-manual-response-v2/camera-baseline/shared/local-traffic.js",
+      "bytes": 7408,
+      "sha256": "abad3f6ba310783c3620cec8d599df90dac38bb74eed6509be7d19a8af1490f6"
+    },
+    {
+      "source": "/tmp/manual-v2-camera-baseline-repro/shared/navigation.js",
+      "destination": "docs/evidence/human-like-ai-manual-response-v2/camera-baseline/shared/navigation.js",
+      "bytes": 19838,
+      "sha256": "c277c12f86c9990e281ae28a703dc374126aa1c737d9dc94a300f8d99c898472"
+    },
+    {
+      "source": "/tmp/manual-v2-camera-baseline-repro/shared/projectiles.js",
+      "destination": "docs/evidence/human-like-ai-manual-response-v2/camera-baseline/shared/projectiles.js",
+      "bytes": 7769,
+      "sha256": "ded50f3bcd60cf79238d5dba48236d54e33b2b8032f704813118d1419708ccd7"
+    },
+    {
+      "source": "/tmp/manual-v2-camera-baseline-repro/shared/scenarios.js",
+      "destination": "docs/evidence/human-like-ai-manual-response-v2/camera-baseline/shared/scenarios.js",
+      "bytes": 16044,
+      "sha256": "93f6cda90224a805cc97f42418b2dc11c49e3ea80654b66e0036de55f9b9ba97"
+    },
+    {
+      "source": "/tmp/manual-v2-camera-baseline-repro/shared/sim.js",
+      "destination": "docs/evidence/human-like-ai-manual-response-v2/camera-baseline/shared/sim.js",
+      "bytes": 349680,
+      "sha256": "5bedd607250c8171ed053e6200a643ce7f57a55c2549e0b515d80fcdffac832b"
+    },
+    {
+      "source": "/tmp/manual-v2-camera-baseline-repro/shared/story.js",
+      "destination": "docs/evidence/human-like-ai-manual-response-v2/camera-baseline/shared/story.js",
+      "bytes": 3738,
+      "sha256": "fa33e53e61a7d636959dd1d1916d7b5c3359db72b523dc730b16ceab525d170f"
+    },
+    {
+      "source": "/tmp/manual-v2-camera-baseline-repro/shared/structures.js",
+      "destination": "docs/evidence/human-like-ai-manual-response-v2/camera-baseline/shared/structures.js",
+      "bytes": 4029,
+      "sha256": "933b100a9a4c19a0285f5b137cd29b46e44271776f031045a537009e0176e5a2"
+    },
+    {
+      "source": "/tmp/manual-v2-camera-baseline-repro/shared/tutorial.js",
+      "destination": "docs/evidence/human-like-ai-manual-response-v2/camera-baseline/shared/tutorial.js",
+      "bytes": 6342,
+      "sha256": "3aaa5e6affd936dae0ae4741d5173eee5d006132a1705d4b553097d3d8fabf42"
+    },
+    {
+      "source": "/tmp/manual-v2-camera-baseline-repro/shared/vehicle-motion.js",
+      "destination": "docs/evidence/human-like-ai-manual-response-v2/camera-baseline/shared/vehicle-motion.js",
+      "bytes": 12185,
+      "sha256": "05bd1e985a91b3268065a0a84ec4b9aee2c1079aafc4054c38a70677dfb1493b"
+    },
+    {
+      "source": "/tmp/manual-v2-camera-baseline-repro/shared/weather.js",
+      "destination": "docs/evidence/human-like-ai-manual-response-v2/camera-baseline/shared/weather.js",
+      "bytes": 7228,
+      "sha256": "faad682d6e40fdc6629533f684e1caeec5c9ae49e26e9922651773727c0bc1e5"
+    },
+    {
+      "source": "/tmp/manual-v2-camera-baseline-repro/shared/world-conquest.js",
+      "destination": "docs/evidence/human-like-ai-manual-response-v2/camera-baseline/shared/world-conquest.js",
+      "bytes": 7203,
+      "sha256": "1c251e6d340586d7fb367d4f47938d5898f5239824dac46f054880a3d897aeef"
+    },
+    {
+      "source": "/tmp/manual-v2-camera-baseline-repro/shared/world-landforms.js",
+      "destination": "docs/evidence/human-like-ai-manual-response-v2/camera-baseline/shared/world-landforms.js",
+      "bytes": 6645,
+      "sha256": "ecb6916db6785484f8bb813f7745c8c48ccea370f084fea290ff736edc968e34"
+    },
+    {
+      "source": "/tmp/manual-v2-camera-baseline-repro/shared/world-layers.js",
+      "destination": "docs/evidence/human-like-ai-manual-response-v2/camera-baseline/shared/world-layers.js",
+      "bytes": 6770,
+      "sha256": "f51f34b99946192107ada9a7077d787761c1a9cb6b1e316d7b7e243dd273bb22"
+    },
+    {
+      "source": "/tmp/manual-v2-camera-baseline-repro/shared/world-roads.js",
+      "destination": "docs/evidence/human-like-ai-manual-response-v2/camera-baseline/shared/world-roads.js",
+      "bytes": 6491,
+      "sha256": "5fb243b63fa9e2c082135b5b093ee753e8a92c197a076d78067e53f08f1885db"
+    },
+    {
+      "source": "/tmp/manual-v2-camera-baseline-repro/shared/world-territories.js",
+      "destination": "docs/evidence/human-like-ai-manual-response-v2/camera-baseline/shared/world-territories.js",
+      "bytes": 4110,
+      "sha256": "bb33a449d7f2c4d657dbceab8dbd0171eb8ccaa7494cedf9e18707822d8f717f"
+    },
+    {
+      "source": "/tmp/manual-v2-camera-baseline-repro/test-engine-ai-manual-response-policy.js",
+      "destination": "docs/evidence/human-like-ai-manual-response-v2/camera-baseline/test-engine-ai-manual-response-policy.js",
+      "bytes": 42924,
+      "sha256": "37769179660b63e7bef016869db1ae82c999bded6d68747e69321aa5341244b0"
+    },
+    {
+      "source": "/tmp/manual-v2-camera-baseline-repro/tools/ai-balance.mjs",
+      "destination": "docs/evidence/human-like-ai-manual-response-v2/camera-baseline/tools/ai-balance.mjs",
+      "bytes": 14906,
+      "sha256": "bf5b5ea07e3bf0eea2e4134647457191d9fe212a05b138677817f0cf5ec8db4b"
+    },
+    {
+      "source": "/tmp/manual-v2-camera-baseline-repro/tools/ai-humanity.mjs",
+      "destination": "docs/evidence/human-like-ai-manual-response-v2/camera-baseline/tools/ai-humanity.mjs",
+      "bytes": 91862,
+      "sha256": "fbf3bb833003c3b3ed2dd3558b82113c78feb9c4d0426f63c88438cef6d0a574"
+    },
+    {
+      "source": "/tmp/manual-v2-camera-baseline-repro/tools/ai-manual-response-capture-latest.mjs",
+      "destination": "docs/evidence/human-like-ai-manual-response-v2/camera-baseline/tools/ai-manual-response-capture-latest.mjs",
+      "bytes": 6600,
+      "sha256": "9ea0b3163788366234c4ff43cdb22f5127158a0a32bcc7e8ec27f978ca3102fc"
+    },
+    {
+      "source": "/tmp/manual-v2-camera-baseline-repro/tools/ai-manual-response-capture-original.mjs",
+      "destination": "docs/evidence/human-like-ai-manual-response-v2/camera-baseline/tools/ai-manual-response-capture-original.mjs",
+      "bytes": 6599,
+      "sha256": "a804ce50684ed96de5b98dc6dee4f2ab275d0a0dea84058fb515e7ba6cbba416"
+    },
+    {
+      "source": "/tmp/manual-v2-camera-baseline-repro/tools/ai-manual-response-capture.mjs",
+      "destination": "docs/evidence/human-like-ai-manual-response-v2/camera-baseline/tools/ai-manual-response-capture.mjs",
+      "bytes": 6600,
+      "sha256": "9ea0b3163788366234c4ff43cdb22f5127158a0a32bcc7e8ec27f978ca3102fc"
+    },
+    {
+      "source": "/tmp/manual-v2-camera-baseline-repro/tools/ai-manual-response-policy.mjs",
+      "destination": "docs/evidence/human-like-ai-manual-response-v2/camera-baseline/tools/ai-manual-response-policy.mjs",
+      "bytes": 26551,
+      "sha256": "a5044b77c2b35d25d12d05d8d61135c956e59ee84451f15a3a8f5c0c05470373"
+    },
+    {
+      "source": "/tmp/manual-v2-camera-baseline-repro/tools/ai-screen-v1-oracle-provenance.json",
+      "destination": "docs/evidence/human-like-ai-manual-response-v2/camera-baseline/tools/ai-screen-v1-oracle-provenance.json",
+      "bytes": 576,
+      "sha256": "7d6de7111625c96649ab2d80e3d2cb7cb4510a3dc6ec407dfc85ba3e0a797400"
+    },
+    {
+      "source": "/tmp/manual-v2-camera-baseline-repro/tools/ai-screen-v1-oracle.js",
+      "destination": "docs/evidence/human-like-ai-manual-response-v2/camera-baseline/tools/ai-screen-v1-oracle.js",
+      "bytes": 28180,
+      "sha256": "6b3894b551f3bf9151372b048b2efc77ffc86a6a173d0871278b27417358b398"
+    },
+    {
+      "source": "/tmp/manual-v2-camera-baseline-repro/tools/balance.mjs",
+      "destination": "docs/evidence/human-like-ai-manual-response-v2/camera-baseline/tools/balance.mjs",
+      "bytes": 10497,
+      "sha256": "42b7c3355c2fd06513fee58c7d04bc2783050c7259b1329426f7c2dc50ab9d18"
+    },
+    {
+      "source": "/tmp/manual-v2-camera-baseline-repro/tools/bench-engine.mjs",
+      "destination": "docs/evidence/human-like-ai-manual-response-v2/camera-baseline/tools/bench-engine.mjs",
+      "bytes": 32433,
+      "sha256": "4e84f2b7f86009b9ee47585bc6fc592b50defc2cea0cc1d9cc484ed85d0568be"
+    },
+    {
+      "source": "/tmp/manual-v2-camera-baseline-repro/tools/bench-ground.mjs",
+      "destination": "docs/evidence/human-like-ai-manual-response-v2/camera-baseline/tools/bench-ground.mjs",
+      "bytes": 3281,
+      "sha256": "5d0e37369daf978eb29317409ac601f1d5df13aec2c835b69ccb41e77a76bd30"
+    },
+    {
+      "source": "/tmp/manual-v2-camera-baseline-repro/tools/bench-move.mjs",
+      "destination": "docs/evidence/human-like-ai-manual-response-v2/camera-baseline/tools/bench-move.mjs",
+      "bytes": 4599,
+      "sha256": "5b9577bb58e6f7a67593f59262e20c9f7e402449ac1343cf2b6bc1e6ef378c0a"
+    },
+    {
+      "source": "/tmp/manual-v2-camera-baseline-repro/tools/bench-world-conquest.mjs",
+      "destination": "docs/evidence/human-like-ai-manual-response-v2/camera-baseline/tools/bench-world-conquest.mjs",
+      "bytes": 13956,
+      "sha256": "4a24bd8b0d7e3fdffb2f1811b64993f3ef4373ebb019a69cdab72b68d5a45ada"
+    },
+    {
+      "source": "/tmp/manual-v2-camera-baseline-repro/tools/bench.mjs",
+      "destination": "docs/evidence/human-like-ai-manual-response-v2/camera-baseline/tools/bench.mjs",
+      "bytes": 8183,
+      "sha256": "0c026604acaba5ec8f477080b83a948e901d4724c8bf06d325d334a1b244b49d"
+    },
+    {
+      "source": "/tmp/manual-v2-camera-baseline-repro/tools/blender/check-finished-naval.mjs",
+      "destination": "docs/evidence/human-like-ai-manual-response-v2/camera-baseline/tools/blender/check-finished-naval.mjs",
+      "bytes": 4502,
+      "sha256": "06c74d2d17c568acc508f09710a490fd688166e08806660f40848d2f3866f456"
+    },
+    {
+      "source": "/tmp/manual-v2-camera-baseline-repro/tools/blender/export-naval-source.mjs",
+      "destination": "docs/evidence/human-like-ai-manual-response-v2/camera-baseline/tools/blender/export-naval-source.mjs",
+      "bytes": 3370,
+      "sha256": "45407f36f2b49f342592da87e277e72415f1d46bc969d7f90d59abfd2df3968a"
+    },
+    {
+      "source": "/tmp/manual-v2-camera-baseline-repro/tools/blender/export-review.mjs",
+      "destination": "docs/evidence/human-like-ai-manual-response-v2/camera-baseline/tools/blender/export-review.mjs",
+      "bytes": 4423,
+      "sha256": "f16af23e2c44a713d33cc8e75cee16b0398b9eedabc25071c62fd58732d66a6e"
+    },
+    {
+      "source": "/tmp/manual-v2-camera-baseline-repro/tools/blender/finish-naval.mjs",
+      "destination": "docs/evidence/human-like-ai-manual-response-v2/camera-baseline/tools/blender/finish-naval.mjs",
+      "bytes": 2046,
+      "sha256": "7362c6813d8cf593cf7a933d4434f8db5cf90bd9319814da75d7c800d7f60a36"
+    },
+    {
+      "source": "/tmp/manual-v2-camera-baseline-repro/tools/blender/finish-naval.py",
+      "destination": "docs/evidence/human-like-ai-manual-response-v2/camera-baseline/tools/blender/finish-naval.py",
+      "bytes": 12141,
+      "sha256": "c4eadfccf50c377323487bef0312d053ea26328afa73ff667a16b0b08810a440"
+    },
+    {
+      "source": "/tmp/manual-v2-camera-baseline-repro/tools/blender/finishing.md",
+      "destination": "docs/evidence/human-like-ai-manual-response-v2/camera-baseline/tools/blender/finishing.md",
+      "bytes": 4747,
+      "sha256": "95c27d60c199de9d9c9f5671f844fd2c233fedd1107d5d7dc8d1b1d4ebcccf35"
+    },
+    {
+      "source": "/tmp/manual-v2-camera-baseline-repro/tools/blender/import-review.py",
+      "destination": "docs/evidence/human-like-ai-manual-response-v2/camera-baseline/tools/blender/import-review.py",
+      "bytes": 7830,
+      "sha256": "0dd25e7454b77ab85f5fa9dba3d2f59141fdc5c742b0dbf6fcd88d5da6f13641"
+    },
+    {
+      "source": "/tmp/manual-v2-camera-baseline-repro/tools/blender/infantry.md",
+      "destination": "docs/evidence/human-like-ai-manual-response-v2/camera-baseline/tools/blender/infantry.md",
+      "bytes": 2578,
+      "sha256": "47160d2f20d75e8c50f7067786f322741fc0f45b1723635c43f7596d99ef43aa"
+    },
+    {
+      "source": "/tmp/manual-v2-camera-baseline-repro/tools/blender/mcp/README.md",
+      "destination": "docs/evidence/human-like-ai-manual-response-v2/camera-baseline/tools/blender/mcp/README.md",
+      "bytes": 7737,
+      "sha256": "af1523462427b71a57e6e59c8ccf743935d5e84a34f75da68b8f37bbc07e957d"
+    },
+    {
+      "source": "/tmp/manual-v2-camera-baseline-repro/tools/blender/mcp/activate.py",
+      "destination": "docs/evidence/human-like-ai-manual-response-v2/camera-baseline/tools/blender/mcp/activate.py",
+      "bytes": 604,
+      "sha256": "4368a65fa4662baddfddca504ca9fdb74afc07d9d5a6c52f71cf1e37ec9fdec5"
+    },
+    {
+      "source": "/tmp/manual-v2-camera-baseline-repro/tools/blender/mcp/blend-ai/pyproject.toml",
+      "destination": "docs/evidence/human-like-ai-manual-response-v2/camera-baseline/tools/blender/mcp/blend-ai/pyproject.toml",
+      "bytes": 254,
+      "sha256": "c0bff8153f0482d472646107c043881dcc99de463673125ff498456a5946395a"
+    },
+    {
+      "source": "/tmp/manual-v2-camera-baseline-repro/tools/blender/mcp/blend-ai/server.sh",
+      "destination": "docs/evidence/human-like-ai-manual-response-v2/camera-baseline/tools/blender/mcp/blend-ai/server.sh",
+      "bytes": 226,
+      "sha256": "94c7100546e6aef561b2d1db6af2bee312393adcddc46a4b198f8cc6700f4210"
+    },
+    {
+      "source": "/tmp/manual-v2-camera-baseline-repro/tools/blender/mcp/blend-ai/uv.lock",
+      "destination": "docs/evidence/human-like-ai-manual-response-v2/camera-baseline/tools/blender/mcp/blend-ai/uv.lock",
+      "bytes": 189384,
+      "sha256": "e8924f2937bab8cdd09d139e9d5c4e7518716fcfde218da1d9bbfb97f0189ecc"
+    },
+    {
+      "source": "/tmp/manual-v2-camera-baseline-repro/tools/blender/mcp/call.py",
+      "destination": "docs/evidence/human-like-ai-manual-response-v2/camera-baseline/tools/blender/mcp/call.py",
+      "bytes": 2858,
+      "sha256": "0ba6b035e522fb85b96fd23cce53452bfe814042d1b6007615afdcaf85e32ab3"
+    },
+    {
+      "source": "/tmp/manual-v2-camera-baseline-repro/tools/blender/mcp/call.sh",
+      "destination": "docs/evidence/human-like-ai-manual-response-v2/camera-baseline/tools/blender/mcp/call.sh",
+      "bytes": 172,
+      "sha256": "d643c00abde6ae9a5c60f79084816ae1bacbabac64229cae8a7401d663681b89"
+    },
+    {
+      "source": "/tmp/manual-v2-camera-baseline-repro/tools/blender/mcp/check.py",
+      "destination": "docs/evidence/human-like-ai-manual-response-v2/camera-baseline/tools/blender/mcp/check.py",
+      "bytes": 2975,
+      "sha256": "f1935e459bd8a915af0597f2b3b9e8b230882f455c244144b5fe64ac112a8f52"
+    },
+    {
+      "source": "/tmp/manual-v2-camera-baseline-repro/tools/blender/mcp/check.sh",
+      "destination": "docs/evidence/human-like-ai-manual-response-v2/camera-baseline/tools/blender/mcp/check.sh",
+      "bytes": 168,
+      "sha256": "d647e9e74a59c647750858e7dd104dab1a9acf156e97d2d6f94c8665637c7a7b"
+    },
+    {
+      "source": "/tmp/manual-v2-camera-baseline-repro/tools/blender/mcp/community/codex-marketplace/.agents/plugins/marketplace.json",
+      "destination": "docs/evidence/human-like-ai-manual-response-v2/camera-baseline/tools/blender/mcp/community/codex-marketplace/.agents/plugins/marketplace.json",
+      "bytes": 384,
+      "sha256": "3f1c6e2b319fc4bd73ae173d133eb79318ad1513e8f0767ec04c5c1a48b786d9"
+    },
+    {
+      "source": "/tmp/manual-v2-camera-baseline-repro/tools/blender/mcp/community/codex-marketplace/LICENSE",
+      "destination": "docs/evidence/human-like-ai-manual-response-v2/camera-baseline/tools/blender/mcp/community/codex-marketplace/LICENSE",
+      "bytes": 1071,
+      "sha256": "049501fd54d27852507853a5b88094ca1c6ff97404418a5032f3310eecc9cde6"
+    },
+    {
+      "source": "/tmp/manual-v2-camera-baseline-repro/tools/blender/mcp/community/codex-marketplace/plugins/mcp-for-blender/.codex-plugin/plugin.json",
+      "destination": "docs/evidence/human-like-ai-manual-response-v2/camera-baseline/tools/blender/mcp/community/codex-marketplace/plugins/mcp-for-blender/.codex-plugin/plugin.json",
+      "bytes": 1334,
+      "sha256": "aef4380b896d6d3d4d81aba593d5e553c937857a4feaad60d8f077bb20a8b20e"
+    },
+    {
+      "source": "/tmp/manual-v2-camera-baseline-repro/tools/blender/mcp/community/codex-marketplace/plugins/mcp-for-blender/.mcp.json",
+      "destination": "docs/evidence/human-like-ai-manual-response-v2/camera-baseline/tools/blender/mcp/community/codex-marketplace/plugins/mcp-for-blender/.mcp.json",
+      "bytes": 516,
+      "sha256": "a64837272354f4c59aa44c141fb4fca7780a4180bbf382a145313a9c56c5dfc9"
+    },
+    {
+      "source": "/tmp/manual-v2-camera-baseline-repro/tools/blender/mcp/community/codex-marketplace/plugins/mcp-for-blender/assets/icon.svg",
+      "destination": "docs/evidence/human-like-ai-manual-response-v2/camera-baseline/tools/blender/mcp/community/codex-marketplace/plugins/mcp-for-blender/assets/icon.svg",
+      "bytes": 272,
+      "sha256": "1475c10f2e8f2f515ece7e8eeb126566c38bbfab7dc828c23b2ca9271969925a"
+    },
+    {
+      "source": "/tmp/manual-v2-camera-baseline-repro/tools/blender/mcp/community/codex-marketplace/plugins/mcp-for-blender/assets/logo.png",
+      "destination": "docs/evidence/human-like-ai-manual-response-v2/camera-baseline/tools/blender/mcp/community/codex-marketplace/plugins/mcp-for-blender/assets/logo.png",
+      "bytes": 7505,
+      "sha256": "9f118ba8a24ca0da58f831e96078af60c8e9f3619841388ab23a99cd88a1cc4e"
+    },
+    {
+      "source": "/tmp/manual-v2-camera-baseline-repro/tools/blender/mcp/community/pyproject.toml",
+      "destination": "docs/evidence/human-like-ai-manual-response-v2/camera-baseline/tools/blender/mcp/community/pyproject.toml",
+      "bytes": 130,
+      "sha256": "dd6055cc23937c51db52d1c53282eab9ad9554b2509402aefe0e7af84502e4e5"
+    },
+    {
+      "source": "/tmp/manual-v2-camera-baseline-repro/tools/blender/mcp/community/server.sh",
+      "destination": "docs/evidence/human-like-ai-manual-response-v2/camera-baseline/tools/blender/mcp/community/server.sh",
+      "bytes": 426,
+      "sha256": "193cd5180d46df994334bf02b5d41202d653a4b0cf981e2bae4798cd39aac674"
+    },
+    {
+      "source": "/tmp/manual-v2-camera-baseline-repro/tools/blender/mcp/community/uv.lock",
+      "destination": "docs/evidence/human-like-ai-manual-response-v2/camera-baseline/tools/blender/mcp/community/uv.lock",
+      "bytes": 189839,
+      "sha256": "93d78f3601ae0c4597beb3cdf04ad93ac7af2a169386a79e9d702a0c4b8e3ecf"
+    },
+    {
+      "source": "/tmp/manual-v2-camera-baseline-repro/tools/blender/mcp/configure.py",
+      "destination": "docs/evidence/human-like-ai-manual-response-v2/camera-baseline/tools/blender/mcp/configure.py",
+      "bytes": 672,
+      "sha256": "85e367b269e02ce7d6749ac4a1b13ac2430b9fdee0b784b689b3c124c31e34f6"
+    },
+    {
+      "source": "/tmp/manual-v2-camera-baseline-repro/tools/blender/mcp/environment.sh",
+      "destination": "docs/evidence/human-like-ai-manual-response-v2/camera-baseline/tools/blender/mcp/environment.sh",
+      "bytes": 918,
+      "sha256": "f3db004244e58da757706d3f7d14a9efd8bdf3bfa9c632388a80395c5777db1a"
+    },
+    {
+      "source": "/tmp/manual-v2-camera-baseline-repro/tools/blender/mcp/preflight.py",
+      "destination": "docs/evidence/human-like-ai-manual-response-v2/camera-baseline/tools/blender/mcp/preflight.py",
+      "bytes": 424,
+      "sha256": "635f53e20642f3e0dc9bf5d1744c856b156cb8d2bfa3b3ea655a716ada8add7f"
+    },
+    {
+      "source": "/tmp/manual-v2-camera-baseline-repro/tools/blender/mcp/pyproject.toml",
+      "destination": "docs/evidence/human-like-ai-manual-response-v2/camera-baseline/tools/blender/mcp/pyproject.toml",
+      "bytes": 288,
+      "sha256": "221fd8d510dded7cac328b20e277c66d3de47cc7d1c654d70d781575772245b0"
+    },
+    {
+      "source": "/tmp/manual-v2-camera-baseline-repro/tools/blender/mcp/review.py",
+      "destination": "docs/evidence/human-like-ai-manual-response-v2/camera-baseline/tools/blender/mcp/review.py",
+      "bytes": 4019,
+      "sha256": "5b6db1a572d470e0195347a20139b4d9272b946b33f42b3e00fbba465c0c1d75"
+    },
+    {
+      "source": "/tmp/manual-v2-camera-baseline-repro/tools/blender/mcp/server.sh",
+      "destination": "docs/evidence/human-like-ai-manual-response-v2/camera-baseline/tools/blender/mcp/server.sh",
+      "bytes": 314,
+      "sha256": "7383ce17c9998748e5f519c925260799352388381b720c4752320f2a8d08da8d"
+    },
+    {
+      "source": "/tmp/manual-v2-camera-baseline-repro/tools/blender/mcp/setup.sh",
+      "destination": "docs/evidence/human-like-ai-manual-response-v2/camera-baseline/tools/blender/mcp/setup.sh",
+      "bytes": 2449,
+      "sha256": "18165c4db893516c2c3bb11b8b46ac2e70389640bc2de21cd29c9dfdb63b22ee"
+    },
+    {
+      "source": "/tmp/manual-v2-camera-baseline-repro/tools/blender/mcp/start.sh",
+      "destination": "docs/evidence/human-like-ai-manual-response-v2/camera-baseline/tools/blender/mcp/start.sh",
+      "bytes": 559,
+      "sha256": "6e1dc55ebfc251e4bf464daf48021e70b865c5b274eced2fe0599f197304e873"
+    },
+    {
+      "source": "/tmp/manual-v2-camera-baseline-repro/tools/blender/mcp/uv.lock",
+      "destination": "docs/evidence/human-like-ai-manual-response-v2/camera-baseline/tools/blender/mcp/uv.lock",
+      "bytes": 162934,
+      "sha256": "be4043d935f99305ea02fa0d7c71a898984c6a6b15ddb5ce97a2f8e7ec97462a"
+    },
+    {
+      "source": "/tmp/manual-v2-camera-baseline-repro/tools/blender/rebuild-infantry.sh",
+      "destination": "docs/evidence/human-like-ai-manual-response-v2/camera-baseline/tools/blender/rebuild-infantry.sh",
+      "bytes": 1066,
+      "sha256": "d2b3004d479df0d6bff008fdc03a377bd19f36ab19deb33af243f38a97ee64a6"
+    },
+    {
+      "source": "/tmp/manual-v2-camera-baseline-repro/tools/blender/review.sh",
+      "destination": "docs/evidence/human-like-ai-manual-response-v2/camera-baseline/tools/blender/review.sh",
+      "bytes": 374,
+      "sha256": "86f615711bab36d5d7556bc82531ee36227f8a57179281b96b32adc932ee3e7e"
+    },
+    {
+      "source": "/tmp/manual-v2-camera-baseline-repro/tools/blender/rig-infantry.py",
+      "destination": "docs/evidence/human-like-ai-manual-response-v2/camera-baseline/tools/blender/rig-infantry.py",
+      "bytes": 10944,
+      "sha256": "c7a4d14eed2b4858cf60f4726f68f2b4fc996df3ef691ad848b4b3cbfcdd48b7"
+    },
+    {
+      "source": "/tmp/manual-v2-camera-baseline-repro/tools/blender/skills/ww2-model-qa/SKILL.md",
+      "destination": "docs/evidence/human-like-ai-manual-response-v2/camera-baseline/tools/blender/skills/ww2-model-qa/SKILL.md",
+      "bytes": 4358,
+      "sha256": "ca51d91a4bf9ef0bb69f278a6bb9ad4a6d2f845770f020a6ba24d7f80c576af6"
+    },
+    {
+      "source": "/tmp/manual-v2-camera-baseline-repro/tools/blender/verification-2026-10-03.md",
+      "destination": "docs/evidence/human-like-ai-manual-response-v2/camera-baseline/tools/blender/verification-2026-10-03.md",
+      "bytes": 7551,
+      "sha256": "44a61324804c08dd311646fc416733dca605485c2e116c04435de814139e4f81"
+    },
+    {
+      "source": "/tmp/manual-v2-camera-baseline-repro/tools/build-audio.mjs",
+      "destination": "docs/evidence/human-like-ai-manual-response-v2/camera-baseline/tools/build-audio.mjs",
+      "bytes": 13322,
+      "sha256": "e066f7bef14691def1edf934d574fd29b0d3f489b43d15c1b4f8dcdfd14f7714"
+    },
+    {
+      "source": "/tmp/manual-v2-camera-baseline-repro/tools/build-fx-atlas.mjs",
+      "destination": "docs/evidence/human-like-ai-manual-response-v2/camera-baseline/tools/build-fx-atlas.mjs",
+      "bytes": 13451,
+      "sha256": "3e26da8a6fcb1f5887926a5853c7a0873fe105a55ba8a66d1f91be12423753ec"
+    },
+    {
+      "source": "/tmp/manual-v2-camera-baseline-repro/tools/check-new-models.mjs",
+      "destination": "docs/evidence/human-like-ai-manual-response-v2/camera-baseline/tools/check-new-models.mjs",
+      "bytes": 1309,
+      "sha256": "f8092868eb3ca7ff75319ec01f5581379e07aff3e73ec9406495ff6e51b61b90"
+    },
+    {
+      "source": "/tmp/manual-v2-camera-baseline-repro/tools/diag.mjs",
+      "destination": "docs/evidence/human-like-ai-manual-response-v2/camera-baseline/tools/diag.mjs",
+      "bytes": 4386,
+      "sha256": "c554e37684d21821a0f5c7036904178f7e7388c9d26337887b378c1e4cde5e7b"
+    },
+    {
+      "source": "/tmp/manual-v2-camera-baseline-repro/tools/genmap-bridge.mjs",
+      "destination": "docs/evidence/human-like-ai-manual-response-v2/camera-baseline/tools/genmap-bridge.mjs",
+      "bytes": 8003,
+      "sha256": "94c6b6850b521bae65feedd49e441c014d407086ba4c1240b13d320144c3b909"
+    },
+    {
+      "source": "/tmp/manual-v2-camera-baseline-repro/tools/genmap-horde.js",
+      "destination": "docs/evidence/human-like-ai-manual-response-v2/camera-baseline/tools/genmap-horde.js",
+      "bytes": 12875,
+      "sha256": "168a5dc5e866bf61eee87e5af743d336c3288afca223cb2b092ea829595031e9"
+    },
+    {
+      "source": "/tmp/manual-v2-camera-baseline-repro/tools/genmap-islands.mjs",
+      "destination": "docs/evidence/human-like-ai-manual-response-v2/camera-baseline/tools/genmap-islands.mjs",
+      "bytes": 3060,
+      "sha256": "73b79b2d7771a0cefb55283d5845cae4d5e26dca14da9122178ed05c556b96c6"
+    },
+    {
+      "source": "/tmp/manual-v2-camera-baseline-repro/tools/genmap-pack.js",
+      "destination": "docs/evidence/human-like-ai-manual-response-v2/camera-baseline/tools/genmap-pack.js",
+      "bytes": 22923,
+      "sha256": "b7c329d45822b8ffab296e40f4413b77fa894704e89485b21383f3623fde737a"
+    },
+    {
+      "source": "/tmp/manual-v2-camera-baseline-repro/tools/genmap-trenches.mjs",
+      "destination": "docs/evidence/human-like-ai-manual-response-v2/camera-baseline/tools/genmap-trenches.mjs",
+      "bytes": 4576,
+      "sha256": "14c5d6ede58df9cd3ca282e599d64865d9ea3131c48f7243ed76dc7c61fe432c"
+    },
+    {
+      "source": "/tmp/manual-v2-camera-baseline-repro/tools/genmap-xl.js",
+      "destination": "docs/evidence/human-like-ai-manual-response-v2/camera-baseline/tools/genmap-xl.js",
+      "bytes": 10557,
+      "sha256": "8477be9e1f372bcfb69697c80bbc95714843aae840f32bf98ed2982b915c9077"
+    },
+    {
+      "source": "/tmp/manual-v2-camera-baseline-repro/tools/genmap.js",
+      "destination": "docs/evidence/human-like-ai-manual-response-v2/camera-baseline/tools/genmap.js",
+      "bytes": 9408,
+      "sha256": "20f17ef9919eacbd812c569549802be3ed2f8acb6838f5ef256998421d60c8d2"
+    },
+    {
+      "source": "/tmp/manual-v2-camera-baseline-repro/tools/horde.mjs",
+      "destination": "docs/evidence/human-like-ai-manual-response-v2/camera-baseline/tools/horde.mjs",
+      "bytes": 2223,
+      "sha256": "d23d6c320497a55df56222297256d084dba53d6851934f2212bd6e0be00521af"
+    },
+    {
+      "source": "/tmp/manual-v2-camera-baseline-repro/tools/json-stream.mjs",
+      "destination": "docs/evidence/human-like-ai-manual-response-v2/camera-baseline/tools/json-stream.mjs",
+      "bytes": 9588,
+      "sha256": "34f01a09d4996f356a3dafc61084aae27a4bf18cd8e6b63b2fda9e95c5168798"
+    },
+    {
+      "source": "/tmp/manual-v2-camera-baseline-repro/tools/legacy-ai/ai-mind.js",
+      "destination": "docs/evidence/human-like-ai-manual-response-v2/camera-baseline/tools/legacy-ai/ai-mind.js",
+      "bytes": 17983,
+      "sha256": "c2941813a4fb6d655a50b579270e5887723cfc42ea18c9d767735904c78c2d54"
+    },
+    {
+      "source": "/tmp/manual-v2-camera-baseline-repro/tools/legacy-ai/ai-view.js",
+      "destination": "docs/evidence/human-like-ai-manual-response-v2/camera-baseline/tools/legacy-ai/ai-view.js",
+      "bytes": 11525,
+      "sha256": "c8e5332611ec5d18d5f7b0ab9093c30df5006a6f566c106a312a64900be17d5f"
+    },
+    {
+      "source": "/tmp/manual-v2-camera-baseline-repro/tools/legacy-ai/ai.js",
+      "destination": "docs/evidence/human-like-ai-manual-response-v2/camera-baseline/tools/legacy-ai/ai.js",
+      "bytes": 64127,
+      "sha256": "49575f9089365e13592a804b852b8eeec8c1dcc96bd64d236eaf3757904bcf4d"
+    },
+    {
+      "source": "/tmp/manual-v2-camera-baseline-repro/tools/legacy-ai/provenance.json",
+      "destination": "docs/evidence/human-like-ai-manual-response-v2/camera-baseline/tools/legacy-ai/provenance.json",
+      "bytes": 1048,
+      "sha256": "dc60cceedaf44362e4ee8042b204544f3e9e0e312abf831218af827a2105e55e"
+    },
+    {
+      "source": "/tmp/manual-v2-camera-baseline-repro/tools/mapstats.mjs",
+      "destination": "docs/evidence/human-like-ai-manual-response-v2/camera-baseline/tools/mapstats.mjs",
+      "bytes": 8721,
+      "sha256": "3ec678dda56d0a056dd70046199cb1120e5821dfc378f9876a2e29cfbbfff442"
+    },
+    {
+      "source": "/tmp/manual-v2-camera-baseline-repro/tools/mapwork.mjs",
+      "destination": "docs/evidence/human-like-ai-manual-response-v2/camera-baseline/tools/mapwork.mjs",
+      "bytes": 8411,
+      "sha256": "668a2464bddcab7377dd9f02fb0c695c13c02bceb2f15a466624d77e8f7223e7"
+    },
+    {
+      "source": "/tmp/manual-v2-camera-baseline-repro/tools/model-shots.sh",
+      "destination": "docs/evidence/human-like-ai-manual-response-v2/camera-baseline/tools/model-shots.sh",
+      "bytes": 3652,
+      "sha256": "3a4a5d3b04165996b3c8b1b0f71be555c3aa577fc248389954d6b5fcb8dff67e"
+    },
+    {
+      "source": "/tmp/manual-v2-camera-baseline-repro/tools/movement-lab-browser.js",
+      "destination": "docs/evidence/human-like-ai-manual-response-v2/camera-baseline/tools/movement-lab-browser.js",
+      "bytes": 14004,
+      "sha256": "b22680fa57d063a3a2106f270cd16a95d275bd7e20d99b177c63ed71e58a2fd4"
+    },
+    {
+      "source": "/tmp/manual-v2-camera-baseline-repro/tools/movement-lab-runner.js",
+      "destination": "docs/evidence/human-like-ai-manual-response-v2/camera-baseline/tools/movement-lab-runner.js",
+      "bytes": 6570,
+      "sha256": "8285d51b25013776a2d67f89154e803447efbe8ce02ccec2890dc41f49d09829"
+    },
+    {
+      "source": "/tmp/manual-v2-camera-baseline-repro/tools/movement-lab-scenarios.js",
+      "destination": "docs/evidence/human-like-ai-manual-response-v2/camera-baseline/tools/movement-lab-scenarios.js",
+      "bytes": 12407,
+      "sha256": "50b19fc2f2144d9dfee790b8c7d126c08e971b588e08921fdb84e743c4154afe"
+    },
+    {
+      "source": "/tmp/manual-v2-camera-baseline-repro/tools/movement-lab.html",
+      "destination": "docs/evidence/human-like-ai-manual-response-v2/camera-baseline/tools/movement-lab.html",
+      "bytes": 4653,
+      "sha256": "d87e330b6159dea3aaac907762e3757918a10bebcf470d86a19053a84fc31c77"
+    },
+    {
+      "source": "/tmp/manual-v2-camera-baseline-repro/tools/movement-lab.mjs",
+      "destination": "docs/evidence/human-like-ai-manual-response-v2/camera-baseline/tools/movement-lab.mjs",
+      "bytes": 2177,
+      "sha256": "4aa4fd104a888e5e587a29e92ad4b1a26b75a25fe58f8c3fe7fedd88bc5dcf4c"
+    },
+    {
+      "source": "/tmp/manual-v2-camera-baseline-repro/tools/preview-world-generation.mjs",
+      "destination": "docs/evidence/human-like-ai-manual-response-v2/camera-baseline/tools/preview-world-generation.mjs",
+      "bytes": 1768,
+      "sha256": "f05dba5305cb8a16c11543b19c7520021998e5e2aefb938cc9d43525b6090e99"
+    },
+    {
+      "source": "/tmp/manual-v2-camera-baseline-repro/tools/roads.mjs",
+      "destination": "docs/evidence/human-like-ai-manual-response-v2/camera-baseline/tools/roads.mjs",
+      "bytes": 1917,
+      "sha256": "1ba0af74d2e0436105ed4ebcd9f7a519fe2e4d783739613f496488cea1af180a"
+    },
+    {
+      "source": "/tmp/manual-v2-camera-baseline-repro/tools/serve-movement-lab.mjs",
+      "destination": "docs/evidence/human-like-ai-manual-response-v2/camera-baseline/tools/serve-movement-lab.mjs",
+      "bytes": 3108,
+      "sha256": "1776d74dfe20dbe513e95385ed1ba792c18582e391be8f9da1a21f7e63f5095a"
+    },
+    {
+      "source": "/tmp/manual-v2-camera-baseline-repro/tools/terrain-workshop-fixtures.js",
+      "destination": "docs/evidence/human-like-ai-manual-response-v2/camera-baseline/tools/terrain-workshop-fixtures.js",
+      "bytes": 3060,
+      "sha256": "4a548a46c5c039054494e477dd5fda1ccdfed57880c3964188e8692bb9e551f7"
+    },
+    {
+      "source": "/tmp/manual-v2-camera-baseline-repro/tools/terrain-workshop.html",
+      "destination": "docs/evidence/human-like-ai-manual-response-v2/camera-baseline/tools/terrain-workshop.html",
+      "bytes": 4571,
+      "sha256": "c0fbae8ed0e149044b6161b99e277e8d7c9ba930e3d4b52a637f1f9fa874cabd"
+    },
+    {
+      "source": "/tmp/manual-v2-camera-baseline-repro/tools/terrain-workshop.js",
+      "destination": "docs/evidence/human-like-ai-manual-response-v2/camera-baseline/tools/terrain-workshop.js",
+      "bytes": 13967,
+      "sha256": "a0b92e648f1675c461cad3c90abde12984ae09e8a28bfc18d3f83cc7aef1924a"
+    },
+    {
+      "source": "/tmp/manual-v2-camera-baseline-repro/tools/test-public-lobby-browser.mjs",
+      "destination": "docs/evidence/human-like-ai-manual-response-v2/camera-baseline/tools/test-public-lobby-browser.mjs",
+      "bytes": 5036,
+      "sha256": "666cb37cbe27526abd35131b3ce68968d4079973a643b3a89f3be2fa9019f298"
+    },
+    {
+      "source": "/tmp/manual-v2-camera-baseline-repro/tools/test-render-browser.html",
+      "destination": "docs/evidence/human-like-ai-manual-response-v2/camera-baseline/tools/test-render-browser.html",
+      "bytes": 6848,
+      "sha256": "048e811a4e3613bdfdb3bd255daf3f4732cadf5fb0ef8263fc8934020deb0115"
+    },
+    {
+      "source": "/tmp/manual-v2-camera-baseline-repro/tools/test-world-waterway-seeds.mjs",
+      "destination": "docs/evidence/human-like-ai-manual-response-v2/camera-baseline/tools/test-world-waterway-seeds.mjs",
+      "bytes": 1721,
+      "sha256": "69b9d3f48ff30249de5a863c38fe12b5b5365951e037d7d7ba2d0bacdb3a3e13"
+    },
+    {
+      "source": "/tmp/manual-v2-camera-baseline-repro/tools/woods.mjs",
+      "destination": "docs/evidence/human-like-ai-manual-response-v2/camera-baseline/tools/woods.mjs",
+      "bytes": 2239,
+      "sha256": "33012d24d1a7686804e0b1dcb773a24931e72dc129114e463716c5834dbb25f3"
+    },
+    {
+      "source": "/tmp/manual-v2-camera-baseline-repro/unchanged-adapter-regression.log",
+      "destination": "docs/evidence/human-like-ai-manual-response-v2/camera-baseline/unchanged-adapter-regression.log",
+      "bytes": 586,
+      "sha256": "cee779bf5ef63f70e4c0a3e4a0dd7fc940d513019de11f0e856e8a32121ae2b8"
+    },
+    {
+      "source": "/tmp/manual-v2-root-camera-baseline.log",
+      "destination": "docs/evidence/human-like-ai-manual-response-v2/camera-baseline/root-adoption/manual-v2-root-camera-baseline.log",
+      "bytes": 99,
+      "sha256": "88f87ac28a6688ed10a45adcf374d7ae1be650d06eb379ab6e1f30071647bc46"
+    },
+    {
+      "source": "/tmp/manual-v2-root-camera-baseline-checkpoint.json",
+      "destination": "docs/evidence/human-like-ai-manual-response-v2/camera-baseline/root-adoption/manual-v2-root-camera-baseline-checkpoint.json",
+      "bytes": 3900,
+      "sha256": "c4bef34f93f699477262e14839493acb76011b327a8874fc129074c3d48694eb"
+    }
+  ]
+}

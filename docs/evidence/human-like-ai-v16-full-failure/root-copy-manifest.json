@@ -1,0 +1,66 @@
+{
+  "copiedAtUTC": "2026-10-04T18:24:24.243848+00:00",
+  "qualification": "Fullnode test.js failed naturally after288seconds atdirectplanbridgeEngineerfixturemissinginitializedmem.node. All54sourcechecksvalid/all1635source+archivefilesstable; failurekept. ROOTfixturemigrationaddsseen/nodemapsonly, no runtime/gameplaychanges. Originalbehaviorandbalancearchivecontinuesunchanged. Everyassertion/60srepair/180s childdeadlineretained. FullsourceBEFOREmanifestbinds allproofs.",
+  "files": [
+    {
+      "source": "/tmp/ai-v16-full-before.json",
+      "destination": "docs/evidence/human-like-ai-v16-full-failure/ai-v16-full-before.json",
+      "bytes": 337713,
+      "sha256": "30f4cf299cb8bf393fad09ad5be7eeaf780aa9b22219b77c537fe8f64fc18699"
+    },
+    {
+      "source": "/tmp/ai-v16-full-after.json",
+      "destination": "docs/evidence/human-like-ai-v16-full-failure/ai-v16-full-after.json",
+      "bytes": 336961,
+      "sha256": "694080fd75388048c48c1c8df56f17978fac8098246badd352cf911766c297d0"
+    },
+    {
+      "source": "/tmp/human-ai-v16-full-verification.json",
+      "destination": "docs/evidence/human-like-ai-v16-full-failure/human-ai-v16-full-verification.json",
+      "bytes": 7208,
+      "sha256": "4438ed62861e51fa20bf3dabbcbabf0763ad057008b2678e29fe80c370e7d3fe"
+    },
+    {
+      "source": "/tmp/human-ai-v16-full-test.log",
+      "destination": "docs/evidence/human-like-ai-v16-full-failure/human-ai-v16-full-test.log",
+      "bytes": 11469,
+      "sha256": "25c06313bc9abf924add7abb4d7f29e0c0710b8b645e6df10a31f02146755a78"
+    },
+    {
+      "source": "/tmp/human-ai-v16-full-predeclared.json",
+      "destination": "docs/evidence/human-like-ai-v16-full-failure/human-ai-v16-full-predeclared.json",
+      "bytes": 18305,
+      "sha256": "9aaed0ccc99ceb22031c291367e7756ec9f9fc715c3395f8dd4a1b0aab730222"
+    },
+    {
+      "source": "/tmp/human-ai-v16-full-launch.json",
+      "destination": "docs/evidence/human-like-ai-v16-full-failure/human-ai-v16-full-launch.json",
+      "bytes": 962,
+      "sha256": "2643690112ca9085b424bb08a0f0b6f519d2f06bde2a230d91cbd09e8c3867c7"
+    },
+    {
+      "source": "/tmp/human-ai-v16-full-completion.json",
+      "destination": "docs/evidence/human-like-ai-v16-full-failure/human-ai-v16-full-completion.json",
+      "bytes": 94,
+      "sha256": "008b87993faa81b4a715bb98214e4844e070a72962b311a8fd0d38fbb1933dd6"
+    },
+    {
+      "source": "/tmp/human-ai-v16-full-v4-finalize.py",
+      "destination": "docs/evidence/human-like-ai-v16-full-failure/human-ai-v16-full-v4-finalize.py",
+      "bytes": 23663,
+      "sha256": "d35f1dcb58d7c81ebc0f6de1fdd77eb9e4e8b226e9d88b03a51a79de40ac197f"
+    },
+    {
+      "source": "/tmp/human-ai-v16-full-v4-preregistration-draft.json",
+      "destination": "docs/evidence/human-like-ai-v16-full-failure/human-ai-v16-full-v4-preregistration-draft.json",
+      "bytes": 11252,
+      "sha256": "c49e356c93b6eaa10895a5293cbdc6b5df8b8c9536dff8fcc3fc2f08a4717745"
+    },
+    {
+      "source": "/tmp/human-ai-v16-directory-link-native-controls.json",
+      "destination": "docs/evidence/human-like-ai-v16-full-failure/human-ai-v16-directory-link-native-controls.json",
+      "bytes": 1371,
+      "sha256": "639ee253aa5a78ae8a7b7501c9119c27fb8aeec0fa093c08bcec418c19feb747"
+    }
+  ]
+}

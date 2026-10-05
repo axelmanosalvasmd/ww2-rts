@@ -1,0 +1,146 @@
+{
+  "copiedAt": "2026-10-04T19:09:09.794721+00:00",
+  "scope": "Corrected local guard with unchanged useful stationary grenade assertion. Root independently confirms every native submitted command and physical input through tick890 equals initial adopted guard replay, and all five current-source focused tests pass. Original V16 raw/source are retained separately. This is an episode/control proof, not campaign medians, performance, balance or full-suite acceptance.",
+  "nativeCommandsCompared": 30,
+  "nativeInputsCompared": 26,
+  "files": [
+    {
+      "source": "/tmp/v18-guard-ability-correction/REVIEW.md",
+      "path": "docs/evidence/human-like-ai-attended-guard/corrected-ability-choice/REVIEW.md",
+      "bytes": 3785,
+      "sha256": "271e7947aafc936c23440b4823d1f666d2177a7ce4b83c042f15e207f1702943"
+    },
+    {
+      "source": "/tmp/v18-guard-ability-correction/guard-ability-correction.patch",
+      "path": "docs/evidence/human-like-ai-attended-guard/corrected-ability-choice/guard-ability-correction.patch",
+      "bytes": 2716,
+      "sha256": "1916f7ddfe367309324b2e09ef36a45be4110493bba9607b0cb86b956fcad52a"
+    },
+    {
+      "source": "/tmp/v18-guard-ability-correction/test-engine-ai-guard-ability-choice.js",
+      "path": "docs/evidence/human-like-ai-attended-guard/corrected-ability-choice/test-engine-ai-guard-ability-choice.js",
+      "bytes": 7199,
+      "sha256": "5642722c1aa7a52c111a97a3a47ab8644c7e7cadca5f5c949af81391b530aaf5"
+    },
+    {
+      "source": "/tmp/v18-guard-ability-correction/native-proof.json",
+      "path": "docs/evidence/human-like-ai-attended-guard/corrected-ability-choice/native-proof.json",
+      "bytes": 1142,
+      "sha256": "d99148b41b313894a7e7bf7471886b200e232a24e659b615d7901982a9339e7e"
+    },
+    {
+      "source": "/tmp/v18-guard-ability-correction/native-mg-replay.json",
+      "path": "docs/evidence/human-like-ai-attended-guard/corrected-ability-choice/native-mg-replay.json",
+      "bytes": 121004,
+      "sha256": "0ea9afbdaa25353b1ff8ca429c3dae1c1a1728b52f2cc11a2b5797ec9c050382"
+    },
+    {
+      "source": "/tmp/v18-guard-ability-correction/native-mg-replay.log",
+      "path": "docs/evidence/human-like-ai-attended-guard/corrected-ability-choice/native-mg-replay.log",
+      "bytes": 28,
+      "sha256": "844a75c8463cc015557fb5e4592624440cc6c3ccd36890a520e914697f5050fd"
+    },
+    {
+      "source": "/tmp/v18-guard-ability-correction/focused-results.json",
+      "path": "docs/evidence/human-like-ai-attended-guard/corrected-ability-choice/focused-results.json",
+      "bytes": 770,
+      "sha256": "661779613ddfa056cb44fbe9f5cf367980aa394370209510f54e5dd5a602f0e6"
+    },
+    {
+      "source": "/tmp/v18-guard-ability-correction/choice-before.log",
+      "path": "docs/evidence/human-like-ai-attended-guard/corrected-ability-choice/choice-before.log",
+      "bytes": 619,
+      "sha256": "b4b23842d50e889c214825134c8248a54d41d6bd721f5f0e51ec5d8db40375c5"
+    },
+    {
+      "source": "/tmp/v18-guard-ability-correction/choice-after.log",
+      "path": "docs/evidence/human-like-ai-attended-guard/corrected-ability-choice/choice-after.log",
+      "bytes": 151,
+      "sha256": "e8abf265d700f3cbc529968fb8d99ef350e7059c526aaea521905ec5f9a43202"
+    },
+    {
+      "source": "/tmp/v18-guard-ability-correction/tactical-after.log",
+      "path": "docs/evidence/human-like-ai-attended-guard/corrected-ability-choice/tactical-after.log",
+      "bytes": 99,
+      "sha256": "ed84f1135c8c1d8816978c5ba892f2bef0645c16e51e953bf5649da82622e32b"
+    },
+    {
+      "source": "/tmp/v18-guard-ability-correction/test-engine-ai-guard-ability-choice.js.log",
+      "path": "docs/evidence/human-like-ai-attended-guard/corrected-ability-choice/test-engine-ai-guard-ability-choice.js.log",
+      "bytes": 151,
+      "sha256": "e8abf265d700f3cbc529968fb8d99ef350e7059c526aaea521905ec5f9a43202"
+    },
+    {
+      "source": "/tmp/v18-guard-ability-correction/test-engine-ai-attended-guard.js.log",
+      "path": "docs/evidence/human-like-ai-attended-guard/corrected-ability-choice/test-engine-ai-attended-guard.js.log",
+      "bytes": 138,
+      "sha256": "cf5596b209afd99b0ca59d9dee7457f55ef325e9fc6e68762513f48812e1c8d2"
+    },
+    {
+      "source": "/tmp/v18-guard-ability-correction/test-engine-ai-tactical-reaction.js.log",
+      "path": "docs/evidence/human-like-ai-attended-guard/corrected-ability-choice/test-engine-ai-tactical-reaction.js.log",
+      "bytes": 99,
+      "sha256": "ed84f1135c8c1d8816978c5ba892f2bef0645c16e51e953bf5649da82622e32b"
+    },
+    {
+      "source": "/tmp/v18-guard-ability-correction/test-engine-ai-causal-orders.js.log",
+      "path": "docs/evidence/human-like-ai-attended-guard/corrected-ability-choice/test-engine-ai-causal-orders.js.log",
+      "bytes": 141,
+      "sha256": "91828dc2685d7395a15c305151f677d35b694b880ffc2c73b56e8b30d6bf5a4e"
+    },
+    {
+      "source": "/tmp/v18-guard-ability-correction/test-engine-ai-priority.js.log",
+      "path": "docs/evidence/human-like-ai-attended-guard/corrected-ability-choice/test-engine-ai-priority.js.log",
+      "bytes": 98,
+      "sha256": "167ef11e79a0ff216791b3cb634188cce210239974c69814fcfe161f6fb37331"
+    },
+    {
+      "source": "/tmp/ai-v18-root-guard-corrected-checks/result.json",
+      "path": "docs/evidence/human-like-ai-attended-guard/corrected-ability-choice/root-result.json",
+      "bytes": 1711,
+      "sha256": "af5e8d1d4126472e69df35addbe87e11ece253adb5df912bd9507a03353f0760"
+    },
+    {
+      "source": "/tmp/ai-v18-root-guard-corrected-checks/test-engine-ai-attended-guard.js.log",
+      "path": "docs/evidence/human-like-ai-attended-guard/corrected-ability-choice/root-test-engine-ai-attended-guard.js.log",
+      "bytes": 138,
+      "sha256": "cf5596b209afd99b0ca59d9dee7457f55ef325e9fc6e68762513f48812e1c8d2"
+    },
+    {
+      "source": "/tmp/ai-v18-root-guard-corrected-checks/test-engine-ai-causal-orders.js.log",
+      "path": "docs/evidence/human-like-ai-attended-guard/corrected-ability-choice/root-test-engine-ai-causal-orders.js.log",
+      "bytes": 141,
+      "sha256": "91828dc2685d7395a15c305151f677d35b694b880ffc2c73b56e8b30d6bf5a4e"
+    },
+    {
+      "source": "/tmp/ai-v18-root-guard-corrected-checks/test-engine-ai-guard-ability-choice.js.log",
+      "path": "docs/evidence/human-like-ai-attended-guard/corrected-ability-choice/root-test-engine-ai-guard-ability-choice.js.log",
+      "bytes": 151,
+      "sha256": "e8abf265d700f3cbc529968fb8d99ef350e7059c526aaea521905ec5f9a43202"
+    },
+    {
+      "source": "/tmp/ai-v18-root-guard-corrected-checks/test-engine-ai-priority.js.log",
+      "path": "docs/evidence/human-like-ai-attended-guard/corrected-ability-choice/root-test-engine-ai-priority.js.log",
+      "bytes": 98,
+      "sha256": "167ef11e79a0ff216791b3cb634188cce210239974c69814fcfe161f6fb37331"
+    },
+    {
+      "source": "/tmp/ai-v18-root-guard-corrected-checks/test-engine-ai-tactical-reaction.js.log",
+      "path": "docs/evidence/human-like-ai-attended-guard/corrected-ability-choice/root-test-engine-ai-tactical-reaction.js.log",
+      "bytes": 99,
+      "sha256": "ed84f1135c8c1d8816978c5ba892f2bef0645c16e51e953bf5649da82622e32b"
+    },
+    {
+      "source": "/home/judiazm/.t3/worktrees/ww2-rts/ai-human-commander/shared/ai.js",
+      "path": "docs/evidence/human-like-ai-attended-guard/corrected-ability-choice/root-ai.js",
+      "bytes": 85468,
+      "sha256": "ba501eb77b3ec2e5e772314889de8a8bc919cc9f9c405b55ba555728c2eb975c"
+    },
+    {
+      "source": "/tmp/v18-guard-ability-correction/before/shared/ai.js",
+      "path": "docs/evidence/human-like-ai-attended-guard/corrected-ability-choice/before-ai.js",
+      "bytes": 85080,
+      "sha256": "7a465adf01c2a2ada277ff95f92d3a9d099184509b67ec07eda980c8f79a6678"
+    }
+  ]
+}

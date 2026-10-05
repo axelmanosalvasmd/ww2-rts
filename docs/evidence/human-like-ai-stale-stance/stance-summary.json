@@ -1,0 +1,188 @@
+{
+  "baseline": {
+    "physicalInputs": 18,
+    "required": 2,
+    "first": {
+      "required": 2,
+      "answered": 2,
+      "censored": 0,
+      "survival": {
+        "samples": 2,
+        "observed": 2,
+        "censored": 0,
+        "medianSeconds": 0.55,
+        "medianIdentifiable": true,
+        "curve": [
+          {
+            "seconds": 0.55,
+            "atRisk": 2,
+            "observed": 1,
+            "censored": 0,
+            "survival": 0.5
+          },
+          {
+            "seconds": 2.8,
+            "atRisk": 1,
+            "observed": 1,
+            "censored": 0,
+            "survival": 0
+          }
+        ],
+        "method": "Kaplan-Meier survival with completed responses counted before censoring at tied times. Recording-end censoring assumes no informative loss of follow-up. A null median means the observed curve did not reach 0.5."
+      }
+    },
+    "accepted": {
+      "required": 2,
+      "answered": 2,
+      "censored": 0,
+      "survival": {
+        "samples": 2,
+        "observed": 2,
+        "censored": 0,
+        "medianSeconds": 0.65,
+        "medianIdentifiable": true,
+        "curve": [
+          {
+            "seconds": 0.65,
+            "atRisk": 2,
+            "observed": 1,
+            "censored": 0,
+            "survival": 0.5
+          },
+          {
+            "seconds": 3.25,
+            "atRisk": 1,
+            "observed": 1,
+            "censored": 0,
+            "survival": 0
+          }
+        ],
+        "method": "Kaplan-Meier survival with completed responses counted before censoring at tied times. Recording-end censoring assumes no informative loss of follow-up. A null median means the observed curve did not reach 0.5."
+      }
+    },
+    "audit": {
+      "missingCreationProofs": 0,
+      "inconsistentClassifications": 0,
+      "declared": 4,
+      "valid": 4,
+      "futureOrStale": 0,
+      "descriptorMismatch": 0,
+      "unknownCreation": 0,
+      "unrelatedCommand": 0,
+      "missingOperationProof": 0,
+      "invalidNativeReceipt": 0,
+      "belowReactionFloor": 0
+    },
+    "rows": [
+      {
+        "id": "observed-screen:1:1",
+        "tick": 1,
+        "answer": {
+          "firstActionTick": 57,
+          "acceptedCommandTick": 66
+        }
+      },
+      {
+        "id": "observed-screen:70:2",
+        "tick": 70,
+        "answer": {
+          "firstActionTick": 81,
+          "acceptedCommandTick": 83
+        }
+      }
+    ]
+  },
+  "candidate": {
+    "physicalInputs": 14,
+    "required": 2,
+    "first": {
+      "required": 2,
+      "answered": 2,
+      "censored": 0,
+      "survival": {
+        "samples": 2,
+        "observed": 2,
+        "censored": 0,
+        "medianSeconds": 0.55,
+        "medianIdentifiable": true,
+        "curve": [
+          {
+            "seconds": 0.55,
+            "atRisk": 2,
+            "observed": 1,
+            "censored": 0,
+            "survival": 0.5
+          },
+          {
+            "seconds": 2.8,
+            "atRisk": 1,
+            "observed": 1,
+            "censored": 0,
+            "survival": 0
+          }
+        ],
+        "method": "Kaplan-Meier survival with completed responses counted before censoring at tied times. Recording-end censoring assumes no informative loss of follow-up. A null median means the observed curve did not reach 0.5."
+      }
+    },
+    "accepted": {
+      "required": 2,
+      "answered": 2,
+      "censored": 0,
+      "survival": {
+        "samples": 2,
+        "observed": 2,
+        "censored": 0,
+        "medianSeconds": 0.65,
+        "medianIdentifiable": true,
+        "curve": [
+          {
+            "seconds": 0.65,
+            "atRisk": 2,
+            "observed": 1,
+            "censored": 0,
+            "survival": 0.5
+          },
+          {
+            "seconds": 3.25,
+            "atRisk": 1,
+            "observed": 1,
+            "censored": 0,
+            "survival": 0
+          }
+        ],
+        "method": "Kaplan-Meier survival with completed responses counted before censoring at tied times. Recording-end censoring assumes no informative loss of follow-up. A null median means the observed curve did not reach 0.5."
+      }
+    },
+    "audit": {
+      "missingCreationProofs": 0,
+      "inconsistentClassifications": 0,
+      "declared": 4,
+      "valid": 4,
+      "futureOrStale": 0,
+      "descriptorMismatch": 0,
+      "unknownCreation": 0,
+      "unrelatedCommand": 0,
+      "missingOperationProof": 0,
+      "invalidNativeReceipt": 0,
+      "belowReactionFloor": 0
+    },
+    "rows": [
+      {
+        "id": "observed-screen:1:1",
+        "tick": 1,
+        "answer": {
+          "firstActionTick": 57,
+          "acceptedCommandTick": 66
+        }
+      },
+      {
+        "id": "observed-screen:70:2",
+        "tick": 70,
+        "answer": {
+          "firstActionTick": 81,
+          "acceptedCommandTick": 83
+        }
+      }
+    ]
+  }
+}

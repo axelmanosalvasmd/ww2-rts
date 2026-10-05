@@ -1,0 +1,47 @@
+{
+  "originals": [
+    {
+      "member": "native-full-raw.json",
+      "originalPath": "/tmp/human-ai-r8-slips-root/native-full-raw.json",
+      "bytes": 7446204,
+      "sha256": "2c5b3ff1e352bbcd4fc7c3927256385002cffc9468a1bae8b6cba713731a23cc"
+    },
+    {
+      "member": "native.log",
+      "originalPath": "/tmp/human-ai-r8-slips-root/native.log",
+      "bytes": 136,
+      "sha256": "0af03b49f9284332a0390316739fa07a9d1d00ac979abdd8d04ac2daa992139b"
+    },
+    {
+      "member": "package.json",
+      "originalPath": "/tmp/human-ai-r8-slips-root/package.json",
+      "bytes": 211,
+      "sha256": "38b34423b2e37b851381576f5dd67d9103d951ab7c7ddcf5cacb4112507b34db"
+    },
+    {
+      "member": "receipt.json",
+      "originalPath": "/tmp/human-ai-r8-slips-root/receipt.json",
+      "bytes": 329,
+      "sha256": "98f49218383d59afe68c8ed82d602ed0ccc190a1c2bc93e8dfbf19fd8a87d74d"
+    },
+    {
+      "member": "source-after.json",
+      "originalPath": "/tmp/human-ai-r8-slips-root/source-after.json",
+      "bytes": 47173,
+      "sha256": "8fe318365486df84ec8053582db76b68e3198a459a1f1fb38e1f7d14c36fc527"
+    },
+    {
+      "member": "source-before.json",
+      "originalPath": "/tmp/human-ai-r8-slips-root/source-before.json",
+      "bytes": 47173,
+      "sha256": "8fe318365486df84ec8053582db76b68e3198a459a1f1fb38e1f7d14c36fc527"
+    },
+    {
+      "member": "test-engine-ai-human-slips.js",
+      "originalPath": "/tmp/human-ai-r8-slips-root/test-engine-ai-human-slips.js",
+      "bytes": 9830,
+      "sha256": "273c268a3f93ec1f8776bdf642d61cfb45e9fb095a16aa3d363eef7b8bee359f"
+    }
+  ],
+  "archiveSHA256": "c4a65f32aa6024783c3ce0028442709ed3555c99f013acc26f9378d38fa15d8d"
+}

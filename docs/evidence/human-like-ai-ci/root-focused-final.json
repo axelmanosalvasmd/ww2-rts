@@ -1,0 +1,39 @@
+{
+  "checkedAtUnix": 1791125250.3733785,
+  "source": {
+    "shared/ai.js": "1e601a848c53b1d31493d3fff18648ead11721d5c4a389a50ea1a14aa691a2e0",
+    "shared/ai-hands.js": "69eb15070dbf3e3839f4a264bc24d5010033f6d745bc1cf53ba285fc362323d6",
+    "test.js": "a27282b08ec66cf9aa53a5f7b2d0b8d4eed7e412105457a2eb081361ec941513",
+    ".github/workflows/tests.yml": "58ba255851f04115fbc20e255a6e5863487f055b33983ce1c499216763d057a0"
+  },
+  "focusedLogs": {
+    "r5-root-engineer-shortage.log": {
+      "source": "/tmp/r5-root-engineer-shortage.log",
+      "sha256": "708124c77d8f792cb64016ebcb4a9a45ae8c327c1e5950b9e9e60724722a3541",
+      "bytes": 96
+    },
+    "r5-root-formation-selection.log": {
+      "source": "/tmp/r5-root-formation-selection.log",
+      "sha256": "48924dfe165dc9ce52bba227b721371f4b3213baef5090ed47df81dda95749bf",
+      "bytes": 142
+    },
+    "r5-root-pointer-final.log": {
+      "source": "/tmp/r5-root-pointer-final.log",
+      "sha256": "762572a0671b8eecc82b4eff27f27dd121642eb10706ad764f6beab4f4324a93",
+      "bytes": 1145
+    },
+    "r5-root-hands-final.log": {
+      "source": "/tmp/r5-root-hands-final.log",
+      "sha256": "9cd01eb1d7cbf22bbf205c6e2556491c73fddd8cf15d6658a496aad4605e51de",
+      "bytes": 108
+    },
+    "r5-root-human-final.log": {
+      "source": "/tmp/r5-root-human-final.log",
+      "sha256": "b515323b485354e9d60b11884ceb3072ec01da9925b099bc932067412ef35df0",
+      "bytes": 413
+    }
+  },
+  "actionlint": "Default actionlint including installed ShellCheck exits 0",
+  "diffCheck": "git diff --check exits 0",
+  "qualification": "Focused root verification on combined source, full suite and release campaigns pending"
+}

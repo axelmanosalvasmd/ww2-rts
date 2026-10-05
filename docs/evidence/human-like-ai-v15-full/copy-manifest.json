@@ -1,0 +1,54 @@
+{
+  "copies": [
+    {
+      "source": "/tmp/human-ai-v15-full-verification.json",
+      "file": "human-ai-v15-full-verification.json",
+      "bytes": 930,
+      "sha256": "bc56530aba113f27c74adb42ef5402b365346d560f858e3aa227077e8104c1b0"
+    },
+    {
+      "source": "/tmp/ai-v15-full-before.json",
+      "file": "ai-v15-full-before.json",
+      "bytes": 86512,
+      "sha256": "f2a118140ee11e43e7cec9d91ee0e8e69bab35a436abb4a6046f661f95e7519a"
+    },
+    {
+      "source": "/tmp/ai-v15-full-after.json",
+      "file": "ai-v15-full-after.json",
+      "bytes": 85910,
+      "sha256": "b5401112b40b5a8566845b71c19db7f29c6a876ff9ec73abbc095989305606a2"
+    },
+    {
+      "source": "/tmp/human-ai-v15-full-predeclared.json",
+      "file": "human-ai-v15-full-predeclared.json",
+      "bytes": 2757,
+      "sha256": "e08c77c2050134763be7e45d632c30c1283493adb00a87fede6261f5d0e1a0ea"
+    },
+    {
+      "source": "/tmp/human-ai-v15-full-launch.json",
+      "file": "human-ai-v15-full-launch.json",
+      "bytes": 369,
+      "sha256": "ff82a4d1266ff701e7a7fcb9581316ffabc39a8a27b66b70676103cfd791a317"
+    },
+    {
+      "source": "/tmp/human-ai-v15-full-test.log",
+      "file": "human-ai-v15-full-test.log",
+      "bytes": 5588,
+      "sha256": "7c08d99e29f59d741be1ff82cf62ae11156032d6cdbb3fb39d080dab1e5b6a11"
+    },
+    {
+      "source": "/tmp/human-ai-v15-full-test.exit",
+      "file": "human-ai-v15-full-test.exit",
+      "bytes": 12,
+      "sha256": "0aac2256ca135e9e2ce682d26e680d8ec767e0c2897215d636113386fbc768af"
+    },
+    {
+      "source": "/tmp/human-ai-v15-full-finalize.py",
+      "file": "human-ai-v15-full-finalize.py",
+      "bytes": 11259,
+      "sha256": "59dff26bb9862cc36bce2815209a9c47c05c8daa12d051dc016c6a851dbd82be"
+    }
+  ],
+  "bytes": 193337,
+  "exactByteCopies": true
+}

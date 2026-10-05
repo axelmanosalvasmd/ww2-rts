@@ -1,0 +1,30 @@
+{
+  "workflowSHA256": "58ba255851f04115fbc20e255a6e5863487f055b33983ce1c499216763d057a0",
+  "node": "v24.21.0",
+  "actionlintWithShellCheckExit": 0,
+  "records": [
+    {
+      "intentionalAssertionFailure": false,
+      "exit": 0,
+      "logsPreserved": true,
+      "unchangedSourcesPass": true
+    },
+    {
+      "intentionalAssertionFailure": true,
+      "exit": 1,
+      "logsPreserved": true,
+      "unchangedSourcesPass": true
+    },
+    {
+      "changedSourceExit": 1,
+      "diffPreserved": true
+    },
+    {
+      "actualWorldChecksExit": 0,
+      "log": "world-edge water and server fog checks passed\n"
+    }
+  ],
+  "temporaryArtifacts": "/tmp/ww2-ci-root-r780yl3g",
+  "fullSuite": "pending",
+  "remoteActions": "pending"
+}

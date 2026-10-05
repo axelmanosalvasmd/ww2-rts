@@ -1,0 +1,77 @@
+{
+  "allOriginalBytesAndHashesMatch": true,
+  "files": [
+    {
+      "path": "README.txt",
+      "bytes": 1375,
+      "sha256": "db27fe330e6efd396e61b1fe8167568cc074eec887c291bc498bbf60f2bd7248",
+      "original": "/tmp/human-ai-v21-room-lifecycle/README.txt"
+    },
+    {
+      "path": "proof.json",
+      "bytes": 1286,
+      "sha256": "78992c44c964103d1d4bf1cea7bd4fd7f180b734cfc520a5daea4ae6dc157d32",
+      "original": "/tmp/human-ai-v21-room-lifecycle/proof.json"
+    },
+    {
+      "path": "room-lifecycle-delivery.patch",
+      "bytes": 1748,
+      "sha256": "b792fa15cba28abea2ef4cfc07957fca42ed6e60a9590be6b659ae30615b16d1",
+      "original": "/tmp/human-ai-v21-room-lifecycle/room-lifecycle-delivery.patch"
+    },
+    {
+      "path": "original.mjs",
+      "bytes": 22230,
+      "sha256": "e0e1097156abe656941bc881d0738da9b4bae0a3245297374e7c12b5d4820914",
+      "original": "/tmp/human-ai-v21-room-lifecycle/original.mjs"
+    },
+    {
+      "path": "candidate.mjs",
+      "bytes": 22704,
+      "sha256": "6ab269c0fc83bb2611e11b51709634be9a276743e4aaf15ababc9e329a1ebb24",
+      "original": "/tmp/human-ai-v21-room-lifecycle/candidate.mjs"
+    },
+    {
+      "path": "original-delayed.mjs",
+      "bytes": 22669,
+      "sha256": "3dc61a359ca719b9c9d292249d49a23fe2f61c3ee31afe25cc3f673163f5e244",
+      "original": "/tmp/human-ai-v21-room-lifecycle/original-delayed.mjs"
+    },
+    {
+      "path": "candidate-delayed.mjs",
+      "bytes": 23425,
+      "sha256": "9b94d03e31ec6786bcac54ba6fd3519546a808f81c2140899c2c0ba1dc0409ce",
+      "original": "/tmp/human-ai-v21-room-lifecycle/candidate-delayed.mjs"
+    },
+    {
+      "path": "original.log",
+      "bytes": 66,
+      "sha256": "1c936089bf1a78535721a9ecac2634ab30b3f14cba6759695719918ea03e556b",
+      "original": "/tmp/human-ai-v21-room-lifecycle/original.log"
+    },
+    {
+      "path": "candidate.log",
+      "bytes": 66,
+      "sha256": "1c936089bf1a78535721a9ecac2634ab30b3f14cba6759695719918ea03e556b",
+      "original": "/tmp/human-ai-v21-room-lifecycle/candidate.log"
+    },
+    {
+      "path": "original-delayed.log",
+      "bytes": 789,
+      "sha256": "4c6f817acef310fa753c0d7d9d0358e4ff1cde185d7997122191e0965cdc5e7f",
+      "original": "/tmp/human-ai-v21-room-lifecycle/original-delayed.log"
+    },
+    {
+      "path": "candidate-delayed.log",
+      "bytes": 172,
+      "sha256": "79e77d8af14cfde2e873ca842ea27a70859617f41046dea11325ca1a9fae4b60",
+      "original": "/tmp/human-ai-v21-room-lifecycle/candidate-delayed.log"
+    },
+    {
+      "path": "test.js.candidate",
+      "bytes": 593700,
+      "sha256": "f1796360ac21c6b9f446d4c571d6413693898a4da039841873389dd707867c22",
+      "original": "/tmp/human-ai-v21-room-lifecycle/test.js.candidate"
+    }
+  ]
+}

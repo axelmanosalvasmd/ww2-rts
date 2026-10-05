@@ -1,0 +1,14 @@
+{
+  "status": "PASS",
+  "qualification": "Copy integrity only. Retained source-specific results are not new checks or acceptance.",
+  "archive": "r8-inspection-fixed-full-pass.tar.gz",
+  "archiveBytes": 1156695,
+  "archiveSHA256": "6f1e19b63683af27dae807e3176b5ca9206bec05788ba1c8e93622ba14a5367a",
+  "members": 145,
+  "originals": 142,
+  "originalCopiedBytes": 4499594,
+  "payloadBytes": 4558722,
+  "allOriginalBytesUnchanged": true,
+  "allRoundtripBytesMatch": true,
+  "manifestSHA256": "f7efc0a314f3e684d27ff17574db6f4f2d94422a531209eb4f9470ce9d2a5da0"
+}

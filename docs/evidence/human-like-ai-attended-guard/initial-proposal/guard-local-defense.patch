@@ -1,0 +1,22 @@
+--- a/shared/ai.js
++++ b/shared/ai.js
+@@ -730,12 +730,17 @@
+   // that fell back to a Barracks away from the HQ used to head out again half empty)
+   const bases = classic ? [...view.units.values()].filter(b => UNITS[b.type].produces && b.built >= 1 && b.hp > 0 && allied(view, b.owner, slot)) : null;
+   const atBase = (u) => (bases ? bases.some(b => d(u, b) <= CFG.reinforceRadius) : d(u, me.spawn) <= CFG.reinforceRadius);
+-  const idleCombat = (u) => armedContactActor(u) && !u.air && !u.retreating && !busy.has(u.id) && !movementReserved.has(u.id) && !UNITS[u.type].medic && !u.path.length && !u.attackId && !u.targetId && !u.dig && !u.entrench && u.enter < 0 && u.fireAt < 0;
++  // An objective reservation blocks new marches, while an actually idle guard can address its attended local contact.
++  const attendedDefender = u => opts.human && attendedContact?.observedDanger?.idleOwnUnits?.includes(u.id)
++    && sit?.threatId === attendedContact.targetId && d(u, sit.at) <= 45
++    && u.garrison < 0 && u.cover !== 2 && !u.holdPos && !u.nade && !u.build && !u.orders.length && !u.amove;
++  const idleCombat = (u, localDefense = false) => armedContactActor(u) && !u.air && !u.retreating && !busy.has(u.id)
++    && (!movementReserved.has(u.id) || localDefense && attendedDefender(u)) && !UNITS[u.type].medic && !u.path.length && !u.attackId && !u.targetId && !u.dig && !u.entrench && u.enter < 0 && u.fireAt < 0;
+   const baseReady = opts.human ? mine.filter(u => idleCombat(u) && !u.nade && !u.build && u.garrison < 0 && worth(u) >= UNITS[u.type].cost * 0.65) : mine;
+   // A watched threat on ground we hold: idle squads go there, and the attack loop will not open another objective.
+   if (mindful && sit?.kind === 'defense' && sit.at) {
+     for (const u of mine) {
+-      if (!idleCombat(u) || hurt(u)) continue;
++      if (!idleCombat(u, true) || hurt(u)) continue;
+       if (!takeHand()) break;
+       assault_.push([u.id, sit.at.x, sit.at.z]);
+       arm(u);

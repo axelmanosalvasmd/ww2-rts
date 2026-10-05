@@ -1,0 +1,79 @@
+{
+  "unchangedHistoryThrough": 937,
+  "firstChangedPolicyTick": 937,
+  "firstDifferentMotorInputTick": 965,
+  "checkpointTick": 1594,
+  "baselinePauses": [
+    [
+      1595,
+      1625
+    ],
+    [
+      1625,
+      1655
+    ]
+  ],
+  "candidatePause": [
+    1595,
+    1625
+  ],
+  "actualCommand": {
+    "tick": 1643,
+    "command": {
+      "t": "amove",
+      "orders": [
+        [
+          14,
+          114.891279539957,
+          61.096845681989635
+        ]
+      ],
+      "together": true
+    },
+    "accepted": true,
+    "result": null
+  },
+  "nativePathAtCommand": 3,
+  "selectedBeforeScene": [
+    14
+  ],
+  "publicConcern": {
+    "id": "stimulus:observed-screen:1585:19",
+    "kind": "combat",
+    "x": 115,
+    "z": 61.4,
+    "urgency": 92,
+    "event": "screen-contact",
+    "eventId": "observed-screen:1585:19",
+    "eventTick": 1585,
+    "eventOnScreen": true,
+    "observedDanger": {
+      "nearbyOwnUnits": [
+        14
+      ],
+      "idleOwnUnits": [
+        14
+      ]
+    },
+    "targetId": 8,
+    "score": 86.27457244927064,
+    "rememberedAt": 1585,
+    "since": 1585,
+    "until": 1667,
+    "slipped": true
+  },
+  "actor14": {
+    "id": 14,
+    "x": 82.79317164652024,
+    "z": 83.08945831341373,
+    "hp": 88.99999999999999,
+    "path": 0
+  },
+  "camera": {
+    "x": 106.17816352692006,
+    "z": 70.2415633725051,
+    "yaw": 1.035376784858271,
+    "distance": 60
+  },
+  "initialDecisionsEquivalent": 192
+}

@@ -1,0 +1,58 @@
+{
+  "status": "PASS",
+  "sourceArchives": {
+    "original": {
+      "verifiedFiles": 42,
+      "sha256": "429f97f2de81a8e04f5e7685adb79b6dfeb30761228cb77ccbf8f92deb68f072",
+      "root": "./"
+    },
+    "saving": {
+      "verifiedFiles": 42,
+      "sha256": "580136394ae5497f02d18a91d28c64ca22b6c5ca965031b3234dbb079488593f",
+      "root": "./"
+    },
+    "saving-receipt": {
+      "verifiedFiles": 42,
+      "sha256": "80d3af5035c9e8c99f8bb65c7fcd958b2d8b24c166d1bd54c437601d89d92a78",
+      "root": "source/"
+    }
+  },
+  "fullReports": {
+    "original": {
+      "matches": 60,
+      "seats": 180,
+      "sourceCheckpoints": [
+        "929d88cdc61bc383ac1e1affdee096942c04100684ab1a94f79489bbedc7b22e"
+      ],
+      "gzipSHA256": "0675afa224139a41c67d71232b7a7eac38bfdacbaeed5d79a37ab15bf307ff99",
+      "rawSHA256": "5d901f52be7b3f4060e820db28419a8f4b78405f5f8dfa0b131cd8809e72321a",
+      "rawBytes": 41499017,
+      "nativeInputs": 5239,
+      "nativeCommands": 1989
+    },
+    "saving": {
+      "matches": 60,
+      "seats": 180,
+      "sourceCheckpoints": [
+        "4a8a9959543354ee5c8c04b1a9e06e58b3197cebb63b2cfbfd9e1288ab0122af"
+      ],
+      "gzipSHA256": "405d3c9bd9f2ef19eb3e617282e04177bd64e511892f086b0477c0185510c24c",
+      "rawSHA256": "ad6099ee68ec87c02aeceb9ba369b3e5d748da0324c2721b756489b62fa2009b",
+      "rawBytes": 38259168,
+      "nativeInputs": 4929,
+      "nativeCommands": 1846
+    },
+    "saving-receipt": {
+      "matches": 60,
+      "seats": 180,
+      "sourceCheckpoints": [
+        "52145bdf1ac8ad58a30b411cae278d28c74d95b83feb8ef769dafb71aa05a57d"
+      ],
+      "gzipSHA256": "2bc11a29531c285171cc1804fb7783c180f10acb5f90db9cf635b9142f67517c",
+      "rawSHA256": "30f631312ffde4d1adad83e8c6437e9159949e856b19fe7d18d10d70aad68a8c",
+      "rawBytes": 38394288,
+      "nativeInputs": 4874,
+      "nativeCommands": 1812
+    }
+  }
+}

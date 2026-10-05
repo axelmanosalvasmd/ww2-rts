@@ -1,0 +1,22 @@
+--- a/shared/sim.js
++++ b/shared/sim.js
+@@ -3388,11 +3388,14 @@
+   }
+   const bw = (w >> FOG_BLOCK) + 1, blocks = bw * ((h >> FOG_BLOCK) + 1), top = new Int8Array(blocks).fill(CFG.minLevel);
+   const height = g.height?.slice() ?? null, stamp = old?.stamp ?? new Uint32Array(blocks);
+-  for (let c = 0; c < n; c++) {
+-    const b = (Math.floor(c / w) >> FOG_BLOCK) * bw + ((c % w) >> FOG_BLOCK), level = height ? height[c] : 0;
+-    if (level > top[b]) top[b] = level;
+-    // the blocks where sight changed: sources looking over them work their cells out again
+-    if (old && (sight[c] !== old.sight[c] || level !== (old.height ? old.height[c] : 0))) stamp[b] = version;
++  for (let y = 0, c = 0; y < h; y++) {
++    const row = (y >> FOG_BLOCK) * bw;
++    for (let x = 0; x < w; x++, c++) {
++      const b = row + (x >> FOG_BLOCK), level = height ? height[c] : 0;
++      if (level > top[b]) top[b] = level;
++      // the blocks where sight changed: sources looking over them work their cells out again
++      if (old && (sight[c] !== old.sight[c] || level !== (old.height ? old.height[c] : 0))) stamp[b] = version;
++    }
+   }
+   return (g.fogTerrain = { version, sat, W, top, bw, sight, height, stamp });
+ }

@@ -1,0 +1,25 @@
+{
+  "rootSimSHA256": "5bedd607250c8171ed053e6200a643ce7f57a55c2549e0b515d80fcdffac832b",
+  "baselineSimSHA256": "5bedd607250c8171ed053e6200a643ce7f57a55c2549e0b515d80fcdffac832b",
+  "candidateSimSHA256": "7bc57ac179b4982bdb94b469ce029e2e2178567fcb23fa1756476a17f791f018",
+  "originalTestSHA256": "dddd8d5a9c0d777b1cdf2818497dcbc4be589b062a0e01a805a66588987fbf83",
+  "candidateTestSHA256": "ddb8cda913973f01c694d3bb7b94da0128c81ce068447851d065685f0efe54b6",
+  "patchSHA256": "83077ee37a967280b2ecdf3a422ad1b9bc08d87104aa9b666bc5ff2069c78731",
+  "originalAssertionsPreserved": true,
+  "sourceBoundNativeEquivalence": "/tmp/v16-region-redundancy-native-equivalence.json",
+  "cases": 6,
+  "postVerificationRootUnchanged": "PASS",
+  "candidateAndBaselineFocusedSuite": "PASS",
+  "focusedRawEquivalenceRows": 12,
+  "independentStaleAndSparseMutants": "PASS",
+  "evidenceFiles": {
+    "/tmp/v16-region-permanent-fixture-equivalence.mjs": "9f58ee68c36f367362562b2fd8c6970928f4816370556669587e4431920978ea",
+    "/tmp/v16-region-permanent-fixture-equivalence.json": "edd3839700ee2e0cf9d7f60774f335bb1bebb08730b95b9ed92d4f69b6cd1faf",
+    "/tmp/v16-region-permanent-mutant-negative.json": "04404d17f2576bed6d664c1b6fb01489f01b744398cf35bba03eb80a3c58cb6e",
+    "/tmp/v16-region-permanent-candidate-test.log": "ca19f833297a92e4356b0af132f8a10a986fad9a3c256f0ea9a2d5438beeaaab",
+    "/tmp/v16-region-permanent-baseline-test.log": "f18a47d7b83e1ff1ef6ad9794268152ccd25d90694a14f89d9f18491d1dfc712",
+    "/tmp/v16-region-redundancy-native-equivalence.mjs": "d6ba9e1f19f1be7b7b7273eecf9ee4360ae8070a1ab2cc83ba88f0d623915887",
+    "/tmp/v16-region-redundancy-native-equivalence.json": "ea65de968d918d3d5cc83d1b7e0cd011c7f6c35230e7bc85bf0105b72a403598",
+    "/tmp/v16-region-redundancy-source-manifest.json": "4ad517a1f867f65080a73259bb827cf6ec97a8d139404aae82562cde5e7f97d6"
+  }
+}

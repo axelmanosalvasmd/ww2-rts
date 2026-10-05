@@ -1,0 +1,27 @@
+{
+  "at": "2026-10-04T19:21:54.090417+00:00",
+  "sources": {
+    "shared/ai.js": "ba501eb77b3ec2e5e772314889de8a8bc919cc9f9c405b55ba555728c2eb975c",
+    "shared/ai-commander.js": "19112a1e4c94da72d62564d940497d38cf7e93e3086c9bde3db9c29d088703df",
+    "shared/ai-perception.js": "50e611a932728940c5047a61bf4fd7554c696f93880d7907a952d8b39fdcf3fd",
+    "tools/ai-humanity.mjs": "4f695ecb3d2f7f19597150bae3ebd8a4fe721a1c8e90d92e0542898b1a47bdd0",
+    "tools/ai-screen-v1-oracle.js": "6b3894b551f3bf9151372b048b2efc77ffc86a6a173d0871278b27417358b398",
+    "test.js": "42c6b941ebd7defbf90dda152b072ca7cff9d39d6ef42954c5017aa4973f421c",
+    "test-engine-ai-measurement-streams.js": "1ab914ccaba8e3786d04c154489639bc1d9eee2e2a128cef54749b7a81a566e1",
+    "test-engine-ai-measurement-start.js": "79c2c1938af527f071d2d10b0b5ab9c307264418bd5e87027ea838c68a5d29ef"
+  },
+  "tests": [
+    {
+      "test": "test-engine-ai-measurement-streams.js",
+      "exit": 0,
+      "sha256": "af039e45c4c8e5c97ac07027566520181e0e4c218acb549ad8f5ec3b1820ffcd",
+      "bytes": 141
+    },
+    {
+      "test": "test-engine-ai-measurement-start.js",
+      "exit": 0,
+      "sha256": "89d9a031bbacc343a13b1483faa7183afe94af040a77e63b45d756fe06178cf7",
+      "bytes": 82
+    }
+  ]
+}

@@ -10,7 +10,7 @@ import { createGame, step, command, snapshotFor, snapshotCache, unitDelta, terra
 import { generateWorldMap } from './shared/world-conquest.js';
 import { mapForClient } from './shared/world-layers.js';
 import { WEATHER_CHOICES, weatherRow } from './shared/weather.js';
-import { think, observe, resetAI, thinkEvery, aiDiagnostics, AI_LEVEL_NAMES } from './shared/ai.js';
+import { think, observe, startCommander, resetAI, thinkEvery, aiDiagnostics, AI_LEVEL_NAMES } from './shared/ai.js';
 import { spectatorHands } from './client/ai-overlay.js';
 import { createLocalHumanRecorder } from './shared/human-input.js';
 import { mapPing } from './server/map-pings.js';
@@ -287,7 +287,7 @@ async function startMatch(room) {
   }
   if (room.starting !== starting || room.state !== 'play') return;
   if (room.mode === 'horde' && !map.defend?.length) {
-    Object.assign(room, previous);
+    Object.assign(room, previous); room.starting = null;
     for (const p of room.players) if (!connected(p)) autoPause(room, p);
     lobby(room); return;
   }
@@ -308,15 +308,20 @@ async function startMatch(room) {
   room.snapEvery = 2; room.tickMeter = createTickMeter({ now: Date.now() });
   room.map = map;
   room.game = game;
-  const startView = snapshotCache(room.game), startSeats = [...room.players.keys()].filter(i => room.players[i].ai);
+  const startView = room.game.mode?.kind === 'horde' ? snapshotCache(room.game) : null, startSeats = [...room.players.keys()].filter(i => room.players[i].ai);
   if (room.game.mode?.kind === 'horde') startSeats.push(room.game.mode.slot); // the horde plays by the same view rules
   room.aiViews = [];
-  for (const i of startSeats) room.aiViews[i] = observe(room.game, i, startView);
+  for (const i of startSeats) if (room.game.mode?.kind === 'horde' && room.game.mode.slot === i) room.aiViews[i] = observe(room.game, i, startView);
   // lobby() reads the map list first, so wait for it: everyone gets the lobby (playing, no old result) before the start
   await lobby(room);
   if (room.game !== game) return; // ended or restarted meanwhile
   room.players.forEach((_, i) => sendStart(room, i));
   room.spectators.forEach(s => sendStart(room, 0, s));
+  const aiStartAt = process.hrtime.bigint();
+  for (const i of room.players.keys()) if (room.players[i].ai && !(game.mode?.kind === 'horde' && game.mode.slot === i))
+    startCommander(game, i, { w: game.w, h: game.h, spawn: game.players[i].spawn, level: room.players[i]?.level, seed: game.matchSeed ?? game.seed }, { calibration: aiCalibration });
+  room.aiStartMilliseconds = Number(process.hrtime.bigint() - aiStartAt) / 1e6;
+  room.starting = null; // snapshots and commands begin only after every start is queued
 }
 
 // watcher: a spectator, who gets seat i's start without a fog mask (the client then hides nothing)
@@ -479,7 +484,7 @@ wss.on('connection', (ws, req) => {
     const slot = room.players.indexOf(me), seated = slot >= 0, host = isHost(room, me);
     if (me.ws !== ws || (!seated && !room.spectators.includes(me))) return; // a replaced socket may still be open for a moment; a freed seat has no slot
     if (msg.t === 'humanInput') {
-      if (me.humanInput && seated && !me.ai && room.state === 'play' && room.game && !room.pause && !room.game.players[slot]?.out && room.game.winner === null) {
+      if (me.humanInput && seated && !me.ai && room.state === 'play' && room.game && !room.starting && !room.pause && !room.game.players[slot]?.out && room.game.winner === null) {
         humanRecorder.input({ room: room.code, matchId: room.matchId, slot, tick: room.game.tick }, msg);
       }
       return; // This local recording channel never relays to another socket or reaches command().
@@ -556,7 +561,7 @@ wss.on('connection', (ws, req) => {
       // an AI takes over your army so the match goes on for the others; you can join the lobby again afterwards
       handToAi(room, me);
       send(ws, { t: 'left' }); ws.close();
-    } else if (seated && room.state === 'play' && room.game && !room.pause) {
+    } else if (seated && room.state === 'play' && room.game && !room.starting && !room.pause) {
       const reason = command(room.game, slot, msg);
       if (me.humanInput && !me.ai && !room.game.players[slot]?.out) humanRecorder.command({ room: room.code, matchId: room.matchId, slot, tick: room.game.tick }, msg, !reason);
       if (reason && allowDeny(me, clock.now())) send(ws, { t: 'deny', cmd: msg.t, reason });
@@ -645,8 +650,9 @@ function timedRoomTick(room) {
     }
   }
   const ended = process.hrtime.bigint(), now = Date.now();
-  room.snapEvery = recordTick(meter, { tick: Number(ended - began) / 1e6, step: Number(thinkAt - stepAt) / 1e6,
-    think: Number(snapshotAt - thinkAt) / 1e6, snapshot: Number(ended - snapshotAt) / 1e6, snapshotBuild, snapshotStringify, sent }, now);
+  const startup = room.aiStartMilliseconds ?? 0; room.aiStartMilliseconds = 0;
+  room.snapEvery = recordTick(meter, { tick: Number(ended - began) / 1e6 + startup, step: Number(thinkAt - stepAt) / 1e6,
+    think: Number(snapshotAt - thinkAt) / 1e6 + startup, snapshot: Number(ended - snapshotAt) / 1e6, snapshotBuild, snapshotStringify, sent }, now);
   if (process.env.WW2_TICKLOG === '1' && now >= meter.nextLog) {
     meter.nextLog = now + 30_000;
     const stats = tickStats(meter), costs = Object.entries(stats).map(([phase, v]) => `${phase} ${v.p50.toFixed(2)}/${v.p95.toFixed(2)} ms`).join(', ');
@@ -657,7 +663,7 @@ function timedRoomTick(room) {
 export function tickRooms() {
   for (const room of rooms.values()) {
     if (room.emptySince != null && clock.now() - room.emptySince > 60_000) { rooms.delete(room.code); continue; }
-    if (room.state !== 'play' || !room.game) continue; // game may still be loading its map
+    if (room.state !== 'play' || !room.game || room.starting) continue; // map loading and start delivery finish before ticking
     if (pauseTick(room)) continue;
     const g = room.game;
     room.players.forEach((p, i) => (g.players[i].away = !p.ws && !p.ai));

@@ -1,0 +1,44 @@
+{
+  "scope": "Existing individual authored diagnostic episodes, not reaction-population acceptance. Full first physical completion and accepted-command endpoints retained separately.",
+  "capturedDriver": [
+    {
+      "level": "easy",
+      "creationTick": 244,
+      "firstPhysicalTick": 268,
+      "acceptedTick": 272
+    },
+    {
+      "level": "normal",
+      "creationTick": 244,
+      "firstPhysicalTick": 259,
+      "acceptedTick": 262
+    },
+    {
+      "level": "hard",
+      "creationTick": 244,
+      "firstPhysicalTick": 252,
+      "acceptedTick": 255
+    }
+  ],
+  "ROOTPortableDriver": [
+    {
+      "level": "easy",
+      "creationTick": 244,
+      "firstPhysicalTick": 272,
+      "acceptedTick": 276
+    },
+    {
+      "level": "normal",
+      "creationTick": 244,
+      "firstPhysicalTick": 258,
+      "acceptedTick": 261
+    },
+    {
+      "level": "hard",
+      "creationTick": 244,
+      "firstPhysicalTick": 251,
+      "acceptedTick": 253
+    }
+  ],
+  "note": "Drivers have different setup and random-consumption paths. Both exact source-bound proofs are retained; no result replaces another."
+}

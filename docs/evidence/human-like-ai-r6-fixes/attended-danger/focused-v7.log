@@ -1,0 +1,12 @@
+file:///tmp/r6-attended-danger/after/test-engine-ai-attended-danger.js:132
+ assert.ok(issuing&&issuing.eventTick===event.tick,'physical response retains its actual immutable event creation clock');
+                                              ^
+
+TypeError: Cannot read properties of undefined (reading 'tick')
+    at nativeScene (file:///tmp/r6-attended-danger/after/test-engine-ai-attended-danger.js:132:47)
+    at file:///tmp/r6-attended-danger/after/test-engine-ai-attended-danger.js:140:15
+    at ModuleJob.run (node:internal/modules/esm/module_job:561:25)
+    at async node:internal/modules/esm/loader:647:26
+    at async asyncRunEntryPointWithESMLoader (node:internal/modules/run_main:101:5)
+
+Node.js v24.21.0

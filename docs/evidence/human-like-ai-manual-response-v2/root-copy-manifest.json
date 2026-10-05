@@ -1,0 +1,751 @@
+{
+  "classification": "Prospective rule adoption and native independence only. No numerical gate claim. Original results retained.",
+  "failedDevelopmentEvidence": "No separate failed-development logs were persisted. debug-test.js is the retained early fixture snapshot; failure text remains in the thread tool transcript. focused.log records success.",
+  "rootCopyPreparation": "First copy failed on absent original-proposal maps/default.json. Existing exclusive copies verified byte-for-byte and resumed without replacements. That proposal uses inline native fixture maps; the missing source is recorded, not invented. Integrated proposal supplies its actual default map.",
+  "missingProposedDependencies": [
+    "/tmp/human-ai-manual-response-v2/maps/default.json"
+  ],
+  "copies": [
+    {
+      "source": "/tmp/human-ai-manual-response-v2/PROTOCOL.md",
+      "target": "docs/evidence/human-like-ai-manual-response-v2/original-proposal/PROTOCOL.md",
+      "bytes": 15370,
+      "sha256": "1d7a8d82e51eef2d217d1a89ce5e225f53a457872355d46d6db69d7f845cb07c"
+    },
+    {
+      "source": "/tmp/human-ai-manual-response-v2/check-historical.mjs",
+      "target": "docs/evidence/human-like-ai-manual-response-v2/original-proposal/check-historical.mjs",
+      "bytes": 995,
+      "sha256": "418abfb71c45f4e5ae95084d3e9f46bcd0152e3156389031532ebcd1c13f63e9"
+    },
+    {
+      "source": "/tmp/human-ai-manual-response-v2/client/keys.js",
+      "target": "docs/evidence/human-like-ai-manual-response-v2/original-proposal/client/keys.js",
+      "bytes": 7361,
+      "sha256": "867e3105b7e4665f8a313c2ab46e23fc3df9407f2163fd6862bb537a01ecd276"
+    },
+    {
+      "source": "/tmp/human-ai-manual-response-v2/debug-test.js",
+      "target": "docs/evidence/human-like-ai-manual-response-v2/original-proposal/debug-test.js",
+      "bytes": 16416,
+      "sha256": "1d7ff99b74611f7812b51d4f5987de8a2ddc716a48b11a292e46c2f01bb2fa60"
+    },
+    {
+      "source": "/tmp/human-ai-manual-response-v2/focused.log",
+      "target": "docs/evidence/human-like-ai-manual-response-v2/original-proposal/focused.log",
+      "bytes": 138,
+      "sha256": "8a36b1c82cb182948c8771f9c38d88b35ce42e2a290187f8dfa9ad84ef94520b"
+    },
+    {
+      "source": "/tmp/human-ai-manual-response-v2/historical-compatibility.json",
+      "target": "docs/evidence/human-like-ai-manual-response-v2/original-proposal/historical-compatibility.json",
+      "bytes": 191,
+      "sha256": "9660ac83237fbdc081c2f97e10420374a7e05d721cb5347712af0c8faea263c0"
+    },
+    {
+      "source": "/tmp/human-ai-manual-response-v2/native-counterexamples.json",
+      "target": "docs/evidence/human-like-ai-manual-response-v2/original-proposal/native-counterexamples.json",
+      "bytes": 29471,
+      "sha256": "5d20cfd35f3c47c85f66aed2181d26a5b51b5d576b262fd137cfe2ee3e5e5977"
+    },
+    {
+      "source": "/tmp/human-ai-manual-response-v2/native-fixture-proof.json",
+      "target": "docs/evidence/human-like-ai-manual-response-v2/original-proposal/native-fixture-proof.json",
+      "bytes": 21082,
+      "sha256": "4bcdbbbc1264f7f7a369ed7ab1e6fcdbcd65013140f5accf952626373c4971ea"
+    },
+    {
+      "source": "/tmp/human-ai-manual-response-v2/package.json",
+      "target": "docs/evidence/human-like-ai-manual-response-v2/original-proposal/package.json",
+      "bytes": 211,
+      "sha256": "38b34423b2e37b851381576f5dd67d9103d951ab7c7ddcf5cacb4112507b34db"
+    },
+    {
+      "source": "/tmp/human-ai-manual-response-v2/shared/ai-attention.js",
+      "target": "docs/evidence/human-like-ai-manual-response-v2/original-proposal/shared/ai-attention.js",
+      "bytes": 27254,
+      "sha256": "2b1f22635d43a11c40715c7859520a5eb4fc862d557ee7efb09ceb89425d92b5"
+    },
+    {
+      "source": "/tmp/human-ai-manual-response-v2/shared/ai-commander.js",
+      "target": "docs/evidence/human-like-ai-manual-response-v2/original-proposal/shared/ai-commander.js",
+      "bytes": 27778,
+      "sha256": "27ea7d5b6a05c29e01c1ee1aa630d2d9e486242f364273e7ab1d863b5ae87617"
+    },
+    {
+      "source": "/tmp/human-ai-manual-response-v2/shared/ai-hands.js",
+      "target": "docs/evidence/human-like-ai-manual-response-v2/original-proposal/shared/ai-hands.js",
+      "bytes": 62704,
+      "sha256": "69eb15070dbf3e3839f4a264bc24d5010033f6d745bc1cf53ba285fc362323d6"
+    },
+    {
+      "source": "/tmp/human-ai-manual-response-v2/shared/ai-mind.js",
+      "target": "docs/evidence/human-like-ai-manual-response-v2/original-proposal/shared/ai-mind.js",
+      "bytes": 19553,
+      "sha256": "18bb411cb1d057ce8cffe0b042c21f64b71238ae157b584242df206d708e6b92"
+    },
+    {
+      "source": "/tmp/human-ai-manual-response-v2/shared/ai-perception.js",
+      "target": "docs/evidence/human-like-ai-manual-response-v2/original-proposal/shared/ai-perception.js",
+      "bytes": 34168,
+      "sha256": "75b5f4877b5c4509a762028c880b45691a7c9e8d1923a7815e026f2174d33c9c"
+    },
+    {
+      "source": "/tmp/human-ai-manual-response-v2/shared/ai-persona.js",
+      "target": "docs/evidence/human-like-ai-manual-response-v2/original-proposal/shared/ai-persona.js",
+      "bytes": 3586,
+      "sha256": "34de5882046129d2000e5502e354123786f3ad7b7133f31e93863dcc36ba66cf"
+    },
+    {
+      "source": "/tmp/human-ai-manual-response-v2/shared/ai-priority.js",
+      "target": "docs/evidence/human-like-ai-manual-response-v2/original-proposal/shared/ai-priority.js",
+      "bytes": 5884,
+      "sha256": "6b5d5a8a22968209fe03c8235648a859b36919b9eafd44cd390a8252ab6b3542"
+    },
+    {
+      "source": "/tmp/human-ai-manual-response-v2/shared/ai-rng.js",
+      "target": "docs/evidence/human-like-ai-manual-response-v2/original-proposal/shared/ai-rng.js",
+      "bytes": 641,
+      "sha256": "2d2f95266eda45ec4fa4862cb01079fc8464a98d8c88fa97ca89b54a5d6f8b90"
+    },
+    {
+      "source": "/tmp/human-ai-manual-response-v2/shared/ai-view.js",
+      "target": "docs/evidence/human-like-ai-manual-response-v2/original-proposal/shared/ai-view.js",
+      "bytes": 13620,
+      "sha256": "ca4c85c25ea800eb43f33977b3c02f3989a8eebc60142f88e52740b3d422ae59"
+    },
+    {
+      "source": "/tmp/human-ai-manual-response-v2/shared/ai.js",
+      "target": "docs/evidence/human-like-ai-manual-response-v2/original-proposal/shared/ai.js",
+      "bytes": 80201,
+      "sha256": "1e601a848c53b1d31493d3fff18648ead11721d5c4a389a50ea1a14aa691a2e0"
+    },
+    {
+      "source": "/tmp/human-ai-manual-response-v2/shared/alert-events.js",
+      "target": "docs/evidence/human-like-ai-manual-response-v2/original-proposal/shared/alert-events.js",
+      "bytes": 8219,
+      "sha256": "df5f0ae98145034e6893ce0b70c2df8938a2d786cc8de37a1fbbc1a9c8b634b0"
+    },
+    {
+      "source": "/tmp/human-ai-manual-response-v2/shared/command-feedback.js",
+      "target": "docs/evidence/human-like-ai-manual-response-v2/original-proposal/shared/command-feedback.js",
+      "bytes": 303,
+      "sha256": "e851bb8f7e48291bd75f09be66fdeecbe7dca68dcc82c839c5c033083ce77a07"
+    },
+    {
+      "source": "/tmp/human-ai-manual-response-v2/shared/debris-motion.js",
+      "target": "docs/evidence/human-like-ai-manual-response-v2/original-proposal/shared/debris-motion.js",
+      "bytes": 4384,
+      "sha256": "d6a0f330f958ec6d78cfcc7f95b209aa5c099369576bf15dfd1c84770287b3b4"
+    },
+    {
+      "source": "/tmp/human-ai-manual-response-v2/shared/formation.js",
+      "target": "docs/evidence/human-like-ai-manual-response-v2/original-proposal/shared/formation.js",
+      "bytes": 4865,
+      "sha256": "265fa63c8c72588f6c8f67057921fd4daa88f96e9d823faa2e41ba10a7dba005"
+    },
+    {
+      "source": "/tmp/human-ai-manual-response-v2/shared/grid.js",
+      "target": "docs/evidence/human-like-ai-manual-response-v2/original-proposal/shared/grid.js",
+      "bytes": 2873,
+      "sha256": "30b0a5d67d99e54548d189374684e6b28863ecb7bf92de5221359e5c24fc5afc"
+    },
+    {
+      "source": "/tmp/human-ai-manual-response-v2/shared/human-input.js",
+      "target": "docs/evidence/human-like-ai-manual-response-v2/original-proposal/shared/human-input.js",
+      "bytes": 7966,
+      "sha256": "dec728db485690620e527f912fa2a0b491f545c5bbdaafc4dc25fd1e425763ff"
+    },
+    {
+      "source": "/tmp/human-ai-manual-response-v2/shared/local-traffic.js",
+      "target": "docs/evidence/human-like-ai-manual-response-v2/original-proposal/shared/local-traffic.js",
+      "bytes": 7408,
+      "sha256": "abad3f6ba310783c3620cec8d599df90dac38bb74eed6509be7d19a8af1490f6"
+    },
+    {
+      "source": "/tmp/human-ai-manual-response-v2/shared/navigation.js",
+      "target": "docs/evidence/human-like-ai-manual-response-v2/original-proposal/shared/navigation.js",
+      "bytes": 19838,
+      "sha256": "c277c12f86c9990e281ae28a703dc374126aa1c737d9dc94a300f8d99c898472"
+    },
+    {
+      "source": "/tmp/human-ai-manual-response-v2/shared/projectiles.js",
+      "target": "docs/evidence/human-like-ai-manual-response-v2/original-proposal/shared/projectiles.js",
+      "bytes": 7769,
+      "sha256": "ded50f3bcd60cf79238d5dba48236d54e33b2b8032f704813118d1419708ccd7"
+    },
+    {
+      "source": "/tmp/human-ai-manual-response-v2/shared/scenarios.js",
+      "target": "docs/evidence/human-like-ai-manual-response-v2/original-proposal/shared/scenarios.js",
+      "bytes": 16044,
+      "sha256": "93f6cda90224a805cc97f42418b2dc11c49e3ea80654b66e0036de55f9b9ba97"
+    },
+    {
+      "source": "/tmp/human-ai-manual-response-v2/shared/sim.js",
+      "target": "docs/evidence/human-like-ai-manual-response-v2/original-proposal/shared/sim.js",
+      "bytes": 349680,
+      "sha256": "5bedd607250c8171ed053e6200a643ce7f57a55c2549e0b515d80fcdffac832b"
+    },
+    {
+      "source": "/tmp/human-ai-manual-response-v2/shared/story.js",
+      "target": "docs/evidence/human-like-ai-manual-response-v2/original-proposal/shared/story.js",
+      "bytes": 3738,
+      "sha256": "fa33e53e61a7d636959dd1d1916d7b5c3359db72b523dc730b16ceab525d170f"
+    },
+    {
+      "source": "/tmp/human-ai-manual-response-v2/shared/structures.js",
+      "target": "docs/evidence/human-like-ai-manual-response-v2/original-proposal/shared/structures.js",
+      "bytes": 4029,
+      "sha256": "933b100a9a4c19a0285f5b137cd29b46e44271776f031045a537009e0176e5a2"
+    },
+    {
+      "source": "/tmp/human-ai-manual-response-v2/shared/tutorial.js",
+      "target": "docs/evidence/human-like-ai-manual-response-v2/original-proposal/shared/tutorial.js",
+      "bytes": 6342,
+      "sha256": "3aaa5e6affd936dae0ae4741d5173eee5d006132a1705d4b553097d3d8fabf42"
+    },
+    {
+      "source": "/tmp/human-ai-manual-response-v2/shared/vehicle-motion.js",
+      "target": "docs/evidence/human-like-ai-manual-response-v2/original-proposal/shared/vehicle-motion.js",
+      "bytes": 12185,
+      "sha256": "05bd1e985a91b3268065a0a84ec4b9aee2c1079aafc4054c38a70677dfb1493b"
+    },
+    {
+      "source": "/tmp/human-ai-manual-response-v2/shared/weather.js",
+      "target": "docs/evidence/human-like-ai-manual-response-v2/original-proposal/shared/weather.js",
+      "bytes": 7228,
+      "sha256": "faad682d6e40fdc6629533f684e1caeec5c9ae49e26e9922651773727c0bc1e5"
+    },
+    {
+      "source": "/tmp/human-ai-manual-response-v2/shared/world-conquest.js",
+      "target": "docs/evidence/human-like-ai-manual-response-v2/original-proposal/shared/world-conquest.js",
+      "bytes": 7203,
+      "sha256": "1c251e6d340586d7fb367d4f47938d5898f5239824dac46f054880a3d897aeef"
+    },
+    {
+      "source": "/tmp/human-ai-manual-response-v2/shared/world-landforms.js",
+      "target": "docs/evidence/human-like-ai-manual-response-v2/original-proposal/shared/world-landforms.js",
+      "bytes": 6645,
+      "sha256": "ecb6916db6785484f8bb813f7745c8c48ccea370f084fea290ff736edc968e34"
+    },
+    {
+      "source": "/tmp/human-ai-manual-response-v2/shared/world-layers.js",
+      "target": "docs/evidence/human-like-ai-manual-response-v2/original-proposal/shared/world-layers.js",
+      "bytes": 6770,
+      "sha256": "f51f34b99946192107ada9a7077d787761c1a9cb6b1e316d7b7e243dd273bb22"
+    },
+    {
+      "source": "/tmp/human-ai-manual-response-v2/shared/world-roads.js",
+      "target": "docs/evidence/human-like-ai-manual-response-v2/original-proposal/shared/world-roads.js",
+      "bytes": 6491,
+      "sha256": "5fb243b63fa9e2c082135b5b093ee753e8a92c197a076d78067e53f08f1885db"
+    },
+    {
+      "source": "/tmp/human-ai-manual-response-v2/shared/world-territories.js",
+      "target": "docs/evidence/human-like-ai-manual-response-v2/original-proposal/shared/world-territories.js",
+      "bytes": 4110,
+      "sha256": "bb33a449d7f2c4d657dbceab8dbd0171eb8ccaa7494cedf9e18707822d8f717f"
+    },
+    {
+      "source": "/tmp/human-ai-manual-response-v2/test-engine-ai-humanity-multievent.js",
+      "target": "docs/evidence/human-like-ai-manual-response-v2/original-proposal/test-engine-ai-humanity-multievent.js",
+      "bytes": 13806,
+      "sha256": "11b1c9c7908c469732aa90f6b44861ab439db0b65583a9a6669f58811fbe74eb"
+    },
+    {
+      "source": "/tmp/human-ai-manual-response-v2/test-engine-ai-humanity.js",
+      "target": "docs/evidence/human-like-ai-manual-response-v2/original-proposal/test-engine-ai-humanity.js",
+      "bytes": 12108,
+      "sha256": "5a3cc752690616638b54f8d855f938597471de915ad40a15bd4ae218e6871363"
+    },
+    {
+      "source": "/tmp/human-ai-manual-response-v2/test-engine-ai-manual-response-policy.js",
+      "target": "docs/evidence/human-like-ai-manual-response-v2/original-proposal/test-engine-ai-manual-response-policy.js",
+      "bytes": 29616,
+      "sha256": "3c2e53a1a57114658a309ff4f9ddc3adea8484fd0e57dfaf10aae8568fbc3b84"
+    },
+    {
+      "source": "/tmp/human-ai-manual-response-v2/tools/ai-humanity.mjs",
+      "target": "docs/evidence/human-like-ai-manual-response-v2/original-proposal/tools/ai-humanity.mjs",
+      "bytes": 88158,
+      "sha256": "cfa718d3def1fcf6ae7eb20a22dab65fdec10bc585b1e3a76b64c14d4044edd4"
+    },
+    {
+      "source": "/tmp/human-ai-manual-response-v2/tools/ai-manual-response-policy.mjs",
+      "target": "docs/evidence/human-like-ai-manual-response-v2/original-proposal/tools/ai-manual-response-policy.mjs",
+      "bytes": 22956,
+      "sha256": "63f4cf0b2d68a28a16ab9ffec90500c83e099fd33c7bd205b969641c40a568f0"
+    },
+    {
+      "source": "/tmp/human-ai-manual-response-v2/tools/ai-screen-v1-oracle-provenance.json",
+      "target": "docs/evidence/human-like-ai-manual-response-v2/original-proposal/tools/ai-screen-v1-oracle-provenance.json",
+      "bytes": 576,
+      "sha256": "7d6de7111625c96649ab2d80e3d2cb7cb4510a3dc6ec407dfc85ba3e0a797400"
+    },
+    {
+      "source": "/tmp/human-ai-manual-response-v2/tools/ai-screen-v1-oracle.js",
+      "target": "docs/evidence/human-like-ai-manual-response-v2/original-proposal/tools/ai-screen-v1-oracle.js",
+      "bytes": 28180,
+      "sha256": "6b3894b551f3bf9151372b048b2efc77ffc86a6a173d0871278b27417358b398"
+    },
+    {
+      "source": "/tmp/human-ai-manual-response-v2/tools/json-stream.mjs",
+      "target": "docs/evidence/human-like-ai-manual-response-v2/original-proposal/tools/json-stream.mjs",
+      "bytes": 9588,
+      "sha256": "34f01a09d4996f356a3dafc61084aae27a4bf18cd8e6b63b2fda9e95c5168798"
+    },
+    {
+      "source": "/tmp/human-ai-manual-response-v2-integrated/PROTOCOL.md",
+      "target": "docs/evidence/human-like-ai-manual-response-v2/integrated-proposal/PROTOCOL.md",
+      "bytes": 19276,
+      "sha256": "59b9d88208243d6999764c9df089317aed25c759115a97f8d730b05395c99ec4"
+    },
+    {
+      "source": "/tmp/human-ai-manual-response-v2-integrated/client/keys.js",
+      "target": "docs/evidence/human-like-ai-manual-response-v2/integrated-proposal/client/keys.js",
+      "bytes": 7361,
+      "sha256": "867e3105b7e4665f8a313c2ab46e23fc3df9407f2163fd6862bb537a01ecd276"
+    },
+    {
+      "source": "/tmp/human-ai-manual-response-v2-integrated/integration.patch",
+      "target": "docs/evidence/human-like-ai-manual-response-v2/integrated-proposal/integration.patch",
+      "bytes": 96005,
+      "sha256": "ce3691c2536224d377871fcb8eb71f12db21b2e249318924ebcd68e1d12953dc"
+    },
+    {
+      "source": "/tmp/human-ai-manual-response-v2-integrated/manifest.json",
+      "target": "docs/evidence/human-like-ai-manual-response-v2/integrated-proposal/manifest.json",
+      "bytes": 6546,
+      "sha256": "480f1d896eb756ef5507506d0d6ae8dd81d448e7a6a1e3cf89e8feec8559a106"
+    },
+    {
+      "source": "/tmp/human-ai-manual-response-v2-integrated/maps/default.json",
+      "target": "docs/evidence/human-like-ai-manual-response-v2/integrated-proposal/maps/default.json",
+      "bytes": 14367,
+      "sha256": "e9362e35e16a6982d15c2e45129f213b0af3d526376c18b9c89379aa7bcce04d"
+    },
+    {
+      "source": "/tmp/human-ai-manual-response-v2-integrated/package-lock.json",
+      "target": "docs/evidence/human-like-ai-manual-response-v2/integrated-proposal/package-lock.json",
+      "bytes": 1088,
+      "sha256": "1a6f2b332f963bc5145a1fc927b20d8b7264c5b02a9b8577ae89547e56d620e4"
+    },
+    {
+      "source": "/tmp/human-ai-manual-response-v2-integrated/package.json",
+      "target": "docs/evidence/human-like-ai-manual-response-v2/integrated-proposal/package.json",
+      "bytes": 211,
+      "sha256": "38b34423b2e37b851381576f5dd67d9103d951ab7c7ddcf5cacb4112507b34db"
+    },
+    {
+      "source": "/tmp/human-ai-manual-response-v2-integrated/shared/ai-attention.js",
+      "target": "docs/evidence/human-like-ai-manual-response-v2/integrated-proposal/shared/ai-attention.js",
+      "bytes": 27254,
+      "sha256": "2b1f22635d43a11c40715c7859520a5eb4fc862d557ee7efb09ceb89425d92b5"
+    },
+    {
+      "source": "/tmp/human-ai-manual-response-v2-integrated/shared/ai-commander.js",
+      "target": "docs/evidence/human-like-ai-manual-response-v2/integrated-proposal/shared/ai-commander.js",
+      "bytes": 30216,
+      "sha256": "214cfdf199c02afbba40a2958a8df05a95c3588f4bd0d1cc08c5bcbe6dc9ae01"
+    },
+    {
+      "source": "/tmp/human-ai-manual-response-v2-integrated/shared/ai-hands.js",
+      "target": "docs/evidence/human-like-ai-manual-response-v2/integrated-proposal/shared/ai-hands.js",
+      "bytes": 62704,
+      "sha256": "69eb15070dbf3e3839f4a264bc24d5010033f6d745bc1cf53ba285fc362323d6"
+    },
+    {
+      "source": "/tmp/human-ai-manual-response-v2-integrated/shared/ai-mind.js",
+      "target": "docs/evidence/human-like-ai-manual-response-v2/integrated-proposal/shared/ai-mind.js",
+      "bytes": 19553,
+      "sha256": "18bb411cb1d057ce8cffe0b042c21f64b71238ae157b584242df206d708e6b92"
+    },
+    {
+      "source": "/tmp/human-ai-manual-response-v2-integrated/shared/ai-perception.js",
+      "target": "docs/evidence/human-like-ai-manual-response-v2/integrated-proposal/shared/ai-perception.js",
+      "bytes": 34168,
+      "sha256": "75b5f4877b5c4509a762028c880b45691a7c9e8d1923a7815e026f2174d33c9c"
+    },
+    {
+      "source": "/tmp/human-ai-manual-response-v2-integrated/shared/ai-persona.js",
+      "target": "docs/evidence/human-like-ai-manual-response-v2/integrated-proposal/shared/ai-persona.js",
+      "bytes": 3586,
+      "sha256": "34de5882046129d2000e5502e354123786f3ad7b7133f31e93863dcc36ba66cf"
+    },
+    {
+      "source": "/tmp/human-ai-manual-response-v2-integrated/shared/ai-priority.js",
+      "target": "docs/evidence/human-like-ai-manual-response-v2/integrated-proposal/shared/ai-priority.js",
+      "bytes": 5884,
+      "sha256": "6b5d5a8a22968209fe03c8235648a859b36919b9eafd44cd390a8252ab6b3542"
+    },
+    {
+      "source": "/tmp/human-ai-manual-response-v2-integrated/shared/ai-rng.js",
+      "target": "docs/evidence/human-like-ai-manual-response-v2/integrated-proposal/shared/ai-rng.js",
+      "bytes": 641,
+      "sha256": "2d2f95266eda45ec4fa4862cb01079fc8464a98d8c88fa97ca89b54a5d6f8b90"
+    },
+    {
+      "source": "/tmp/human-ai-manual-response-v2-integrated/shared/ai-view.js",
+      "target": "docs/evidence/human-like-ai-manual-response-v2/integrated-proposal/shared/ai-view.js",
+      "bytes": 13620,
+      "sha256": "ca4c85c25ea800eb43f33977b3c02f3989a8eebc60142f88e52740b3d422ae59"
+    },
+    {
+      "source": "/tmp/human-ai-manual-response-v2-integrated/shared/ai.js",
+      "target": "docs/evidence/human-like-ai-manual-response-v2/integrated-proposal/shared/ai.js",
+      "bytes": 84599,
+      "sha256": "038bba2d8b69ee158f6cf6014a3ba6a245441d16c27b2376715027dbee3e82ed"
+    },
+    {
+      "source": "/tmp/human-ai-manual-response-v2-integrated/shared/alert-events.js",
+      "target": "docs/evidence/human-like-ai-manual-response-v2/integrated-proposal/shared/alert-events.js",
+      "bytes": 8219,
+      "sha256": "df5f0ae98145034e6893ce0b70c2df8938a2d786cc8de37a1fbbc1a9c8b634b0"
+    },
+    {
+      "source": "/tmp/human-ai-manual-response-v2-integrated/shared/command-feedback.js",
+      "target": "docs/evidence/human-like-ai-manual-response-v2/integrated-proposal/shared/command-feedback.js",
+      "bytes": 303,
+      "sha256": "e851bb8f7e48291bd75f09be66fdeecbe7dca68dcc82c839c5c033083ce77a07"
+    },
+    {
+      "source": "/tmp/human-ai-manual-response-v2-integrated/shared/debris-motion.js",
+      "target": "docs/evidence/human-like-ai-manual-response-v2/integrated-proposal/shared/debris-motion.js",
+      "bytes": 4384,
+      "sha256": "d6a0f330f958ec6d78cfcc7f95b209aa5c099369576bf15dfd1c84770287b3b4"
+    },
+    {
+      "source": "/tmp/human-ai-manual-response-v2-integrated/shared/formation.js",
+      "target": "docs/evidence/human-like-ai-manual-response-v2/integrated-proposal/shared/formation.js",
+      "bytes": 4865,
+      "sha256": "265fa63c8c72588f6c8f67057921fd4daa88f96e9d823faa2e41ba10a7dba005"
+    },
+    {
+      "source": "/tmp/human-ai-manual-response-v2-integrated/shared/grid.js",
+      "target": "docs/evidence/human-like-ai-manual-response-v2/integrated-proposal/shared/grid.js",
+      "bytes": 2873,
+      "sha256": "30b0a5d67d99e54548d189374684e6b28863ecb7bf92de5221359e5c24fc5afc"
+    },
+    {
+      "source": "/tmp/human-ai-manual-response-v2-integrated/shared/human-input.js",
+      "target": "docs/evidence/human-like-ai-manual-response-v2/integrated-proposal/shared/human-input.js",
+      "bytes": 7966,
+      "sha256": "dec728db485690620e527f912fa2a0b491f545c5bbdaafc4dc25fd1e425763ff"
+    },
+    {
+      "source": "/tmp/human-ai-manual-response-v2-integrated/shared/local-traffic.js",
+      "target": "docs/evidence/human-like-ai-manual-response-v2/integrated-proposal/shared/local-traffic.js",
+      "bytes": 7408,
+      "sha256": "abad3f6ba310783c3620cec8d599df90dac38bb74eed6509be7d19a8af1490f6"
+    },
+    {
+      "source": "/tmp/human-ai-manual-response-v2-integrated/shared/navigation.js",
+      "target": "docs/evidence/human-like-ai-manual-response-v2/integrated-proposal/shared/navigation.js",
+      "bytes": 19838,
+      "sha256": "c277c12f86c9990e281ae28a703dc374126aa1c737d9dc94a300f8d99c898472"
+    },
+    {
+      "source": "/tmp/human-ai-manual-response-v2-integrated/shared/projectiles.js",
+      "target": "docs/evidence/human-like-ai-manual-response-v2/integrated-proposal/shared/projectiles.js",
+      "bytes": 7769,
+      "sha256": "ded50f3bcd60cf79238d5dba48236d54e33b2b8032f704813118d1419708ccd7"
+    },
+    {
+      "source": "/tmp/human-ai-manual-response-v2-integrated/shared/scenarios.js",
+      "target": "docs/evidence/human-like-ai-manual-response-v2/integrated-proposal/shared/scenarios.js",
+      "bytes": 16044,
+      "sha256": "93f6cda90224a805cc97f42418b2dc11c49e3ea80654b66e0036de55f9b9ba97"
+    },
+    {
+      "source": "/tmp/human-ai-manual-response-v2-integrated/shared/sim.js",
+      "target": "docs/evidence/human-like-ai-manual-response-v2/integrated-proposal/shared/sim.js",
+      "bytes": 349680,
+      "sha256": "5bedd607250c8171ed053e6200a643ce7f57a55c2549e0b515d80fcdffac832b"
+    },
+    {
+      "source": "/tmp/human-ai-manual-response-v2-integrated/shared/story.js",
+      "target": "docs/evidence/human-like-ai-manual-response-v2/integrated-proposal/shared/story.js",
+      "bytes": 3738,
+      "sha256": "fa33e53e61a7d636959dd1d1916d7b5c3359db72b523dc730b16ceab525d170f"
+    },
+    {
+      "source": "/tmp/human-ai-manual-response-v2-integrated/shared/structures.js",
+      "target": "docs/evidence/human-like-ai-manual-response-v2/integrated-proposal/shared/structures.js",
+      "bytes": 4029,
+      "sha256": "933b100a9a4c19a0285f5b137cd29b46e44271776f031045a537009e0176e5a2"
+    },
+    {
+      "source": "/tmp/human-ai-manual-response-v2-integrated/shared/tutorial.js",
+      "target": "docs/evidence/human-like-ai-manual-response-v2/integrated-proposal/shared/tutorial.js",
+      "bytes": 6342,
+      "sha256": "3aaa5e6affd936dae0ae4741d5173eee5d006132a1705d4b553097d3d8fabf42"
+    },
+    {
+      "source": "/tmp/human-ai-manual-response-v2-integrated/shared/vehicle-motion.js",
+      "target": "docs/evidence/human-like-ai-manual-response-v2/integrated-proposal/shared/vehicle-motion.js",
+      "bytes": 12185,
+      "sha256": "05bd1e985a91b3268065a0a84ec4b9aee2c1079aafc4054c38a70677dfb1493b"
+    },
+    {
+      "source": "/tmp/human-ai-manual-response-v2-integrated/shared/weather.js",
+      "target": "docs/evidence/human-like-ai-manual-response-v2/integrated-proposal/shared/weather.js",
+      "bytes": 7228,
+      "sha256": "faad682d6e40fdc6629533f684e1caeec5c9ae49e26e9922651773727c0bc1e5"
+    },
+    {
+      "source": "/tmp/human-ai-manual-response-v2-integrated/shared/world-conquest.js",
+      "target": "docs/evidence/human-like-ai-manual-response-v2/integrated-proposal/shared/world-conquest.js",
+      "bytes": 7203,
+      "sha256": "1c251e6d340586d7fb367d4f47938d5898f5239824dac46f054880a3d897aeef"
+    },
+    {
+      "source": "/tmp/human-ai-manual-response-v2-integrated/shared/world-landforms.js",
+      "target": "docs/evidence/human-like-ai-manual-response-v2/integrated-proposal/shared/world-landforms.js",
+      "bytes": 6645,
+      "sha256": "ecb6916db6785484f8bb813f7745c8c48ccea370f084fea290ff736edc968e34"
+    },
+    {
+      "source": "/tmp/human-ai-manual-response-v2-integrated/shared/world-layers.js",
+      "target": "docs/evidence/human-like-ai-manual-response-v2/integrated-proposal/shared/world-layers.js",
+      "bytes": 6770,
+      "sha256": "f51f34b99946192107ada9a7077d787761c1a9cb6b1e316d7b7e243dd273bb22"
+    },
+    {
+      "source": "/tmp/human-ai-manual-response-v2-integrated/shared/world-roads.js",
+      "target": "docs/evidence/human-like-ai-manual-response-v2/integrated-proposal/shared/world-roads.js",
+      "bytes": 6491,
+      "sha256": "5fb243b63fa9e2c082135b5b093ee753e8a92c197a076d78067e53f08f1885db"
+    },
+    {
+      "source": "/tmp/human-ai-manual-response-v2-integrated/shared/world-territories.js",
+      "target": "docs/evidence/human-like-ai-manual-response-v2/integrated-proposal/shared/world-territories.js",
+      "bytes": 4110,
+      "sha256": "bb33a449d7f2c4d657dbceab8dbd0171eb8ccaa7494cedf9e18707822d8f717f"
+    },
+    {
+      "source": "/tmp/human-ai-manual-response-v2-integrated/test-engine-ai-humanity-multievent.js",
+      "target": "docs/evidence/human-like-ai-manual-response-v2/integrated-proposal/test-engine-ai-humanity-multievent.js",
+      "bytes": 13806,
+      "sha256": "11b1c9c7908c469732aa90f6b44861ab439db0b65583a9a6669f58811fbe74eb"
+    },
+    {
+      "source": "/tmp/human-ai-manual-response-v2-integrated/test-engine-ai-humanity.js",
+      "target": "docs/evidence/human-like-ai-manual-response-v2/integrated-proposal/test-engine-ai-humanity.js",
+      "bytes": 12108,
+      "sha256": "5a3cc752690616638b54f8d855f938597471de915ad40a15bd4ae218e6871363"
+    },
+    {
+      "source": "/tmp/human-ai-manual-response-v2-integrated/test-engine-ai-manual-response-isolation.js",
+      "target": "docs/evidence/human-like-ai-manual-response-v2/integrated-proposal/test-engine-ai-manual-response-isolation.js",
+      "bytes": 4691,
+      "sha256": "0d93169112a983e6f8ac15c98be9e76f8a2b705d598c56d4cda941b838779e7d"
+    },
+    {
+      "source": "/tmp/human-ai-manual-response-v2-integrated/test-engine-ai-manual-response-policy.js",
+      "target": "docs/evidence/human-like-ai-manual-response-v2/integrated-proposal/test-engine-ai-manual-response-policy.js",
+      "bytes": 39126,
+      "sha256": "44d4d57dcf64aa2797d0ae05208f27d731c882428c9e1bc2f7416062f5663925"
+    },
+    {
+      "source": "/tmp/human-ai-manual-response-v2-integrated/tools/ai-balance.mjs",
+      "target": "docs/evidence/human-like-ai-manual-response-v2/integrated-proposal/tools/ai-balance.mjs",
+      "bytes": 14906,
+      "sha256": "bf5b5ea07e3bf0eea2e4134647457191d9fe212a05b138677817f0cf5ec8db4b"
+    },
+    {
+      "source": "/tmp/human-ai-manual-response-v2-integrated/tools/ai-humanity.mjs",
+      "target": "docs/evidence/human-like-ai-manual-response-v2/integrated-proposal/tools/ai-humanity.mjs",
+      "bytes": 91862,
+      "sha256": "fbf3bb833003c3b3ed2dd3558b82113c78feb9c4d0426f63c88438cef6d0a574"
+    },
+    {
+      "source": "/tmp/human-ai-manual-response-v2-integrated/tools/ai-manual-response-capture.mjs",
+      "target": "docs/evidence/human-like-ai-manual-response-v2/integrated-proposal/tools/ai-manual-response-capture.mjs",
+      "bytes": 6599,
+      "sha256": "a804ce50684ed96de5b98dc6dee4f2ab275d0a0dea84058fb515e7ba6cbba416"
+    },
+    {
+      "source": "/tmp/human-ai-manual-response-v2-integrated/tools/ai-manual-response-policy.mjs",
+      "target": "docs/evidence/human-like-ai-manual-response-v2/integrated-proposal/tools/ai-manual-response-policy.mjs",
+      "bytes": 26551,
+      "sha256": "a5044b77c2b35d25d12d05d8d61135c956e59ee84451f15a3a8f5c0c05470373"
+    },
+    {
+      "source": "/tmp/human-ai-manual-response-v2-integrated/tools/ai-screen-v1-oracle-provenance.json",
+      "target": "docs/evidence/human-like-ai-manual-response-v2/integrated-proposal/tools/ai-screen-v1-oracle-provenance.json",
+      "bytes": 576,
+      "sha256": "7d6de7111625c96649ab2d80e3d2cb7cb4510a3dc6ec407dfc85ba3e0a797400"
+    },
+    {
+      "source": "/tmp/human-ai-manual-response-v2-integrated/tools/ai-screen-v1-oracle.js",
+      "target": "docs/evidence/human-like-ai-manual-response-v2/integrated-proposal/tools/ai-screen-v1-oracle.js",
+      "bytes": 28180,
+      "sha256": "6b3894b551f3bf9151372b048b2efc77ffc86a6a173d0871278b27417358b398"
+    },
+    {
+      "source": "/tmp/human-ai-manual-response-v2-integrated/tools/json-stream.mjs",
+      "target": "docs/evidence/human-like-ai-manual-response-v2/integrated-proposal/tools/json-stream.mjs",
+      "bytes": 9588,
+      "sha256": "34f01a09d4996f356a3dafc61084aae27a4bf18cd8e6b63b2fda9e95c5168798"
+    },
+    {
+      "source": "/tmp/human-ai-manual-response-v2-integrated/tools/legacy-ai/ai-mind.js",
+      "target": "docs/evidence/human-like-ai-manual-response-v2/integrated-proposal/tools/legacy-ai/ai-mind.js",
+      "bytes": 17983,
+      "sha256": "c2941813a4fb6d655a50b579270e5887723cfc42ea18c9d767735904c78c2d54"
+    },
+    {
+      "source": "/tmp/human-ai-manual-response-v2-integrated/tools/legacy-ai/ai-view.js",
+      "target": "docs/evidence/human-like-ai-manual-response-v2/integrated-proposal/tools/legacy-ai/ai-view.js",
+      "bytes": 11525,
+      "sha256": "c8e5332611ec5d18d5f7b0ab9093c30df5006a6f566c106a312a64900be17d5f"
+    },
+    {
+      "source": "/tmp/human-ai-manual-response-v2-integrated/tools/legacy-ai/ai.js",
+      "target": "docs/evidence/human-like-ai-manual-response-v2/integrated-proposal/tools/legacy-ai/ai.js",
+      "bytes": 64127,
+      "sha256": "49575f9089365e13592a804b852b8eeec8c1dcc96bd64d236eaf3757904bcf4d"
+    },
+    {
+      "source": "/tmp/human-ai-manual-response-v2-integrated/tools/legacy-ai/provenance.json",
+      "target": "docs/evidence/human-like-ai-manual-response-v2/integrated-proposal/tools/legacy-ai/provenance.json",
+      "bytes": 1048,
+      "sha256": "dc60cceedaf44362e4ee8042b204544f3e9e0e312abf831218af827a2105e55e"
+    },
+    {
+      "source": "/tmp/manual-v2-integrated-final-isolation.json",
+      "target": "docs/evidence/human-like-ai-manual-response-v2/manual-v2-integrated-final-isolation.json",
+      "bytes": 14231,
+      "sha256": "7c07aadb233cfc62632ac7ba8c6c1a312ff7d3893949898bf66d1a2f2d52939f"
+    },
+    {
+      "source": "/tmp/manual-v2-integrated-final-isolation.log",
+      "target": "docs/evidence/human-like-ai-manual-response-v2/manual-v2-integrated-final-isolation.log",
+      "bytes": 1553,
+      "sha256": "8372c1846de7cb9fba3a0ddafaef5747f971a99c3ff0102ec39b4e641ab88c2d"
+    },
+    {
+      "source": "/tmp/manual-v2-integrated-focused.log",
+      "target": "docs/evidence/human-like-ai-manual-response-v2/manual-v2-integrated-focused.log",
+      "bytes": 867,
+      "sha256": "c8e984d011be6489c03e5908953054f8f1a79d50f9a9f9294b2182aa6b0532cf"
+    },
+    {
+      "source": "/tmp/manual-v2-integrated-isolation.json",
+      "target": "docs/evidence/human-like-ai-manual-response-v2/manual-v2-integrated-isolation.json",
+      "bytes": 14231,
+      "sha256": "7c07aadb233cfc62632ac7ba8c6c1a312ff7d3893949898bf66d1a2f2d52939f"
+    },
+    {
+      "source": "/tmp/manual-v2-integrated-isolation.log",
+      "target": "docs/evidence/human-like-ai-manual-response-v2/manual-v2-integrated-isolation.log",
+      "bytes": 1553,
+      "sha256": "b76607506263a4f9ff4ceff00cc8cf4f1fdae03e8fe2f04f0d83d497750c2d98"
+    },
+    {
+      "source": "/tmp/manual-v2-integrated-native-fixture-proof.json",
+      "target": "docs/evidence/human-like-ai-manual-response-v2/manual-v2-integrated-native-fixture-proof.json",
+      "bytes": 25951,
+      "sha256": "2c2e559fed444a2fbe002aaf3f70296db896592851d8e27d30597aa60b47476c"
+    },
+    {
+      "source": "/tmp/manual-v2-integrated-smoke.json",
+      "target": "docs/evidence/human-like-ai-manual-response-v2/manual-v2-integrated-smoke.json.gz",
+      "rawBytes": 9373268,
+      "rawSHA256": "3fe49bcc3ec9ff3dfed1235740bbbef0838f3430b86d8ee39486304ffd453adb",
+      "bytes": 126661,
+      "sha256": "97fcfa634bcf546bfc02b0f8bd2c18c1331030584c702bc2cb9d9e015b609847",
+      "classification": "Earlier-source 15-second collector smoke, not campaign acceptance"
+    },
+    {
+      "source": "/tmp/manual-v2-integrated-smoke.log",
+      "target": "docs/evidence/human-like-ai-manual-response-v2/manual-v2-integrated-smoke.log",
+      "bytes": 40871,
+      "sha256": "ac338c137f45b5812b2a26f0a95665121679754c1b5f67a60a1a88a94bcbae14"
+    },
+    {
+      "source": "/tmp/manual-v2-integrated-source-bound-isolation.json",
+      "target": "docs/evidence/human-like-ai-manual-response-v2/manual-v2-integrated-source-bound-isolation.json",
+      "bytes": 18273,
+      "sha256": "862030dec069f54e0901f7e261ece96a4820e7ebeeae370544960a72cda6d143"
+    },
+    {
+      "source": "/tmp/manual-v2-integrated-source-bound-isolation.log",
+      "target": "docs/evidence/human-like-ai-manual-response-v2/manual-v2-integrated-source-bound-isolation.log",
+      "bytes": 1553,
+      "sha256": "ddf509eb901882c4863d80df8eb25de95e3902f24f1fce5c9a9533666d2b6bb9"
+    },
+    {
+      "source": "/tmp/upgrade-manual-policy.py",
+      "target": "docs/evidence/human-like-ai-manual-response-v2/generation/upgrade-manual-policy.py",
+      "bytes": 5999,
+      "sha256": "e6427350aa68b3d3227b46a18768490d32a6c7b57c6284ab61315e4dc8a9d636"
+    },
+    {
+      "source": "/tmp/integrate-manual-tool.py",
+      "target": "docs/evidence/human-like-ai-manual-response-v2/generation/integrate-manual-tool.py",
+      "bytes": 6033,
+      "sha256": "92a3bcf97dc40ae9dd4c986397d94b0ecef307c804b631b1f1425fdafa44bf9c"
+    },
+    {
+      "source": "/tmp/update-manual-fixtures.py",
+      "target": "docs/evidence/human-like-ai-manual-response-v2/generation/update-manual-fixtures.py",
+      "bytes": 6233,
+      "sha256": "3fd42e94e4b733de7a38f2cb26dded55d569d247abf7ca82816f75599aae5bf6"
+    },
+    {
+      "source": "/tmp/add-native-capture-fixture.py",
+      "target": "docs/evidence/human-like-ai-manual-response-v2/generation/add-native-capture-fixture.py",
+      "bytes": 3112,
+      "sha256": "fb4aef9b77c34487714937bba7551abdbd048f457acd60891c499f7a17e01ede"
+    },
+    {
+      "source": "/tmp/manual-v2-root-adoption/launch.json",
+      "target": "docs/evidence/human-like-ai-manual-response-v2/root-adoption/launch.json",
+      "bytes": 144,
+      "sha256": "de77d2b1ab1abc311ac1a39b291b727f2bb9dbfbd100e996455dd6ee480f562e"
+    },
+    {
+      "source": "/tmp/manual-v2-root-adoption/launcher.log",
+      "target": "docs/evidence/human-like-ai-manual-response-v2/root-adoption/launcher.log",
+      "bytes": 0,
+      "sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+    },
+    {
+      "source": "/tmp/manual-v2-root-adoption/results.json",
+      "target": "docs/evidence/human-like-ai-manual-response-v2/root-adoption/results.json",
+      "bytes": 630,
+      "sha256": "df74d99e09fe5069f0045bbab1baed0ea28fb9d6a8e3984a506e98dadd938472"
+    },
+    {
+      "source": "/tmp/manual-v2-root-adoption/run.py",
+      "target": "docs/evidence/human-like-ai-manual-response-v2/root-adoption/run.py",
+      "bytes": 606,
+      "sha256": "e0d5593233f3bb10b6c5d14b3455f2bf1aa41cba0305f13fb6d3361d445d8aae"
+    },
+    {
+      "source": "/tmp/manual-v2-root-adoption/test-engine-ai-humanity-multievent.js.log",
+      "target": "docs/evidence/human-like-ai-manual-response-v2/root-adoption/test-engine-ai-humanity-multievent.js.log",
+      "bytes": 164,
+      "sha256": "630e57e5a1b4e115a28716abd88a318800106db44fb3d0bef882e8a95bb7ed04"
+    },
+    {
+      "source": "/tmp/manual-v2-root-adoption/test-engine-ai-humanity.js.log",
+      "target": "docs/evidence/human-like-ai-manual-response-v2/root-adoption/test-engine-ai-humanity.js.log",
+      "bytes": 153,
+      "sha256": "a67a37b96a3850158a5e96bc97c0d695c0930016d4efb6f55115a92d95d4a831"
+    },
+    {
+      "source": "/tmp/manual-v2-root-adoption/test-engine-ai-manual-response-policy.js.log",
+      "target": "docs/evidence/human-like-ai-manual-response-v2/root-adoption/test-engine-ai-manual-response-policy.js.log",
+      "bytes": 99,
+      "sha256": "ec0a9c76cc1c10d8955bc087d83ad2f5e80e667a3dd6f2f4fdad2a7c9a8348d1"
+    },
+    {
+      "source": "/tmp/manual-v2-root-adoption/test-engine-ai-measurement-streams.js.log",
+      "target": "docs/evidence/human-like-ai-manual-response-v2/root-adoption/test-engine-ai-measurement-streams.js.log",
+      "bytes": 141,
+      "sha256": "af039e45c4c8e5c97ac07027566520181e0e4c218acb549ad8f5ec3b1820ffcd"
+    }
+  ]
+}

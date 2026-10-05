@@ -1,0 +1,3367 @@
+{
+  "sourceEpisode": "twofront-easy-3.json",
+  "diagnosticOnly": true,
+  "privateAuthoritativeProofNeverEnteredPlanner": true,
+  "frames": [
+    {
+      "tick": 40,
+      "seconds": 2.0,
+      "publicFrame": {
+        "tick": 40,
+        "observationTick": 40,
+        "camera": {
+          "x": 80,
+          "z": 70,
+          "yaw": 0,
+          "distance": 60
+        },
+        "corners": [
+          {
+            "x": 23.561928982915894,
+            "z": 30.971465677519575
+          },
+          {
+            "x": 136.4380710170841,
+            "z": 30.971465677519575
+          },
+          {
+            "x": 112.1265695957123,
+            "z": 92.2164383284869
+          },
+          {
+            "x": 47.8734304042877,
+            "z": 92.2164383284869
+          }
+        ],
+        "concern": {
+          "id": "alert:36:1",
+          "kind": "combat",
+          "x": 151,
+          "z": 139,
+          "urgency": 80,
+          "event": "attack",
+          "eventId": "36:1",
+          "eventTick": 36,
+          "eventOnScreen": false,
+          "score": 86.6088855387643,
+          "rememberedAt": 36,
+          "since": 36,
+          "until": 155,
+          "slipped": false
+        },
+        "selected": [],
+        "active": null,
+        "queued": 0,
+        "cursor": {
+          "x": 80,
+          "z": 70,
+          "fromX": 80,
+          "fromZ": 70,
+          "toX": 80,
+          "toZ": 70,
+          "startTick": 36,
+          "endTick": 36,
+          "pixelX": 960,
+          "pixelY": 540,
+          "mode": "screen"
+        },
+        "units": [
+          {
+            "id": 7,
+            "owner": 0,
+            "type": "rifle",
+            "x": 70.2,
+            "z": 70,
+            "hp": 100,
+            "hpSource": "world-bar",
+            "cdKnown": false,
+            "cooldown": null,
+            "retreating": false,
+            "moving": false,
+            "targetId": 13,
+            "cover": 0,
+            "holdPos": false,
+            "holdFire": false,
+            "autoRetreat": true
+          },
+          {
+            "id": 8,
+            "owner": 0,
+            "type": "rifle",
+            "x": 73.2,
+            "z": 72,
+            "hp": 100,
+            "hpSource": "world-bar",
+            "cdKnown": false,
+            "cooldown": null,
+            "retreating": false,
+            "moving": false,
+            "targetId": 13,
+            "cover": 0,
+            "holdPos": false,
+            "holdFire": false,
+            "autoRetreat": true
+          },
+          {
+            "id": 9,
+            "owner": 0,
+            "type": "rifle",
+            "x": 72.2,
+            "z": 68,
+            "hp": 100,
+            "hpSource": "world-bar",
+            "cdKnown": false,
+            "cooldown": null,
+            "retreating": false,
+            "moving": false,
+            "targetId": 13,
+            "cover": 0,
+            "holdPos": false,
+            "holdFire": false,
+            "autoRetreat": true
+          },
+          {
+            "id": 10,
+            "owner": 0,
+            "type": "rifle",
+            "x": 42,
+            "z": 41,
+            "hp": 100,
+            "hpSource": "world-bar",
+            "cdKnown": false,
+            "cooldown": null,
+            "retreating": false,
+            "moving": false,
+            "targetId": 0,
+            "cover": 0,
+            "holdPos": false,
+            "holdFire": false,
+            "autoRetreat": true
+          },
+          {
+            "id": 11,
+            "owner": 0,
+            "type": "rifle",
+            "x": 45,
+            "z": 41,
+            "hp": 100,
+            "hpSource": "world-bar",
+            "cdKnown": false,
+            "cooldown": null,
+            "retreating": false,
+            "moving": false,
+            "targetId": 0,
+            "cover": 0,
+            "holdPos": false,
+            "holdFire": false,
+            "autoRetreat": true
+          },
+          {
+            "id": 13,
+            "owner": 1,
+            "type": "mg",
+            "x": 98,
+            "z": 70,
+            "hp": 26.25,
+            "hpSource": "world-bar",
+            "cdKnown": false,
+            "cooldown": null,
+            "retreating": false,
+            "moving": false,
+            "targetId": 8,
+            "cover": 0,
+            "holdPos": false,
+            "holdFire": false,
+            "autoRetreat": false
+          }
+        ],
+        "minimap": [
+          {
+            "id": 10,
+            "owner": 0,
+            "x": 42,
+            "z": 41,
+            "vehicle": false
+          },
+          {
+            "id": 11,
+            "owner": 0,
+            "x": 45,
+            "z": 41,
+            "vehicle": false
+          },
+          {
+            "id": 7,
+            "owner": 0,
+            "x": 70.2,
+            "z": 70,
+            "vehicle": false
+          },
+          {
+            "id": 9,
+            "owner": 0,
+            "x": 72.2,
+            "z": 68,
+            "vehicle": false
+          },
+          {
+            "id": 8,
+            "owner": 0,
+            "x": 73.2,
+            "z": 72,
+            "vehicle": false
+          },
+          {
+            "id": 12,
+            "owner": 0,
+            "x": 151,
+            "z": 139,
+            "vehicle": false
+          },
+          {
+            "owner": 1,
+            "x": 98,
+            "z": 70,
+            "vehicle": false
+          },
+          {
+            "owner": 1,
+            "x": 159.9,
+            "z": 117.2,
+            "vehicle": false
+          }
+        ],
+        "selectedHUD": {
+          "slot": 0,
+          "ids": [],
+          "types": [],
+          "observedTick": 40
+        }
+      },
+      "privateAuthoritativeProofOnly": {
+        "resources": [
+          {
+            "mp": 659.998333333333,
+            "mun": 200,
+            "fuel": 0
+          },
+          {
+            "mp": 9.998333333333342,
+            "mun": 0,
+            "fuel": 0
+          }
+        ],
+        "homeActors": [
+          {
+            "id": 10,
+            "type": "rifle",
+            "owner": 0,
+            "x": 42,
+            "z": 41,
+            "hp": 100,
+            "targetId": 0,
+            "path": 0,
+            "retreating": false,
+            "orders": 0,
+            "amove": null,
+            "dig": false,
+            "cd": -2.000000000000001
+          },
+          {
+            "id": 11,
+            "type": "rifle",
+            "owner": 0,
+            "x": 45,
+            "z": 41,
+            "hp": 100,
+            "targetId": 0,
+            "path": 0,
+            "retreating": false,
+            "orders": 0,
+            "amove": null,
+            "dig": false,
+            "cd": -2.000000000000001
+          }
+        ]
+      }
+    },
+    {
+      "tick": 170,
+      "seconds": 8.5,
+      "publicFrame": {
+        "tick": 170,
+        "observationTick": 170,
+        "camera": {
+          "x": 151,
+          "z": 139,
+          "yaw": 0,
+          "distance": 60
+        },
+        "corners": [
+          {
+            "x": 94.5619289829159,
+            "z": 99.97146567751957
+          },
+          {
+            "x": 207.4380710170841,
+            "z": 99.97146567751957
+          },
+          {
+            "x": 183.12656959571228,
+            "z": 161.2164383284869
+          },
+          {
+            "x": 118.8734304042877,
+            "z": 161.2164383284869
+          }
+        ],
+        "concern": {
+          "id": "fight:3",
+          "kind": "combat",
+          "x": 159.9,
+          "z": 117.2,
+          "urgency": 56,
+          "contacts": 1,
+          "event": "minimap-contact",
+          "eventId": "fight:3:contact",
+          "eventTick": 170,
+          "eventOnScreen": false,
+          "score": 55.929654764477164,
+          "rememberedAt": 170,
+          "since": 170,
+          "until": 262,
+          "slipped": true
+        },
+        "selected": [
+          12
+        ],
+        "active": null,
+        "queued": 0,
+        "cursor": {
+          "x": 151.13294955574915,
+          "z": 138.1659610375326,
+          "fromX": 151,
+          "fromZ": 139,
+          "toX": 151,
+          "toZ": 139,
+          "startTick": 149,
+          "endTick": 153,
+          "pixelX": 963.0921068316192,
+          "pixelY": 524.2214756078266,
+          "mode": "screen"
+        },
+        "units": [
+          {
+            "id": 12,
+            "owner": 0,
+            "type": "mg",
+            "x": 151,
+            "z": 139,
+            "hp": 36,
+            "hpSource": "selected-hud",
+            "cdKnown": true,
+            "cooldown": 40,
+            "retreating": false,
+            "moving": false,
+            "targetId": 14,
+            "cover": 0,
+            "holdPos": false,
+            "holdFire": false,
+            "autoRetreat": true
+          },
+          {
+            "id": 14,
+            "owner": 1,
+            "type": "rifle",
+            "x": 159.9,
+            "z": 117.2,
+            "hp": 55,
+            "hpSource": "world-bar",
+            "cdKnown": false,
+            "cooldown": null,
+            "retreating": false,
+            "moving": false,
+            "targetId": 12,
+            "cover": 0,
+            "holdPos": false,
+            "holdFire": false,
+            "autoRetreat": false
+          }
+        ],
+        "minimap": [
+          {
+            "id": 10,
+            "owner": 0,
+            "x": 42,
+            "z": 41,
+            "vehicle": false
+          },
+          {
+            "id": 11,
+            "owner": 0,
+            "x": 45,
+            "z": 41,
+            "vehicle": false
+          },
+          {
+            "id": 7,
+            "owner": 0,
+            "x": 93.2,
+            "z": 70,
+            "vehicle": false
+          },
+          {
+            "id": 9,
+            "owner": 0,
+            "x": 95,
+            "z": 67,
+            "vehicle": false
+          },
+          {
+            "id": 8,
+            "owner": 0,
+            "x": 95,
+            "z": 73,
+            "vehicle": false
+          },
+          {
+            "id": 12,
+            "owner": 0,
+            "x": 151,
+            "z": 139,
+            "vehicle": false
+          },
+          {
+            "owner": 1,
+            "x": 159.9,
+            "z": 117.2,
+            "vehicle": false
+          }
+        ],
+        "selectedHUD": {
+          "slot": 0,
+          "ids": [
+            12
+          ],
+          "types": [
+            {
+              "type": "mg",
+              "ids": [
+                12
+              ],
+              "count": 1,
+              "hp": 36,
+              "maxHp": 75,
+              "suppressionTags": {
+                "suppressed": false,
+                "pinned": false
+              },
+              "allRetreating": false,
+              "ability": {
+                "id": "suppress",
+                "anyReady": false,
+                "cooldownSeconds": 40,
+                "allAuto": false,
+                "usable": false,
+                "reason": "cooldown"
+              }
+            }
+          ],
+          "observedTick": 170
+        }
+      },
+      "privateAuthoritativeProofOnly": {
+        "resources": [
+          {
+            "mp": 722.4929166666652,
+            "mun": 200,
+            "fuel": 0
+          },
+          {
+            "mp": 42.49291666666654,
+            "mun": 0,
+            "fuel": 0
+          }
+        ],
+        "homeActors": [
+          {
+            "id": 10,
+            "type": "rifle",
+            "owner": 0,
+            "x": 42,
+            "z": 41,
+            "hp": 100,
+            "targetId": 0,
+            "path": 0,
+            "retreating": false,
+            "orders": 0,
+            "amove": null,
+            "dig": false,
+            "cd": -8.499999999999986
+          },
+          {
+            "id": 11,
+            "type": "rifle",
+            "owner": 0,
+            "x": 45,
+            "z": 41,
+            "hp": 100,
+            "targetId": 0,
+            "path": 0,
+            "retreating": false,
+            "orders": 0,
+            "amove": null,
+            "dig": false,
+            "cd": -8.499999999999986
+          }
+        ]
+      }
+    },
+    {
+      "tick": 200,
+      "seconds": 10.0,
+      "publicFrame": {
+        "tick": 200,
+        "observationTick": 200,
+        "camera": {
+          "x": 151,
+          "z": 139,
+          "yaw": 0,
+          "distance": 60
+        },
+        "corners": [
+          {
+            "x": 94.5619289829159,
+            "z": 99.97146567751957
+          },
+          {
+            "x": 207.4380710170841,
+            "z": 99.97146567751957
+          },
+          {
+            "x": 183.12656959571228,
+            "z": 161.2164383284869
+          },
+          {
+            "x": 118.8734304042877,
+            "z": 161.2164383284869
+          }
+        ],
+        "concern": {
+          "id": "fight:3",
+          "kind": "combat",
+          "x": 159.9,
+          "z": 117.2,
+          "urgency": 56,
+          "contacts": 1,
+          "event": "minimap-contact",
+          "eventId": "fight:3:contact",
+          "eventTick": 170,
+          "eventOnScreen": false,
+          "score": 55.929654764477164,
+          "rememberedAt": 170,
+          "since": 170,
+          "until": 262,
+          "slipped": true
+        },
+        "selected": [
+          12
+        ],
+        "active": null,
+        "queued": 0,
+        "cursor": {
+          "x": 151.13294955574915,
+          "z": 138.1659610375326,
+          "fromX": 151,
+          "fromZ": 139,
+          "toX": 151,
+          "toZ": 139,
+          "startTick": 149,
+          "endTick": 153,
+          "pixelX": 963.0921068316192,
+          "pixelY": 524.2214756078266,
+          "mode": "screen"
+        },
+        "units": [
+          {
+            "id": 12,
+            "owner": 0,
+            "type": "mg",
+            "x": 151,
+            "z": 139,
+            "hp": 36,
+            "hpSource": "selected-hud",
+            "cdKnown": true,
+            "cooldown": 39,
+            "retreating": false,
+            "moving": false,
+            "targetId": 14,
+            "cover": 0,
+            "holdPos": false,
+            "holdFire": false,
+            "autoRetreat": true
+          },
+          {
+            "id": 14,
+            "owner": 1,
+            "type": "rifle",
+            "x": 159.9,
+            "z": 117.2,
+            "hp": 45,
+            "hpSource": "world-bar",
+            "cdKnown": false,
+            "cooldown": null,
+            "retreating": false,
+            "moving": false,
+            "targetId": 12,
+            "cover": 0,
+            "holdPos": false,
+            "holdFire": false,
+            "autoRetreat": false
+          }
+        ],
+        "minimap": [
+          {
+            "id": 10,
+            "owner": 0,
+            "x": 42,
+            "z": 41,
+            "vehicle": false
+          },
+          {
+            "id": 11,
+            "owner": 0,
+            "x": 45,
+            "z": 41,
+            "vehicle": false
+          },
+          {
+            "id": 9,
+            "owner": 0,
+            "x": 95,
+            "z": 67,
+            "vehicle": false
+          },
+          {
+            "id": 8,
+            "owner": 0,
+            "x": 95,
+            "z": 73,
+            "vehicle": false
+          },
+          {
+            "id": 7,
+            "owner": 0,
+            "x": 96,
+            "z": 70,
+            "vehicle": false
+          },
+          {
+            "id": 12,
+            "owner": 0,
+            "x": 151,
+            "z": 139,
+            "vehicle": false
+          },
+          {
+            "owner": 1,
+            "x": 159.9,
+            "z": 117.2,
+            "vehicle": false
+          }
+        ],
+        "selectedHUD": {
+          "slot": 0,
+          "ids": [
+            12
+          ],
+          "types": [
+            {
+              "type": "mg",
+              "ids": [
+                12
+              ],
+              "count": 1,
+              "hp": 36,
+              "maxHp": 75,
+              "suppressionTags": {
+                "suppressed": false,
+                "pinned": false
+              },
+              "allRetreating": false,
+              "ability": {
+                "id": "suppress",
+                "anyReady": false,
+                "cooldownSeconds": 39,
+                "allAuto": false,
+                "usable": false,
+                "reason": "cooldown"
+              }
+            }
+          ],
+          "observedTick": 200
+        }
+      },
+      "privateAuthoritativeProofOnly": {
+        "resources": [
+          {
+            "mp": 729.991666666665,
+            "mun": 200,
+            "fuel": 0
+          },
+          {
+            "mp": 49.9916666666665,
+            "mun": 0,
+            "fuel": 0
+          }
+        ],
+        "homeActors": [
+          {
+            "id": 10,
+            "type": "rifle",
+            "owner": 0,
+            "x": 42,
+            "z": 41,
+            "hp": 100,
+            "targetId": 0,
+            "path": 0,
+            "retreating": false,
+            "orders": 0,
+            "amove": null,
+            "dig": false,
+            "cd": -10.000000000000007
+          },
+          {
+            "id": 11,
+            "type": "rifle",
+            "owner": 0,
+            "x": 45,
+            "z": 41,
+            "hp": 100,
+            "targetId": 0,
+            "path": 0,
+            "retreating": false,
+            "orders": 0,
+            "amove": null,
+            "dig": false,
+            "cd": -10.000000000000007
+          }
+        ]
+      }
+    },
+    {
+      "tick": 300,
+      "seconds": 15.0,
+      "publicFrame": {
+        "tick": 300,
+        "observationTick": 300,
+        "camera": {
+          "x": 44.94480838051682,
+          "z": 39.130820780835485,
+          "yaw": 0,
+          "distance": 60
+        },
+        "corners": [
+          {
+            "x": -11.493262636567287,
+            "z": 0.10228645835506
+          },
+          {
+            "x": 101.38287939760093,
+            "z": 0.10228645835506
+          },
+          {
+            "x": 77.07137797622912,
+            "z": 61.347259109322394
+          },
+          {
+            "x": 12.818238784804521,
+            "z": 61.347259109322394
+          }
+        ],
+        "concern": {
+          "id": "idle:10",
+          "kind": "idle",
+          "x": 42,
+          "z": 41,
+          "unitId": 10,
+          "urgency": 41.91666666666667,
+          "score": 43.72104264811303,
+          "rememberedAt": 251,
+          "since": 271,
+          "until": 365,
+          "slipped": false
+        },
+        "selected": [
+          12
+        ],
+        "active": null,
+        "queued": 0,
+        "cursor": {
+          "x": 44.94480838051682,
+          "z": 39.130820780835485,
+          "fromX": 151.13294955574915,
+          "fromZ": 138.1659610375326,
+          "toX": 44.94480838051682,
+          "toZ": 39.130820780835485,
+          "startTick": 253,
+          "endTick": 270,
+          "pixelX": 1755.1295017519133,
+          "pixelY": 910.2475585586686,
+          "mode": "minimap"
+        },
+        "units": [
+          {
+            "id": 10,
+            "owner": 0,
+            "type": "rifle",
+            "x": 42,
+            "z": 41,
+            "hp": 100,
+            "hpSource": "world-bar",
+            "cdKnown": false,
+            "cooldown": null,
+            "retreating": false,
+            "moving": false,
+            "targetId": 0,
+            "cover": 0,
+            "holdPos": false,
+            "holdFire": false,
+            "autoRetreat": true
+          },
+          {
+            "id": 11,
+            "owner": 0,
+            "type": "rifle",
+            "x": 45,
+            "z": 41,
+            "hp": 100,
+            "hpSource": "world-bar",
+            "cdKnown": false,
+            "cooldown": null,
+            "retreating": false,
+            "moving": false,
+            "targetId": 0,
+            "cover": 0,
+            "holdPos": false,
+            "holdFire": false,
+            "autoRetreat": true
+          }
+        ],
+        "minimap": [
+          {
+            "id": 10,
+            "owner": 0,
+            "x": 42,
+            "z": 41,
+            "vehicle": false
+          },
+          {
+            "id": 11,
+            "owner": 0,
+            "x": 45,
+            "z": 41,
+            "vehicle": false
+          },
+          {
+            "id": 9,
+            "owner": 0,
+            "x": 95,
+            "z": 67,
+            "vehicle": false
+          },
+          {
+            "id": 8,
+            "owner": 0,
+            "x": 95,
+            "z": 73,
+            "vehicle": false
+          },
+          {
+            "id": 7,
+            "owner": 0,
+            "x": 96,
+            "z": 70,
+            "vehicle": false
+          },
+          {
+            "id": 12,
+            "owner": 0,
+            "x": 151,
+            "z": 139,
+            "vehicle": false
+          },
+          {
+            "owner": 1,
+            "x": 164.1,
+            "z": 137.7,
+            "vehicle": false
+          }
+        ],
+        "selectedHUD": {
+          "slot": 0,
+          "ids": [
+            12
+          ],
+          "types": [
+            {
+              "type": "mg",
+              "ids": [
+                12
+              ],
+              "count": 1,
+              "hp": 36,
+              "maxHp": 75,
+              "suppressionTags": {
+                "suppressed": false,
+                "pinned": false
+              },
+              "allRetreating": false,
+              "ability": {
+                "id": "suppress",
+                "anyReady": false,
+                "cooldownSeconds": 34,
+                "allAuto": false,
+                "usable": false,
+                "reason": "cooldown"
+              }
+            }
+          ],
+          "observedTick": 300
+        }
+      },
+      "privateAuthoritativeProofOnly": {
+        "resources": [
+          {
+            "mp": 754.9874999999975,
+            "mun": 200,
+            "fuel": 0
+          },
+          {
+            "mp": 74.9875,
+            "mun": 0,
+            "fuel": 0
+          }
+        ],
+        "homeActors": [
+          {
+            "id": 10,
+            "type": "rifle",
+            "owner": 0,
+            "x": 42,
+            "z": 41,
+            "hp": 100,
+            "targetId": 0,
+            "path": 0,
+            "retreating": false,
+            "orders": 0,
+            "amove": null,
+            "dig": false,
+            "cd": -15.000000000000078
+          },
+          {
+            "id": 11,
+            "type": "rifle",
+            "owner": 0,
+            "x": 45,
+            "z": 41,
+            "hp": 100,
+            "targetId": 0,
+            "path": 0,
+            "retreating": false,
+            "orders": 0,
+            "amove": null,
+            "dig": false,
+            "cd": -15.000000000000078
+          }
+        ]
+      }
+    },
+    {
+      "tick": 370,
+      "seconds": 18.5,
+      "publicFrame": {
+        "tick": 370,
+        "observationTick": 370,
+        "camera": {
+          "x": 44.94480838051682,
+          "z": 39.130820780835485,
+          "yaw": 0,
+          "distance": 60
+        },
+        "corners": [
+          {
+            "x": -11.493262636567287,
+            "z": 0.10228645835506
+          },
+          {
+            "x": 101.38287939760093,
+            "z": 0.10228645835506
+          },
+          {
+            "x": 77.07137797622912,
+            "z": 61.347259109322394
+          },
+          {
+            "x": 12.818238784804521,
+            "z": 61.347259109322394
+          }
+        ],
+        "concern": {
+          "id": "idle:10",
+          "kind": "idle",
+          "x": 42,
+          "z": 41,
+          "unitId": 10,
+          "urgency": 49.5,
+          "since": 271,
+          "until": 365
+        },
+        "selected": [
+          12
+        ],
+        "active": null,
+        "queued": 0,
+        "cursor": {
+          "x": 44.94480838051682,
+          "z": 39.130820780835485,
+          "fromX": 151.13294955574915,
+          "fromZ": 138.1659610375326,
+          "toX": 44.94480838051682,
+          "toZ": 39.130820780835485,
+          "startTick": 253,
+          "endTick": 270,
+          "pixelX": 1755.1295017519133,
+          "pixelY": 910.2475585586686,
+          "mode": "minimap"
+        },
+        "units": [
+          {
+            "id": 10,
+            "owner": 0,
+            "type": "rifle",
+            "x": 42,
+            "z": 41,
+            "hp": 100,
+            "hpSource": "world-bar",
+            "cdKnown": false,
+            "cooldown": null,
+            "retreating": false,
+            "moving": false,
+            "targetId": 0,
+            "cover": 0,
+            "holdPos": false,
+            "holdFire": false,
+            "autoRetreat": true
+          },
+          {
+            "id": 11,
+            "owner": 0,
+            "type": "rifle",
+            "x": 45,
+            "z": 41,
+            "hp": 100,
+            "hpSource": "world-bar",
+            "cdKnown": false,
+            "cooldown": null,
+            "retreating": false,
+            "moving": false,
+            "targetId": 0,
+            "cover": 0,
+            "holdPos": false,
+            "holdFire": false,
+            "autoRetreat": true
+          }
+        ],
+        "minimap": [
+          {
+            "id": 10,
+            "owner": 0,
+            "x": 42,
+            "z": 41,
+            "vehicle": false
+          },
+          {
+            "id": 11,
+            "owner": 0,
+            "x": 45,
+            "z": 41,
+            "vehicle": false
+          },
+          {
+            "id": 9,
+            "owner": 0,
+            "x": 95,
+            "z": 67,
+            "vehicle": false
+          },
+          {
+            "id": 8,
+            "owner": 0,
+            "x": 95,
+            "z": 73,
+            "vehicle": false
+          },
+          {
+            "id": 7,
+            "owner": 0,
+            "x": 96,
+            "z": 70,
+            "vehicle": false
+          },
+          {
+            "id": 12,
+            "owner": 0,
+            "x": 151,
+            "z": 139,
+            "vehicle": false
+          },
+          {
+            "owner": 1,
+            "x": 168.9,
+            "z": 160.8,
+            "vehicle": false
+          }
+        ],
+        "selectedHUD": {
+          "slot": 0,
+          "ids": [
+            12
+          ],
+          "types": [
+            {
+              "type": "mg",
+              "ids": [
+                12
+              ],
+              "count": 1,
+              "hp": 36,
+              "maxHp": 75,
+              "suppressionTags": {
+                "suppressed": false,
+                "pinned": false
+              },
+              "allRetreating": false,
+              "ability": {
+                "id": "suppress",
+                "anyReady": false,
+                "cooldownSeconds": 30,
+                "allAuto": false,
+                "usable": false,
+                "reason": "cooldown"
+              }
+            }
+          ],
+          "observedTick": 370
+        }
+      },
+      "privateAuthoritativeProofOnly": {
+        "resources": [
+          {
+            "mp": 772.4845833333302,
+            "mun": 200,
+            "fuel": 0
+          },
+          {
+            "mp": 92.48458333333373,
+            "mun": 0,
+            "fuel": 0
+          }
+        ],
+        "homeActors": [
+          {
+            "id": 10,
+            "type": "rifle",
+            "owner": 0,
+            "x": 42,
+            "z": 41,
+            "hp": 100,
+            "targetId": 0,
+            "path": 0,
+            "retreating": false,
+            "orders": 0,
+            "amove": null,
+            "dig": false,
+            "cd": -18.500000000000128
+          },
+          {
+            "id": 11,
+            "type": "rifle",
+            "owner": 0,
+            "x": 45,
+            "z": 41,
+            "hp": 100,
+            "targetId": 0,
+            "path": 0,
+            "retreating": false,
+            "orders": 0,
+            "amove": null,
+            "dig": false,
+            "cd": -18.500000000000128
+          }
+        ]
+      }
+    },
+    {
+      "tick": 390,
+      "seconds": 19.5,
+      "publicFrame": {
+        "tick": 390,
+        "observationTick": 390,
+        "camera": {
+          "x": 171.34239920994239,
+          "z": 158.22561058944902,
+          "yaw": 0,
+          "distance": 60
+        },
+        "corners": [
+          {
+            "x": 114.90432819285829,
+            "z": 119.1970762669686
+          },
+          {
+            "x": 227.78047022702648,
+            "z": 119.1970762669686
+          },
+          {
+            "x": 203.4689688056547,
+            "z": 180.44204891793592
+          },
+          {
+            "x": 139.21582961423007,
+            "z": 180.44204891793592
+          }
+        ],
+        "concern": {
+          "id": "fight:3",
+          "kind": "combat",
+          "x": 169,
+          "z": 161.5,
+          "urgency": 56,
+          "contacts": 1,
+          "event": "minimap-contact",
+          "eventId": "fight:3:contact",
+          "eventTick": 170,
+          "eventOnScreen": false,
+          "score": 46.437515354249626,
+          "rememberedAt": 372,
+          "since": 386,
+          "until": 487,
+          "slipped": true
+        },
+        "selected": [
+          12
+        ],
+        "active": null,
+        "queued": 0,
+        "cursor": {
+          "x": 171.34239920994239,
+          "z": 158.22561058944902,
+          "fromX": 44.94480838051682,
+          "fromZ": 39.130820780835485,
+          "toX": 171.34239920994239,
+          "toZ": 158.22561058944902,
+          "startTick": 373,
+          "endTick": 385,
+          "pixelX": 1861.2642066532544,
+          "pixelY": 1010.2501795633865,
+          "mode": "minimap"
+        },
+        "units": [
+          {
+            "id": 12,
+            "owner": 0,
+            "type": "mg",
+            "x": 151,
+            "z": 139,
+            "hp": 36,
+            "hpSource": "selected-hud",
+            "cdKnown": true,
+            "cooldown": 29,
+            "retreating": false,
+            "moving": false,
+            "targetId": 14,
+            "cover": 0,
+            "holdPos": false,
+            "holdFire": false,
+            "autoRetreat": true
+          },
+          {
+            "id": 14,
+            "owner": 1,
+            "type": "rifle",
+            "x": 170.3,
+            "z": 167.4,
+            "hp": 20,
+            "hpSource": "world-bar",
+            "cdKnown": false,
+            "cooldown": null,
+            "retreating": true,
+            "moving": false,
+            "targetId": 0,
+            "cover": 0,
+            "holdPos": false,
+            "holdFire": false,
+            "autoRetreat": false
+          }
+        ],
+        "minimap": [
+          {
+            "id": 10,
+            "owner": 0,
+            "x": 42,
+            "z": 41,
+            "vehicle": false
+          },
+          {
+            "id": 11,
+            "owner": 0,
+            "x": 45,
+            "z": 41,
+            "vehicle": false
+          },
+          {
+            "id": 9,
+            "owner": 0,
+            "x": 95,
+            "z": 67,
+            "vehicle": false
+          },
+          {
+            "id": 8,
+            "owner": 0,
+            "x": 95,
+            "z": 73,
+            "vehicle": false
+          },
+          {
+            "id": 7,
+            "owner": 0,
+            "x": 96,
+            "z": 70,
+            "vehicle": false
+          },
+          {
+            "id": 12,
+            "owner": 0,
+            "x": 151,
+            "z": 139,
+            "vehicle": false
+          },
+          {
+            "owner": 1,
+            "x": 170.3,
+            "z": 167.4,
+            "vehicle": false
+          }
+        ],
+        "selectedHUD": {
+          "slot": 0,
+          "ids": [
+            12
+          ],
+          "types": [
+            {
+              "type": "mg",
+              "ids": [
+                12
+              ],
+              "count": 1,
+              "hp": 36,
+              "maxHp": 75,
+              "suppressionTags": {
+                "suppressed": false,
+                "pinned": false
+              },
+              "allRetreating": false,
+              "ability": {
+                "id": "suppress",
+                "anyReady": false,
+                "cooldownSeconds": 29,
+                "allAuto": false,
+                "usable": false,
+                "reason": "cooldown"
+              }
+            }
+          ],
+          "observedTick": 390
+        }
+      },
+      "privateAuthoritativeProofOnly": {
+        "resources": [
+          {
+            "mp": 777.4837499999967,
+            "mun": 200,
+            "fuel": 0
+          },
+          {
+            "mp": 97.48375000000051,
+            "mun": 0,
+            "fuel": 0
+          }
+        ],
+        "homeActors": [
+          {
+            "id": 10,
+            "type": "rifle",
+            "owner": 0,
+            "x": 42,
+            "z": 41,
+            "hp": 100,
+            "targetId": 0,
+            "path": 0,
+            "retreating": false,
+            "orders": 0,
+            "amove": null,
+            "dig": false,
+            "cd": -19.500000000000142
+          },
+          {
+            "id": 11,
+            "type": "rifle",
+            "owner": 0,
+            "x": 45,
+            "z": 41,
+            "hp": 100,
+            "targetId": 0,
+            "path": 0,
+            "retreating": false,
+            "orders": 0,
+            "amove": null,
+            "dig": false,
+            "cd": -19.500000000000142
+          }
+        ]
+      }
+    },
+    {
+      "tick": 500,
+      "seconds": 25.0,
+      "publicFrame": {
+        "tick": 500,
+        "observationTick": 500,
+        "camera": {
+          "x": 43.25182561507574,
+          "z": 39.67469283183848,
+          "yaw": 0,
+          "distance": 60
+        },
+        "corners": [
+          {
+            "x": -13.186245402008367,
+            "z": 0.6461585093580524
+          },
+          {
+            "x": 99.68989663215984,
+            "z": 0.6461585093580524
+          },
+          {
+            "x": 75.37839521078803,
+            "z": 61.891131160325386
+          },
+          {
+            "x": 11.12525601936344,
+            "z": 61.891131160325386
+          }
+        ],
+        "concern": {
+          "id": "idle:11",
+          "kind": "idle",
+          "x": 45,
+          "z": 41,
+          "unitId": 11,
+          "urgency": 54,
+          "since": 449,
+          "until": 564
+        },
+        "selected": [
+          12
+        ],
+        "active": null,
+        "queued": 0,
+        "cursor": {
+          "x": 43.25182561507574,
+          "z": 39.67469283183848,
+          "fromX": 171.34239920994239,
+          "fromZ": 158.22561058944902,
+          "toX": 43.25182561507574,
+          "toZ": 39.67469283183848,
+          "startTick": 436,
+          "endTick": 448,
+          "pixelX": 1753.7079222341863,
+          "pixelY": 910.7042421019111,
+          "mode": "minimap"
+        },
+        "units": [
+          {
+            "id": 10,
+            "owner": 0,
+            "type": "rifle",
+            "x": 42,
+            "z": 41,
+            "hp": 100,
+            "hpSource": "world-bar",
+            "cdKnown": false,
+            "cooldown": null,
+            "retreating": false,
+            "moving": false,
+            "targetId": 0,
+            "cover": 0,
+            "holdPos": false,
+            "holdFire": false,
+            "autoRetreat": true
+          },
+          {
+            "id": 11,
+            "owner": 0,
+            "type": "rifle",
+            "x": 45,
+            "z": 41,
+            "hp": 100,
+            "hpSource": "world-bar",
+            "cdKnown": false,
+            "cooldown": null,
+            "retreating": false,
+            "moving": false,
+            "targetId": 0,
+            "cover": 0,
+            "holdPos": false,
+            "holdFire": false,
+            "autoRetreat": true
+          }
+        ],
+        "minimap": [
+          {
+            "id": 10,
+            "owner": 0,
+            "x": 42,
+            "z": 41,
+            "vehicle": false
+          },
+          {
+            "id": 11,
+            "owner": 0,
+            "x": 45,
+            "z": 41,
+            "vehicle": false
+          },
+          {
+            "id": 9,
+            "owner": 0,
+            "x": 95,
+            "z": 67,
+            "vehicle": false
+          },
+          {
+            "id": 8,
+            "owner": 0,
+            "x": 95,
+            "z": 73,
+            "vehicle": false
+          },
+          {
+            "id": 7,
+            "owner": 0,
+            "x": 96,
+            "z": 70,
+            "vehicle": false
+          },
+          {
+            "id": 12,
+            "owner": 0,
+            "x": 151,
+            "z": 139,
+            "vehicle": false
+          }
+        ],
+        "selectedHUD": {
+          "slot": 0,
+          "ids": [
+            12
+          ],
+          "types": [
+            {
+              "type": "mg",
+              "ids": [
+                12
+              ],
+              "count": 1,
+              "hp": 36,
+              "maxHp": 75,
+              "suppressionTags": {
+                "suppressed": false,
+                "pinned": false
+              },
+              "allRetreating": false,
+              "ability": {
+                "id": "suppress",
+                "anyReady": false,
+                "cooldownSeconds": 24,
+                "allAuto": false,
+                "usable": false,
+                "reason": "cooldown"
+              }
+            }
+          ],
+          "observedTick": 500
+        }
+      },
+      "privateAuthoritativeProofOnly": {
+        "resources": [
+          {
+            "mp": 804.9791666666624,
+            "mun": 200,
+            "fuel": 0
+          },
+          {
+            "mp": 94.97916666666781,
+            "mun": 0,
+            "fuel": 0
+          }
+        ],
+        "homeActors": [
+          {
+            "id": 10,
+            "type": "rifle",
+            "owner": 0,
+            "x": 42,
+            "z": 41,
+            "hp": 100,
+            "targetId": 0,
+            "path": 0,
+            "retreating": false,
+            "orders": 0,
+            "amove": null,
+            "dig": false,
+            "cd": -25.00000000000022
+          },
+          {
+            "id": 11,
+            "type": "rifle",
+            "owner": 0,
+            "x": 45,
+            "z": 41,
+            "hp": 100,
+            "targetId": 0,
+            "path": 0,
+            "retreating": false,
+            "orders": 0,
+            "amove": null,
+            "dig": false,
+            "cd": -25.00000000000022
+          }
+        ]
+      }
+    },
+    {
+      "tick": 590,
+      "seconds": 29.5,
+      "publicFrame": {
+        "tick": 590,
+        "observationTick": 590,
+        "camera": {
+          "x": 43.25182561507574,
+          "z": 39.67469283183848,
+          "yaw": 0,
+          "distance": 60
+        },
+        "corners": [
+          {
+            "x": -13.186245402008367,
+            "z": 0.6461585093580524
+          },
+          {
+            "x": 99.68989663215984,
+            "z": 0.6461585093580524
+          },
+          {
+            "x": 75.37839521078803,
+            "z": 61.891131160325386
+          },
+          {
+            "x": 11.12525601936344,
+            "z": 61.891131160325386
+          }
+        ],
+        "concern": {
+          "id": "production",
+          "kind": "production",
+          "x": 41,
+          "z": 41,
+          "urgency": 51.090555555555554,
+          "score": 63.53038183496851,
+          "rememberedAt": 581,
+          "since": 581,
+          "until": 667,
+          "slipped": false
+        },
+        "selected": [
+          12
+        ],
+        "active": null,
+        "queued": 0,
+        "cursor": {
+          "x": 43.25182561507574,
+          "z": 39.67469283183848,
+          "fromX": 171.34239920994239,
+          "fromZ": 158.22561058944902,
+          "toX": 43.25182561507574,
+          "toZ": 39.67469283183848,
+          "startTick": 436,
+          "endTick": 448,
+          "pixelX": 1753.7079222341863,
+          "pixelY": 910.7042421019111,
+          "mode": "minimap"
+        },
+        "units": [
+          {
+            "id": 10,
+            "owner": 0,
+            "type": "rifle",
+            "x": 42,
+            "z": 41,
+            "hp": 100,
+            "hpSource": "world-bar",
+            "cdKnown": false,
+            "cooldown": null,
+            "retreating": false,
+            "moving": false,
+            "targetId": 0,
+            "cover": 0,
+            "holdPos": false,
+            "holdFire": false,
+            "autoRetreat": true
+          },
+          {
+            "id": 11,
+            "owner": 0,
+            "type": "rifle",
+            "x": 45,
+            "z": 41,
+            "hp": 100,
+            "hpSource": "world-bar",
+            "cdKnown": false,
+            "cooldown": null,
+            "retreating": false,
+            "moving": false,
+            "targetId": 0,
+            "cover": 0,
+            "holdPos": false,
+            "holdFire": false,
+            "autoRetreat": true
+          }
+        ],
+        "minimap": [
+          {
+            "id": 10,
+            "owner": 0,
+            "x": 42,
+            "z": 41,
+            "vehicle": false
+          },
+          {
+            "id": 11,
+            "owner": 0,
+            "x": 45,
+            "z": 41,
+            "vehicle": false
+          },
+          {
+            "id": 9,
+            "owner": 0,
+            "x": 95,
+            "z": 67,
+            "vehicle": false
+          },
+          {
+            "id": 8,
+            "owner": 0,
+            "x": 95,
+            "z": 73,
+            "vehicle": false
+          },
+          {
+            "id": 7,
+            "owner": 0,
+            "x": 96,
+            "z": 70,
+            "vehicle": false
+          },
+          {
+            "id": 12,
+            "owner": 0,
+            "x": 151,
+            "z": 139,
+            "vehicle": false
+          }
+        ],
+        "selectedHUD": {
+          "slot": 0,
+          "ids": [
+            12
+          ],
+          "types": [
+            {
+              "type": "mg",
+              "ids": [
+                12
+              ],
+              "count": 1,
+              "hp": 36,
+              "maxHp": 75,
+              "suppressionTags": {
+                "suppressed": false,
+                "pinned": false
+              },
+              "allRetreating": false,
+              "ability": {
+                "id": "suppress",
+                "anyReady": false,
+                "cooldownSeconds": 19,
+                "allAuto": false,
+                "usable": false,
+                "reason": "cooldown"
+              }
+            }
+          ],
+          "observedTick": 590
+        }
+      },
+      "privateAuthoritativeProofOnly": {
+        "resources": [
+          {
+            "mp": 827.4754166666617,
+            "mun": 200,
+            "fuel": 0
+          },
+          {
+            "mp": 107.47541666666832,
+            "mun": 0,
+            "fuel": 0
+          }
+        ],
+        "homeActors": [
+          {
+            "id": 10,
+            "type": "rifle",
+            "owner": 0,
+            "x": 42,
+            "z": 41,
+            "hp": 100,
+            "targetId": 0,
+            "path": 0,
+            "retreating": false,
+            "orders": 0,
+            "amove": null,
+            "dig": false,
+            "cd": -29.500000000000284
+          },
+          {
+            "id": 11,
+            "type": "rifle",
+            "owner": 0,
+            "x": 45,
+            "z": 41,
+            "hp": 100,
+            "targetId": 0,
+            "path": 0,
+            "retreating": false,
+            "orders": 0,
+            "amove": null,
+            "dig": false,
+            "cd": -29.500000000000284
+          }
+        ]
+      }
+    },
+    {
+      "tick": 600,
+      "seconds": 30.0,
+      "publicFrame": {
+        "tick": 600,
+        "observationTick": 600,
+        "camera": {
+          "x": 43.25182561507574,
+          "z": 39.67469283183848,
+          "yaw": 0,
+          "distance": 60
+        },
+        "corners": [
+          {
+            "x": -13.186245402008367,
+            "z": 0.6461585093580524
+          },
+          {
+            "x": 99.68989663215984,
+            "z": 0.6461585093580524
+          },
+          {
+            "x": 75.37839521078803,
+            "z": 61.891131160325386
+          },
+          {
+            "x": 11.12525601936344,
+            "z": 61.891131160325386
+          }
+        ],
+        "concern": {
+          "id": "production",
+          "kind": "production",
+          "x": 41,
+          "z": 41,
+          "urgency": 51.090555555555554,
+          "score": 63.53038183496851,
+          "rememberedAt": 581,
+          "since": 581,
+          "until": 667,
+          "slipped": false
+        },
+        "selected": [
+          12
+        ],
+        "active": {
+          "kind": "buy-click",
+          "reacting": false,
+          "dueTick": 605,
+          "queuedTick": 592
+        },
+        "queued": 0,
+        "cursor": {
+          "x": 43.25182561507574,
+          "z": 39.67469283183848,
+          "fromX": 171.34239920994239,
+          "fromZ": 158.22561058944902,
+          "toX": 43.25182561507574,
+          "toZ": 39.67469283183848,
+          "startTick": 436,
+          "endTick": 448,
+          "pixelX": 1366.8539611170931,
+          "pixelY": 955.3521210509555,
+          "mode": "ui"
+        },
+        "units": [
+          {
+            "id": 10,
+            "owner": 0,
+            "type": "rifle",
+            "x": 42,
+            "z": 41,
+            "hp": 100,
+            "hpSource": "world-bar",
+            "cdKnown": false,
+            "cooldown": null,
+            "retreating": false,
+            "moving": false,
+            "targetId": 0,
+            "cover": 0,
+            "holdPos": false,
+            "holdFire": false,
+            "autoRetreat": true
+          },
+          {
+            "id": 11,
+            "owner": 0,
+            "type": "rifle",
+            "x": 45,
+            "z": 41,
+            "hp": 100,
+            "hpSource": "world-bar",
+            "cdKnown": false,
+            "cooldown": null,
+            "retreating": false,
+            "moving": false,
+            "targetId": 0,
+            "cover": 0,
+            "holdPos": false,
+            "holdFire": false,
+            "autoRetreat": true
+          }
+        ],
+        "minimap": [
+          {
+            "id": 10,
+            "owner": 0,
+            "x": 42,
+            "z": 41,
+            "vehicle": false
+          },
+          {
+            "id": 11,
+            "owner": 0,
+            "x": 45,
+            "z": 41,
+            "vehicle": false
+          },
+          {
+            "id": 9,
+            "owner": 0,
+            "x": 95,
+            "z": 67,
+            "vehicle": false
+          },
+          {
+            "id": 8,
+            "owner": 0,
+            "x": 95,
+            "z": 73,
+            "vehicle": false
+          },
+          {
+            "id": 7,
+            "owner": 0,
+            "x": 96,
+            "z": 70,
+            "vehicle": false
+          },
+          {
+            "id": 12,
+            "owner": 0,
+            "x": 151,
+            "z": 139,
+            "vehicle": false
+          }
+        ],
+        "selectedHUD": {
+          "slot": 0,
+          "ids": [
+            12
+          ],
+          "types": [
+            {
+              "type": "mg",
+              "ids": [
+                12
+              ],
+              "count": 1,
+              "hp": 36,
+              "maxHp": 75,
+              "suppressionTags": {
+                "suppressed": false,
+                "pinned": false
+              },
+              "allRetreating": false,
+              "ability": {
+                "id": "suppress",
+                "anyReady": false,
+                "cooldownSeconds": 19,
+                "allAuto": false,
+                "usable": false,
+                "reason": "cooldown"
+              }
+            }
+          ],
+          "observedTick": 600
+        }
+      },
+      "privateAuthoritativeProofOnly": {
+        "resources": [
+          {
+            "mp": 829.9749999999949,
+            "mun": 200,
+            "fuel": 0
+          },
+          {
+            "mp": 109.97500000000171,
+            "mun": 0,
+            "fuel": 0
+          }
+        ],
+        "homeActors": [
+          {
+            "id": 10,
+            "type": "rifle",
+            "owner": 0,
+            "x": 42,
+            "z": 41,
+            "hp": 100,
+            "targetId": 0,
+            "path": 0,
+            "retreating": false,
+            "orders": 0,
+            "amove": null,
+            "dig": false,
+            "cd": -30.00000000000029
+          },
+          {
+            "id": 11,
+            "type": "rifle",
+            "owner": 0,
+            "x": 45,
+            "z": 41,
+            "hp": 100,
+            "targetId": 0,
+            "path": 0,
+            "retreating": false,
+            "orders": 0,
+            "amove": null,
+            "dig": false,
+            "cd": -30.00000000000029
+          }
+        ]
+      }
+    },
+    {
+      "tick": 610,
+      "seconds": 30.5,
+      "publicFrame": {
+        "tick": 610,
+        "observationTick": 610,
+        "camera": {
+          "x": 43.25182561507574,
+          "z": 39.67469283183848,
+          "yaw": 0,
+          "distance": 60
+        },
+        "corners": [
+          {
+            "x": -13.186245402008367,
+            "z": 0.6461585093580524
+          },
+          {
+            "x": 99.68989663215984,
+            "z": 0.6461585093580524
+          },
+          {
+            "x": 75.37839521078803,
+            "z": 61.891131160325386
+          },
+          {
+            "x": 11.12525601936344,
+            "z": 61.891131160325386
+          }
+        ],
+        "concern": {
+          "id": "production",
+          "kind": "production",
+          "x": 41,
+          "z": 41,
+          "urgency": 47.67666666666667,
+          "since": 581,
+          "until": 667
+        },
+        "selected": [
+          12
+        ],
+        "active": {
+          "kind": "select-box",
+          "reacting": false,
+          "dueTick": 628,
+          "queuedTick": 606
+        },
+        "queued": 1,
+        "cursor": {
+          "x": 43.47554278284469,
+          "z": 54.89423762386129,
+          "fromX": 43.25182561507574,
+          "fromZ": 39.67469283183848,
+          "toX": 43.5,
+          "toZ": 41,
+          "startTick": 607,
+          "endTick": 628,
+          "pixelX": 966.1531155922629,
+          "pixelY": 880.4943193493979,
+          "mode": "screen"
+        },
+        "units": [
+          {
+            "id": 10,
+            "owner": 0,
+            "type": "rifle",
+            "x": 42,
+            "z": 41,
+            "hp": 100,
+            "hpSource": "world-bar",
+            "cdKnown": false,
+            "cooldown": null,
+            "retreating": false,
+            "moving": false,
+            "targetId": 0,
+            "cover": 0,
+            "holdPos": false,
+            "holdFire": false,
+            "autoRetreat": true
+          },
+          {
+            "id": 11,
+            "owner": 0,
+            "type": "rifle",
+            "x": 45,
+            "z": 41,
+            "hp": 100,
+            "hpSource": "world-bar",
+            "cdKnown": false,
+            "cooldown": null,
+            "retreating": false,
+            "moving": false,
+            "targetId": 0,
+            "cover": 0,
+            "holdPos": false,
+            "holdFire": false,
+            "autoRetreat": true
+          },
+          {
+            "id": 15,
+            "owner": 0,
+            "type": "at",
+            "x": 39,
+            "z": 37,
+            "hp": 80,
+            "hpSource": "world-bar",
+            "cdKnown": false,
+            "cooldown": null,
+            "retreating": false,
+            "moving": false,
+            "targetId": 0,
+            "cover": 0,
+            "holdPos": false,
+            "holdFire": false,
+            "autoRetreat": true
+          }
+        ],
+        "minimap": [
+          {
+            "id": 15,
+            "owner": 0,
+            "x": 39,
+            "z": 37,
+            "vehicle": false
+          },
+          {
+            "id": 10,
+            "owner": 0,
+            "x": 42,
+            "z": 41,
+            "vehicle": false
+          },
+          {
+            "id": 11,
+            "owner": 0,
+            "x": 45,
+            "z": 41,
+            "vehicle": false
+          },
+          {
+            "id": 9,
+            "owner": 0,
+            "x": 95,
+            "z": 67,
+            "vehicle": false
+          },
+          {
+            "id": 8,
+            "owner": 0,
+            "x": 95,
+            "z": 73,
+            "vehicle": false
+          },
+          {
+            "id": 7,
+            "owner": 0,
+            "x": 96,
+            "z": 70,
+            "vehicle": false
+          },
+          {
+            "id": 12,
+            "owner": 0,
+            "x": 151,
+            "z": 139,
+            "vehicle": false
+          }
+        ],
+        "selectedHUD": {
+          "slot": 0,
+          "ids": [
+            12
+          ],
+          "types": [
+            {
+              "type": "mg",
+              "ids": [
+                12
+              ],
+              "count": 1,
+              "hp": 36,
+              "maxHp": 75,
+              "suppressionTags": {
+                "suppressed": false,
+                "pinned": false
+              },
+              "allRetreating": false,
+              "ability": {
+                "id": "suppress",
+                "anyReady": false,
+                "cooldownSeconds": 18,
+                "allAuto": false,
+                "usable": false,
+                "reason": "cooldown"
+              }
+            }
+          ],
+          "observedTick": 610
+        }
+      },
+      "privateAuthoritativeProofOnly": {
+        "resources": [
+          {
+            "mp": 632.4745833333282,
+            "mun": 200,
+            "fuel": 0
+          },
+          {
+            "mp": 112.4745833333351,
+            "mun": 0,
+            "fuel": 0
+          }
+        ],
+        "homeActors": [
+          {
+            "id": 10,
+            "type": "rifle",
+            "owner": 0,
+            "x": 42,
+            "z": 41,
+            "hp": 100,
+            "targetId": 0,
+            "path": 0,
+            "retreating": false,
+            "orders": 0,
+            "amove": null,
+            "dig": false,
+            "cd": -30.5000000000003
+          },
+          {
+            "id": 11,
+            "type": "rifle",
+            "owner": 0,
+            "x": 45,
+            "z": 41,
+            "hp": 100,
+            "targetId": 0,
+            "path": 0,
+            "retreating": false,
+            "orders": 0,
+            "amove": null,
+            "dig": false,
+            "cd": -30.5000000000003
+          }
+        ]
+      }
+    },
+    {
+      "tick": 630,
+      "seconds": 31.5,
+      "publicFrame": {
+        "tick": 630,
+        "observationTick": 630,
+        "camera": {
+          "x": 43.25182561507574,
+          "z": 39.67469283183848,
+          "yaw": 0,
+          "distance": 60
+        },
+        "corners": [
+          {
+            "x": -13.186245402008367,
+            "z": 0.6461585093580524
+          },
+          {
+            "x": 99.68989663215984,
+            "z": 0.6461585093580524
+          },
+          {
+            "x": 75.37839521078803,
+            "z": 61.891131160325386
+          },
+          {
+            "x": 11.12525601936344,
+            "z": 61.891131160325386
+          }
+        ],
+        "concern": {
+          "id": "production",
+          "kind": "production",
+          "x": 41,
+          "z": 41,
+          "urgency": 47.67666666666667,
+          "since": 581,
+          "until": 667
+        },
+        "selected": [
+          10,
+          11
+        ],
+        "active": {
+          "kind": "rightclick",
+          "reacting": false,
+          "dueTick": 639,
+          "queuedTick": 606
+        },
+        "queued": 1,
+        "cursor": {
+          "x": 47.761335206634996,
+          "z": 41.67534473864208,
+          "fromX": 45.11946950854232,
+          "fromZ": 40.40115520545654,
+          "toX": 58.879416499519564,
+          "toZ": 47.0376698646798,
+          "startTick": 628,
+          "endTick": 639,
+          "pixelX": 1067.8203238498565,
+          "pixelY": 578.9094682561738,
+          "mode": "screen"
+        },
+        "units": [
+          {
+            "id": 10,
+            "owner": 0,
+            "type": "rifle",
+            "x": 42,
+            "z": 41,
+            "hp": 100,
+            "hpSource": "world-bar",
+            "cdKnown": false,
+            "cooldown": null,
+            "retreating": false,
+            "moving": false,
+            "targetId": 0,
+            "cover": 0,
+            "holdPos": false,
+            "holdFire": false,
+            "autoRetreat": true
+          },
+          {
+            "id": 11,
+            "owner": 0,
+            "type": "rifle",
+            "x": 45,
+            "z": 41,
+            "hp": 100,
+            "hpSource": "world-bar",
+            "cdKnown": false,
+            "cooldown": null,
+            "retreating": false,
+            "moving": false,
+            "targetId": 0,
+            "cover": 0,
+            "holdPos": false,
+            "holdFire": false,
+            "autoRetreat": true
+          },
+          {
+            "id": 15,
+            "owner": 0,
+            "type": "at",
+            "x": 39,
+            "z": 37,
+            "hp": 80,
+            "hpSource": "world-bar",
+            "cdKnown": false,
+            "cooldown": null,
+            "retreating": false,
+            "moving": false,
+            "targetId": 0,
+            "cover": 0,
+            "holdPos": false,
+            "holdFire": false,
+            "autoRetreat": true
+          }
+        ],
+        "minimap": [
+          {
+            "id": 15,
+            "owner": 0,
+            "x": 39,
+            "z": 37,
+            "vehicle": false
+          },
+          {
+            "id": 10,
+            "owner": 0,
+            "x": 42,
+            "z": 41,
+            "vehicle": false
+          },
+          {
+            "id": 11,
+            "owner": 0,
+            "x": 45,
+            "z": 41,
+            "vehicle": false
+          },
+          {
+            "id": 9,
+            "owner": 0,
+            "x": 95,
+            "z": 67,
+            "vehicle": false
+          },
+          {
+            "id": 8,
+            "owner": 0,
+            "x": 95,
+            "z": 73,
+            "vehicle": false
+          },
+          {
+            "id": 7,
+            "owner": 0,
+            "x": 96,
+            "z": 70,
+            "vehicle": false
+          },
+          {
+            "id": 12,
+            "owner": 0,
+            "x": 151,
+            "z": 139,
+            "vehicle": false
+          }
+        ],
+        "selectedHUD": {
+          "slot": 0,
+          "ids": [
+            10,
+            11
+          ],
+          "types": [
+            {
+              "type": "rifle",
+              "ids": [
+                10,
+                11
+              ],
+              "count": 2,
+              "hp": 200,
+              "maxHp": 200,
+              "suppressionTags": {
+                "suppressed": false,
+                "pinned": false
+              },
+              "allRetreating": false,
+              "ability": {
+                "id": "grenade",
+                "anyReady": true,
+                "cooldownSeconds": 0,
+                "allAuto": false,
+                "usable": true,
+                "reason": null
+              }
+            }
+          ],
+          "observedTick": 630
+        }
+      },
+      "privateAuthoritativeProofOnly": {
+        "resources": [
+          {
+            "mp": 637.4737499999947,
+            "mun": 200,
+            "fuel": 0
+          },
+          {
+            "mp": 117.47375000000189,
+            "mun": 0,
+            "fuel": 0
+          }
+        ],
+        "homeActors": [
+          {
+            "id": 10,
+            "type": "rifle",
+            "owner": 0,
+            "x": 42,
+            "z": 41,
+            "hp": 100,
+            "targetId": 0,
+            "path": 0,
+            "retreating": false,
+            "orders": 0,
+            "amove": null,
+            "dig": false,
+            "cd": -31.500000000000313
+          },
+          {
+            "id": 11,
+            "type": "rifle",
+            "owner": 0,
+            "x": 45,
+            "z": 41,
+            "hp": 100,
+            "targetId": 0,
+            "path": 0,
+            "retreating": false,
+            "orders": 0,
+            "amove": null,
+            "dig": false,
+            "cd": -31.500000000000313
+          }
+        ]
+      }
+    },
+    {
+      "tick": 640,
+      "seconds": 32.0,
+      "publicFrame": {
+        "tick": 640,
+        "observationTick": 640,
+        "camera": {
+          "x": 43.25182561507574,
+          "z": 39.67469283183848,
+          "yaw": 0,
+          "distance": 60
+        },
+        "corners": [
+          {
+            "x": -13.186245402008367,
+            "z": 0.6461585093580524
+          },
+          {
+            "x": 99.68989663215984,
+            "z": 0.6461585093580524
+          },
+          {
+            "x": 75.37839521078803,
+            "z": 61.891131160325386
+          },
+          {
+            "x": 11.12525601936344,
+            "z": 61.891131160325386
+          }
+        ],
+        "concern": {
+          "id": "production",
+          "kind": "production",
+          "x": 41,
+          "z": 41,
+          "urgency": 47.67666666666667,
+          "since": 581,
+          "until": 667
+        },
+        "selected": [
+          10,
+          11
+        ],
+        "active": {
+          "kind": "select-click",
+          "reacting": true,
+          "dueTick": 644,
+          "queuedTick": 606
+        },
+        "queued": 0,
+        "cursor": {
+          "x": 58.879416499519564,
+          "z": 47.0376698646798,
+          "fromX": 45.11946950854232,
+          "fromZ": 40.40115520545654,
+          "toX": 58.879416499519564,
+          "toZ": 47.0376698646798,
+          "startTick": 628,
+          "endTick": 639,
+          "pixelX": 1354.5663232988804,
+          "pixelY": 691.2146518315068,
+          "mode": "screen"
+        },
+        "units": [
+          {
+            "id": 10,
+            "owner": 0,
+            "type": "rifle",
+            "x": 42.2,
+            "z": 41.1,
+            "hp": 100,
+            "hpSource": "world-bar",
+            "cdKnown": false,
+            "cooldown": null,
+            "retreating": false,
+            "moving": true,
+            "targetId": 0,
+            "cover": 0,
+            "holdPos": false,
+            "holdFire": false,
+            "autoRetreat": true
+          },
+          {
+            "id": 11,
+            "owner": 0,
+            "type": "rifle",
+            "x": 45.2,
+            "z": 41.1,
+            "hp": 100,
+            "hpSource": "world-bar",
+            "cdKnown": false,
+            "cooldown": null,
+            "retreating": false,
+            "moving": true,
+            "targetId": 0,
+            "cover": 0,
+            "holdPos": false,
+            "holdFire": false,
+            "autoRetreat": true
+          },
+          {
+            "id": 15,
+            "owner": 0,
+            "type": "at",
+            "x": 39,
+            "z": 37,
+            "hp": 80,
+            "hpSource": "world-bar",
+            "cdKnown": false,
+            "cooldown": null,
+            "retreating": false,
+            "moving": false,
+            "targetId": 0,
+            "cover": 0,
+            "holdPos": false,
+            "holdFire": false,
+            "autoRetreat": true
+          }
+        ],
+        "minimap": [
+          {
+            "id": 15,
+            "owner": 0,
+            "x": 39,
+            "z": 37,
+            "vehicle": false
+          },
+          {
+            "id": 10,
+            "owner": 0,
+            "x": 42.2,
+            "z": 41.1,
+            "vehicle": false
+          },
+          {
+            "id": 11,
+            "owner": 0,
+            "x": 45.2,
+            "z": 41.1,
+            "vehicle": false
+          },
+          {
+            "id": 9,
+            "owner": 0,
+            "x": 95,
+            "z": 67,
+            "vehicle": false
+          },
+          {
+            "id": 8,
+            "owner": 0,
+            "x": 95,
+            "z": 73,
+            "vehicle": false
+          },
+          {
+            "id": 7,
+            "owner": 0,
+            "x": 96,
+            "z": 70,
+            "vehicle": false
+          },
+          {
+            "id": 12,
+            "owner": 0,
+            "x": 151,
+            "z": 139,
+            "vehicle": false
+          }
+        ],
+        "selectedHUD": {
+          "slot": 0,
+          "ids": [
+            10,
+            11
+          ],
+          "types": [
+            {
+              "type": "rifle",
+              "ids": [
+                10,
+                11
+              ],
+              "count": 2,
+              "hp": 200,
+              "maxHp": 200,
+              "suppressionTags": {
+                "suppressed": false,
+                "pinned": false
+              },
+              "allRetreating": false,
+              "ability": {
+                "id": "grenade",
+                "anyReady": true,
+                "cooldownSeconds": 0,
+                "allAuto": false,
+                "usable": true,
+                "reason": null
+              }
+            }
+          ],
+          "observedTick": 640
+        }
+      },
+      "privateAuthoritativeProofOnly": {
+        "resources": [
+          {
+            "mp": 639.9733333333279,
+            "mun": 200,
+            "fuel": 0
+          },
+          {
+            "mp": 119.97333333333528,
+            "mun": 0,
+            "fuel": 0
+          }
+        ],
+        "homeActors": [
+          {
+            "id": 10,
+            "type": "rifle",
+            "owner": 0,
+            "x": 42.20072614121665,
+            "z": 41.10165636346178,
+            "hp": 100,
+            "targetId": 0,
+            "path": 1,
+            "retreating": false,
+            "orders": 0,
+            "amove": null,
+            "dig": false,
+            "cd": -32.00000000000032
+          },
+          {
+            "id": 11,
+            "type": "rifle",
+            "owner": 0,
+            "x": 45.217318553376195,
+            "z": 41.058289333144906,
+            "hp": 100,
+            "targetId": 0,
+            "path": 1,
+            "retreating": false,
+            "orders": 0,
+            "amove": null,
+            "dig": false,
+            "cd": -32.00000000000032
+          }
+        ]
+      }
+    },
+    {
+      "tick": 680,
+      "seconds": 34.0,
+      "publicFrame": {
+        "tick": 680,
+        "observationTick": 680,
+        "camera": {
+          "x": 43.25182561507574,
+          "z": 39.67469283183848,
+          "yaw": 0,
+          "distance": 60
+        },
+        "corners": [
+          {
+            "x": -13.186245402008367,
+            "z": 0.6461585093580524
+          },
+          {
+            "x": 99.68989663215984,
+            "z": 0.6461585093580524
+          },
+          {
+            "x": 75.37839521078803,
+            "z": 61.891131160325386
+          },
+          {
+            "x": 11.12525601936344,
+            "z": 61.891131160325386
+          }
+        ],
+        "concern": {
+          "id": "idle:9",
+          "kind": "idle",
+          "x": 95,
+          "z": 67,
+          "unitId": 9,
+          "urgency": 54,
+          "score": 62.9682698645629,
+          "rememberedAt": 677,
+          "since": 677,
+          "until": 766,
+          "slipped": false
+        },
+        "selected": [
+          15
+        ],
+        "active": {
+          "kind": "camera-pan",
+          "reacting": true,
+          "dueTick": 683,
+          "queuedTick": 677
+        },
+        "queued": 0,
+        "cursor": {
+          "x": 50.89626426388194,
+          "z": 44.885815128311734,
+          "fromX": 39.00154865958198,
+          "fromZ": 35.881804377391056,
+          "toX": 50.89626426388194,
+          "toZ": 44.885815128311734,
+          "startTick": 654,
+          "endTick": 665,
+          "pixelX": 980,
+          "pixelY": 1000,
+          "mode": "ui"
+        },
+        "units": [
+          {
+            "id": 10,
+            "owner": 0,
+            "type": "rifle",
+            "x": 50.2,
+            "z": 45.2,
+            "hp": 100,
+            "hpSource": "world-bar",
+            "cdKnown": false,
+            "cooldown": null,
+            "retreating": false,
+            "moving": true,
+            "targetId": 0,
+            "cover": 0,
+            "holdPos": false,
+            "holdFire": false,
+            "autoRetreat": true
+          },
+          {
+            "id": 11,
+            "owner": 0,
+            "type": "rifle",
+            "x": 53.9,
+            "z": 43.4,
+            "hp": 100,
+            "hpSource": "world-bar",
+            "cdKnown": false,
+            "cooldown": null,
+            "retreating": false,
+            "moving": true,
+            "targetId": 0,
+            "cover": 0,
+            "holdPos": false,
+            "holdFire": false,
+            "autoRetreat": true
+          },
+          {
+            "id": 15,
+            "owner": 0,
+            "type": "at",
+            "x": 40.6,
+            "z": 38,
+            "hp": 80,
+            "hpSource": "selected-hud",
+            "cdKnown": true,
+            "cooldown": 0,
+            "retreating": false,
+            "moving": true,
+            "targetId": 0,
+            "cover": 0,
+            "holdPos": false,
+            "holdFire": false,
+            "autoRetreat": true
+          },
+          {
+            "id": 16,
+            "owner": 0,
+            "type": "mg",
+            "x": 45,
+            "z": 43,
+            "hp": 75,
+            "hpSource": "world-bar",
+            "cdKnown": false,
+            "cooldown": null,
+            "retreating": false,
+            "moving": false,
+            "targetId": 0,
+            "cover": 0,
+            "holdPos": false,
+            "holdFire": false,
+            "autoRetreat": true
+          }
+        ],
+        "minimap": [
+          {
+            "id": 15,
+            "owner": 0,
+            "x": 40.6,
+            "z": 38,
+            "vehicle": false
+          },
+          {
+            "id": 16,
+            "owner": 0,
+            "x": 45,
+            "z": 43,
+            "vehicle": false
+          },
+          {
+            "id": 10,
+            "owner": 0,
+            "x": 50.2,
+            "z": 45.2,
+            "vehicle": false
+          },
+          {
+            "id": 11,
+            "owner": 0,
+            "x": 53.9,
+            "z": 43.4,
+            "vehicle": false
+          },
+          {
+            "id": 9,
+            "owner": 0,
+            "x": 95,
+            "z": 67,
+            "vehicle": false
+          },
+          {
+            "id": 8,
+            "owner": 0,
+            "x": 95,
+            "z": 73,
+            "vehicle": false
+          },
+          {
+            "id": 7,
+            "owner": 0,
+            "x": 96,
+            "z": 70,
+            "vehicle": false
+          },
+          {
+            "id": 12,
+            "owner": 0,
+            "x": 151,
+            "z": 139,
+            "vehicle": false
+          }
+        ],
+        "selectedHUD": {
+          "slot": 0,
+          "ids": [
+            15
+          ],
+          "types": [
+            {
+              "type": "at",
+              "ids": [
+                15
+              ],
+              "count": 1,
+              "hp": 80,
+              "maxHp": 80,
+              "suppressionTags": {
+                "suppressed": false,
+                "pinned": false
+              },
+              "allRetreating": false,
+              "ability": {
+                "id": "ap",
+                "anyReady": true,
+                "cooldownSeconds": 0,
+                "allAuto": true,
+                "usable": true,
+                "reason": null
+              }
+            }
+          ],
+          "observedTick": 680
+        }
+      },
+      "privateAuthoritativeProofOnly": {
+        "resources": [
+          {
+            "mp": 499.9716666666609,
+            "mun": 200,
+            "fuel": 0
+          },
+          {
+            "mp": 129.97166666666874,
+            "mun": 0,
+            "fuel": 0
+          }
+        ],
+        "homeActors": [
+          {
+            "id": 10,
+            "type": "rifle",
+            "owner": 0,
+            "x": 50.22977178988275,
+            "z": 45.167910901932906,
+            "hp": 100,
+            "targetId": 0,
+            "path": 1,
+            "retreating": false,
+            "orders": 0,
+            "amove": null,
+            "dig": false,
+            "cd": -34.000000000000206
+          },
+          {
+            "id": 11,
+            "type": "rifle",
+            "owner": 0,
+            "x": 53.910060688424004,
+            "z": 43.38986265894126,
+            "hp": 100,
+            "targetId": 0,
+            "path": 1,
+            "retreating": false,
+            "orders": 0,
+            "amove": null,
+            "dig": false,
+            "cd": -34.000000000000206
+          }
+        ]
+      }
+    }
+  ],
+  "acceptedCommands": [
+    {
+      "tick": 169,
+      "command": {
+        "t": "ability",
+        "ids": [
+          12
+        ]
+      },
+      "accepted": true,
+      "rejection": null,
+      "resourcesBefore": {
+        "mp": 722.2429583333319,
+        "mun": 200,
+        "fuel": 0
+      },
+      "resourcesAfter": {
+        "mp": 722.2429583333319,
+        "mun": 200,
+        "fuel": 0
+      }
+    },
+    {
+      "tick": 605,
+      "command": {
+        "t": "buy",
+        "unit": "at"
+      },
+      "accepted": true,
+      "rejection": null,
+      "resourcesBefore": {
+        "mp": 831.2247916666615,
+        "mun": 200,
+        "fuel": 0
+      },
+      "resourcesAfter": {
+        "mp": 631.2247916666615,
+        "mun": 200,
+        "fuel": 0
+      }
+    },
+    {
+      "tick": 639,
+      "command": {
+        "t": "move",
+        "orders": [
+          [
+            11,
+            59.70163366250034,
+            44.94328237978121
+          ],
+          [
+            10,
+            58.05719933653879,
+            49.13205734957839
+          ]
+        ],
+        "together": true
+      },
+      "accepted": true,
+      "rejection": null,
+      "resourcesBefore": {
+        "mp": 639.7233749999946,
+        "mun": 200,
+        "fuel": 0
+      },
+      "resourcesAfter": {
+        "mp": 639.7233749999946,
+        "mun": 200,
+        "fuel": 0
+      }
+    },
+    {
+      "tick": 665,
+      "command": {
+        "t": "move",
+        "orders": [
+          [
+            15,
+            50.89626426388194,
+            44.885815128311734
+          ]
+        ],
+        "together": true
+      },
+      "accepted": true,
+      "rejection": null,
+      "resourcesBefore": {
+        "mp": 646.222291666661,
+        "mun": 200,
+        "fuel": 0
+      },
+      "resourcesAfter": {
+        "mp": 646.222291666661,
+        "mun": 200,
+        "fuel": 0
+      }
+    },
+    {
+      "tick": 676,
+      "command": {
+        "t": "buy",
+        "unit": "mg"
+      },
+      "accepted": true,
+      "rejection": null,
+      "resourcesBefore": {
+        "mp": 648.9718333333276,
+        "mun": 200,
+        "fuel": 0
+      },
+      "resourcesAfter": {
+        "mp": 498.9718333333276,
+        "mun": 200,
+        "fuel": 0
+      }
+    },
+    {
+      "tick": 805,
+      "command": {
+        "t": "amove",
+        "orders": [
+          [
+            9,
+            110.29549692383887,
+            66.17429211012471
+          ],
+          [
+            7,
+            110.09151502604004,
+            70.6696665534131
+          ],
+          [
+            8,
+            109.88753312824122,
+            75.16504099670148
+          ]
+        ],
+        "together": true
+      },
+      "accepted": true,
+      "rejection": null,
+      "resourcesBefore": {
+        "mp": 531.2164583333265,
+        "mun": 200,
+        "fuel": 0
+      },
+      "resourcesAfter": {
+        "mp": 531.2164583333265,
+        "mun": 200,
+        "fuel": 0
+      }
+    },
+    {
+      "tick": 1017,
+      "command": {
+        "t": "move",
+        "orders": [
+          [
+            16,
+            110.81937067562487,
+            77.43641193988489
+          ]
+        ],
+        "together": true
+      },
+      "accepted": true,
+      "rejection": null,
+      "resourcesBefore": {
+        "mp": 585.4565833333262,
+        "mun": 200,
+        "fuel": 0
+      },
+      "resourcesAfter": {
+        "mp": 585.4565833333262,
+        "mun": 200,
+        "fuel": 0
+      }
+    }
+  ],
+  "alertSamples": [
+    {
+      "event": "36:1/36",
+      "seconds": 3.85,
+      "observed": true
+    }
+  ],
+  "lateFlankNotAuthored": true,
+  "originalAuthorOrders": [
+    {
+      "tick": 0,
+      "authoredBeforeRun": true,
+      "owner": 0,
+      "command": {
+        "t": "amove",
+        "orders": [
+          [
+            7,
+            96,
+            70
+          ],
+          [
+            8,
+            96,
+            72
+          ],
+          [
+            9,
+            96,
+            68
+          ]
+        ],
+        "together": true
+      },
+      "accepted": true,
+      "rejection": null
+    },
+    {
+      "tick": 0,
+      "authoredBeforeRun": true,
+      "owner": 1,
+      "command": {
+        "t": "amove",
+        "orders": [
+          [
+            14,
+            148,
+            139
+          ]
+        ],
+        "together": true
+      },
+      "accepted": true,
+      "rejection": null
+    }
+  ]
+}

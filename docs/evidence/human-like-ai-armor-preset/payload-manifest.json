@@ -1,0 +1,146 @@
+{
+  "schema": "ww2-native-lab-evidence-payload-v1",
+  "files": [
+    {
+      "path": "README.md",
+      "bytes": 2794,
+      "sha256": "e6de4a5638a00b6b779f686fc0aff6cb0d31ae0019387ee55df4b18b1239ca87"
+    },
+    {
+      "path": "logs/root-test-ai-lab.log",
+      "bytes": 247,
+      "sha256": "177f6c0e606ecf920a8beecdb877cf73b80ede3b2f48a44c691a9cc69e88e139"
+    },
+    {
+      "path": "native/easy/report.html",
+      "bytes": 496025,
+      "sha256": "ccfcd059e33a16aa202a4e3e91bca2e64f54c4139a53abc605204e14582044a3"
+    },
+    {
+      "path": "native/easy/report.json",
+      "bytes": 958127,
+      "sha256": "fe004074be737c92b3cdb017948cf62a99c5dde9c6f1f0a6f9b2f944b03149ff"
+    },
+    {
+      "path": "native/hard/report.html",
+      "bytes": 468724,
+      "sha256": "2bd9a68d007365b2b1ac3ae1e40406ec8a6ff97a21a371c19af0608406dd68a2"
+    },
+    {
+      "path": "native/hard/report.json",
+      "bytes": 914583,
+      "sha256": "a957491381ff9574252e114e7e86ddc7af02a4d24aedf8a585fcdd4376cb4937"
+    },
+    {
+      "path": "native/normal/report.html",
+      "bytes": 500866,
+      "sha256": "8d2a886ec1c5f209ed7990d71df814449ff84babbd070d6f9b81368218039d81"
+    },
+    {
+      "path": "native/normal/report.json",
+      "bytes": 969181,
+      "sha256": "28e0337e94d416a3b06ff0e456cd5b1fbe227b2bfdcf92afabf497f60aa654f5"
+    },
+    {
+      "path": "original-manifest.json",
+      "bytes": 4221,
+      "sha256": "baef3ab231cf04ab9ef054bed058ea55b11c50b90d61628c6ebafc41b49e6297"
+    },
+    {
+      "path": "reviewed/README.md",
+      "bytes": 3213,
+      "sha256": "0a1b9ee4782f2875d45f144e7398edad20a3003df64f9e6793fc0ce48c94e1eb"
+    },
+    {
+      "path": "reviewed/evidence-manifest.json",
+      "bytes": 1571,
+      "sha256": "1455ad0d7d623f7a524140627532c754fb592c74747c1cf7d893c5264631f1be"
+    },
+    {
+      "path": "reviewed/integration.patch",
+      "bytes": 11576,
+      "sha256": "6db8b6d6ec7255cb6c1cf927f75c849e650af824aca1decd8c3b176d5547fa4e"
+    },
+    {
+      "path": "reviewed/preset-results.json",
+      "bytes": 25200,
+      "sha256": "15ae734f49ebad6897862c6653ba5ce12952d4c5268fd47d7b285f0d6c425cae"
+    },
+    {
+      "path": "reviewed/source-manifest.json",
+      "bytes": 1016,
+      "sha256": "1d1237ec3ca236b0ff1ab4cda436fb7d97a1bfb9a0e82bc41cb24af4a3023b46"
+    },
+    {
+      "path": "reviewed/test-ai-lab-final.log",
+      "bytes": 227,
+      "sha256": "328552f1fc62f05d9cb7d00b2ccbd0530b8313897cc1c3938f4eb1439dbb0cee"
+    },
+    {
+      "path": "reviewed/test-ai-lab.log",
+      "bytes": 227,
+      "sha256": "2cf8da0d68c15620c21b08936f796439eb87e7947ba043b4c64b3818fae54279"
+    },
+    {
+      "path": "scene/default-scene.json",
+      "bytes": 674,
+      "sha256": "72827b164cd3b34e4b8a9d67e5f10131063098a714abd3bc6842f084ee3115f5"
+    },
+    {
+      "path": "scene/native-cue-and-fixture.json",
+      "bytes": 1484,
+      "sha256": "db3b3f6e5976a5d9e583d0827c86b6a16ec32e8f6cb0d109478797d21da9446e"
+    },
+    {
+      "path": "source-adopted/docs/ai-lab.md",
+      "bytes": 4218,
+      "sha256": "15e41dfa802b0aa52ecfd1c8e8ae78301ded3c563a92f95eb9dbe8d58136d51a"
+    },
+    {
+      "path": "source-adopted/test-ai-lab.js",
+      "bytes": 12491,
+      "sha256": "e6677a2b4d12c6c89af06b8392052dee02cd8214ed8736c98381f117b69b1288"
+    },
+    {
+      "path": "source-adopted/tools/ai-lab-runner.mjs",
+      "bytes": 13565,
+      "sha256": "d5f2e87078e6f1ea35300a653d86e0200aea554681ec60c4bd83eacabe17fb25"
+    },
+    {
+      "path": "source-adopted/tools/ai-lab.mjs",
+      "bytes": 2832,
+      "sha256": "4aabd289dd136b04febfe0b6829628e542d7adb2492a774800a8f147a824100b"
+    },
+    {
+      "path": "source-before/docs/ai-lab.md",
+      "bytes": 3490,
+      "sha256": "5aceb0108abb99761d4037610b1fe8c93fe589726353e6c44729278021c750d7"
+    },
+    {
+      "path": "source-before/test-ai-lab.js",
+      "bytes": 10005,
+      "sha256": "73faed730317f8010a504f6e363692931708ff3d78d197cfc61c152bc879368f"
+    },
+    {
+      "path": "source-before/tools/ai-lab-runner.mjs",
+      "bytes": 12594,
+      "sha256": "01020a610e714ca538ca12b81c03652d77bba31d7a99ea696aec786b97c34ea2"
+    },
+    {
+      "path": "source-before/tools/ai-lab.mjs",
+      "bytes": 2817,
+      "sha256": "795be7f8db4b31d138f2f5a771e19510cbd9af128808676a1b7bf12bb104d7e4"
+    },
+    {
+      "path": "source-binding.json",
+      "bytes": 40611,
+      "sha256": "e836c67dd40eeb556900f90303187020fe651bfc94dd3932ab3d00ad08ee2329"
+    },
+    {
+      "path": "source-development/test-ai-lab.js",
+      "bytes": 12146,
+      "sha256": "a8030fdfc77371bd29c266f166ed2090b556b08d22a8ecf299c43b1a9ca41444"
+    }
+  ],
+  "bytesExcludingManifest": 4474725
+}

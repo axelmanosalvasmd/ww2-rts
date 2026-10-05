@@ -1,4 +1,82 @@
-# Human-like AI measurement protocol: prospective Version 3 amendment
+# Human-like AI measurement protocol
+
+## Prospective manual-response correction, adopted 2026-10-04
+
+Julio explicitly authorized correcting the scorer prospectively while keeping the original timing limits.
+The next frozen campaign uses `screen-manual-v2` for the manual screen-response acceptance check, as declared
+in [the complete rule](human-like-ai-manual-response-v2.md). Public creation facts establish whether a new
+manual response is needed. Correct automatic combat, a safe fortified hold and independently proved retreat
+protection receive creation-time reasons, never a zero-second human response. Later death, disappearance or
+automatic retreat cannot remove a required event. Every required unanswered event remains end-censored.
+
+The opt-in collector records detached public proofs and receipts from real native jobs and physical inputs.
+It recomputes eligibility independently and binds both first completed action and accepted command to the
+same actual operation. It supplies no grading data to the commander. Original raw oracle and observed streams,
+primary-only and explicit-linked scores, creation populations, unknowns and historical failures remain intact.
+The Version 4 original-population gate statements below are retained as their earlier declaration and superseded
+only for this prospective manual screen-response check. No V14 or V15 result is converted to the new rule.
+
+The original screen limits remain Easy 0.9-1.4 s, Normal 0.5-0.8 s and Hard 0.3-0.45 s, with the same 0.2 s
+floor. Off-screen alerts, APM, opening delays, peak caps, locality, balance and performance keep their original
+rules. Every seat stays in the pooled mode/difficulty population; eventless seats remain reported. Missing
+creation proof, missing recording, a zero pooled required population or an unidentified pooled median cannot
+pass. Native isolation and fixtures support adoption, not numerical gate closure. Final source freeze,
+preregistration and a fresh complete campaign are required before claiming acceptance.
+
+The public damage baseline follows the latest actual screen refresh, including a paid camera or selection
+refresh using the same delivered snapshot. Both the recording and observation clocks remain explicit.
+A damage creation still requires a strictly newer observation. The native paid-camera witness and
+never-visible/unchanged-health negatives are retained; 162 focused assertions pass. The original 27
+isolation controls remain tied to their earlier adapter hash, with a fresh check in the frozen full suite.
+
+## Prospective Version 4: independent measurement streams
+
+Recorded on 2026-10-04 before the next runtime campaign. The original `screen-v1` population, actor lists,
+creation clocks, endpoints, censoring and every numeric bound below remain the acceptance rules. Both
+primary-only and explicit-linked scores remain mandatory. The observed stream is an additional diagnostic,
+not a replacement population or a passing result.
+
+Runtime perception now detects screen damage after its authored five-percent health estimate. A selected
+singleton instead has the client's integer health display. Group health cannot reveal an individual member's
+health. Suppression uses a five-percent estimate while preserving visible color and posture boundaries.
+Actual health-bar colors remain observable. This is a modeling boundary; two equal estimates can still have
+slightly different rendered bar widths. The fix does not claim pixel-identical counterfactual screenshots.
+
+Runtime events use `observed-screen` IDs and factual `observedDanger` cues. No `responseRequired`,
+`responseReason`, `responsePolicy` or `responseUnits` enters the planner, attention state or hands. Urgency
+uses watched loss, retreat risk and actual nearby idle squads. Accepted local responses may end an attended
+concern even when a neighboring squad helps; that behavioral decision does not change the grader's original
+eligible actor list.
+
+Only the external collector injects the frozen V13 oracle in `tools/ai-screen-v1-oracle.js`. Its provenance
+records the exact original source and normalized imports. `perceive` accepts an optional fifth argument with
+`measureRaw` and `onMeasurements`. A normal match runs one observed pass. The callback receives detached
+original and observed event streams plus mappings for events actually perceived in that frame. Functions,
+oracle state and mapping graphs stay outside public runtime memory. The collector must inject the oracle
+from the first delivery and records `baselineTick`; incomplete original measurement cannot certify a gate.
+
+The prospective tick-zero collector correction initializes that external oracle on a real detached initial scene,
+before the commander receives actors at tick 2. Its separate private state then follows actual camera and selection
+diagnostics. World projection clones only its writable team-memory map into tool-owned state. An original-only
+tick-zero frame records real baseline 0 with no runtime aliases. Later invisible or initial stimuli remain censored
+unless the existing same-frame creation rules establish a valid link. This changes only measurement coverage,
+not native actions or scoring rules. The historical V15 campaign retains all 360 baseline-2 flags and is not
+re-scored. `test-engine-ai-measurement-start.js` compares all three modes and levels across disabled, original,
+tick-zero and mutated-callback controls, preserving complete game graphs, native receipts and RNG equality.
+
+Native input and event logs retain runtime identities. The collector builds two scoring views of the same
+physical timeline outside the game. An original event without a perceived counterpart remains unanswered
+and censored. Mapping cannot retrospectively invent a response to an unobserved one-percent change.
+`measurementPolicyComparison.originalOracle` and `.observed` report both populations side by side, each
+with primary-only and explicit-linked results. The report's top-level required-screen gate uses the original
+oracle. Historical logs without the new stream retain their previous scoring contract.
+
+Before collecting new results, permanent controls verify callback-off, callback-on and mutated callback
+payloads produce identical nonempty physical logs at every difficulty. Tests also keep original oracle
+eligibility fixtures, mapping tamper rejection, unmatched raw events and actual actor/target geometry checks.
+Those focused results and the eventual frozen source manifest belong in the next verification report.
+
+## Version 3 amendment retained for historical comparison
 
 Recorded before the next runtime campaign on 2026-10-04. This amendment uses explicit links to measure one physical response to several already perceived stimuli. Version 3 is the prospective explicit-link scoring method for the next campaign. The same new logs must also report historical primary-only scoring. Neither method is selected after observing which passes.
 

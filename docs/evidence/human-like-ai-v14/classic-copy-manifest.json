@@ -1,0 +1,103 @@
+{
+  "classification": "Historical failed V14 balance, not current source acceptance",
+  "files": [
+    {
+      "source": "/tmp/human-ai-selected-hud-v14-balance/classic-historical-final-report.json",
+      "target": "docs/evidence/human-like-ai-v14/classic-historical-final-report.json",
+      "bytes": 15960,
+      "sha256": "c712f2198eeb4103c34dbc25541c0e17b65e1eb1f7874e31195452c17b49566c",
+      "expectedReportHash": null
+    },
+    {
+      "source": "/tmp/human-ai-selected-hud-v14-balance/classic-historical-final-report.md",
+      "target": "docs/evidence/human-like-ai-v14/classic-historical-final-report.md",
+      "bytes": 1110,
+      "sha256": "22f3f1bea9a6af30add6b658b78f330edd700aa3fd65c1d560297cd82a9a65fe",
+      "expectedReportHash": null
+    },
+    {
+      "source": "/tmp/human-ai-selected-hud-v14-balance/classic.json",
+      "target": "docs/evidence/human-like-ai-v14/classic.json",
+      "bytes": 16404,
+      "sha256": "3e811c9f0ff2efd18cd5cbe8bea8c91d4c81b56c6cf7e2e2bbbf8d8cd3ec6824",
+      "expectedReportHash": "3e811c9f0ff2efd18cd5cbe8bea8c91d4c81b56c6cf7e2e2bbbf8d8cd3ec6824"
+    },
+    {
+      "source": "/tmp/human-ai-selected-hud-v14-balance/classic-checkpoint.json",
+      "target": "docs/evidence/human-like-ai-v14/classic-checkpoint.json",
+      "bytes": 15810,
+      "sha256": "0e06b36d46a1bfde9a15d35a74e04519cbf2adf14a30f8543f7ad5b4e720ed97",
+      "expectedReportHash": "0e06b36d46a1bfde9a15d35a74e04519cbf2adf14a30f8543f7ad5b4e720ed97"
+    },
+    {
+      "source": "/tmp/human-ai-selected-hud-v14-balance/classic-launch-1178675.json",
+      "target": "docs/evidence/human-like-ai-v14/classic-launch-1178675.json",
+      "bytes": 993,
+      "sha256": "d9458f9035530f71398e9f35d00d172019679282efb06e5665c623c78702b70a",
+      "expectedReportHash": "d9458f9035530f71398e9f35d00d172019679282efb06e5665c623c78702b70a"
+    },
+    {
+      "source": "/tmp/human-ai-selected-hud-v14-balance/classic-affinity-proof.json",
+      "target": "docs/evidence/human-like-ai-v14/classic-affinity-proof.json",
+      "bytes": 1429,
+      "sha256": "6347bf7ce3f9146fee684325f48c9f9fa71b562a1e421675add4bc97a6de5a15",
+      "expectedReportHash": "6347bf7ce3f9146fee684325f48c9f9fa71b562a1e421675add4bc97a6de5a15"
+    },
+    {
+      "source": "/tmp/human-ai-selected-hud-v14-balance/classic-completion-events.jsonl",
+      "target": "docs/evidence/human-like-ai-v14/classic-completion-events.jsonl",
+      "bytes": 14394,
+      "sha256": "b4fef1b24a13fa93347209e2eb2493c646b5a8cb87b431697349ac95c29b4171",
+      "expectedReportHash": "b4fef1b24a13fa93347209e2eb2493c646b5a8cb87b431697349ac95c29b4171"
+    },
+    {
+      "source": "/tmp/human-ai-selected-hud-v14-balance/finalize-historical-classic.py",
+      "target": "docs/evidence/human-like-ai-v14/classic-finalize-historical-classic.py",
+      "bytes": 11550,
+      "sha256": "b21a1b3a3355e5f5d13c1cd8459ef28d2ca1c6d676dbd8faeca218fa8700f1e4",
+      "expectedReportHash": "b21a1b3a3355e5f5d13c1cd8459ef28d2ca1c6d676dbd8faeca218fa8700f1e4"
+    },
+    {
+      "source": "/tmp/human-ai-selected-hud-v14-balance/before-v14-navigation.diff",
+      "target": "docs/evidence/human-like-ai-v14/classic-before-v14-navigation.diff",
+      "bytes": 2633,
+      "sha256": "8b6faef9065bdab1c38bd14b0f772b3433ebaa60ddbc87b9417fcd0ee7666785",
+      "expectedReportHash": "8b6faef9065bdab1c38bd14b0f772b3433ebaa60ddbc87b9417fcd0ee7666785"
+    },
+    {
+      "source": "/tmp/human-ai-selected-hud-v14-balance/before-v14-sim.diff",
+      "target": "docs/evidence/human-like-ai-v14/classic-before-v14-sim.diff",
+      "bytes": 1944,
+      "sha256": "606b5b3085d2219d955b1b48c87c9ca04085050e75209b3d975f694ce1119b62",
+      "expectedReportHash": "606b5b3085d2219d955b1b48c87c9ca04085050e75209b3d975f694ce1119b62"
+    },
+    {
+      "source": "/tmp/human-ai-selected-hud-v14-balance/classic.log",
+      "target": "docs/evidence/human-like-ai-v14/classic.log.gz",
+      "bytes": 2743,
+      "sha256": "6c0e20ac8cceb5152e2bbf4ddae907ca6c7be26c81650830cebf16b69541b605",
+      "originalSHA256": "68a69fb4fe53bbd95a606f79327901c85882f7a41ca79a98543b02f0c1ab2422"
+    },
+    {
+      "source": "/tmp/human-ai-before-classic-corrected.json",
+      "target": "docs/evidence/human-like-ai-v14/classic-corrected-before.json",
+      "bytes": 15374,
+      "sha256": "805d5b162ca7d690fcc91b0da2f788c226f47d1304f79bbcd5fe9de4bcef5e3e",
+      "originalSHA256": "805d5b162ca7d690fcc91b0da2f788c226f47d1304f79bbcd5fe9de4bcef5e3e"
+    },
+    {
+      "source": "/tmp/human-ai-before-classic-corrected-checkpoint.json",
+      "target": "docs/evidence/human-like-ai-v14/classic-corrected-before-checkpoint.json",
+      "bytes": 14788,
+      "sha256": "8f50b88003b56a7120c444d6a8edd95563b29260a09f9f95a4daf3bbe245b45c",
+      "originalSHA256": "8f50b88003b56a7120c444d6a8edd95563b29260a09f9f95a4daf3bbe245b45c"
+    },
+    {
+      "source": "/tmp/human-ai-selected-hud-v14-balance-source-manifest.json",
+      "target": "docs/evidence/human-like-ai-v14/classic-source-manifest.json",
+      "bytes": 12368,
+      "sha256": "72286ffe840ac96e039b1e5bb9345d185ac35d19e5f02b54ebfd52af0a535861",
+      "originalSHA256": "72286ffe840ac96e039b1e5bb9345d185ac35d19e5f02b54ebfd52af0a535861"
+    }
+  ]
+}

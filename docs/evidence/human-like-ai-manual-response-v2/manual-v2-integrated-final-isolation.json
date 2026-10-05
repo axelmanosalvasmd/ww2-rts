@@ -1,0 +1,346 @@
+{
+  "status": "PASS",
+  "seconds": 15,
+  "treatments": 27,
+  "cases": [
+    {
+      "mode": "conquest",
+      "level": "easy",
+      "controls": [
+        {
+          "treatment": "disabled",
+          "gameGraphSHA256": "7a04e16db20ae0b8d776092222d9a17e1ee95ba934af1b76e3c9dc69d4a6db5f",
+          "nativeLogsSHA256": "b2eb99d51d6151206e7422af843eade68ea6c252881ee6c55f71cce03b1d9551",
+          "nextRandom": 0.5274470399599522,
+          "commands": 16,
+          "inputs": 30,
+          "actorDeliveryTicks": [],
+          "legacySeatMetricsSHA256": "2a4e2015cdc6bf61e9f423c7f3f34219a1d7038feb27e2812ecb95706863fb17"
+        },
+        {
+          "treatment": "enabled",
+          "gameGraphSHA256": "7a04e16db20ae0b8d776092222d9a17e1ee95ba934af1b76e3c9dc69d4a6db5f",
+          "nativeLogsSHA256": "b2eb99d51d6151206e7422af843eade68ea6c252881ee6c55f71cce03b1d9551",
+          "nextRandom": 0.5274470399599522,
+          "commands": 16,
+          "inputs": 30,
+          "actorDeliveryTicks": [],
+          "legacySeatMetricsSHA256": "2a4e2015cdc6bf61e9f423c7f3f34219a1d7038feb27e2812ecb95706863fb17"
+        },
+        {
+          "treatment": "mutated-proof",
+          "gameGraphSHA256": "7a04e16db20ae0b8d776092222d9a17e1ee95ba934af1b76e3c9dc69d4a6db5f",
+          "nativeLogsSHA256": "b2eb99d51d6151206e7422af843eade68ea6c252881ee6c55f71cce03b1d9551",
+          "nextRandom": 0.5274470399599522,
+          "commands": 16,
+          "inputs": 30,
+          "actorDeliveryTicks": [],
+          "legacySeatMetricsSHA256": "2a4e2015cdc6bf61e9f423c7f3f34219a1d7038feb27e2812ecb95706863fb17"
+        }
+      ]
+    },
+    {
+      "mode": "conquest",
+      "level": "normal",
+      "controls": [
+        {
+          "treatment": "disabled",
+          "gameGraphSHA256": "2c9524ebe3e4d04445b45d6616a7d8649fbbace02ec4fb5883500433f6167acd",
+          "nativeLogsSHA256": "5a0a38e4588fadaab4b785269608422b1a3fde46c8c080a54cdd1a85d47a7db2",
+          "nextRandom": 0.5274470399599522,
+          "commands": 19,
+          "inputs": 35,
+          "actorDeliveryTicks": [],
+          "legacySeatMetricsSHA256": "f1ed5c0415b86007b1448082ecd93084fc3e5acf3e55a0a536b2479f352ae631"
+        },
+        {
+          "treatment": "enabled",
+          "gameGraphSHA256": "2c9524ebe3e4d04445b45d6616a7d8649fbbace02ec4fb5883500433f6167acd",
+          "nativeLogsSHA256": "5a0a38e4588fadaab4b785269608422b1a3fde46c8c080a54cdd1a85d47a7db2",
+          "nextRandom": 0.5274470399599522,
+          "commands": 19,
+          "inputs": 35,
+          "actorDeliveryTicks": [],
+          "legacySeatMetricsSHA256": "f1ed5c0415b86007b1448082ecd93084fc3e5acf3e55a0a536b2479f352ae631"
+        },
+        {
+          "treatment": "mutated-proof",
+          "gameGraphSHA256": "2c9524ebe3e4d04445b45d6616a7d8649fbbace02ec4fb5883500433f6167acd",
+          "nativeLogsSHA256": "5a0a38e4588fadaab4b785269608422b1a3fde46c8c080a54cdd1a85d47a7db2",
+          "nextRandom": 0.5274470399599522,
+          "commands": 19,
+          "inputs": 35,
+          "actorDeliveryTicks": [],
+          "legacySeatMetricsSHA256": "f1ed5c0415b86007b1448082ecd93084fc3e5acf3e55a0a536b2479f352ae631"
+        }
+      ]
+    },
+    {
+      "mode": "conquest",
+      "level": "hard",
+      "controls": [
+        {
+          "treatment": "disabled",
+          "gameGraphSHA256": "50296a4bcad97d74247974848645203b02d57087601c451a70254d912460508b",
+          "nativeLogsSHA256": "e4228eaa1db04b99b7ff95224a6a3828c92527b7fc53a151c5f158967ee80393",
+          "nextRandom": 0.6772149445023388,
+          "commands": 19,
+          "inputs": 38,
+          "actorDeliveryTicks": [
+            278,
+            282
+          ],
+          "legacySeatMetricsSHA256": "50232e0eed475874acc7c05f530f49da82a4d9e19d527dbf7ce576d2450bd8cd"
+        },
+        {
+          "treatment": "enabled",
+          "gameGraphSHA256": "50296a4bcad97d74247974848645203b02d57087601c451a70254d912460508b",
+          "nativeLogsSHA256": "e4228eaa1db04b99b7ff95224a6a3828c92527b7fc53a151c5f158967ee80393",
+          "nextRandom": 0.6772149445023388,
+          "commands": 19,
+          "inputs": 38,
+          "actorDeliveryTicks": [
+            278,
+            282
+          ],
+          "legacySeatMetricsSHA256": "50232e0eed475874acc7c05f530f49da82a4d9e19d527dbf7ce576d2450bd8cd"
+        },
+        {
+          "treatment": "mutated-proof",
+          "gameGraphSHA256": "50296a4bcad97d74247974848645203b02d57087601c451a70254d912460508b",
+          "nativeLogsSHA256": "e4228eaa1db04b99b7ff95224a6a3828c92527b7fc53a151c5f158967ee80393",
+          "nextRandom": 0.6772149445023388,
+          "commands": 19,
+          "inputs": 38,
+          "actorDeliveryTicks": [
+            278,
+            282
+          ],
+          "legacySeatMetricsSHA256": "50232e0eed475874acc7c05f530f49da82a4d9e19d527dbf7ce576d2450bd8cd"
+        }
+      ]
+    },
+    {
+      "mode": "classic",
+      "level": "easy",
+      "controls": [
+        {
+          "treatment": "disabled",
+          "gameGraphSHA256": "ad82e6ec2b9a8c35c32f734413644751c4bb3eb05313462333e6d4768f48c5e7",
+          "nativeLogsSHA256": "19d145793c91439ba1fd1b561f963c5898e62d420be7221710ea675928d16b26",
+          "nextRandom": 0.5274470399599522,
+          "commands": 9,
+          "inputs": 22,
+          "actorDeliveryTicks": [],
+          "legacySeatMetricsSHA256": "d2ae6243619e6091896dcddbe644aeae7d290cb8dbf5c8fe0137786dfc385a3d"
+        },
+        {
+          "treatment": "enabled",
+          "gameGraphSHA256": "ad82e6ec2b9a8c35c32f734413644751c4bb3eb05313462333e6d4768f48c5e7",
+          "nativeLogsSHA256": "19d145793c91439ba1fd1b561f963c5898e62d420be7221710ea675928d16b26",
+          "nextRandom": 0.5274470399599522,
+          "commands": 9,
+          "inputs": 22,
+          "actorDeliveryTicks": [],
+          "legacySeatMetricsSHA256": "d2ae6243619e6091896dcddbe644aeae7d290cb8dbf5c8fe0137786dfc385a3d"
+        },
+        {
+          "treatment": "mutated-proof",
+          "gameGraphSHA256": "ad82e6ec2b9a8c35c32f734413644751c4bb3eb05313462333e6d4768f48c5e7",
+          "nativeLogsSHA256": "19d145793c91439ba1fd1b561f963c5898e62d420be7221710ea675928d16b26",
+          "nextRandom": 0.5274470399599522,
+          "commands": 9,
+          "inputs": 22,
+          "actorDeliveryTicks": [],
+          "legacySeatMetricsSHA256": "d2ae6243619e6091896dcddbe644aeae7d290cb8dbf5c8fe0137786dfc385a3d"
+        }
+      ]
+    },
+    {
+      "mode": "classic",
+      "level": "normal",
+      "controls": [
+        {
+          "treatment": "disabled",
+          "gameGraphSHA256": "aa7773906be36078dfbab25223214b264b93e98f60abbcd9b77e5ff2a06017c6",
+          "nativeLogsSHA256": "b563fa9d68e3cc04e76c2d3ccbe1e6d2ea3f4ebd3921978ed1077335f67ac1a1",
+          "nextRandom": 0.5274470399599522,
+          "commands": 11,
+          "inputs": 28,
+          "actorDeliveryTicks": [],
+          "legacySeatMetricsSHA256": "cfb705aaabf61e8a22db3322f7579e8d9a41acbc845cecd3cd0cdeec8d47d0b8"
+        },
+        {
+          "treatment": "enabled",
+          "gameGraphSHA256": "aa7773906be36078dfbab25223214b264b93e98f60abbcd9b77e5ff2a06017c6",
+          "nativeLogsSHA256": "b563fa9d68e3cc04e76c2d3ccbe1e6d2ea3f4ebd3921978ed1077335f67ac1a1",
+          "nextRandom": 0.5274470399599522,
+          "commands": 11,
+          "inputs": 28,
+          "actorDeliveryTicks": [],
+          "legacySeatMetricsSHA256": "cfb705aaabf61e8a22db3322f7579e8d9a41acbc845cecd3cd0cdeec8d47d0b8"
+        },
+        {
+          "treatment": "mutated-proof",
+          "gameGraphSHA256": "aa7773906be36078dfbab25223214b264b93e98f60abbcd9b77e5ff2a06017c6",
+          "nativeLogsSHA256": "b563fa9d68e3cc04e76c2d3ccbe1e6d2ea3f4ebd3921978ed1077335f67ac1a1",
+          "nextRandom": 0.5274470399599522,
+          "commands": 11,
+          "inputs": 28,
+          "actorDeliveryTicks": [],
+          "legacySeatMetricsSHA256": "cfb705aaabf61e8a22db3322f7579e8d9a41acbc845cecd3cd0cdeec8d47d0b8"
+        }
+      ]
+    },
+    {
+      "mode": "classic",
+      "level": "hard",
+      "controls": [
+        {
+          "treatment": "disabled",
+          "gameGraphSHA256": "816db63cf6ca73a7b32783a54c4fa5bf80dc592bfb94c30e4061504370af9224",
+          "nativeLogsSHA256": "f58ec7c8d1b4b93120cef07c1169ff8dc695e74c256fcf733050aa3eebeacfb3",
+          "nextRandom": 0.29486987087875605,
+          "commands": 12,
+          "inputs": 33,
+          "actorDeliveryTicks": [
+            278
+          ],
+          "legacySeatMetricsSHA256": "858e2f5d622cb65617a8efe36c216ad2d7eac6a0cf23c55fb3db9c732789d2f0"
+        },
+        {
+          "treatment": "enabled",
+          "gameGraphSHA256": "816db63cf6ca73a7b32783a54c4fa5bf80dc592bfb94c30e4061504370af9224",
+          "nativeLogsSHA256": "f58ec7c8d1b4b93120cef07c1169ff8dc695e74c256fcf733050aa3eebeacfb3",
+          "nextRandom": 0.29486987087875605,
+          "commands": 12,
+          "inputs": 33,
+          "actorDeliveryTicks": [
+            278
+          ],
+          "legacySeatMetricsSHA256": "858e2f5d622cb65617a8efe36c216ad2d7eac6a0cf23c55fb3db9c732789d2f0"
+        },
+        {
+          "treatment": "mutated-proof",
+          "gameGraphSHA256": "816db63cf6ca73a7b32783a54c4fa5bf80dc592bfb94c30e4061504370af9224",
+          "nativeLogsSHA256": "f58ec7c8d1b4b93120cef07c1169ff8dc695e74c256fcf733050aa3eebeacfb3",
+          "nextRandom": 0.29486987087875605,
+          "commands": 12,
+          "inputs": 33,
+          "actorDeliveryTicks": [
+            278
+          ],
+          "legacySeatMetricsSHA256": "858e2f5d622cb65617a8efe36c216ad2d7eac6a0cf23c55fb3db9c732789d2f0"
+        }
+      ]
+    },
+    {
+      "mode": "world",
+      "level": "easy",
+      "controls": [
+        {
+          "treatment": "disabled",
+          "gameGraphSHA256": "c7f0bccae57d379760125ac8ae0e64ebe77413b31bc7b923e81e14abf5c074f2",
+          "nativeLogsSHA256": "2c603353010e4d2d98c38c9a102cdbb993897797b97495113728eeff9f6f509b",
+          "nextRandom": 0.002735721180215478,
+          "commands": 9,
+          "inputs": 27,
+          "actorDeliveryTicks": [],
+          "legacySeatMetricsSHA256": "8d3823a295755e6e3abe576f9a7567f6f710fed16b4e1062f268387143312875"
+        },
+        {
+          "treatment": "enabled",
+          "gameGraphSHA256": "c7f0bccae57d379760125ac8ae0e64ebe77413b31bc7b923e81e14abf5c074f2",
+          "nativeLogsSHA256": "2c603353010e4d2d98c38c9a102cdbb993897797b97495113728eeff9f6f509b",
+          "nextRandom": 0.002735721180215478,
+          "commands": 9,
+          "inputs": 27,
+          "actorDeliveryTicks": [],
+          "legacySeatMetricsSHA256": "8d3823a295755e6e3abe576f9a7567f6f710fed16b4e1062f268387143312875"
+        },
+        {
+          "treatment": "mutated-proof",
+          "gameGraphSHA256": "c7f0bccae57d379760125ac8ae0e64ebe77413b31bc7b923e81e14abf5c074f2",
+          "nativeLogsSHA256": "2c603353010e4d2d98c38c9a102cdbb993897797b97495113728eeff9f6f509b",
+          "nextRandom": 0.002735721180215478,
+          "commands": 9,
+          "inputs": 27,
+          "actorDeliveryTicks": [],
+          "legacySeatMetricsSHA256": "8d3823a295755e6e3abe576f9a7567f6f710fed16b4e1062f268387143312875"
+        }
+      ]
+    },
+    {
+      "mode": "world",
+      "level": "normal",
+      "controls": [
+        {
+          "treatment": "disabled",
+          "gameGraphSHA256": "1291c52ef09492f55549dd9e42c05e1fb13d244ff390c92a10bc83a4b11af845",
+          "nativeLogsSHA256": "3f83d20ee2c7424470c09b39ba8263bbc06327d5fb9440622e6b768d3da911c2",
+          "nextRandom": 0.002735721180215478,
+          "commands": 15,
+          "inputs": 36,
+          "actorDeliveryTicks": [],
+          "legacySeatMetricsSHA256": "154318eab579694d2b3bda32e400463e15928292352718f9021997873e48e6cf"
+        },
+        {
+          "treatment": "enabled",
+          "gameGraphSHA256": "1291c52ef09492f55549dd9e42c05e1fb13d244ff390c92a10bc83a4b11af845",
+          "nativeLogsSHA256": "3f83d20ee2c7424470c09b39ba8263bbc06327d5fb9440622e6b768d3da911c2",
+          "nextRandom": 0.002735721180215478,
+          "commands": 15,
+          "inputs": 36,
+          "actorDeliveryTicks": [],
+          "legacySeatMetricsSHA256": "154318eab579694d2b3bda32e400463e15928292352718f9021997873e48e6cf"
+        },
+        {
+          "treatment": "mutated-proof",
+          "gameGraphSHA256": "1291c52ef09492f55549dd9e42c05e1fb13d244ff390c92a10bc83a4b11af845",
+          "nativeLogsSHA256": "3f83d20ee2c7424470c09b39ba8263bbc06327d5fb9440622e6b768d3da911c2",
+          "nextRandom": 0.002735721180215478,
+          "commands": 15,
+          "inputs": 36,
+          "actorDeliveryTicks": [],
+          "legacySeatMetricsSHA256": "154318eab579694d2b3bda32e400463e15928292352718f9021997873e48e6cf"
+        }
+      ]
+    },
+    {
+      "mode": "world",
+      "level": "hard",
+      "controls": [
+        {
+          "treatment": "disabled",
+          "gameGraphSHA256": "adc7d4d46034330dca0adb8e3e5638e321a545f4e6abf9807024c0e267e32a2f",
+          "nativeLogsSHA256": "b061c5d7b969c29afd254d4432f121b1829eb69410362fbd82be891a1cb9df4a",
+          "nextRandom": 0.002735721180215478,
+          "commands": 16,
+          "inputs": 38,
+          "actorDeliveryTicks": [],
+          "legacySeatMetricsSHA256": "77c16a54263dbde3f2cee5b8febadadd13f47cd11e58b9b38e581f2c7239ad8c"
+        },
+        {
+          "treatment": "enabled",
+          "gameGraphSHA256": "adc7d4d46034330dca0adb8e3e5638e321a545f4e6abf9807024c0e267e32a2f",
+          "nativeLogsSHA256": "b061c5d7b969c29afd254d4432f121b1829eb69410362fbd82be891a1cb9df4a",
+          "nextRandom": 0.002735721180215478,
+          "commands": 16,
+          "inputs": 38,
+          "actorDeliveryTicks": [],
+          "legacySeatMetricsSHA256": "77c16a54263dbde3f2cee5b8febadadd13f47cd11e58b9b38e581f2c7239ad8c"
+        },
+        {
+          "treatment": "mutated-proof",
+          "gameGraphSHA256": "adc7d4d46034330dca0adb8e3e5638e321a545f4e6abf9807024c0e267e32a2f",
+          "nativeLogsSHA256": "b061c5d7b969c29afd254d4432f121b1829eb69410362fbd82be891a1cb9df4a",
+          "nextRandom": 0.002735721180215478,
+          "commands": 16,
+          "inputs": 38,
+          "actorDeliveryTicks": [],
+          "legacySeatMetricsSHA256": "77c16a54263dbde3f2cee5b8febadadd13f47cd11e58b9b38e581f2c7239ad8c"
+        }
+      ]
+    }
+  ]
+}

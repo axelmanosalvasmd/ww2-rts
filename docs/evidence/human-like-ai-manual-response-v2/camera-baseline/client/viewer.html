@@ -1,0 +1,41 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<title>Model viewer: Three Crossroads</title>
+<!-- Unit model viewer for checking how soldiers, guns, vehicles, planes and structures look. Builds each unit through
+     the game's own model code (client/viewer.js). Not linked from the game.
+     /client/viewer.html?type=medium&fac=0   one unit: front, left side, top, three-quarter front and back, in-game camera
+       &color=0..5 or a hex color (player color; default: the slot equal to fac)
+       &posture=0..3 (standing, crouched, prone, retreating; squads only)
+       &motion=1 (squads walk, stop and turn so individual strides and spacing can be checked)
+       &bg=hex (background), &ground=hex (inspection floor), &aim=degrees (turret), &far=1 (far-away soldier model), &grid=0 (no 2 m grid),
+       &tex=0 (no model textures, the plain painted look),
+       &view=0..8 (only that view, filling the window)
+       &crew=0 (hide the soldiers of a squad, to see a crew-served gun alone; the draw and triangle counts are then the gun's)
+     /client/viewer.html?all=1&fac=1          every type one faction can field, in one lineup -->
+<style>
+  html, body { margin: 0; height: 100%; background: #15171a; color: #e8e2d4; overflow: hidden;
+    font: 13px/1.35 system-ui, -apple-system, "Segoe UI", sans-serif; }
+  canvas { display: block; position: fixed; left: 0; top: 64px; }
+  #head { position: fixed; left: 0; right: 0; top: 0; height: 64px; box-sizing: border-box; padding: 8px 14px;
+    background: #1d2024; border-bottom: 1px solid #2c3036; white-space: nowrap; overflow: hidden; }
+  #title { font-size: 18px; font-weight: 700; }
+  #title .sub { font-weight: 400; color: #b8b0a0; font-size: 14px; margin-left: 8px; }
+  #stats { color: #cfc8b8; margin-top: 3px; }
+  #stats b { color: #fff; }
+  #warn { color: #ffb15a; }
+  .cell { position: fixed; padding: 2px 7px; background: rgba(20, 22, 26, 0.72); color: #f2ecdd; font-size: 12px;
+    border-radius: 0 0 4px 0; pointer-events: none; }
+  .tag { position: fixed; transform: translate(-50%, -100%); padding: 1px 5px; background: rgba(20, 22, 26, 0.78);
+    color: #f2ecdd; font-size: 11px; border-radius: 3px; white-space: nowrap; pointer-events: none; text-align: center; }
+  .tag i { color: #b8b0a0; font-style: normal; }
+</style>
+<script type="importmap">{ "imports": { "three": "/vendor/three.module.js" } }</script>
+</head>
+<body>
+<div id="head"><div id="title">Loading model viewer...</div><div id="stats"></div></div>
+<div id="labels"></div>
+<script type="module" src="/client/viewer.js"></script>
+</body>
+</html>

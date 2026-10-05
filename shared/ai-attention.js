@@ -1,8 +1,8 @@
 // One concern gets attention. Minimap positions and delivered alerts tell the commander where to look.
-import { CELL, UNITS, CFG, SUPPORT, supCost, popUse } from './sim.js';
+import { CELL, UNITS, CFG, SUPPORT, supCost, popUse, abCost, canBuild, priceOf, FORTS } from './sim.js';
 import { random } from './ai-rng.js';
 import { HUMAN_SKILLS } from './ai-hands.js';
-import { recordPerceptionEvent } from './ai-perception.js';
+import { recordPerceptionEvent, onScreen, cameraFootprint } from './ai-perception.js';
 import { insideKnownRegion } from './world-territories.js';
 
 const distance = (a, b) => Math.hypot(a.x - b.x, a.z - b.z);
@@ -47,6 +47,198 @@ export function affordableSupport(view, slot, level) {
     const { cur, cost } = supCost(view, kind);
     return me.sup?.[kind] <= 0 && me[cur] >= cost + (cur === 'mp' ? reserve.supReserve : reserve.munReserve);
   });
+}
+// Urgency comes from watched damage and idle nearby squads, independently of scoring populations.
+export function screenEventNeedsAttention(event) {
+  const danger = event.observedDanger;
+  if (!danger) return false;
+  if (event.kind === 'screen-contact') return danger.idleOwnUnits?.length > 0;
+  return event.kind === 'screen-damage' && !danger.alreadyRetreating && !danger.autoRetreatCovered
+    && (danger.lossShare >= .25 || danger.retreatRisk);
+}
+// Empty visits describe an inspected camera area, rather than one alert or cluster alias.
+// Only already delivered screen facts can reopen it before the bounded retry.
+function sameCombatArea(area, view, concern, camera) {
+  if (!camera || !onScreen(concern, camera, view) || !onScreen(concern, area.camera, view)) return false;
+  const old = cameraFootprint(area.camera), current = cameraFootprint(camera);
+  // Screen membership of the centre and four interior samples respects yaw, zoom and delivered relief.
+  const samples = [camera, ...current.map(corner => ({ x: camera.x + (corner.x - camera.x) * .5,
+    z: camera.z + (corner.z - camera.z) * .5 }))];
+  const previous = [area.camera, ...old.map(corner => ({ x: area.camera.x + (corner.x - area.camera.x) * .5,
+    z: area.camera.z + (corner.z - area.camera.z) * .5 }))];
+  return samples.filter(point => onScreen(point, area.camera, view)).length >= 3
+    && previous.filter(point => onScreen(point, camera, view)).length >= 3;
+}
+function abilityOpportunity(view, unit, enemies, level) {
+  const def = UNITS[unit.type], ability = def.ab;
+  if (!ability || ability.id === 'none' || unit.retreating || unit.dig || unit.build || unit.nade || unit.entrench) return false;
+  if (abCost(view, ability) > view.players[unit.owner].mun || unit.cdKnown && unit.cd > 0) return false;
+  const target = view.units.get(unit.targetId), full = def.models * def.hpPer;
+  if (ability.id === 'grenade') return enemies.some(enemy => UNITS[enemy.type].infantry
+    && distance(unit, enemy) <= ability.range + 4 && (enemy.type !== 'rifle' || enemy.cover === 1 || enemy.cover === 2));
+  if (ability.id === 'suppress') return !!target && enemies.includes(target);
+  if (ability.id === 'ap') return target?.type === 'tank' && enemies.includes(target);
+  if (ability.id === 'smoke') {
+    const bases = ['classic', 'world'].includes(view.mode?.kind) ? [...view.units.values()].filter(base => base.owner === unit.owner && UNITS[base.type].produces) : null;
+    const home = bases ? bases.some(base => distance(unit, base) <= CFG.reinforceRadius) : distance(unit, view.players[unit.owner].spawn) <= CFG.reinforceRadius;
+    return unit.hp / full < .5 && !home;
+  }
+  if (ability.id === 'satchel') return enemies.some(enemy => distance(unit, enemy) <= 20
+    && (enemy.garrison >= 0 || !UNITS[enemy.type].infantry));
+  if (ability.id === 'ura') return unit.supp >= 50 || !!unit.amove && enemies.some(enemy => distance(unit, enemy) < 30);
+  if (ability.id === 'barrage') return enemies.some(enemy => distance(unit, enemy) <= ability.range && enemy.garrison >= 0)
+    || level === 'hard' && enemies.filter(enemy => distance(unit, enemy) <= ability.range).some(enemy =>
+      enemies.filter(other => distance(unit, other) <= ability.range && distance(enemy, other) <= 8).length >= 3);
+  return false;
+}
+function supportOpportunity(view, slot, kind, own, enemies, level) {
+  const friendNear = at => own.some(unit => !UNITS[unit.type].air && distance(unit, at) < 10);
+  const cluster = (radius, infantry = false) => enemies.some(enemy => {
+    const nearby = enemies.filter(other => distance(enemy, other) <= radius && (!infantry || UNITS[other.type].infantry));
+    if (nearby.length < (level === 'hard' ? 3 : 2)) return false;
+    const centre = { x: nearby.reduce((sum, other) => sum + other.x, 0) / nearby.length,
+      z: nearby.reduce((sum, other) => sum + other.z, 0) / nearby.length };
+    return level !== 'hard' || !friendNear(centre);
+  });
+  if (kind === 'dive') return enemies.some(enemy => ['tank', 'medium', 'tiger', 'churchill', 'flaktrack'].includes(enemy.type));
+  if (kind === 'bombing') return enemies.some(enemy => enemy.type === 'tank' || enemy.garrison >= 0);
+  if (kind === 'artillery') return cluster(8) || enemies.some(enemy => ['mg', 'at'].includes(enemy.type)
+    && (level !== 'hard' || !friendNear(enemy)));
+  if (kind === 'strafe') return cluster(10, true);
+  if (kind === 'cover') return view.strikes?.some(strike => strike.t > 0 && view.players[strike.owner]?.team !== view.players[slot].team
+    && ['strafe', 'bombing', 'dive', 'para'].includes(strike.kind) && own.some(unit => distance(unit, strike) < 25));
+  return false;
+}
+export function emptyCombatFacts(view, slot, concern, camera = view.camera, level = 'normal') {
+  const screen = [...view.units.values()].filter(unit => !unit.inventoryOnly && view.screenIds?.has(unit.id)
+    && (!camera || onScreen(unit, camera, view)));
+  const team = view.players[slot].team;
+  const friendly = screen.filter(unit => view.players[unit.owner]?.team === team);
+  const enemies = screen.filter(unit => view.players[unit.owner]?.team !== team);
+  const threshold = level === 'hard' ? .5 : .35;
+  const own = screen.filter(unit => unit.owner === slot && !UNITS[unit.type].structure && !UNITS[unit.type].air).map(unit => {
+    const def = UNITS[unit.type], full = def.models * def.hpPer, fraction = unit.hp / full;
+    const retreatRisk = fraction < threshold || def.models > 1 && unit.hp <= def.hpPer || unit.supp >= 90 && fraction < .6;
+    const ability = abilityOpportunity(view, unit, enemies, level);
+    return [unit.id, unit.type, unit.healthBand ?? (fraction > .5 ? 'healthy' : fraction > .25 ? 'hurt' : 'critical'),
+      retreatRisk, unit.supp >= 90 ? 'pinned' : unit.supp >= 50 ? 'suppressed' : 'normal',
+      idleUnit(unit), !!unit.retreating, unit.garrison >= 0, !!unit.holdPos,
+      ability, !!unit.cdKnown && unit.cd <= 0 && ability];
+  }).sort((a, b) => a[0] - b[0]);
+  const hostile = enemies.map(unit => [unit.id, unit.type, unit.healthBand]).sort((a, b) => a[0] - b[0]);
+  const cues = (view.events ?? []).filter(event => {
+    if (view.tick - event.tick > 80 || camera && !onScreen(event, camera, view)) return false;
+    if (event.source === 'screen') return event.kind === 'screen-damage' && view.screenIds?.has(event.unitId)
+      && event.observedDanger?.lossShare >= .25;
+    return event.source === 'alert' && ['base', 'air', 'unitLost', 'pointLost'].includes(event.kind);
+  }).map(event => event.id).sort();
+  const support = Object.keys(SUPPORT).filter(kind => {
+    const price = supCost(view, kind), reserve = SUPPORT_RESERVES[level] ?? SUPPORT_RESERVES.normal;
+    return supportOpportunity(view, slot, kind, friendly, enemies, level)
+      && view.players[slot].sup?.[kind] <= 0 && view.players[slot][price.cur] >= price.cost
+      + (price.cur === 'mp' ? reserve.supReserve : reserve.munReserve);
+  });
+  return JSON.stringify([own, hostile, cues, support]);
+}
+// Losing a target, a screen member or an expired cue removes options; it does not create a new one.
+function combatWorkAppeared(previous, current) {
+  const [beforeOwn, beforeHostile, beforeCues, beforeSupport] = JSON.parse(previous);
+  const [own, hostile, cues, support] = JSON.parse(current);
+  const oldOwn = new Map(beforeOwn.map(row => [row[0], row]));
+  for (const row of own) {
+    const old = oldOwn.get(row[0]);
+    if (!old) { if (row[5] || row[3] && !row[6] || row[9] || row[10]) return true; continue; }
+    if (row[1] !== old[1] || row[2] !== old[2] || row[4] !== old[4]
+      || row[3] && !old[3] || row[5] && !old[5] || !row[6] && old[6]
+      || !row[7] && old[7] || !row[8] && old[8] || row[9] && !old[9] || row[10] && !old[10]) return true;
+  }
+  const oldHostile = new Map(beforeHostile.map(row => [row[0], row]));
+  return hostile.some(row => !oldHostile.has(row[0]) || row[1] !== oldHostile.get(row[0])[1]
+      || row[2] !== oldHostile.get(row[0])[2])
+    || cues.some(id => !beforeCues.includes(id)) || support.some(kind => !beforeSupport.includes(kind));
+}
+function combatAreas(state, tick) {
+  const areas = state.emptyCombatAreas ??= new Map();
+  for (const [id, area] of areas) if (tick - area.tick > 600) areas.delete(id);
+  return areas;
+}
+export function deferEmptyCombat(view, slot, state, concern, tick, level) {
+  if (concern.kind !== 'combat') return false;
+  const camera = state.camera ?? view.camera;
+  // A coarse off-camera concern has not been inspected, so it cannot suppress another screen.
+  if (!camera || !onScreen(concern, camera, view)) return false;
+  const areas = combatAreas(state, tick), visits = state.emptyCombatVisits ??= new Map();
+  for (const [id, visit] of visits) if (tick - visit.tick > 600) visits.delete(id);
+  const old = [...areas.values()].find(area => sameCombatArea(area, view, concern, camera));
+  const facts = emptyCombatFacts(view, slot, concern, camera, level);
+  const count = old && !combatWorkAppeared(old.facts, facts) ? old.count + 1 : 1;
+  const retryAt = count >= 2 ? tick + ({ easy: 160, normal: 100, hard: 60 }[level] ?? 100) : tick;
+  const id = old?.id ?? (state.emptyCombatAreaSerial = (state.emptyCombatAreaSerial ?? 0) + 1);
+  const area = { id, camera: { ...(old?.camera ?? camera) }, facts, count, tick, retryAt, level };
+  areas.set(id, area); visits.set(concern.id, { facts, count, tick, retryAt, area: id });
+  while (areas.size > 12) areas.delete(areas.keys().next().value);
+  return count >= 2;
+}
+export function emptyCombatDeferred(view, slot, state, concern) {
+  if (concern.kind !== 'combat') return false;
+  const camera = state.camera ?? view.camera;
+  if (!camera) return false;
+  return [...combatAreas(state, view.tick).values()].some(area => view.tick < area.retryAt
+    && sameCombatArea(area, view, concern, camera)
+    && !combatWorkAppeared(area.facts, emptyCombatFacts(view, slot, concern, camera, area.level)));
+}
+// A quiet guard can be inspected again without making every unchanged hold a camera trip.
+// These records are made only after a named, watched idle visit found no input to issue.
+function guardedIdle(view, slot, unit) {
+  const def = UNITS[unit?.type];
+  if (!unit || unit.owner !== slot || !def?.infantry || def.medic || unit.type === 'engineer') return false;
+  return unit.garrison >= 0 || unit.cover === 2 || unit.holdPos || view.points.some(point =>
+    view.players[point.owner]?.team === view.players[slot].team && distance(unit, point) <= CFG.pointRadius);
+}
+function guardPublicFacts(view, slot, unit) {
+  const me = view.players[slot];
+  const points = view.points.filter(point => distance(unit, point) <= CFG.pointRadius + 4)
+    .map(point => [point.x, point.z, point.owner, !!point.contested]);
+  const contacts = view.minimap.filter(dot => view.players[dot.owner]?.team !== me.team && distance(unit, dot) <= 45)
+    .map(dot => [dot.owner, Math.round(dot.x / 4), Math.round(dot.z / 4)]).sort();
+  const fort = CFG.fortBuilders.includes(unit.type) ? [CFG.digCost + 60, FORTS.mines.cost + 60,
+    FORTS.wire.cost * 2 + 60, FORTS.traps.cost * 2 + 60].map(price => me.mp >= price) : [];
+  const ability = UNITS[unit.type].ab, hud = unit.lastHUD;
+  const readyAt = hud?.ability ? hud.observedTick + hud.ability.cooldownSeconds * 20 : null;
+  const readiness = [readyAt == null ? null : view.tick >= readyAt, ability ? me.mun >= abCost(view, ability) : false];
+  return JSON.stringify([points, contacts, fort, readiness]);
+}
+function guardScreenFacts(view, slot, unit) {
+  const reach = Math.max(UNITS[unit.type].w?.range ?? 0, UNITS[unit.type].ab?.range ?? 0) + 4;
+  const enemies = [...view.screenIds].map(id => view.units.get(id)).filter(enemy => enemy
+    && view.players[enemy.owner]?.team !== view.players[slot].team && distance(unit, enemy) <= reach)
+    .map(enemy => [enemy.id, enemy.type, Math.round(enemy.x), Math.round(enemy.z), enemy.healthBand, enemy.suppressionBand]);
+  return JSON.stringify([enemies, unit.healthBand, unit.suppressionBand, unit.cover, unit.garrison, !!unit.holdPos,
+    !!unit.retreating, idleUnit(unit)]);
+}
+export function deferEmptyIdleGuard(view, slot, state, concern, tick) {
+  if (concern.kind !== 'idle' || concern.id !== `idle:${concern.unitId}`) return false;
+  const unit = view.units.get(concern.unitId);
+  if (!view.screenIds.has(unit?.id) || !idleUnit(unit) || !guardedIdle(view, slot, unit)) return false;
+  const visits = state.emptyIdleGuards ??= new Map();
+  visits.set(unit.id, { tick, retryAt: tick + 600, x: unit.x, z: unit.z,
+    publicFacts: guardPublicFacts(view, slot, unit), screenFacts: guardScreenFacts(view, slot, unit) });
+  for (const [id, visit] of visits) if (tick - visit.tick > 600 || !view.units.has(id)) visits.delete(id);
+  return true;
+}
+function idleGuardDeferred(view, slot, state, concern) {
+  if (concern.kind !== 'idle' || concern.id !== `idle:${concern.unitId}`) return false;
+  const visits = state.emptyIdleGuards, old = visits?.get(concern.unitId), unit = view.units.get(concern.unitId);
+  if (!old || !unit) return false;
+  const dot = view.minimap.find(dot => dot.owner === slot && dot.id === unit.id);
+  const changed = !dot || distance(dot, old) > 4 || view.tick >= old.retryAt
+    || guardPublicFacts(view, slot, unit) !== old.publicFacts
+    || view.screenIds.has(unit.id) && (!guardedIdle(view, slot, unit) || guardScreenFacts(view, slot, unit) !== old.screenFacts)
+    || (view.events ?? []).some(event => event.tick > old.tick && view.tick - event.tick <= 240
+      && event.x != null && distance(event, dot ?? old) <= 45
+      && (event.source === 'screen' || event.source === 'alert' && ['attack', 'base', 'air', 'pointLost', 'unitLost'].includes(event.kind)));
+  if (changed) { visits.delete(unit.id); return false; }
+  return true;
 }
 const limits = skill => {
   const level = typeof skill === 'string' ? skill : skill?.name ?? skill?.level ?? (skill?.noise === 1 ? 'easy' : skill?.noise === 0.2 ? 'hard' : 'normal');
@@ -120,7 +312,9 @@ export function chooseConcern(perception, slot, state, skill, rng) {
   if (attention.current && tick >= attention.until) attention.visits.set(attention.current.id, tick);
   const candidates = new Map(), home = me.spawn ?? perception.camera;
   const add = candidate => {
-    if (!Number.isFinite(candidate.x) || !Number.isFinite(candidate.z)) return;
+    if (!Number.isFinite(candidate.x) || !Number.isFinite(candidate.z)
+      || emptyCombatDeferred(perception, slot, state, candidate)
+      || idleGuardDeferred(perception, slot, state, candidate)) return;
     const old = candidates.get(candidate.id);
     if (!old || old.urgency < candidate.urgency) candidates.set(candidate.id, candidate);
   };
@@ -128,14 +322,13 @@ export function chooseConcern(perception, slot, state, skill, rng) {
   for (const event of stimuli) {
     if (event.source === 'minimap' || tick - event.tick > 240 || event.x == null) continue;
     const screen = event.source === 'screen';
-    const monitoring = screen && event.responseRequired === false;
+    const monitoring = screen && !screenEventNeedsAttention(event);
     const danger = screen || ['base', 'air', 'unitLost', 'attack', 'pointLost'].includes(event.kind);
     const kind = danger ? 'combat' : event.kind === 'ready' ? 'production' : 'expansion';
     add({ id: `${screen ? 'stimulus' : 'alert'}:${event.id}`, kind, ...at(event),
       urgency: (monitoring ? 52 : event.kind === 'base' ? 110 : event.kind === 'screen-damage' ? 103 : screen ? 92 : danger ? 80 : 30) - (tick - event.tick) / 10,
       event: event.kind, eventId: event.id, eventTick: event.tick, eventOnScreen: !!event.onScreen,
-      ...(event.responsePolicy && { responseRequired: event.responseRequired, responseReason: event.responseReason,
-        responsePolicy: event.responsePolicy, responseUnits: [...event.responseUnits] }),
+      ...(event.observedDanger && { observedDanger: structuredClone(event.observedDanger) }),
       ...(event.unitId !== undefined && { unitId: event.unitId }), ...(event.targetId !== undefined && { targetId: event.targetId }) });
   }
   const ownDots = perception.minimap.filter(dot => dot.owner === slot);
@@ -154,7 +347,16 @@ export function chooseConcern(perception, slot, state, skill, rng) {
   const productionAge = tick - (attention.visits.get('production') ?? 0);
   const productionRate = (typeof skill === 'string' ? skill : skill?.name ?? skill?.level) === 'hard' ? 3
     : (typeof skill === 'string' ? skill : skill?.name ?? skill?.level) === 'easy' ? 0.7 : 1.5;
-  const deferProduction = productionDeferred(perception, slot, state.production);
+  // The global Conquest shop is public. Do not travel home to inspect a purchase that cannot be paid.
+  // A squad at home can still need deployment, independently of the shopping budget.
+  const globalShop = !perception.mode || perception.mode.kind === 'conquest';
+  const affordableRecruit = !globalShop || Object.entries(UNITS).some(([type, def]) => {
+    if (def.structure || def.classic || def.naval && !perception.naval || !canBuild(type, me.faction)) return false;
+    const price = priceOf(perception, type);
+    return me.mp >= price.mp && (me.fuel ?? 0) >= price.fuel;
+  });
+  const homeSquad = ownDots.some(dot => distance(dot, home) <= CFG.reinforceRadius);
+  const deferProduction = productionDeferred(perception, slot, state.production) || !affordableRecruit && !homeSquad;
   if (!deferProduction) add({ id: 'production', kind: 'production', ...at(home), urgency: Math.min(92, 18 + productionAge / 20 * productionRate + Math.max(0, me.mp - 250) / 45) });
   for (const plane of perception.airPanel ?? []) if (plane.state === 'base') {
     const id = `air:${plane.id}`;
@@ -183,9 +385,24 @@ export function chooseConcern(perception, slot, state, skill, rng) {
     const inspected = perception.screenIds.has(unit.id);
     const idle = inspected && idleUnit(unit);
     // A dot that stops moving may be fighting. Look at it before deciding that it is idle.
+    let watchedBridge = null;
+    if (idle && CFG.fortBuilders.includes(unit.type)) {
+      const x0 = Math.max(0, Math.ceil((unit.x - 24) / CELL - .5));
+      const x1 = Math.min(perception.w - 1, Math.floor((unit.x + 24) / CELL - .5));
+      const z0 = Math.max(0, Math.ceil((unit.z - 24) / CELL - .5));
+      const z1 = Math.min(perception.h - 1, Math.floor((unit.z + 24) / CELL - .5));
+      for (let z = z0; z <= z1 && !watchedBridge; z++) for (let x = x0; x <= x1; x++) {
+        const cell = z * perception.w + x;
+        if (perception.chars[cell] !== 'W' || perception.mapChars[cell] !== '=') continue;
+        const spot = { x: (x + .5) * CELL, z: (z + .5) * CELL };
+        if (distance(unit, spot) <= 24 && perception.sees(spot) && onScreen(spot, perception.camera, perception)
+          && !enemies.some(enemy => distance(enemy, spot) < 35)) { watchedBridge = { cell, ...spot }; break; }
+      }
+    }
+    const idleId = watchedBridge ? `repair:${unit.id}:${watchedBridge.cell}` : `idle:${unit.id}`;
     if (idle || (!inspected && age >= 120))
-      add({ id: `idle:${unit.id}`, kind: 'idle', ...at(unit), unitId: unit.id,
-        urgency: 24 + Math.min(tune.capacity >= 4 ? 66 : tune.capacity >= 3 ? 50 : 30,
+      add({ id: idleId, kind: 'idle', ...at(unit), unitId: unit.id,
+        urgency: watchedBridge ? 89 : 24 + Math.min(tune.capacity >= 4 ? 66 : tune.capacity >= 3 ? 50 : 30,
           (tick - Math.max(still.get(unit.id)?.since ?? tick, attention.visits.get(`idle:${unit.id}`) ?? 0)) / 12) });
   }
   if (enemies.length && affordableSupport(perception, slot, tune.level)) {

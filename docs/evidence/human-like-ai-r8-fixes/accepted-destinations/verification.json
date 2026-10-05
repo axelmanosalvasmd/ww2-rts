@@ -1,0 +1,14 @@
+{
+  "status": "PASS",
+  "qualification": "Copy integrity only. Retained source-specific results are not new checks or acceptance.",
+  "archive": "accepted-destination-fixture-native.tar.gz",
+  "archiveBytes": 574233,
+  "archiveSHA256": "d0aedeb2216060cbe09e30d40430a08b79dd432f3381f814fb6e69c235b532d4",
+  "members": 92,
+  "originals": 89,
+  "originalCopiedBytes": 3004934,
+  "payloadBytes": 3044334,
+  "allOriginalBytesUnchanged": true,
+  "allRoundtripBytesMatch": true,
+  "manifestSHA256": "86cdab3129c9ee56709ccf1e72ffde596405377197dd032a2b17a6acad9d22f8"
+}

@@ -1,0 +1,164 @@
+{
+  "launchAuthorized": true,
+  "freezeAnnouncement": "ROOT froze source and launched the76child fullsuite at2026-10-04T18:14:03UTC. Prospective original120campaign authorized after fixedV16quietperformance completed withitsFAIL retained.",
+  "reviewReference": "docs/human-like-ai-manual-response-v2.md, adopted declaration in the frozen common source archive",
+  "sourceArchiveDirectory": "/tmp/human-ai-v16-full-source",
+  "sourceManifest": "/tmp/ai-v16-full-before.json",
+  "expectedRuntimeCheckpointSHA256": "3bac0c0923bcfe622dac10a8b76783d090eaf249a4c54e3e9a89a305c9e51ae9",
+  "evidenceDirectory": "/tmp/human-ai-final-v16",
+  "matches": 120,
+  "seatsExpected": 360,
+  "seedSets": {
+    "conquest": [
+      1,
+      2,
+      3,
+      4,
+      5,
+      6,
+      7,
+      8,
+      9,
+      10,
+      11,
+      12,
+      13,
+      14,
+      15,
+      16,
+      17,
+      18,
+      19,
+      20
+    ],
+    "classic": [
+      1,
+      2,
+      3,
+      4,
+      5,
+      6,
+      7,
+      8,
+      9,
+      10
+    ],
+    "world": [
+      1,
+      2,
+      3,
+      4,
+      5,
+      6,
+      7,
+      8,
+      9,
+      10
+    ]
+  },
+  "levels": [
+    "easy",
+    "normal",
+    "hard"
+  ],
+  "requestedSeconds": 180,
+  "durationPolicy": "Retain actual authoritative early termination, if any. Never extend games or alter requested180seconds; flag early-ended matches explicitly.",
+  "workers": 2,
+  "workerCPUs": [
+    6,
+    10
+  ],
+  "modeBatches": "conquest then classic then world, sequential; one frozen worker host each on CPU6 and CPU10; no concurrent CPU10 browser work",
+  "screenSpan": 113,
+  "map": "default",
+  "army": "standard",
+  "worldSize": "huge",
+  "scoring": {
+    "original": "Keep frozen screen-v1 originalOracle required population, primaryOnly and explicitLinked side by side with observed policy. Preserve every original censor, unknown, native input/event/command, and original gate outcome.",
+    "manual": "Root-approved prospective screen-manual-v2 public policy, conditional on final source adoption and exact native controls. Full creation, required, monitoring, unknown, censors and both endpoints reported. Pooled manual gate requires complete coverage, positive population and identifiable KM median; zero-exposure seats remain visible and do not themselves zero out a positive pooled population."
+  },
+  "manualPolicy": {
+    "approved": true,
+    "name": "screen-manual-v2",
+    "streamSchema": "ww2-public-manual-response-v2",
+    "ruleDeclarationPath": "/tmp/human-ai-v16-full-source/docs/human-like-ai-manual-response-v2.md",
+    "ruleDeclarationSHA256": "88b35c9f241b60af78fbadd7392d3f14203869c18b4d7e931ce64112f6d91030",
+    "helperSHA256": "a5044b77c2b35d25d12d05d8d61135c956e59ee84451f15a3a8f5c0c05470373",
+    "collectorSHA256": "fbf3bb833003c3b3ed2dd3558b82113c78feb9c4d0426f63c88438cef6d0a574",
+    "adapterSHA256": "9ea0b3163788366234c4ff43cdb22f5127158a0a32bcc7e8ec27f978ca3102fc",
+    "candidateDeclarationSHA256": "59b9d88208243d6999764c9df089317aed25c759115a97f8d730b05395c99ec4",
+    "perceptionSHA256": "50e611a932728940c5047a61bf4fd7554c696f93880d7907a952d8b39fdcf3fd"
+  },
+  "baseline": "Exact original120 seed pairs; historical reaction instrumentation absent, spatial baseline160versuscurrent113 explicitly incomparable.",
+  "bounds": {
+    "easy": {
+      "screen": [
+        0.9,
+        1.4
+      ],
+      "offscreen": [
+        3,
+        6
+      ],
+      "physicalAPM60": [
+        20,
+        35
+      ],
+      "peakAPM10": 60,
+      "opening": [
+        4,
+        8
+      ]
+    },
+    "normal": {
+      "screen": [
+        0.5,
+        0.8
+      ],
+      "offscreen": [
+        1.5,
+        3
+      ],
+      "physicalAPM60": [
+        40,
+        70
+      ],
+      "peakAPM10": 120,
+      "opening": [
+        3,
+        6
+      ]
+    },
+    "hard": {
+      "screen": [
+        0.3,
+        0.45
+      ],
+      "offscreen": [
+        0.8,
+        1.6
+      ],
+      "physicalAPM60": [
+        80,
+        120
+      ],
+      "peakAPM10": 200,
+      "opening": [
+        2,
+        4
+      ]
+    }
+  },
+  "retention": "Every full raw match and lossless gzip retained immediately, native timelines and both scorer streams; streamed merge, compact metrics, all failures and censors. No automatic gate acceptance or release.",
+  "pinning": "Separate process hosts and their Worker threads inherit CPU6 and CPU10 taskset affinity only after quiet performance and without CPU10 browser work.",
+  "launchCommand": "node /tmp/human-ai-final-v16-v4-preparation/run-campaign.mjs --protocol /tmp/human-ai-final-v16-v4-preparation/protocol-preregistration.template.json --launch-authorized",
+  "templateStatus": "NOT LAUNCHABLE: root must approve final source, freeze V16 archive, approve exact scorer source hashes and set approved/sourceApproved only after native controls and quiet performance.",
+  "sourceApproved": true,
+  "preparedAtUTC": "2026-10-04T18:17:28.465406+00:00",
+  "sourceManifestSHA256": "30f4cf299cb8bf393fad09ad5be7eeaf780aa9b22219b77c537fe8f64fc18699",
+  "templateSHA256": "2e9cf89f423ee0f0c7aa1055c2dd0522fb13f301d4771d8ddc4ab88fa3f2d66d",
+  "runnerSHA256": "5e1b5665e58f31daba55da0cb04762c538c2ed3465ab983caa9c41606f5cdeca",
+  "archiveCheckerSHA256": "d4473f49847197bba800cc936feeda4cd1601d856fd42168cab11956f9baa215",
+  "workerHostSHA256": "88045d1cd7e0e6350f5ed1be1b239e6ba5199df57cbb36a21ce2c4680144ef4c",
+  "fullSuiteProtocolSHA256": "9aaed0ccc99ceb22031c291367e7756ec9f9fc715c3395f8dd4a1b0aab730222"
+}

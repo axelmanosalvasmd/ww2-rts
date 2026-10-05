@@ -1,0 +1,67 @@
+{
+  "verifiedAt": "2026-10-04T11:57:21.992Z",
+  "sourceCheckpointSHA256": "7c87de19ed1196044efbabad0d63bb8774d52acdd35e7695efac053a1f7c74a9",
+  "matches": 3,
+  "seats": 9,
+  "exactCompactJSONString": true,
+  "fullGraphRoundtrip": true,
+  "allNativeReducerMetrics": true,
+  "pooledMetrics": true,
+  "streamedMergedGraph": true,
+  "mergedProof": {
+    "raw": {
+      "sha256": "0d5c74612741118409ee69e5f015f7dbcdd756d83cc47a4aeaee0ab0191bb89e",
+      "bytes": 879111
+    },
+    "gzip": {
+      "sha256": "a50e5cb5b00c19d445856d93c8a499d83e81f5c029f2ef33ee4a150b52ec7722",
+      "bytes": 48712
+    }
+  },
+  "undefinedNonfiniteUTF8": true,
+  "maxSerializedLeafBytes": 90416,
+  "proofs": [
+    {
+      "mode": "conquest",
+      "level": "easy",
+      "seed": 1,
+      "seats": 3,
+      "raw": {
+        "sha256": "c0bbdd6b09a878a2ed32d0b9c659982118e6b2488b312ec19256cbccffb7fe81",
+        "bytes": 238502
+      },
+      "gzip": {
+        "sha256": "9bc539e0be225fc6ee9a47ace4311bea6b3e1555c64373692fc223231e0285a9",
+        "bytes": 12581
+      }
+    },
+    {
+      "mode": "conquest",
+      "level": "normal",
+      "seed": 1,
+      "seats": 3,
+      "raw": {
+        "sha256": "e9cc22e7148b924f4f583b7501f81fc9563f11601d59df3e5a53fe300d661326",
+        "bytes": 248364
+      },
+      "gzip": {
+        "sha256": "b900dc7b7801f30bbf9dedb366683a8453d66187e354a63283177dda39e857e7",
+        "bytes": 13726
+      }
+    },
+    {
+      "mode": "conquest",
+      "level": "hard",
+      "seed": 1,
+      "seats": 3,
+      "raw": {
+        "sha256": "bb22ed0bd7e5915a3977b4d00befc975d439c08d5c2c5f01a425e5ae431ed27f",
+        "bytes": 316757
+      },
+      "gzip": {
+        "sha256": "b88593441ad7fe35513a6fcc0fc4f92e6e5d11805097647e8d0e47c119dd0e33",
+        "bytes": 15396
+      }
+    }
+  ]
+}

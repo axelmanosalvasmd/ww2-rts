@@ -1,0 +1,1173 @@
+{
+  "status": "historical diagnosis only; no V15 reclassification or rescoring",
+  "rows": [
+    {
+      "identity": {
+        "level": "hard",
+        "seed": 1,
+        "slot": 2,
+        "id": "screen:870:9",
+        "reason": "idle-combat-contact",
+        "units": [
+          7
+        ],
+        "x": 112.3,
+        "z": 72.9
+      },
+      "creationDiagnostic": [
+        {
+          "id": 7,
+          "type": "rifle",
+          "hp": 1,
+          "supp": 0,
+          "retreating": false,
+          "garrison": 2620,
+          "targetType": null,
+          "targetDist": null,
+          "range": 28,
+          "moving": false,
+          "amove": false,
+          "onScreen": true,
+          "camera": {
+            "x": 105.8,
+            "z": 64.1
+          },
+          "foes": [
+            {
+              "id": 11,
+              "type": "rifle",
+              "dist": 11.8,
+              "range": 28,
+              "onScreen": true,
+              "aimsAtMe": false
+            },
+            {
+              "id": 14,
+              "type": "rifle",
+              "dist": 30.8,
+              "range": 28,
+              "onScreen": true,
+              "aimsAtMe": false
+            }
+          ]
+        }
+      ],
+      "futureDiagnosticNotEligibility": {
+        "10": [
+          {
+            "id": 7,
+            "type": "rifle",
+            "hp": 1,
+            "supp": 0,
+            "retreating": false,
+            "garrison": 2620,
+            "targetType": "rifle",
+            "targetDist": 13.1,
+            "range": 28,
+            "moving": false,
+            "amove": false,
+            "onScreen": true,
+            "camera": {
+              "x": 105.8,
+              "z": 64.1
+            },
+            "foes": [
+              {
+                "id": 11,
+                "type": "rifle",
+                "dist": 13.1,
+                "range": 28,
+                "onScreen": true,
+                "aimsAtMe": true
+              },
+              {
+                "id": 14,
+                "type": "rifle",
+                "dist": 34,
+                "range": 28,
+                "onScreen": true,
+                "aimsAtMe": false
+              }
+            ]
+          }
+        ],
+        "60": [
+          {
+            "id": 7,
+            "type": "rifle",
+            "hp": 0.83,
+            "supp": 34,
+            "retreating": false,
+            "garrison": 2620,
+            "targetType": "rifle",
+            "targetDist": 22,
+            "range": 28,
+            "moving": false,
+            "amove": false,
+            "onScreen": false,
+            "camera": {
+              "x": 106.5,
+              "z": 14.6
+            },
+            "foes": [
+              {
+                "id": 11,
+                "type": "rifle",
+                "dist": 22,
+                "range": 28,
+                "onScreen": false,
+                "aimsAtMe": true
+              }
+            ]
+          }
+        ]
+      },
+      "actorCommands": [],
+      "inputWitnesses": []
+    },
+    {
+      "identity": {
+        "level": "hard",
+        "seed": 1,
+        "slot": 2,
+        "id": "screen:1018:11",
+        "reason": "idle-combat-contact",
+        "units": [
+          7
+        ],
+        "x": 79.8,
+        "z": 81.5
+      },
+      "creationDiagnostic": [
+        {
+          "id": 7,
+          "type": "rifle",
+          "hp": 0.83,
+          "supp": 0,
+          "retreating": false,
+          "garrison": 2620,
+          "targetType": null,
+          "targetDist": null,
+          "range": 28,
+          "moving": false,
+          "amove": false,
+          "onScreen": true,
+          "camera": {
+            "x": 105.8,
+            "z": 60.8
+          },
+          "foes": [
+            {
+              "id": 11,
+              "type": "rifle",
+              "dist": 40.6,
+              "range": 28,
+              "onScreen": true,
+              "aimsAtMe": false
+            },
+            {
+              "id": 10,
+              "type": "rifle",
+              "dist": 44.4,
+              "range": 28,
+              "onScreen": true,
+              "aimsAtMe": false
+            },
+            {
+              "id": 14,
+              "type": "rifle",
+              "dist": 79.6,
+              "range": 28,
+              "onScreen": false,
+              "aimsAtMe": false
+            }
+          ]
+        }
+      ],
+      "futureDiagnosticNotEligibility": {
+        "10": [
+          {
+            "id": 7,
+            "type": "rifle",
+            "hp": 0.83,
+            "supp": 0,
+            "retreating": false,
+            "garrison": 2620,
+            "targetType": null,
+            "targetDist": null,
+            "range": 28,
+            "moving": false,
+            "amove": false,
+            "onScreen": false,
+            "camera": {
+              "x": 105.4,
+              "z": 90.5
+            },
+            "foes": [
+              {
+                "id": 11,
+                "type": "rifle",
+                "dist": 42.8,
+                "range": 28,
+                "onScreen": false,
+                "aimsAtMe": false
+              },
+              {
+                "id": 10,
+                "type": "rifle",
+                "dist": 44.4,
+                "range": 28,
+                "onScreen": true,
+                "aimsAtMe": false
+              },
+              {
+                "id": 14,
+                "type": "rifle",
+                "dist": 82.7,
+                "range": 28,
+                "onScreen": false,
+                "aimsAtMe": false
+              }
+            ]
+          }
+        ],
+        "60": [
+          {
+            "id": 7,
+            "type": "rifle",
+            "hp": 0.83,
+            "supp": 0,
+            "retreating": false,
+            "garrison": 2620,
+            "targetType": null,
+            "targetDist": null,
+            "range": 28,
+            "moving": false,
+            "amove": false,
+            "onScreen": true,
+            "camera": {
+              "x": 105.8,
+              "z": 64.1
+            },
+            "foes": [
+              {
+                "id": 11,
+                "type": "rifle",
+                "dist": 34.9,
+                "range": 28,
+                "onScreen": true,
+                "aimsAtMe": false
+              },
+              {
+                "id": 10,
+                "type": "rifle",
+                "dist": 44.4,
+                "range": 28,
+                "onScreen": true,
+                "aimsAtMe": false
+              }
+            ]
+          }
+        ]
+      },
+      "actorCommands": [],
+      "inputWitnesses": [
+        {
+          "tick": 1027,
+          "kind": "camera-pan",
+          "camera": {
+            "x": 105.40270649646237,
+            "z": 90.54029418583528,
+            "yaw": 3.1266683885997084,
+            "distance": 60
+          },
+          "selected": 3,
+          "concern": "fight:4",
+          "ids": [
+            9,
+            13,
+            16
+          ],
+          "target": {
+            "x": 105.40270649646237,
+            "z": 90.54029418583528
+          },
+          "event": {
+            "kind": "minimap-contact",
+            "id": "fight:4:contact",
+            "source": "minimap",
+            "onScreen": false,
+            "x": 51.2,
+            "z": 88.7
+          },
+          "cycle": 57,
+          "concernKind": "combat",
+          "concernTarget": {
+            "x": 51.2,
+            "z": 88.7
+          },
+          "method": "pan",
+          "input": {
+            "code": "KeyW"
+          },
+          "inputStartedTick": 1002,
+          "motorTicks": 25,
+          "queuedTick": 1001,
+          "reactionStartTick": 977,
+          "eventTick": 977,
+          "latency": 2.5
+        }
+      ]
+    },
+    {
+      "identity": {
+        "level": "hard",
+        "seed": 1,
+        "slot": 2,
+        "id": "screen:1794:37",
+        "reason": "idle-combat-contact",
+        "units": [
+          13
+        ],
+        "x": 118.9,
+        "z": 101.9
+      },
+      "creationDiagnostic": [
+        {
+          "id": 13,
+          "type": "conscript",
+          "hp": 0.41,
+          "supp": 15,
+          "retreating": false,
+          "garrison": -1,
+          "targetType": null,
+          "targetDist": null,
+          "range": 24,
+          "moving": false,
+          "amove": false,
+          "onScreen": true,
+          "camera": {
+            "x": 104.1,
+            "z": 112
+          },
+          "foes": [
+            {
+              "id": 3,
+              "type": "mg",
+              "dist": 24.1,
+              "range": 36,
+              "onScreen": true,
+              "aimsAtMe": false
+            },
+            {
+              "id": 6,
+              "type": "mg",
+              "dist": 24.3,
+              "range": 36,
+              "onScreen": false,
+              "aimsAtMe": false
+            },
+            {
+              "id": 4,
+              "type": "rifle",
+              "dist": 26.7,
+              "range": 28,
+              "onScreen": false,
+              "aimsAtMe": true
+            }
+          ]
+        }
+      ],
+      "futureDiagnosticNotEligibility": {
+        "10": [
+          {
+            "id": 13,
+            "type": "conscript",
+            "hp": 0.38,
+            "supp": 10,
+            "retreating": false,
+            "garrison": -1,
+            "targetType": null,
+            "targetDist": null,
+            "range": 24,
+            "moving": false,
+            "amove": false,
+            "onScreen": true,
+            "camera": {
+              "x": 110.7,
+              "z": 112.1
+            },
+            "foes": [
+              {
+                "id": 3,
+                "type": "mg",
+                "dist": 24.1,
+                "range": 36,
+                "onScreen": true,
+                "aimsAtMe": false
+              },
+              {
+                "id": 6,
+                "type": "mg",
+                "dist": 24.3,
+                "range": 36,
+                "onScreen": false,
+                "aimsAtMe": false
+              },
+              {
+                "id": 4,
+                "type": "rifle",
+                "dist": 26.7,
+                "range": 28,
+                "onScreen": false,
+                "aimsAtMe": true
+              }
+            ]
+          }
+        ],
+        "60": [
+          {
+            "id": 13,
+            "type": "conscript",
+            "hp": 0.34,
+            "supp": 0,
+            "retreating": true,
+            "garrison": -1,
+            "targetType": null,
+            "targetDist": null,
+            "range": 24,
+            "moving": true,
+            "amove": false,
+            "onScreen": false,
+            "camera": {
+              "x": 111.9,
+              "z": 29.6
+            },
+            "foes": [
+              {
+                "id": 1,
+                "type": "rifle",
+                "dist": 18,
+                "range": 28,
+                "onScreen": false,
+                "aimsAtMe": false
+              },
+              {
+                "id": 18,
+                "type": "rifle",
+                "dist": 20.5,
+                "range": 28,
+                "onScreen": false,
+                "aimsAtMe": false
+              },
+              {
+                "id": 2,
+                "type": "rifle",
+                "dist": 24.2,
+                "range": 28,
+                "onScreen": false,
+                "aimsAtMe": false
+              }
+            ]
+          }
+        ]
+      },
+      "actorCommands": [
+        {
+          "tick": 1808,
+          "command": {
+            "t": "retreat",
+            "ids": [
+              13
+            ]
+          },
+          "accepted": true,
+          "rejectionReason": null,
+          "locations": [
+            {
+              "x": 81,
+              "z": 115
+            }
+          ],
+          "sourceLocations": [
+            {
+              "x": 81,
+              "z": 115
+            }
+          ],
+          "region": 1,
+          "resourcesBefore": {
+            "mp": 320.7017440476185,
+            "fuel": 0
+          },
+          "resourcesAfter": {
+            "mp": 320.7017440476185,
+            "fuel": 0
+          },
+          "spend": {
+            "mp": 0,
+            "fuel": 0
+          }
+        }
+      ],
+      "inputWitnesses": [
+        {
+          "tick": 1796,
+          "kind": "camera-pan",
+          "camera": {
+            "x": 110.71125956054382,
+            "z": 112.09635845493912,
+            "yaw": 3.1266683885997084,
+            "distance": 60
+          },
+          "selected": 1,
+          "concern": "fight:3",
+          "ids": [
+            17
+          ],
+          "target": {
+            "x": 110.71125956054382,
+            "z": 112.09635845493912
+          },
+          "cycle": 89,
+          "concernKind": "combat",
+          "concernTarget": {
+            "x": 109.2,
+            "z": 96.4
+          },
+          "method": "pan",
+          "input": {
+            "code": "KeyA"
+          },
+          "inputStartedTick": 1776,
+          "motorTicks": 20,
+          "queuedTick": 1775,
+          "reactionStartTick": 1775
+        },
+        {
+          "tick": 1806,
+          "kind": "select-click",
+          "camera": {
+            "x": 110.71125956054382,
+            "z": 112.09635845493912,
+            "yaw": 3.1266683885997084,
+            "distance": 60
+          },
+          "selected": 1,
+          "concern": "stimulus:observed-screen:1794:37",
+          "ids": [
+            13
+          ],
+          "target": {
+            "x": 81,
+            "z": 115
+          },
+          "cycle": 90,
+          "concernKind": "combat",
+          "concernTarget": {
+            "x": 118.9,
+            "z": 101.9
+          },
+          "responseActorIds": [
+            13
+          ],
+          "responseTarget": null,
+          "responseEvents": [
+            {
+              "id": "observed-screen:1764:35",
+              "kind": "screen-damage",
+              "tick": 1764,
+              "observationTick": 1764,
+              "source": "screen",
+              "onScreen": true,
+              "x": 81,
+              "z": 115,
+              "unitId": 13,
+              "amount": 4.899999999999999,
+              "episode": "13:17",
+              "episodeTick": 1764,
+              "provenance": "first-damage-after-quiet",
+              "observedDanger": {
+                "healthShare": 0.5499999999999999,
+                "lossShare": 0.04999999999999999,
+                "healthBand": "healthy",
+                "suppressionBand": "normal",
+                "retreatRisk": false,
+                "alreadyRetreating": false,
+                "alreadyEngaged": true,
+                "autoRetreatCovered": false
+              }
+            }
+          ],
+          "input": {
+            "button": 0,
+            "shift": false
+          },
+          "pointer": {
+            "from": {
+              "x": 204.26126574790442,
+              "y": 501.80832764627615
+            },
+            "to": {
+              "x": 1644.1679260916503,
+              "y": 464.8739913280167
+            },
+            "distance": 1440.3802746849701,
+            "width": 64,
+            "seconds": 0.3660719826852989
+          },
+          "inputStartedTick": 1798,
+          "motorTicks": 8,
+          "queuedTick": 1797,
+          "reactionStartTick": 1794
+        },
+        {
+          "tick": 1808,
+          "kind": "retreat-key",
+          "camera": {
+            "x": 110.71125956054382,
+            "z": 112.09635845493912,
+            "yaw": 3.1266683885997084,
+            "distance": 60
+          },
+          "selected": 1,
+          "concern": "stimulus:observed-screen:1794:37",
+          "ids": [
+            13
+          ],
+          "cycle": 90,
+          "concernKind": "combat",
+          "concernTarget": {
+            "x": 118.9,
+            "z": 101.9
+          },
+          "responseActorIds": [
+            13
+          ],
+          "responseTarget": null,
+          "responseEvents": [
+            {
+              "id": "observed-screen:1764:35",
+              "kind": "screen-damage",
+              "tick": 1764,
+              "observationTick": 1764,
+              "source": "screen",
+              "onScreen": true,
+              "x": 81,
+              "z": 115,
+              "unitId": 13,
+              "amount": 4.899999999999999,
+              "episode": "13:17",
+              "episodeTick": 1764,
+              "provenance": "first-damage-after-quiet",
+              "observedDanger": {
+                "healthShare": 0.5499999999999999,
+                "lossShare": 0.04999999999999999,
+                "healthBand": "healthy",
+                "suppressionBand": "normal",
+                "retreatRisk": false,
+                "alreadyRetreating": false,
+                "alreadyEngaged": true,
+                "autoRetreatCovered": false
+              }
+            }
+          ],
+          "input": {
+            "code": "KeyR",
+            "ctrl": false,
+            "shift": false,
+            "alt": false
+          },
+          "inputStartedTick": 1806,
+          "motorTicks": 2,
+          "queuedTick": 1797,
+          "reactionStartTick": 1794,
+          "command": {
+            "t": "retreat",
+            "ids": [
+              13
+            ]
+          }
+        }
+      ]
+    },
+    {
+      "identity": {
+        "level": "hard",
+        "seed": 3,
+        "slot": 0,
+        "id": "screen:1820:31",
+        "reason": "retreat-risk-crossing",
+        "units": [
+          19
+        ],
+        "x": 51.2,
+        "z": 145
+      },
+      "creationDiagnostic": [
+        {
+          "id": 19,
+          "type": "rifle",
+          "hp": 0.42,
+          "supp": 94,
+          "retreating": false,
+          "garrison": -1,
+          "targetType": "mg",
+          "targetDist": 23.8,
+          "range": 28,
+          "moving": false,
+          "amove": false,
+          "onScreen": true,
+          "camera": {
+            "x": 25.3,
+            "z": 120.2
+          },
+          "foes": [
+            {
+              "id": 10,
+              "type": "mg",
+              "dist": 23.8,
+              "range": 36,
+              "onScreen": true,
+              "aimsAtMe": true
+            },
+            {
+              "id": 6,
+              "type": "mg",
+              "dist": 32.9,
+              "range": 36,
+              "onScreen": true,
+              "aimsAtMe": false
+            },
+            {
+              "id": 15,
+              "type": "conscript",
+              "dist": 42.2,
+              "range": 24,
+              "onScreen": false,
+              "aimsAtMe": false
+            }
+          ]
+        }
+      ],
+      "futureDiagnosticNotEligibility": {
+        "10": [
+          {
+            "id": 19,
+            "type": "rifle",
+            "hp": 0.42,
+            "supp": 90,
+            "retreating": true,
+            "garrison": -1,
+            "targetType": null,
+            "targetDist": null,
+            "range": 28,
+            "moving": true,
+            "amove": false,
+            "onScreen": true,
+            "camera": {
+              "x": 25.3,
+              "z": 120.2
+            },
+            "foes": [
+              {
+                "id": 10,
+                "type": "mg",
+                "dist": 24.8,
+                "range": 36,
+                "onScreen": true,
+                "aimsAtMe": true
+              },
+              {
+                "id": 6,
+                "type": "mg",
+                "dist": 29.4,
+                "range": 36,
+                "onScreen": true,
+                "aimsAtMe": false
+              },
+              {
+                "id": 15,
+                "type": "conscript",
+                "dist": 42.3,
+                "range": 24,
+                "onScreen": false,
+                "aimsAtMe": false
+              }
+            ]
+          }
+        ],
+        "60": [
+          {
+            "id": 19,
+            "type": "rifle",
+            "hp": 0.41,
+            "supp": 70,
+            "retreating": true,
+            "garrison": -1,
+            "targetType": null,
+            "targetDist": null,
+            "range": 28,
+            "moving": true,
+            "amove": false,
+            "onScreen": true,
+            "camera": {
+              "x": 25.3,
+              "z": 120.2
+            },
+            "foes": [
+              {
+                "id": 6,
+                "type": "mg",
+                "dist": 18.8,
+                "range": 36,
+                "onScreen": true,
+                "aimsAtMe": false
+              },
+              {
+                "id": 10,
+                "type": "mg",
+                "dist": 34.8,
+                "range": 36,
+                "onScreen": true,
+                "aimsAtMe": true
+              },
+              {
+                "id": 15,
+                "type": "conscript",
+                "dist": 46.2,
+                "range": 24,
+                "onScreen": false,
+                "aimsAtMe": false
+              }
+            ]
+          }
+        ]
+      },
+      "actorCommands": [
+        {
+          "tick": 1821,
+          "command": {
+            "t": "retreat",
+            "ids": [
+              19
+            ]
+          },
+          "accepted": true,
+          "rejectionReason": null,
+          "locations": [
+            {
+              "x": 51.239286920683945,
+              "z": 144.9891934987011
+            }
+          ],
+          "sourceLocations": [
+            {
+              "x": 51.239286920683945,
+              "z": 144.9891934987011
+            }
+          ],
+          "region": 6,
+          "resourcesBefore": {
+            "mp": 25.900833333330905,
+            "fuel": 0
+          },
+          "resourcesAfter": {
+            "mp": 25.900833333330905,
+            "fuel": 0
+          },
+          "spend": {
+            "mp": 0,
+            "fuel": 0
+          }
+        },
+        {
+          "tick": 1966,
+          "command": {
+            "t": "amove",
+            "orders": [
+              [
+                19,
+                53.389465547801684,
+                134.7336794694469
+              ]
+            ],
+            "together": true
+          },
+          "accepted": true,
+          "rejectionReason": null,
+          "locations": [
+            {
+              "x": 53.389465547801684,
+              "z": 134.7336794694469
+            }
+          ],
+          "sourceLocations": [
+            {
+              "x": 23.093306136236006,
+              "z": 115.09513597968703
+            }
+          ],
+          "region": 6,
+          "resourcesBefore": {
+            "mp": 38.22520833333055,
+            "fuel": 0
+          },
+          "resourcesAfter": {
+            "mp": 38.22520833333055,
+            "fuel": 0
+          },
+          "spend": {
+            "mp": 0,
+            "fuel": 0
+          }
+        }
+      ],
+      "inputWitnesses": [
+        {
+          "tick": 1821,
+          "kind": "retreat-key",
+          "camera": {
+            "x": 25.256699102536253,
+            "z": 120.23536020019705,
+            "yaw": -1.0201207758826454,
+            "distance": 60
+          },
+          "selected": 1,
+          "concern": "stimulus:observed-screen:1806:30",
+          "ids": [
+            19
+          ],
+          "event": {
+            "kind": "screen-damage",
+            "id": "observed-screen:1806:30",
+            "source": "screen",
+            "onScreen": true,
+            "x": 51.2,
+            "z": 145,
+            "unitId": 19
+          },
+          "cycle": 114,
+          "concernKind": "combat",
+          "concernTarget": {
+            "x": 51.2,
+            "z": 145
+          },
+          "concernUnitId": 19,
+          "responseActorIds": [
+            19
+          ],
+          "responseTarget": null,
+          "responseEvents": [
+            {
+              "id": "1616:7",
+              "kind": "attack",
+              "text": "Rifle Squad under attack",
+              "x": 50.9,
+              "z": 144.6,
+              "n": 1,
+              "tick": 1616,
+              "onScreen": false,
+              "source": "alert"
+            },
+            {
+              "id": "observed-screen:1638:26",
+              "kind": "screen-damage",
+              "tick": 1638,
+              "observationTick": 1638,
+              "source": "screen",
+              "onScreen": true,
+              "x": 51.2,
+              "z": 145,
+              "unitId": 19,
+              "amount": 5,
+              "episode": "19:14",
+              "episodeTick": 1638,
+              "provenance": "first-damage-after-quiet",
+              "observedDanger": {
+                "healthShare": 0.95,
+                "lossShare": 0.05,
+                "healthBand": "healthy",
+                "suppressionBand": "normal",
+                "retreatRisk": false,
+                "alreadyRetreating": false,
+                "alreadyEngaged": true,
+                "autoRetreatCovered": false
+              }
+            },
+            {
+              "id": "1744:9",
+              "kind": "pointWon",
+              "text": "Point captured",
+              "x": 51,
+              "z": 145,
+              "n": 1,
+              "tick": 1744,
+              "onScreen": false,
+              "source": "alert"
+            },
+            {
+              "id": "observed-screen:1806:30",
+              "kind": "screen-damage",
+              "tick": 1806,
+              "observationTick": 1806,
+              "source": "screen",
+              "onScreen": true,
+              "x": 51.2,
+              "z": 145,
+              "unitId": 19,
+              "amount": 5,
+              "episode": "19:18",
+              "episodeTick": 1806,
+              "provenance": "retreat-risk-crossing",
+              "observedDanger": {
+                "healthShare": 0.45,
+                "lossShare": 0.05,
+                "healthBand": "hurt",
+                "suppressionBand": "pinned",
+                "retreatRisk": true,
+                "alreadyRetreating": false,
+                "alreadyEngaged": false,
+                "autoRetreatCovered": false
+              }
+            }
+          ],
+          "input": {
+            "code": "KeyR",
+            "ctrl": false,
+            "shift": false,
+            "alt": false
+          },
+          "inputStartedTick": 1818,
+          "motorTicks": 3,
+          "queuedTick": 1811,
+          "reactionStartTick": 1806,
+          "eventTick": 1806,
+          "latency": 0.75,
+          "command": {
+            "t": "retreat",
+            "ids": [
+              19
+            ]
+          }
+        },
+        {
+          "tick": 1831,
+          "kind": "select-click",
+          "camera": {
+            "x": 25.256699102536253,
+            "z": 120.23536020019705,
+            "yaw": -1.0201207758826454,
+            "distance": 60
+          },
+          "selected": 1,
+          "concern": "stimulus:observed-screen:1806:30",
+          "ids": [
+            2
+          ],
+          "target": {
+            "x": 23,
+            "z": 115
+          },
+          "cycle": 114,
+          "concernKind": "combat",
+          "concernTarget": {
+            "x": 51.2,
+            "z": 145
+          },
+          "concernUnitId": 19,
+          "responseActorIds": [
+            2
+          ],
+          "responseTarget": {
+            "x": 81,
+            "z": 81
+          },
+          "responseEvents": [],
+          "input": {
+            "button": 0,
+            "shift": false
+          },
+          "pointer": {
+            "from": {
+              "x": 1716.5655676445474,
+              "y": 366.8586988692107
+            },
+            "to": {
+              "x": 824.5925435836608,
+              "y": 511.89787107669935
+            },
+            "distance": 903.6881304559424,
+            "width": 64,
+            "seconds": 0.32469589313557706
+          },
+          "inputStartedTick": 1824,
+          "motorTicks": 7,
+          "queuedTick": 1811,
+          "reactionStartTick": 1806
+        },
+        {
+          "tick": 1842,
+          "kind": "minimap-rightclick",
+          "camera": {
+            "x": 25.256699102536253,
+            "z": 120.23536020019705,
+            "yaw": -1.0201207758826454,
+            "distance": 60
+          },
+          "selected": 1,
+          "concern": "stimulus:observed-screen:1806:30",
+          "ids": [
+            2
+          ],
+          "target": {
+            "x": 82.17625590782676,
+            "z": 81.7785374116618
+          },
+          "cycle": 114,
+          "concernKind": "combat",
+          "concernTarget": {
+            "x": 51.2,
+            "z": 145
+          },
+          "concernUnitId": 19,
+          "responseActorIds": [
+            2
+          ],
+          "responseTarget": {
+            "x": 81,
+            "z": 81
+          },
+          "responseEvents": [],
+          "input": {
+            "button": 2
+          },
+          "pointer": {
+            "from": {
+              "x": 824.5925435836608,
+              "y": 511.89787107669935
+            },
+            "to": {
+              "x": 1800.6746180072805,
+              "y": 957.0690534820561
+            },
+            "distance": 1072.8064120125775,
+            "width": 9.5,
+            "seconds": 0.5140777750454366
+          },
+          "inputStartedTick": 1831,
+          "motorTicks": 11,
+          "queuedTick": 1811,
+          "reactionStartTick": 1806,
+          "command": {
+            "t": "attack",
+            "ids": [
+              2
+            ],
+            "target": 7
+          }
+        }
+      ]
+    }
+  ]
+}

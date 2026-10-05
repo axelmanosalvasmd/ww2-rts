@@ -13,6 +13,8 @@ const fixture = () => ({ tick: 0, w: 200, h: 200, winner: null, flags: Array(400
     [3, { id: 3, type: 'tank', owner: 0, x: 350, z: 350 }],
     [4, { id: 4, type: 'rifle', owner: 1, x: 105, z: 103 }],
   ]) });
+// These isolated input fixtures accept their recorded commands. Simulation-backed rejection proofs live in the group reuse test.
+const acceptedTo = commands => cmd => { commands.push(cmd); };
 const run = (hands, view, until, send = () => {}) => {
   for (let tick = hands.tick; tick <= until; tick++) {
     view.tick = tick; advanceHands(hands, tick, view, send);
@@ -70,11 +72,11 @@ for (const level of ['easy', 'normal', 'hard']) {
   assert.equal(enqueueDecision(hands, { t: 'move', orders: [[3, 115, 110]] }, view), false, 'remote unit cannot be selected by an arbitrary id');
   assert.equal(enqueueDecision(hands, { t: 'attack', ids: [1], target: 3 }, view), false, 'targeted click needs a target on screen');
   assert.ok(enqueueDecision(hands, { t: 'amove', orders: [[1, 350, 340], [2, 352, 341]] }, view, { concern: 'expansion', operation: 'capture', eventTick: 0 }));
-  run(hands, view, 240, cmd => sent.push(cmd));
+  run(hands, view, 240, acceptedTo(sent));
   assert.equal(sent.length, 1, 'nearby computed destinations become one formation command');
   assert.equal(sent[0].orders.length, 2);
   assert.ok(log.some(input => input.kind === 'select-box'));
-  assert.ok(log.some(input => input.kind === 'group-set'));
+  assert.equal(log.filter(input => input.kind === 'group-set').length, 0, 'the first accepted operation adds no unused setup key');
   assert.ok(log.some(input => input.kind === 'attack-key'));
   assert.ok(log.some(input => input.kind === 'minimap-rightclick'));
   assert.equal(log.find(input => input.kind === 'attack-key').input.code, 'ControlLeft', 'minimap attack-move uses the actual Ctrl modifier');
@@ -82,10 +84,18 @@ for (const level of ['easy', 'normal', 'hard']) {
   assert.ok(log.find(input => input.kind === 'minimap-rightclick').pointer.distance > 500, 'minimap travel pays for moving across the screen');
   assert.equal(log.find(input => input.kind === 'minimap-rightclick').pointer.width, 9.5, 'minimap target width uses CSS pixels rather than world metres');
   assert.notDeepEqual(sent[0].orders, [[1, 350, 340], [2, 352, 341]], 'ground click scatters and uses a real formation');
+  assert.ok(enqueueDecision(hands, { t: 'amove', orders: [[1, 355, 343], [2, 357, 344]] }, view,
+    { concern: 'expansion', operation: 'capture' }));
+  run(hands, view, 300, acceptedTo(sent));
+  assert.equal(sent.length, 2, 'binding requires a second accepted movement for the same actual selection');
+  const bound = log.find(input => input.kind === 'group-set');
+  assert.ok(bound && bound.tick > log.filter(input => input.command)[1].tick,
+    'the second issuing click completes before the separate paid binding key');
+  assert.deepEqual(bound.ids, [1, 2]);
   Object.assign(hands.camera, { x: 350, z: 350 }); view.tick = hands.tick;
   hands.selected = [];
   assert.ok(enqueueDecision(hands, { t: 'move', orders: [[1, 330, 335], [2, 332, 336]] }, view));
-  run(hands, view, 400, cmd => sent.push(cmd));
+  run(hands, view, 400, acceptedTo(sent));
   assert.ok(log.some(input => input.kind === 'group-recall'), 'assigned group can be recalled away from the units');
   assert.equal(new Set(log.filter(input => input.command).map(input => input.tick)).size, sent.length, 'at most one command per tick');
   const publicState = diagnostics(hands);
@@ -101,12 +111,12 @@ for (const level of ['easy', 'normal', 'hard']) {
   hands.resolveMinimap = (at, radius) => Math.hypot(at.x - 350, at.z - 350) < radius ? 8 : null;
   assert.equal(enqueueDecision(hands, { t: 'attack', ids: [1], target: 8 }, view), false, 'an anonymous remote dot cannot be looked up by remembered enemy id');
   assert.ok(enqueueDecision(hands, { t: 'move', orders: [[1, 350, 350]] }, view), 'planning chooses a position on the anonymous minimap');
-  run(hands, view, 150, cmd => sent.push(cmd));
+  run(hands, view, 150, acceptedTo(sent));
   assert.ok(log.some(input => input.kind === 'minimap-rightclick'));
   assert.equal(sent[0].t, 'attack'); assert.equal(sent[0].target, 8, 'the physical dispatcher alone resolves the closest raw delivered hostile dot');
   hands.resolveMinimap = () => null;
   assert.ok(enqueueDecision(hands, { t: 'move', orders: [[1, 350, 350]] }, view));
-  run(hands, view, 250, cmd => sent.push(cmd));
+  run(hands, view, 250, acceptedTo(sent));
   assert.equal(sent[1].t, 'move', 'a missing delivered dot leaves the actual ground order');
 }
 
@@ -114,7 +124,7 @@ for (const level of ['easy', 'normal', 'hard']) {
   const view = fixture(), log = [], sent = [], hands = createHands({ slot: 0, seed: 14, level: 'hard', camera: { x: 100, z: 100 }, log });
   hands.openingUntil = 0; hands.openingDone = true;
   enqueueDecision(hands, { t: 'amove', orders: [[1, 120, 120]] }, view);
-  run(hands, view, 150, cmd => sent.push(cmd));
+  run(hands, view, 150, acceptedTo(sent));
   assert.equal(log.find(input => input.kind === 'attack-key').input.code, 'KeyG');
   const order = log.find(input => input.command);
   assert.equal(order.kind, 'place-click'); assert.equal(order.input.button, 0, 'G targeting ends with a left-click because right-click would cancel');
@@ -130,7 +140,7 @@ for (const level of ['easy', 'normal', 'hard']) {
   const view = fixture(), log = [], sent = [], hands = createHands({ slot: 0, seed: 22, level: 'hard', camera: { x: 100, z: 100 }, log });
   hands.openingUntil = 0; hands.openingDone = true;
   enqueueDecision(hands, { t: 'support', kind: 'dive', x: 112, z: 108 }, view);
-  run(hands, view, 150, cmd => sent.push(cmd));
+  run(hands, view, 150, acceptedTo(sent));
   assert.deepEqual(log.map(input => input.kind), ['support-key', 'place-click'], 'point support uses the client one-click gesture');
   assert.equal(log[0].input.code, 'KeyU'); assert.equal(log[1].input.button, 0);
   assert.equal(sent[0].t, 'support'); assert.ok(!Object.hasOwn(sent[0], 'dir'));
@@ -141,7 +151,7 @@ for (const level of ['easy', 'normal', 'hard']) {
   hands.openingUntil = 0; hands.openingDone = true;
   view.units.get(1).type = 'tank';
   enqueueDecision(hands, { t: 'ability', ids: [1, 2] }, view);
-  run(hands, view, 150, cmd => sent.push(cmd));
+  run(hands, view, 150, acceptedTo(sent));
   assert.equal(sent.length, 2, 'one F key cannot activate two different selected unit types');
   assert.deepEqual(sent.map(cmd => cmd.ids), [[1], [2]]);
   assert.equal(log.filter(input => input.kind === 'ability-key').length, 2);
@@ -152,10 +162,10 @@ for (const level of ['easy', 'normal', 'hard']) {
   hands.openingUntil = 0; hands.openingDone = true;
   enqueueDecision(hands, { t: 'ability', ids: [2] }, view);
   for (let tick = 0; !hands.selected.length && tick < 100; tick++) {
-    view.tick = tick; advanceHands(hands, tick, view, cmd => sent.push(cmd));
+    view.tick = tick; advanceHands(hands, tick, view, acceptedTo(sent));
   }
   Object.assign(view.units.get(2), { x: 300, z: 300 });
-  run(hands, view, 150, cmd => sent.push(cmd));
+  run(hands, view, 150, acceptedTo(sent));
   assert.equal(sent.length, 0, 'the strict commander locality rule wastes a hotkey when the selected unit walks off screen');
   assert.ok(log.some(input => input.kind === 'ability-key' && !input.command));
   assert.deepEqual(hands.selected, [2], 'a wasted key does not erase the real persistent selection');
@@ -232,6 +242,12 @@ for (const level of ['easy', 'normal', 'hard']) {
   assert.equal(queueCamera(hands, { x: 200, z: 200 }, {}, 'group'), false, 'a camera group jump requires an assigned control group');
   enqueueDecision(hands, { t: 'move', orders: [[1, 120, 120], [2, 122, 120]] }, view, { operation: 'advance' });
   run(hands, view, 150);
+  assert.equal(log.filter(input => input.command).length, 1); assert.equal(hands.groups.size, 0);
+  assert.equal(queueCamera(hands, { x: 102, z: 100 }, {}, 'group'), false, 'first use has no camera group shortcut');
+  assert.ok(enqueueDecision(hands, { t: 'move', orders: [[1, 125, 123], [2, 127, 123]] }, view, { operation: 'advance' }));
+  run(hands, view, 220);
+  assert.equal(log.filter(input => input.command).length, 2);
+  assert.ok(log.find(input => input.kind === 'group-set').tick > log.filter(input => input.command)[1].tick);
   Object.assign(hands.camera, { x: 300, z: 300 });
   assert.ok(queueCamera(hands, { x: 102, z: 100 }, {}, 'group'));
   run(hands, view, 300);
@@ -245,7 +261,7 @@ for (const level of ['easy', 'normal', 'hard']) {
   const view = fixture(), log = [], sent = [], hands = createHands({ slot: 0, seed: 15, level: 'hard', camera: { x: 100, z: 100 }, log });
   hands.openingUntil = 0; hands.openingDone = true;
   enqueueDecision(hands, { t: 'support', kind: 'smoke', x: 112, z: 108, dir: 0 }, view);
-  run(hands, view, 150, cmd => sent.push(cmd));
+  run(hands, view, 150, acceptedTo(sent));
   assert.equal(sent.length, 1);
   assert.deepEqual(log.map(input => input.kind), ['support-key', 'place-anchor', 'place-click'], 'aimed support pays both client clicks');
   assert.ok(Number.isFinite(sent[0].dir));
@@ -257,7 +273,7 @@ for (const level of ['easy', 'normal', 'hard']) {
   Object.assign(view.units.get(2), { x: 115, z: 100 });
   view.units.set(7, { id: 7, owner: 0, type: 'rifle', x: 108, z: 100 });
   enqueueDecision(hands, { t: 'move', orders: [[1, 120, 120], [2, 122, 120]] }, view);
-  run(hands, view, 150, cmd => sent.push(cmd));
+  run(hands, view, 150, acceptedTo(sent));
   assert.ok(!log.some(input => input.kind === 'select-box'), 'a box cannot omit another troop inside its drag rectangle');
   assert.ok(log.some(input => input.kind === 'select-add-click'), 'a precise subset pays for individual Shift selections');
   assert.deepEqual(sent[0].orders.map(order => order[0]).sort(), [1, 2]);
@@ -270,7 +286,7 @@ for (const level of ['easy', 'normal', 'hard']) {
   view.units.set(6, { id: 6, owner: 0, type: 'motorpool', x: 350, z: 350, built: 1, queue: [] });
   assert.equal(enqueueDecision(hands, { t: 'buy', unit: 'tank' }, view), false, 'Classic cannot buy at an unseen production building');
   assert.ok(enqueueDecision(hands, { t: 'buy', unit: 'mg' }, view));
-  run(hands, view, 200, cmd => sent.push(cmd));
+  run(hands, view, 200, acceptedTo(sent));
   assert.equal(sent[0].from, 5, 'Classic buys from the producer physically selected');
   assert.ok(log.some(input => input.kind === 'select-click' && input.ids.includes(5)), 'select the factory before its buy click');
   assert.ok(log.findIndex(input => input.kind === 'select-click') < log.findIndex(input => input.kind === 'buy-click'));
@@ -323,7 +339,7 @@ for (const level of ['easy', 'normal', 'hard']) {
   }
   view.units.delete(1);
   const sent = [];
-  run(hands, view, 150, cmd => sent.push(cmd));
+  run(hands, view, 150, acceptedTo(sent));
   assert.ok(sent[0].orders.some(([id]) => id === 1), 'stale input still clicks and leaves rejection to the command gate');
 }
 
@@ -341,12 +357,19 @@ for (const level of ['easy', 'normal', 'hard']) {
   hands.selected = [];
   enqueueDecision(hands, { t: 'amove', orders: [[1, 125, 125], [2, 127, 125]] }, view, { operation: 'assault' });
   run(hands, view, 200);
+  assert.deepEqual(hands.groups.get(1), [22, 23], 'a first accepted operation does not replace an established group');
+  assert.equal(log.filter(input => input.kind === 'group-set').length, 0);
+  assert.ok(enqueueDecision(hands, { t: 'amove', orders: [[1, 129, 127], [2, 131, 127]] }, view, { operation: 'assault' }));
+  run(hands, view, 240);
+  const bound = log.find(input => input.kind === 'group-set');
+  assert.ok(bound && bound.tick > log.filter(input => input.command).at(-1).tick,
+    'a second accepted operation pays its binding after the order');
   assert.equal(hands.groups.size, 9, 'operation groups reuse the nine physical number keys');
   assert.deepEqual(hands.groups.get(1), [1, 2], 'the least recently used number is rebound');
   view.units.delete(2); hands.selected = [];
   Object.assign(hands.camera, { x: 350, z: 350 });
   assert.ok(enqueueDecision(hands, { t: 'move', orders: [[1, 330, 335]] }, view));
-  run(hands, view, 300, cmd => sent.push(cmd));
+  run(hands, view, 300, acceptedTo(sent));
   assert.deepEqual(hands.groups.get(1), [1], 'a dead operation member no longer prevents the living group recall');
   assert.deepEqual(sent[0].orders.map(order => order[0]), [1]);
   assert.ok(log.some(input => input.kind === 'group-recall' && input.ids.length === 1));
@@ -405,7 +428,7 @@ for (const level of ['easy', 'normal', 'hard']) {
   enqueueDecision(hands, { t: 'move', orders: [[1, 115, 110]] }, view);
   advanceHands(hands, 0, view, () => {});
   Object.assign(view.units.get(1), { x: 109, z: 100 });
-  run(hands, view, 100, cmd => sent.push(cmd));
+  run(hands, view, 100, acceptedTo(sent));
   assert.equal(sent.length, 0, 'a moving unit still on screen cannot be selected by its old queued id');
   assert.equal(log[0].kind, 'select-click'); assert.equal(log[0].selected, 0);
   const queuedPixel = projectPointer({ x: 100, z: 100 }, hands.camera, view, { elevation: 1 });
@@ -420,7 +443,7 @@ for (const level of ['easy', 'normal', 'hard']) {
   Object.assign(view.units.get(1), { x: 109, z: 100 });
   Object.assign(view.units.get(2), { x: 100, z: 100 });
   hands.selectionOrigin = 'group';
-  run(hands, view, 100, cmd => sent.push(cmd));
+  run(hands, view, 100, acceptedTo(sent));
   assert.deepEqual(hands.selected, [2], 'a click at the old squad position selects the different troop actually under its pixel endpoint');
   assert.equal(hands.selectionOrigin, 'screen', 'a missed group replacement click removes the prior group-recall privilege');
   assert.equal(sent.length, 0, 'the queued order is canceled rather than issued to either an invented selection or the wrong troop');
@@ -488,11 +511,11 @@ for (const level of ['easy', 'normal', 'hard']) {
   enqueueDecision(hands, { t: 'move', orders: [[1, 115, 110]] }, view, { concern: 'old-work' });
   let tick = 0;
   for (; tick < 100; tick++) {
-    advanceHands(hands, tick, view, cmd => sent.push(cmd));
+    advanceHands(hands, tick, view, acceptedTo(sent));
     if (hands.active && !hands.active.reacting) break;
   }
   hands.interruptAfterInput = true;
-  for (tick++; tick < 100 && hands.active; tick++) advanceHands(hands, tick, view, cmd => sent.push(cmd));
+  for (tick++; tick < 100 && hands.active; tick++) advanceHands(hands, tick, view, acceptedTo(sent));
   assert.equal(log.length, 1); assert.equal(log[0].kind, 'select-click'); assert.equal(log[0].concern, 'old-work');
   assert.deepEqual(hands.selected, [1], 'interrupting after the in-flight selection preserves that physical selection');
   assert.equal(sent.length, 0, 'the unfinished order after selection is discarded');
@@ -504,11 +527,11 @@ for (const level of ['easy', 'normal', 'hard']) {
   enqueueDecision(hands, { t: 'move', orders: [[1, 115, 110]] }, view);
   let tick = 0;
   for (; tick < 100; tick++) {
-    advanceHands(hands, tick, view, cmd => sent.push(cmd));
+    advanceHands(hands, tick, view, acceptedTo(sent));
     if (hands.active && !hands.active.reacting) break;
   }
   hands.interruptAfterInput = true;
-  for (tick++; tick < 100 && hands.active; tick++) advanceHands(hands, tick, view, cmd => sent.push(cmd));
+  for (tick++; tick < 100 && hands.active; tick++) advanceHands(hands, tick, view, acceptedTo(sent));
   assert.equal(sent.length, 1, 'an issuing click already in flight finishes and submits its original command');
   assert.equal(hands.interruptAfterInput, false);
 }
@@ -519,16 +542,16 @@ for (const level of ['easy', 'normal', 'hard']) {
   enqueueDecision(hands, { t: 'amove', orders: [[1, 115, 110]] }, view, { concern: 'old-work' });
   let tick = 0;
   for (; tick < 100; tick++) {
-    advanceHands(hands, tick, view, cmd => sent.push(cmd));
+    advanceHands(hands, tick, view, acceptedTo(sent));
     if (hands.active && !hands.active.reacting) break;
   }
   const eventTick = tick;
   hands.interruptAfterInput = true;
-  for (tick++; tick < 100 && hands.active; tick++) advanceHands(hands, tick, view, cmd => sent.push(cmd));
+  for (tick++; tick < 100 && hands.active; tick++) advanceHands(hands, tick, view, acceptedTo(sent));
   assert.equal(log[0].kind, 'attack-key'); assert.equal(log[0].concern, 'old-work');
   assert.ok(hands.cancelTargeting, 'the real G targeting mode persists after its remaining click was discarded');
   enqueueDecision(hands, { t: 'stop', ids: [1] }, view, { concern: 'danger', event: { id: 'damage', source: 'screen', onScreen: true }, eventTick });
-  run(hands, view, 100, cmd => sent.push(cmd));
+  run(hands, view, 100, acceptedTo(sent));
   assert.equal(log[1].kind, 'cancel-key'); assert.equal(log[1].input.code, 'Escape'); assert.equal(log[1].concern, 'danger');
   assert.ok(log[1].tick - eventTick >= 4, 'the new emergency cancellation respects the event floor');
   assert.equal(sent[0].t, 'stop'); assert.deepEqual(hands.selected, [1], 'Esc cancels targeting without clearing the selection');
@@ -548,7 +571,7 @@ for (const level of ['easy', 'normal', 'hard']) {
   const context = { concern: 'air:5', concernKind: 'production', concernUnitId: 5,
     concernTarget: { x: 100, z: 100 }, responseActorIds: [5], responseTarget: { x: 350, z: 350 } };
   assert.ok(enqueueDecision(hands, { t: 'move', orders: [[5, 350, 350]] }, view, context));
-  run(hands, view, 100, cmd => sent.push(cmd));
+  run(hands, view, 100, acceptedTo(sent));
   assert.deepEqual(sent, [{ t: 'escort', ids: [5], target: 3 }], 'the actual minimap friendly dot takes aircraft escort priority over a hostile dot');
   assert.equal(log[0].kind, 'select-air-panel'); assert.equal(log[0].input.button, 0);
   assert.equal(log[0].pointer.width, 25.546875, 'air panel precision uses the measured narrow row height');
@@ -568,7 +591,7 @@ for (const level of ['easy', 'normal', 'hard']) {
   enqueueDecision(hands, { t: 'move', orders: [[5, 115, 110]] }, view);
   advanceHands(hands, 0, view, () => {});
   view.airPanel.shift(); view.units.delete(5);
-  run(hands, view, 100, cmd => sent.push(cmd));
+  run(hands, view, 100, acceptedTo(sent));
   assert.deepEqual(hands.selected, [6], 'an air row click hits the currently displayed row after its old plane disappears');
   assert.equal(sent.length, 0, 'a row shifting during pointer travel wastes the intended mission click');
   assert.equal(log[0].kind, 'select-air-panel');
@@ -597,7 +620,7 @@ for (const level of ['easy', 'normal', 'hard']) {
   const hands = createHands({ slot: 0, seed: 90, level: 'hard', camera: { x: 100, z: 100 }, log });
   hands.openingUntil = 0; hands.openingDone = true;
   enqueueDecision(hands, { t: 'move', orders: [[5, 115, 110], [6, 117, 110]] }, view, { operation: 'air-mission' });
-  run(hands, view, 100, cmd => sent.push(cmd));
+  run(hands, view, 100, acceptedTo(sent));
   assert.deepEqual(log.filter(input => input.kind === 'select-air-panel').map(input => input.ids), [[5], [5, 6]]);
   assert.equal(log.filter(input => input.kind === 'select-air-panel')[1].input.shift, true);
   assert.equal(sent[0].orders.length, 2, 'a multi-plane mission includes the entire real Shift selection');
@@ -613,7 +636,7 @@ for (const level of ['easy', 'normal', 'hard']) {
   enqueueDecision(hands, { t: 'escort', ids: [5], target: 1 }, view);
   let moved = false;
   for (let tick = 0; tick <= 100; tick++) {
-    advanceHands(hands, tick, view, cmd => sent.push(cmd));
+    advanceHands(hands, tick, view, acceptedTo(sent));
     if (!moved && hands.active?.actions[hands.active.index]?.fire) {
       Object.assign(view.units.get(1), { x: 125, z: 110 }); moved = true;
     }
@@ -635,7 +658,7 @@ for (const level of ['easy', 'normal', 'hard']) {
     'interruption preserves the actual interpolated pointer instead of snapping to either endpoint');
   assert.deepEqual(hands.selected, [1]); assert.equal(log.length, 0, 'unfinished pointer motion does not invent an APM input');
   enqueueDecision(hands, { t: 'stop', ids: [1] }, view, { concern: 'danger', event: { id: 'hit', source: 'screen', onScreen: true }, eventTick: interruptedTick });
-  for (let tick = interruptedTick; tick < 100; tick++) advanceHands(hands, tick, view, cmd => sent.push(cmd));
+  for (let tick = interruptedTick; tick < 100; tick++) advanceHands(hands, tick, view, acceptedTo(sent));
   assert.deepEqual(sent, [{ t: 'stop', ids: [1] }]); assert.ok(log[0].tick >= interruptedTick + 4);
   assert.ok(Math.hypot(hands.pointer.x - expected.x, hands.pointer.y - expected.y) < 1e-8, 'the response key leaves the stopped pointer in place');
 }
@@ -647,14 +670,14 @@ for (const level of ['easy', 'normal', 'hard']) {
   enqueueDecision(hands, { t: 'amove', orders: [[1, 120, 120]] }, view, { concern: 'old-work' });
   let tick = 0;
   for (; tick < 100; tick++) {
-    advanceHands(hands, tick, view, cmd => sent.push(cmd));
+    advanceHands(hands, tick, view, acceptedTo(sent));
     if (log.some(input => input.kind === 'attack-key')) break;
   }
   const interruptedTick = tick + 1;
   assert.equal(interruptHands(hands, interruptedTick, view), true);
   assert.ok(hands.cancelTargeting, 'aborting the mouse approach preserves the already entered G mode until real Escape');
   enqueueDecision(hands, { t: 'stop', ids: [1] }, view, { concern: 'danger', event: { id: 'hit', source: 'screen', onScreen: true }, eventTick: interruptedTick });
-  for (tick = interruptedTick; tick < 100; tick++) advanceHands(hands, tick, view, cmd => sent.push(cmd));
+  for (tick = interruptedTick; tick < 100; tick++) advanceHands(hands, tick, view, acceptedTo(sent));
   assert.deepEqual(log.map(input => input.kind), ['attack-key', 'cancel-key', 'stop-key']);
   assert.equal(log[1].input.code, 'Escape'); assert.ok(log[1].tick >= interruptedTick + 4);
   assert.equal(log[1].concern, 'danger'); assert.equal(sent[0].t, 'stop'); assert.equal(sent.length, 1);
@@ -671,7 +694,7 @@ for (const held of [false, true]) {
   assert.equal(interruptHands(hands, tick, view), !held, 'only the box approach before its physical press may be discarded');
   if (held) {
     assert.equal(hands.active, active, 'the held selection drag remains active through mouse release');
-    run(hands, view, 100, cmd => sent.push(cmd));
+    run(hands, view, 100, acceptedTo(sent));
     assert.equal(log[0].kind, 'select-box'); assert.deepEqual(hands.selected, [1, 2]);
   } else { assert.equal(log.length, 0); assert.deepEqual(hands.selected, [3]); }
   assert.equal(sent.length, 0);
@@ -705,11 +728,11 @@ for (const held of [false, true]) {
   enqueueDecision(hands, { t: 'amove', orders: [[1, 350, 340]] }, view, { concern: 'old-work' });
   let tick = 0;
   for (; tick < 100; tick++) {
-    advanceHands(hands, tick, view, cmd => sent.push(cmd));
+    advanceHands(hands, tick, view, acceptedTo(sent));
     if (held ? hands.active?.modifierHeld : hands.active && !hands.active.reacting) break;
   }
   assert.equal(interruptHands(hands, tick + 1, view), false, 'Ctrl+click cannot leave its held modifier behind during either press or pointer approach');
-  for (tick++; tick < 100; tick++) advanceHands(hands, tick, view, cmd => sent.push(cmd));
+  for (tick++; tick < 100; tick++) advanceHands(hands, tick, view, acceptedTo(sent));
   assert.deepEqual(log.map(input => input.kind), ['attack-key', 'minimap-rightclick']);
   assert.equal(log[0].input.code, 'ControlLeft'); assert.equal(sent[0].t, 'amove');
   assert.equal(sent.length, 1); assert.equal(hands.active, null); assert.equal(hands.interruptAfterInput, false);
@@ -728,16 +751,28 @@ for (const held of [false, true]) {
 {
 const fixture=()=>({w:200,h:200,players:[{}],flags:[],units:new Map(Array.from({length:10},(_,i)=>[i+1,{id:i+1,owner:0,type:i===1?'mg':i===2?'tank':'rifle',x:100+(i%5)*4,z:100+Math.floor(i/5)*5}]))});
 function seat(view){const log=[],h=createHands({slot:0,seed:3,level:'hard',camera:{x:100,z:100},log});h.openingUntil=0;h.openingDone=true;return{h,log,cmd:[]};}
-function run(s,v,n){const end=s.h.tick+n;for(let t=s.h.tick;t<=end;t++)advanceHands(s.h,t,v,c=>s.cmd.push(c));}
+function run(s,v,n){const end=s.h.tick+n;for(let t=s.h.tick;t<=end;t++)advanceHands(s.h,t,v,acceptedTo(s.cmd));}
 {
-const v=fixture(),s=seat(v);enqueueDecision(s.h,{t:'move',orders:[[1,120,120]]},v,{operation:'capture'});run(s,v,70);assert.deepEqual(s.h.groups.get(1),[1]);assert.deepEqual(s.log.map(x=>x.kind),['select-click','group-set','rightclick']);
-s.h.selected=[];enqueueDecision(s.h,{t:'move',orders:[[1,125,125]]},v,{operation:'capture'});run(s,v,70);assert.equal(s.log.filter(x=>x.kind==='group-set').length,1);assert.equal(s.log.filter(x=>x.kind==='group-recall').length,1);assert.deepEqual(s.cmd[1].orders.map(x=>x[0]),[1]);v.units.delete(1);run(s,v,1);assert.equal(s.h.groups.size,0);
+const v=fixture(),s=seat(v);enqueueDecision(s.h,{t:'move',orders:[[1,120,120]]},v,{operation:'capture'});run(s,v,70);assert.equal(s.h.groups.size,0);assert.deepEqual(s.log.map(x=>x.kind),['select-click','rightclick']);
+s.h.selected=[];enqueueDecision(s.h,{t:'move',orders:[[1,125,125]]},v,{operation:'capture'});run(s,v,70);assert.equal(s.log.filter(x=>x.kind==='group-set').length,0,'a repeated single-squad assignment does not bind a group');assert.equal(s.log.filter(x=>x.kind==='group-recall').length,0);assert.equal(s.log.filter(x=>x.kind==='select-click').length,2,'each changed selection is acquired through an actual click');assert.deepEqual(s.cmd[1].orders.map(x=>x[0]),[1]);
 }
 {
-const v=fixture(),s=seat(v);for(let id=1;id<=10;id++){s.h.selected=[];enqueueDecision(s.h,{t:'move',orders:[[id,120,120]]},v,{operation:'capture'});run(s,v,70);}assert.equal(s.h.groups.size,9);assert.deepEqual(s.h.groups.get(1),[10]);assert.ok([...s.h.groups.keys()].every(n=>n>=1&&n<=9));
+const v=fixture(),s=seat(v);const pairs=[...Array.from({length:9},(_,i)=>[1,i+2]),[2,3]];
+for(const ids of pairs){
+ const before=s.log.filter(row=>row.kind==='group-set').length,commands=s.cmd.length;s.h.selected=[];
+ assert.ok(enqueueDecision(s.h,{t:'move',orders:ids.map((id,i)=>[id,120+i*2,120])},v,{operation:'advance'}));run(s,v,70);
+ assert.equal(s.cmd.length,commands+1);assert.equal(s.log.filter(row=>row.kind==='group-set').length,before,'first use adds no binding');
+ assert.ok(enqueueDecision(s.h,{t:'move',orders:ids.map((id,i)=>[id,125+i*2,123])},v,{operation:'advance'}));run(s,v,70);
+ assert.equal(s.cmd.length,commands+2);assert.equal(s.log.filter(row=>row.kind==='group-set').length,before+1);
+ assert.ok(s.log.findLast(row=>row.kind==='group-set').tick>s.log.findLast(row=>row.command).tick,'every LRU binding follows its second accepted order');
+}
+assert.equal(s.h.groups.size,9);assert.deepEqual(s.h.groups.get(1),[2,3]);assert.ok([...s.h.groups.keys()].every(n=>n>=1&&n<=9));
 }
 {
-const v=fixture(),s=seat(v);enqueueDecision(s.h,{t:'move',orders:[[1,120,120],[2,122,120],[3,124,120]]},v,{operation:'assault'});run(s,v,100);assert.deepEqual(s.h.groups.get(1),[1,2,3]);v.units.delete(2);run(s,v,1);assert.deepEqual(s.h.groups.get(1),[1,3]);s.h.selected=[];s.h.camera.x=350;s.h.camera.z=350;assert.equal(enqueueDecision(s.h,{t:'move',orders:[[1,330,335]]},v,{operation:'capture'}),false,'cannot recall only part of a mixed living group');assert.equal(s.log.filter(e=>e.kind==='group-set').length,1);
+const v=fixture(),s=seat(v);enqueueDecision(s.h,{t:'move',orders:[[1,120,120],[2,122,120],[3,124,120]]},v,{operation:'assault'});run(s,v,50);
+assert.equal(s.cmd.length,1);assert.equal(s.h.groups.size,0);
+assert.ok(enqueueDecision(s.h,{t:'move',orders:[[1,125,123],[2,127,123],[3,129,123]]},v,{operation:'assault'}));run(s,v,50);
+assert.equal(s.cmd.length,2);assert.deepEqual(s.h.groups.get(1),[1,2,3]);v.units.delete(2);run(s,v,1);assert.deepEqual(s.h.groups.get(1),[1,3]);s.h.selected=[];s.h.camera.x=350;s.h.camera.z=350;assert.equal(enqueueDecision(s.h,{t:'move',orders:[[1,330,335]]},v,{operation:'capture'}),false,'cannot recall only part of a mixed living group');assert.equal(s.log.filter(e=>e.kind==='group-set').length,1);
 }
 {
 const v=fixture(),s=seat(v);enqueueDecision(s.h,{t:'stop',ids:[1]},v,{operation:'capture'});run(s,v,70);assert.equal(s.h.groups.size,0);enqueueDecision(s.h,{t:'move',orders:[[1,120,120]]},v);run(s,v,70);assert.equal(s.h.groups.size,0,'unmarked generic movement is not group setup');
@@ -750,7 +785,7 @@ const fresh=capSeat({createHands,enqueueDecision,advanceHands});assert.equal(int
 const v=fixture(),s=seat(v);s.h.inputTicks=Array(120).fill(0);enqueueDecision(s.h,{t:'move',orders:[[1,120,120],[2,122,120]]},v,{operation:'capture'});advanceHands(s.h,0,v,()=>assert.fail());const due=s.h.active.due;for(let t=1;t<=due+4;t++)advanceHands(s.h,t,v,()=>assert.fail());assert.equal(interruptHands(s.h,due+5,v),false,'held capped box waits for its actual release');s.h.inputTicks=[];advanceHands(s.h,due+5,v,()=>assert.fail());assert.equal(s.log[0].kind,'select-box');assert.deepEqual(s.h.selected,[1,2]);assert.equal(s.h.active,null);
 }
 {
-const v=fixture(),s=seat(v);s.h.selected=[1];enqueueDecision(s.h,{t:'amove',orders:[[1,350,340]]},v);let tick=0;for(;tick<50;tick++){advanceHands(s.h,tick,v,c=>s.cmd.push(c));if(s.h.active?.modifierHeld)break;}assert.equal(s.log[0].input.code,'ControlLeft');s.h.inputTicks=Array(120).fill(tick);const due=s.h.active.due;for(tick++;tick<=due+3;tick++)advanceHands(s.h,tick,v,()=>assert.fail());assert.equal(interruptHands(s.h,tick,v),false,'the capped click still holds a real Ctrl modifier');s.h.inputTicks=[];advanceHands(s.h,tick,v,c=>s.cmd.push(c));assert.equal(s.log[1].kind,'minimap-rightclick');assert.equal(s.cmd.length,1);assert.equal(s.h.active,null);
+const v=fixture(),s=seat(v);s.h.selected=[1];enqueueDecision(s.h,{t:'amove',orders:[[1,350,340]]},v);let tick=0;for(;tick<50;tick++){advanceHands(s.h,tick,v,acceptedTo(s.cmd));if(s.h.active?.modifierHeld)break;}assert.equal(s.log[0].input.code,'ControlLeft');s.h.inputTicks=Array(120).fill(tick);const due=s.h.active.due;for(tick++;tick<=due+3;tick++)advanceHands(s.h,tick,v,()=>assert.fail());assert.equal(interruptHands(s.h,tick,v),false,'the capped click still holds a real Ctrl modifier');s.h.inputTicks=[];advanceHands(s.h,tick,v,acceptedTo(s.cmd));assert.equal(s.log[1].kind,'minimap-rightclick');assert.equal(s.cmd.length,1);assert.equal(s.h.active,null);
 }
 {
 const v=fixture(),s=seat(v);queueCamera(s.h,{x:130,z:100},{},'pan');advanceHands(s.h,0,v,()=>assert.fail());while(s.h.active.reacting)advanceHands(s.h,s.h.tick+1,v,()=>assert.fail());s.h.inputTicks=Array(120).fill(s.h.tick);const due=s.h.active.due;for(let t=s.h.tick+1;t<=due+3;t++)advanceHands(s.h,t,v,()=>assert.fail());assert.equal(interruptHands(s.h,due+4,v),false,'the capped pan requires its held key release');assert.equal(s.log.length,0);s.h.inputTicks=[];advanceHands(s.h,due+4,v,()=>assert.fail());assert.equal(s.log[0].kind,'camera-pan');assert.equal(s.h.active,null);
@@ -911,7 +946,7 @@ const fixture=()=>({tick:0,w:200,h:200,winner:null,flags:[],players:[{}],units:n
  [3,{id:3,owner:1,type:'rifle',hp:100,x:108,z:100}]
 ])});
 function seat(level='hard',seed=3,opening=false){const view=fixture(),log=[],sent=[],hands=createHands({slot:0,level,seed,camera:{x:100,z:100},log});if(!opening){hands.openingDone=true;hands.openingUntil=0;}return{view,log,sent,hands};}
-function run(s,end){for(let t=s.hands.tick;t<=end;t++){s.view.tick=t;advanceHands(s.hands,t,s.view,c=>s.sent.push(c));}}
+function run(s,end){for(let t=s.hands.tick;t<=end;t++){s.view.tick=t;advanceHands(s.hands,t,s.view,acceptedTo(s.sent));}}
 const event=(tick=0,id='contact')=>({id,tick,source:'screen',onScreen:true,kind:'screen-contact',responseUnits:[1],responseRequired:true});
 function context(tick=0){const e=event(tick);return{concern:'combat',cycle:1,event:e,eventTick:tick,responseActorIds:[1],responseEvents:[e,event(tick,'also-contact')]};}
 {
@@ -942,12 +977,20 @@ for(const wrong of [false,true]){
  const s=seat();assert.ok(queueInspection(s.hands,[1],s.view,context()));s.view.units.delete(1);s.view.units.get(2).x=350;run(s,80);assert.equal(s.log.length,1,'a target that died after enqueue can waste a real click');assert.deepEqual(s.hands.selected,[]);assert.equal(s.sent.length,0);
 }
 {
- const s=seat();enqueueDecision(s.hands,{t:'move',orders:[[1,120,120]]},s.view,{operation:'capture'});run(s,70);assert.deepEqual(s.hands.groups.get(1),[1]);s.hands.selected=[];Object.assign(s.hands.camera,{x:350,z:350});
+ const s=seat();enqueueDecision(s.hands,{t:'move',orders:[[1,120,120],[2,122,120]]},s.view,{operation:'advance'});run(s,35);
+ assert.equal(s.sent.length,1);assert.equal(s.hands.groups.size,0,'first movement does not prepare an inspection group');
+ assert.ok(enqueueDecision(s.hands,{t:'move',orders:[[1,125,123],[2,127,123]]},s.view,{operation:'advance'}));run(s,70);
+ assert.equal(s.sent.length,2);const binding=s.log.find(row=>row.kind==='group-set');assert.ok(binding&&binding.tick>s.log.findLast(row=>row.command).tick,'HUD recall uses a group genuinely bound after its second accepted movement');
+ assert.deepEqual(s.hands.groups.get(1),[1,2]);s.view.units.delete(2);run(s,71);assert.deepEqual(s.hands.groups.get(1),[1],'a genuine operation group keeps its surviving singleton');s.hands.selected=[];Object.assign(s.hands.camera,{x:350,z:350});
  const before=s.log.length,commands=s.sent.length;assert.ok(queueInspection(s.hands,[1],s.view,context()));run(s,110);assert.deepEqual(s.log.slice(before).map(row=>row.kind),['group-recall']);assert.equal(s.log[before].inspection,true);assert.equal(s.log[before].inspectionAcquired,true);assert.deepEqual(s.hands.selected,[1]);assert.equal(s.hands.groups.size,1);assert.equal(s.sent.length,commands,'recall for HUD inspection creates no extra order');
  s.view.units.delete(1);s.hands.selected=[];assert.equal(queueInspection(s.hands,[1],s.view,context()),false);assert.equal(s.hands.groups.size,0);
 }
 {
- const s=seat();enqueueDecision(s.hands,{t:'move',orders:[[1,120,120],[2,122,120]]},s.view,{operation:'capture'});run(s,70);assert.deepEqual(s.hands.groups.get(1),[1,2]);s.hands.selected=[];Object.assign(s.hands.camera,{x:350,z:350});assert.equal(queueInspection(s.hands,[1],s.view,context()),false,'a mixed living group cannot pretend to be a singleton recall');Object.assign(s.hands.camera,{x:100,z:100});assert.ok(queueInspection(s.hands,[1],s.view,context()));const before=s.log.length;run(s,110);assert.deepEqual(s.log.slice(before).map(row=>row.kind),['select-click']);assert.deepEqual(s.hands.groups.get(1),[1,2]);
+ const s=seat();enqueueDecision(s.hands,{t:'move',orders:[[1,120,120],[2,122,120]]},s.view,{operation:'capture'});run(s,35);
+ assert.equal(s.sent.length,1);assert.equal(s.hands.groups.size,0,'first movement does not prepare an inspection group');
+ assert.ok(enqueueDecision(s.hands,{t:'move',orders:[[1,125,123],[2,127,123]]},s.view,{operation:'capture'}));run(s,70);
+ assert.equal(s.sent.length,2);const binding=s.log.find(row=>row.kind==='group-set');assert.ok(binding&&binding.tick>s.log.findLast(row=>row.command).tick,'HUD recall uses a group genuinely bound after its second accepted movement');
+ assert.deepEqual(s.hands.groups.get(1),[1,2]);s.hands.selected=[];Object.assign(s.hands.camera,{x:350,z:350});assert.equal(queueInspection(s.hands,[1],s.view,context()),false,'a mixed living group cannot pretend to be a singleton recall');Object.assign(s.hands.camera,{x:100,z:100});assert.ok(queueInspection(s.hands,[1],s.view,context()));const before=s.log.length;run(s,110);assert.deepEqual(s.log.slice(before).map(row=>row.kind),['select-click']);assert.deepEqual(s.hands.groups.get(1),[1,2]);
 }
 {
  const s=seat();s.hands.inputTicks=Array(120).fill(0);queueInspection(s.hands,[1],s.view,context());run(s,80);assert.equal(s.log.length,0,'inspection respects the same physical APM budget');s.hands.inputTicks=[];run(s,81);assert.equal(s.log.length,1);assert.equal(s.hands.inputTicks.length,1);assert.equal(s.sent.length,0);
@@ -962,15 +1005,15 @@ for(const wrong of [false,true]){
   hands.openingUntil = 0; hands.openingDone = true;
   const context = { concern: 'idle:1', concernKind: 'idle', concernUnitId: 1, cycle: 1 };
   enqueueDecision(hands, { t: 'move', orders: [[2, 120, 120]] }, view, context);
-  run(hands, view, 80, cmd => sent.push(cmd));
+  run(hands, view, 80, acceptedTo(sent));
   assert.deepEqual(hands.selected, [2], 'noticing the wrong idle actor does not invent a different selection');
   assert.deepEqual(log.map(input => input.kind), ['select-click'], 'the wrong selected actor cancels before any order gesture or synthetic stop');
   assert.equal(sent.length, 0);
   enqueueDecision(hands, { t: 'move', orders: [[2, 120, 120]] }, view, context);
-  run(hands, view, 90, cmd => sent.push(cmd));
+  run(hands, view, 90, acceptedTo(sent));
   assert.equal(log.length, 1, 'the actual wrong selection is already known and causes no repeated physical input');
   enqueueDecision(hands, { t: 'move', orders: [[1, 120, 120]] }, view, context);
-  run(hands, view, 140, cmd => sent.push(cmd));
+  run(hands, view, 140, acceptedTo(sent));
   assert.deepEqual(log.map(input => input.kind), ['select-click', 'select-click', 'rightclick']);
   assert.equal(sent.length, 1); assert.deepEqual(sent[0].orders.map(order => order[0]), [1], 'a subsequent real selection and paid order serves the named idle actor');
 }
@@ -985,7 +1028,7 @@ for (const unavailable of ['busy', 'remote', 'dead']) {
   const before = structuredClone(named);
   enqueueDecision(hands, { t: 'move', orders: [[2, 120, 120]] }, view,
     { concern: 'idle:1', concernKind: 'idle', concernUnitId: 1 });
-  run(hands, view, 100, cmd => sent.push(cmd));
+  run(hands, view, 100, acceptedTo(sent));
   assert.equal(sent.length, 0, `a ${unavailable} named actor does not permit an unrelated companion order`);
   assert.deepEqual(named, before); assert.deepEqual(hands.selected, [2]);
   assert.deepEqual(log.map(input => input.kind), ['select-click']);
@@ -996,7 +1039,7 @@ for (const unavailable of ['busy', 'remote', 'dead']) {
   hands.openingUntil = 0; hands.openingDone = true;
   enqueueDecision(hands, { t: 'move', orders: [[2, 120, 120]] }, view,
     { concern: 'expansion', concernKind: 'expansion', concernUnitId: 1 });
-  run(hands, view, 100, cmd => sent.push(cmd));
+  run(hands, view, 100, acceptedTo(sent));
   assert.equal(sent.length, 1); assert.deepEqual(sent[0].orders.map(order => order[0]), [2], 'generic jobs retain their normal selected-state dispatch');
 }
 

@@ -1,0 +1,15 @@
+--- shared/ai.js
++++ shared/ai.js
+@@ -488,7 +488,11 @@
+     reason: 'unaffordable', proposedBuys: 0, queuedBuys: 0,
+     readiness: productionStatus(observation, slot),
+   } : null;
+-  if (!horde && economyVisit && opts.concern?.panel !== 'air') for (let k = 0; k < purchaseLimit; k++) {
++  // An own accepted receipt can postdate the resource reading in the delivered frame.
++  const freshPurchaseFrame = !opts.human || opts.decisionOnly || !Number.isFinite(mem.human.lastAcceptedBuyTick)
++    || observation.tick > mem.human.lastAcceptedBuyTick;
++  if (production && !freshPurchaseFrame) production.reason = 'awaiting-buy-receipt-frame';
++  if (!horde && economyVisit && opts.concern?.panel !== 'air' && freshPurchaseFrame) for (let k = 0; k < purchaseLimit; k++) {
+     // Keep a useful army in the field rather than waiting forever for a prestige purchase.
+     let candidate = buy;
+     if (opts.human && armySize < 6 && !affords(candidate) && !saveFirstPreference) {

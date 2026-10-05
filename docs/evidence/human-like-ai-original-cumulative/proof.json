@@ -1,0 +1,103 @@
+{
+  "status": "PASS corrected collector and native isolation; baseline defect reproduced",
+  "baseline": {
+    "exitCode": 1,
+    "log": "/tmp/human-ai-original-oracle-baseline-native.log",
+    "reason": "actual original.newEvents required damage creation is missing from cumulative original.events",
+    "exactFinalFixtureLog": "/tmp/human-ai-original-oracle-baseline-final-fixture.log",
+    "exactFinalFixtureHook": "/tmp/human-ai-original-oracle-baseline-hook.mjs",
+    "control": "Load hook removes exactly the collector correction from the same candidate module and runs the exact final regression fixture."
+  },
+  "candidate": {
+    "exitCode": 0,
+    "log": "/tmp/human-ai-original-oracle-candidate-native-final.log"
+  },
+  "patch": "/tmp/human-ai-original-oracle-cumulative.patch",
+  "patchSHA256": "e57b918f52020f8ed7e6665b4c031ed51c5dafcfc1af51c1e2c1dec0525a73ed",
+  "files": {
+    "tools/ai-humanity.mjs": {
+      "baselineSHA256": "fbf3bb833003c3b3ed2dd3558b82113c78feb9c4d0426f63c88438cef6d0a574",
+      "candidateSHA256": "4f695ecb3d2f7f19597150bae3ebd8a4fe721a1c8e90d92e0542898b1a47bdd0"
+    },
+    "test-engine-ai-measurement-streams.js": {
+      "baselineSHA256": "7a025ed4d945468cc3534f46c8d8bd25573cd909f0293886ce6e1d174d567c71",
+      "candidateSHA256": "1ab914ccaba8e3786d04c154489639bc1d9eee2e2a128cef54749b7a81a566e1"
+    },
+    "test-engine-ai-measurement-start.js": {
+      "baselineSHA256": "46b52431fee02b1d49dc6eed279af84f01bca65e0cf4ae89cd6f96d06c8bcd9b",
+      "candidateSHA256": "79c2c1938af527f071d2d10b0b5ab9c307264418bd5e87027ea838c68a5d29ef"
+    }
+  },
+  "actualNativeFrames": [
+    {
+      "tick": 0,
+      "originalNew": 0,
+      "originalCumulative": 0,
+      "observedNew": 0
+    },
+    {
+      "tick": 2,
+      "originalNew": 1,
+      "originalCumulative": 1,
+      "observedNew": 0
+    },
+    {
+      "tick": 4,
+      "originalNew": 0,
+      "originalCumulative": 1,
+      "observedNew": 0
+    },
+    {
+      "tick": 6,
+      "originalNew": 1,
+      "originalCumulative": 2,
+      "observedNew": 1
+    },
+    {
+      "tick": 8,
+      "originalNew": 0,
+      "originalCumulative": 2,
+      "observedNew": 0
+    }
+  ],
+  "actualOriginalRequiredEvents": [
+    {
+      "id": "screen:2:1",
+      "tick": 2,
+      "reason": "retreat-risk-crossing",
+      "required": true
+    },
+    {
+      "id": "screen:6:2",
+      "tick": 6,
+      "reason": "heavy-damage",
+      "required": true
+    }
+  ],
+  "callbackMutationIsolated": true,
+  "v16ArchiveFilesVerifiedUnchanged": 1635,
+  "oracleSHA256": "6b3894b551f3bf9151372b048b2efc77ffc86a6a173d0871278b27417358b398",
+  "sharedPerceptionSHA256": "50e611a932728940c5047a61bf4fd7554c696f93880d7907a952d8b39fdcf3fd",
+  "historicalPolicy": "Frozen V16 zero-population reports remain immutable incomplete-instrumentation evidence. Retained original.newEvents are an independent creation diagnostic; this patch does not reinterpret or replace those historical metrics.",
+  "tickZeroIsolation": {
+    "exitCode": 0,
+    "log": "/tmp/human-ai-original-oracle-start-native.log",
+    "nativeRuns": 36,
+    "modeLevelPairs": 9,
+    "treatments": [
+      "off",
+      "original",
+      "on",
+      "mutate"
+    ],
+    "completeNativeGraphLogsRNGEqual": true
+  },
+  "artifactHashes": {
+    "/tmp/human-ai-original-oracle-baseline-native.log": "a96740db7db2baf70615014fa447038f13e749327bf5d824c3f7bcb30697e1b3",
+    "/tmp/human-ai-original-oracle-baseline-final-fixture.log": "06fb953768384f30c995d110268f48afb1e3b4639739e206f96958e1dd199944",
+    "/tmp/human-ai-original-oracle-baseline-hook.mjs": "c16f3f506b6cfd91e9f995a8110c8d23f4c52e37695f992f422058b9b59911f7",
+    "/tmp/human-ai-original-oracle-candidate-native-final.log": "af039e45c4c8e5c97ac07027566520181e0e4c218acb549ad8f5ec3b1820ffcd",
+    "/tmp/human-ai-original-oracle-start-native.log": "89d9a031bbacc343a13b1483faa7183afe94af040a77e63b45d756fe06178cf7",
+    "/tmp/human-ai-original-oracle-native-events.json": "ab58e1a30600b851e94d3b8b0c56c4ee45fb0126550fa417f06d3ef55fcc8b31"
+  }
+}

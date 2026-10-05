@@ -1,0 +1,37 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Three Crossroads | Find a match</title>
+<link rel="icon" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 32 32'%3E%3Crect width='32' height='32' fill='%231a1d1f'/%3E%3Cpath d='M16 16V4M16 16l10.4 6M16 16L5.6 22' stroke='%23d6b25e' stroke-width='3'/%3E%3C/svg%3E">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Barlow+Semi+Condensed:wght@400;500;600;700&display=swap" rel="stylesheet">
+<link rel="stylesheet" href="/client/public-lobby.css">
+<script type="module" src="/client/i18n.js"></script>
+<script type="module" src="/client/public-lobby.js"></script>
+</head>
+<body>
+<main class="card">
+<header><div><p class="eyebrow">MULTIPLAYER HEADQUARTERS</p><h1>Three Crossroads</h1><p class="muted">WW2 tactics. Take ground. Hold the line.</p></div><span style="display:flex;gap:8px;align-items:center"><select id="langSel" aria-label="Language" title="Language" style="width:auto"></select><span class="tag">PUBLIC ALPHA</span></span></header>
+<section class="identity" aria-label="Player identity">
+<label for="nickname">Your name</label><input id="nickname" maxlength="16" autocomplete="nickname" placeholder="Soldier">
+<button id="quickPlay" class="primary">Quick Play</button><button id="tutorial" title="New here? Learn the basics in about ten minutes">Tutorial</button>
+<p class="muted">Join an open Conquest lobby, or start one. No account needed.</p>
+</section>
+<p id="notice" role="status" aria-live="polite" hidden></p>
+<section aria-labelledby="matchesHeading">
+<div class="section-head"><h2 id="matchesHeading">Browse matches</h2><button id="refresh">Refresh</button></div>
+<div class="filters"><label for="modeFilter">Mode</label><select id="modeFilter"><option value="">All modes</option><option value="conquest">Conquest</option><option value="assault">Assault</option><option value="annihilation">Annihilation</option><option value="classic">Classic</option><option value="horde">Horde</option><option value="world">World Conquest</option></select><label class="check"><input type="checkbox" id="openOnly"> Open seats only</label><span id="connection" class="muted" role="status">Connecting…</span></div>
+<div class="table-wrap"><table><thead><tr><th>Match / map</th><th>Mode</th><th>Seats</th><th>Status</th><th><span class="sr-only">Action</span></th></tr></thead><tbody id="matches"></tbody></table></div>
+<p id="empty" class="empty" hidden>No public matches yet. Create one and invite the first players.</p>
+</section>
+<div class="bottom-grid">
+<section aria-labelledby="createHeading"><h2 id="createHeading">Create a match</h2><form id="createForm"><label for="matchTitle">Match name</label><input id="matchTitle" maxlength="48" placeholder="Open skirmish"><label for="visibility">Visibility</label><select id="visibility"><option value="public">Public: shown in the match browser</option><option value="unlisted">Unlisted: share the room link</option></select><p class="muted">Choose the map, mode, teams and AI inside the room. Unlisted is not password-protected.</p><button type="submit" class="primary">Create match</button></form></section>
+<section aria-labelledby="joinHeading"><h2 id="joinHeading">Have a room code?</h2><form id="joinForm"><label for="roomCode">Room code</label><input id="roomCode" maxlength="12" pattern="[a-zA-Z0-9]{3,12}" required placeholder="e.g. crossroads" autocomplete="off"><button type="submit">Join room</button></form><p class="muted">Existing room links still work. A new code creates an unlisted room.</p><p class="muted">Best played on a desktop with a mouse and keyboard.</p></section>
+</div>
+<footer><span>Live rooms refresh every 5 seconds.</span><span>No downloads. No accounts.</span></footer>
+</main>
+</body>
+</html>

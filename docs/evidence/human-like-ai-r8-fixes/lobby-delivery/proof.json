@@ -1,0 +1,32 @@
+{
+  "scope": "test.js roomLifecycleChecks only. No server/runtime behavior changes.",
+  "originalFrozenTestSHA256": "35d48dd93d2ba21cbca071cb90e26e6109965aed138897e55b0126a9576dd7e4",
+  "candidateTestSHA256": "f1796360ac21c6b9f446d4c571d6413693898a4da039841873389dd707867c22",
+  "patchSHA256": "b792fa15cba28abea2ef4cfc07957fca42ed6e60a9590be6b659ae30615b16d1",
+  "runs": [
+    {
+      "file": "original.mjs",
+      "exitCode": 0,
+      "scenarios": 11
+    },
+    {
+      "file": "original-delayed.mjs",
+      "exitCode": 1,
+      "expectedFailure": "the spectator is back in the lobby with everyone: play !== lobby",
+      "serverState": "lobby",
+      "receivedState": "play"
+    },
+    {
+      "file": "candidate-delayed.mjs",
+      "exitCode": 0,
+      "scenarios": 11,
+      "negative": "Historical play lobby does not resolve fresh lobby barrier while native TCP receive paused."
+    },
+    {
+      "file": "candidate.mjs",
+      "exitCode": 0,
+      "scenarios": 11
+    }
+  ],
+  "protocol": "Entire original roomLifecycleChecks and original serverHarness extracted, using actual frozen server.js via read-only symlink. Delayed controls pause/resume spectator native TCP read only; gameplay and room commands unchanged. All processes CPU3 nice19. No full suite/campaign/replay."
+}

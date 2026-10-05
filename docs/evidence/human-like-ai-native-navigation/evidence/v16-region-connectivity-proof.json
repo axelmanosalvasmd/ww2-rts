@@ -1,0 +1,34 @@
+{
+  "comparisons": 43220,
+  "connected": 5776,
+  "mismatches": 0,
+  "directedExample": {
+    "heights": [
+      0,
+      -1,
+      -1,
+      1
+    ],
+    "forward": true,
+    "reverse": false,
+    "fullLabels": [
+      1,
+      1,
+      1,
+      1
+    ]
+  },
+  "staleExample": {
+    "legConnected": true,
+    "cachedLabels": [
+      1,
+      1,
+      -1
+    ],
+    "oldLabels": [
+      1,
+      1,
+      -1
+    ]
+  }
+}

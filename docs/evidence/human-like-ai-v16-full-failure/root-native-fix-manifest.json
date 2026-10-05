@@ -1,0 +1,21 @@
+{
+  "recordedAtUTC": "2026-10-04T18:25:40.569024+00:00",
+  "nativeFixPASS": true,
+  "correctedFixtureSHA256": "b4d99b5667ad2db8f32909a761e666f1c9cff9cb5a8badd60373590727bff1c8",
+  "runtimeUnchanged": true,
+  "originalRepairDeadlineSeconds": 60,
+  "files": [
+    {
+      "source": "/tmp/human-ai-v16-full-checks.jsonl",
+      "destination": "docs/evidence/human-like-ai-v16-full-failure/human-ai-v16-full-checks.jsonl",
+      "bytes": 25313,
+      "sha256": "5842555fd19bc26b6f7657e565eebb3971aa3e0e423910a8d371bcc6bb82288b"
+    },
+    {
+      "source": "/tmp/ai-v16-root-bridge-memory.log",
+      "destination": "docs/evidence/human-like-ai-v16-full-failure/ai-v16-root-bridge-memory.log",
+      "bytes": 710,
+      "sha256": "e323d5d0335cade2362599c2104f0de5a903114e10824cae50875191d9168d53"
+    }
+  ]
+}

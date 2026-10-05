@@ -1,0 +1,19 @@
+{"variant":"positive","inputs":[{"tick":8,"kind":"camera-pan","camera":{"x":72.4744329553272,"z":119.9343898614369,"yaw":1.035376784858271,"distance":60},"selected":0,"concern":"idle:2","target":{"x":72.4744329553272,"z":119.9343898614369},"cycle":1,"concernKind":"idle","concernTarget":{"x":83.2,"z":125.8},"concernUnitId":2,"responseActorIds":[2],"responseTarget":{"t":"garrison","ids":[2],"x":87,"z":121},"responseEvents":[],"method":"pan","input":{"code":"KeyS"},"inputStartedTick":3,"motorTicks":5,"queuedTick":1,"reactionStartTick":0},{"tick":53,"kind":"select-click","camera":{"x":72.4744329553272,"z":119.9343898614369,"yaw":1.035376784858271,"distance":60},"selected":1,"concern":"idle:2","ids":[2],"target":{"x":83.2,"z":125.8},"cycle":2,"concernKind":"idle","concernTarget":{"x":83.2,"z":125.8},"concernUnitId":2,"responseActorIds":[2],"responseTarget":null,"responseEvents":[],"input":{"button":0,"shift":false},"pointer":{"from":{"x":960,"y":540},"to":{"x":971.8182187210358,"y":795.4932827398735},"distance":255.76647125636927,"width":64,"seconds":0.2208568661861738},"inputStartedTick":48,"motorTicks":5,"queuedTick":9,"reactionStartTick":0},{"tick":55,"kind":"cover-key","camera":{"x":72.4744329553272,"z":119.9343898614369,"yaw":1.035376784858271,"distance":60},"selected":1,"concern":"idle:2","ids":[2],"cycle":2,"concernKind":"idle","concernTarget":{"x":83.2,"z":125.8},"concernUnitId":2,"responseActorIds":[2],"responseTarget":null,"responseEvents":[],"input":{"code":"KeyC","ctrl":false,"shift":true,"alt":false},"inputStartedTick":53,"motorTicks":2,"queuedTick":9,"reactionStartTick":0,"command":{"t":"cover","ids":[2]}}],"commands":[{"tick":55,"cmd":{"t":"cover","ids":[2]},"result":"noCover","selected":[2],"visible":null,"screen":null}],"garrison":-1,"enter":-1,"actorId":2}
+node:internal/modules/run_main:107
+    triggerUncaughtException(
+    ^
+
+AssertionError [ERR_ASSERTION]: a native garrison command is accepted
+    at file:///tmp/human-garrison-framing-candidate/test-engine-ai-garrison-framing.js:40:94
+    at ModuleJob.run (node:internal/modules/esm/module_job:561:25)
+    at async node:internal/modules/esm/loader:647:26
+    at async asyncRunEntryPointWithESMLoader (node:internal/modules/run_main:101:5) {
+  generatedMessage: false,
+  code: 'ERR_ASSERTION',
+  actual: undefined,
+  expected: true,
+  operator: '==',
+  diff: 'simple'
+}
+
+Node.js v24.21.0

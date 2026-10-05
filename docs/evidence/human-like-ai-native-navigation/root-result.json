@@ -1,0 +1,24 @@
+{
+  "at": "2026-10-04T19:31:57.216995+00:00",
+  "sources": {
+    "shared/sim.js": "7bc57ac179b4982bdb94b469ce029e2e2178567fcb23fa1756476a17f791f018",
+    "shared/ai.js": "ba501eb77b3ec2e5e772314889de8a8bc919cc9f9c405b55ba555728c2eb975c",
+    "shared/ai-commander.js": "19112a1e4c94da72d62564d940497d38cf7e93e3086c9bde3db9c29d088703df",
+    "tools/ai-humanity.mjs": "4f695ecb3d2f7f19597150bae3ebd8a4fe721a1c8e90d92e0542898b1a47bdd0",
+    "test-path-performance.mjs": "ddb8cda913973f01c694d3bb7b94da0128c81ce068447851d065685f0efe54b6"
+  },
+  "tests": [
+    {
+      "test": "test-path-performance.mjs",
+      "exit": 0,
+      "sha256": "2c0ff2af33bd408758593567e2dcb61b68233766877676e14d28234627473622",
+      "bytes": 206
+    },
+    {
+      "test": "test-ai-terrain-delivery.js",
+      "exit": 0,
+      "sha256": "f7f7d83f368e39595a1fc00200a832c3b796e846c0db8bc15454445dd441397c",
+      "bytes": 79
+    }
+  ]
+}

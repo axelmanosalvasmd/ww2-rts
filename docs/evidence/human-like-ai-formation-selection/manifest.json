@@ -1,0 +1,45 @@
+{
+  "baseSHA": "a8df9cdda67ec8b10d20606a116d3c089d15ff59af7d450a90e66e57c8c46fdb",
+  "proposedSHA": "69eb15070dbf3e3839f4a264bc24d5010033f6d745bc1cf53ba285fc362323d6",
+  "productionEdits": false,
+  "performanceRuns": false,
+  "before": [
+    [
+      "recalled exact set with reversed planner order and same-position ties",
+      false
+    ],
+    [
+      "dead-member-pruned real recall and reversed tied survivors",
+      false
+    ],
+    [
+      "real paid group surviving singleton",
+      true
+    ],
+    [
+      "persistent actual selection with reversed planner order and tied positions",
+      false
+    ],
+    [
+      "physical box selection order differs from planner order without ties",
+      true
+    ],
+    [
+      "P1 partial physical box with reversed planner order and tied actual survivors",
+      true
+    ]
+  ],
+  "afterAllEqual": true,
+  "files": {
+    "REVIEW.md": "8600ef8b1c6e870557c9e607f35220181644e5295a019d3072f042512d5756ac",
+    "formation-selection-order.patch": "32b00227a6fff153906c53e3a0ef6d94bc38cde6d8b1912b07f35ed6517da20c",
+    "shared/ai-hands.js": "a8df9cdda67ec8b10d20606a116d3c089d15ff59af7d450a90e66e57c8c46fdb",
+    "shared/ai-hands-proposed.js": "69eb15070dbf3e3839f4a264bc24d5010033f6d745bc1cf53ba285fc362323d6",
+    "probe.mjs": "62c6442850e4606d5f11372e02540a82244aea9883cb5a7435f3c391dfc0131c",
+    "test-engine-ai-formation-selection.js": "04aac2d1e9c7128b09cabb75cd658b95640d08b51bad8843328de668a5584c6c",
+    "before-proof.json": "677b7844779d02e107535387b031cb5daf80fe6ba7be60eadc8eb4617938f9c7",
+    "after-proof.json": "e929d581af3cb2d297fd01d89c5a8a3fb0266ff202b2ffb1c9fec80abc024c94",
+    "relative-test.log": "48924dfe165dc9ce52bba227b721371f4b3213baef5090ed47df81dda95749bf",
+    "relative-before-test.log": "0008f144d7a929ef897bbaa14e243001b6787e60024021b65f6ede1ef2ec05eb"
+  }
+}

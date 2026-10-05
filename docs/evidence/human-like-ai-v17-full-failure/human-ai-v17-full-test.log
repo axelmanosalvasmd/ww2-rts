@@ -1,0 +1,424 @@
+tutorial: all nine steps and bridgehead victory checked
+PASS authored infantry source, four factions, atlas retention, poses, distant meshes and skin continuity
+PASS terrain relief low: ramps, centers, bounds, tops, hills, saddles, cliffs, seams, independent triangle queries, incremental tangents, trenches and water bridges (0 failures)
+PASS terrain relief high: ramps, centers, bounds, tops, hills, saddles, cliffs, seams, independent triangle queries, incremental tangents, trenches and water bridges (0 failures)
+PASS terrain relief full world: seed 20261003, 512x512, 237 dry centers, 587 dry edges, independent slope and cliff triangle queries
+PASS terrain relief suite (1.69s)
+PASS: variable main rivers, real raster paths and per-river crossings
+PASS: seed-dependent connected, non-uphill, fordable tributaries and wider downstream rivers
+PASS: roads and settlements preserve river and tributary centerlines on both map sizes
+ww2-rts on http://127.0.0.1:0
+World rifle and tank long orders crossed all 2 main rivers through generated fords
+ww2-rts on http://127.0.0.1:0
+World rifle and tank long orders crossed all 3 main rivers through generated fords
+PASS: substantial relief
+PASS: lakes and bridges
+PASS: both sizes, deterministic generation and tank-clearance connectivity after all bridges destroyed
+PASS: discovered territory borders and membership
+ww2-rts on http://127.0.0.1:0
+World Conquest start and discovery checks passed
+World Conquest destruction and infantry claim checks passed
+World Conquest paid construction and recruitment checks passed
+World Conquest paid recovery checks passed
+ww2-rts on http://127.0.0.1:0
+World team, discovery, defeat, victory and 300 AI ticks passed (84454 ms AI fixture)
+ww2-rts on http://127.0.0.1:0
+PASS contested capture, production-locked recapture, income and capacity loss (9491 ms)
+PASS team home loss keeps command ownership and relocates retreat (4111 ms)
+PASS reconnect restores discovered terrain without revealing remote updates (1273 ms)
+PASS World Conquest crosses the Classic deadline without Sudden Death (3766 ms)
+PASS hidden-state perturbations do not change the recipient world (1015 ms)
+PASS Huge and Massive seeded connectivity and usable homes (6097 ms)
+Remaining World Conquest acceptance checks passed
+ww2-rts on http://127.0.0.1:0
+PASS unseen regional contest and claim state stay remembered
+PASS AI pursues a remembered regional blocker and attacks after rediscovery
+ww2-rts on http://127.0.0.1:0
+World long movement, hidden terrain, collision, continued arrival and stop checked
+ww2-rts on http://127.0.0.1:0
+World rifle and tank long orders crossed all 1 main rivers through generated fords
+ww2-rts on http://127.0.0.1:0
+Engine controls acceptance passed: paid queue identity/refunds, guards/reconnect, Alert history, group transfer and key chords
+PASS layered world, anchored sections, paid bridge rebuild, remembered destruction and shared building health
+ww2-rts on http://127.0.0.1:0
+PASS response/braking, short reverse, control interruption, swept turn, two-way crossing, protected passing, shoreline recovery, bounded queue recovery and naval boarding
+Observed terrain wall initialization and incremental boundaries: 932 cases passed
+PASS queue negative control: dropped middle destinations fail the lab
+PASS cliff negative control: illegal height crossings fail the lab
+PASS movement lab: 264 authoritative scenarios across all ground vehicles, rifles and support guns; profile limits and deterministic replay
+all engine projectile checks passed
+Structured scenario checks passed
+Wave 8, three defenders, seed 55: {
+  infantry: { units: 39, spent: 4270, share: 91 },
+  armor: { units: 17, spent: 4280, share: 86 },
+  siege: { units: 24, spent: 4290, share: 64 }
+}
+Engine AI and Horde contracts passed.
+AI caller public setup0, first actor2, old-module compatibility, delivery, odd-beat alerts, bounded transients and once-only balance counters passed
+AI hands: opening, motor inputs, locality, formation, reaction, APM, deterministic logs and handover passed
+AI camera perception, attention and shared alert checks passed
+easy: first command 4.5s, 23 commands, 63 physical inputs over 120s
+normal: first command 3.4s, 31 commands, 98 physical inputs over 120s
+hard: first command 2.7s, 37 commands, 105 physical inputs over 120s
+Default commander action-level camera detail invariance and on-camera negative control passed.
+Full human commander opening, physical inputs, reaction floor, locality, APM, determinism and handover passed.
+Living group recall: accepted pair moves 119/224, binding 227, switch 244, recall 256, accepted survivor move 265.
+Camera arrival: old deadline 80, paid pans 96/121, fresh plan 128, command 136.
+Interrupted camera pending-emergency: cue 78, held finish 96, paid return 120, native accepted retreat 137.
+Interrupted camera expired-concern: cue 78, held finish 96, paid return 120, native accepted retreat 139.
+Commander accepted multi-event responses, refusal, wrong actor and target, fixed links, direct singleton selection, living group recall and paid camera visits passed.
+AI canonical effects, cache history, private refresh and World fog isolation passed
+Stable threat estimates, camera reacquisition, option choices, loss and VP mood, and persistent persona passed.
+AI humanity metrics: censored populations, causal actors, concerns, simulation spending, live bindings, measured key fits and evidence packaging passed.
+Prospective multi-event fixtures passed: actual group attack/support, independent dedup, intended miss, actor/target/timing/population rejection and one-input APM.
+Human commander empty-cycle pause, delayed formation acknowledgement and refused support commitment passed.
+Base advances require an available local formation, with isolated and busy-buddy negative controls.
+Idle and expansion visits act on their actual destinations; affordable production visits execute useful purchase batches.
+Observed damage triggers a physical group retreat while the remote squad remains untouched.
+Commander movement conflicts, unfinished-move commitment and accepted failed-effect ability backoff passed.
+Emergency interruption cancels an unpressed approach, completes a held drag, and preserves selection and reaction latency.
+Arrived A-B-A return guard, local damage response and separate line/support formations passed.
+Local base emergency override and noncausal fortification provenance passed.
+ww2-rts on http://127.0.0.1:0
+Disabled server refuses human recording requests over WebSocket
+ww2-rts on http://127.0.0.1:0
+AI spectator diagnostics and opt-in human telemetry privacy passed over WebSocket
+Human input opt-in, local log bounds, metadata privacy and spectator overlay checks passed
+ww2-rts on http://127.0.0.1:0
+PASS engine acceptance: waiting recruitment identity, refund, head progress and recipient ownership
+PASS engine acceptance: scenario capture ownership, exactly once rewards and durable private objectives
+PASS engine acceptance: road mine placement, clearing, hidden memory and separate bombardment
+PASS engine acceptance: local support failure, settled route and remembered reconnect
+PASS engine acceptance: two way crowded crossing completes infantry, tank and support orders
+PASS engine acceptance: authoritative gun flight stationary, arrival and hidden cue privacy
+PASS engine acceptance: authoritative gun flight moving, arrival and hidden cue privacy
+PASS engine acceptance: authoritative gun flight wall, arrival and hidden cue privacy
+PASS engine acceptance: Horde broad warning agrees with legal delivered first Wave
+Integrated engine acceptance checks passed
+engine presentation checks passed: known terrain, Weather crossfades, mute/Alert routing, health hysteresis, repair/death, early animation gating and current-pose reentry
+Private terrain delivery complete-view/game/memory equivalence 40 cases passed
+Human commander delivered production readiness, affordable support and actual local maintenance passed.
+Planner unknown ability readiness inspection, paid selected HUD and private projection ownership passed.
+Selected HUD privacy, actual selection, planner controls, detached memory and private detector histories passed.
+Real commander inspection: cooldown privacy, physical HUD acquisition, same-snapshot refresh, ready/cooling abilities, misses, aggregation, retreat priority, opening and determinism passed.
+Actual visit priority, diagnostic invariance, current-target controls and damage geometry passed.
+Observed inspection relevance, physical HUD acquisition, native ability, stable ties and retreat guards pass.
+PASS: fair public graphs, attention, real plan, actual renderer controls, selected/group HUD, private original population and links
+Private measurement streams preserve original censored gates, separate observed scores, immutable mappings and native inputs at every level.
+Watched armor danger, safe holding, diagnostic independence and paid point-guard abilities passed.
+Empty combat attention yields to physical production and revisits changed observations across all difficulties.
+Camera-area empty visits share bounded yield and restore only delivered usable work.
+Sixty-second native diagnostic independence: [
+  {
+    level: 'easy',
+    inputs: 92,
+    commands: 36,
+    accepted: 35,
+    events: 57,
+    screenEvents: 40,
+    plannerChoices: 41,
+    bytes: 5050842,
+    sha256: '384a53fef66f83ecf86a3cf634663124331e24e8fc98c03d031b1e8a0f48bd62'
+  },
+  {
+    level: 'normal',
+    inputs: 131,
+    commands: 49,
+    accepted: 46,
+    events: 66,
+    screenEvents: 50,
+    plannerChoices: 62,
+    bytes: 6030884,
+    sha256: '7a7dafa58ee0e0a88d5d233cdbc7463f3f51e7ef24f69c117c68bd0b00c96698'
+  },
+  {
+    level: 'hard',
+    inputs: 158,
+    commands: 52,
+    accepted: 51,
+    events: 79,
+    screenEvents: 62,
+    plannerChoices: 64,
+    bytes: 7147623,
+    sha256: '1ef59f89c39ac1d78ed1f3d05e80e1c086c5b30dabeb7338a901406e992d6159'
+  }
+]
+Observed contact controls, watched heavy loss, camera zoom/yaw and paid continuous pan passed.
+Forty seeded native bridge repairs within sixty seconds: {
+  seeds: 40,
+  maxSecondsAfterBreak: 52,
+  formerFailureSeeds: [
+    {
+      seed: 11,
+      matchSeed: 1032213998,
+      secondsAfterBreak: 46.95,
+      nativeInputs: 29,
+      acceptedRepairJobs: 4,
+      rejectedRepairJobs: 0
+    },
+    {
+      seed: 23,
+      matchSeed: 1052188298,
+      secondsAfterBreak: 38.4,
+      nativeInputs: 22,
+      acceptedRepairJobs: 3,
+      rejectedRepairJobs: 0
+    },
+    {
+      seed: 39,
+      matchSeed: 1078820698,
+      secondsAfterBreak: 38.9,
+      nativeInputs: 22,
+      acceptedRepairJobs: 3,
+      rejectedRepairJobs: 0
+    }
+  ]
+}
+Watched repair cue boundaries and unseen full-span inspection passed.
+{"seed":1,"matchSeed":1586005467,"capturedAt":84.2,"endTick":1684,"winner":null,"owners":[0,2,0,0,1,2,1],"attempted":48,"accepted":46,"acceptedMoves":24,"paidPurchases":7,"movingTicks":10335,"commandHash":"e05a94584a68950c602d4700f68dd81100693a0f5255d52ddd3f82bba5797164","stateHash":"ff5c1496dc83a988f0b315f1ff09ab1c306bfeab45299c9feba2c7a6496ea278"}
+{"seed":2,"matchSeed":1975575172,"capturedAt":70.6,"endTick":1412,"winner":null,"owners":[2,2,0,0,0,2,1],"attempted":44,"accepted":41,"acceptedMoves":19,"paidPurchases":5,"movingTicks":8342,"commandHash":"962fcea95683fe05e964c6687ff3ff9d49e657bfacd467f95642e0dd6b74a8e7","stateHash":"d6a6b125657a755f2a6f38d736f1a2c8e461d4b32f5edcc6cccd1a724f1b195c"}
+{"seed":3,"matchSeed":2365144877,"capturedAt":44.7,"endTick":894,"winner":null,"owners":[2,1,1,0,0,2,1],"attempted":36,"accepted":26,"acceptedMoves":11,"paidPurchases":3,"movingTicks":5493,"commandHash":"df60bca6d21fee3e02036e0033e6b404ff8b23e1467ba238792eb48fb1c55442","stateHash":"ded1c0a69ae51b155fdaabf2d8d424206be9cb59975cc07244e7502d05139c96"}
+{"seed":4,"matchSeed":2754714582,"capturedAt":58.8,"endTick":1176,"winner":null,"owners":[2,1,0,0,0,2,1],"attempted":56,"accepted":37,"acceptedMoves":16,"paidPurchases":3,"movingTicks":7557,"commandHash":"f7144dfabfa30dd2e1642e54188f1173301403fed8d9c6632cd1192754c8d728","stateHash":"bb5fdb10022be6c3d5b833b5c04b60d611696438a4288ca57eea2fac3347d922"}
+{"seed":5,"matchSeed":3144284287,"capturedAt":47,"endTick":940,"winner":null,"owners":[2,1,1,0,0,2,1],"attempted":75,"accepted":25,"acceptedMoves":12,"paidPurchases":3,"movingTicks":5427,"commandHash":"a5212120b9ca330a35449a9c8fc0bd1ea8973f1a4fce3ab6c86454586119971f","stateHash":"951d5e0ab929874cd8ed72a63b1dbedf722d6f28a99d18e093d4ab4dc93de2d2"}
+{"seed":6,"matchSeed":3533853992,"capturedAt":55.8,"endTick":1116,"winner":null,"owners":[2,1,1,0,0,2,1],"attempted":37,"accepted":35,"acceptedMoves":15,"paidPurchases":3,"movingTicks":6580,"commandHash":"3fea4ed3e355f9a48c6878779a27f1a8cc635f14ccaafb97c6f3eda3e8952eb6","stateHash":"d9196f0ba810232eb8b640965ebb5cae6b462a7b63f18c86664482e69beff62a"}
+{"seed":7,"matchSeed":3923423697,"capturedAt":62.85,"endTick":1257,"winner":null,"owners":[2,1,2,0,0,2,1],"attempted":35,"accepted":31,"acceptedMoves":12,"paidPurchases":3,"movingTicks":6709,"commandHash":"b6a6d135ba53e86d2f6becf73d36ba92c9fa39d554defe8779e6d3b3975bd07a","stateHash":"1882278932a35de9ba2a2b02fc2c8d4da94c94e3a21c7bf3464beb4782c5ef9b"}
+{"seed":8,"matchSeed":18026106,"capturedAt":65.7,"endTick":1314,"winner":null,"owners":[2,2,2,0,0,2,1],"attempted":38,"accepted":34,"acceptedMoves":13,"paidPurchases":4,"movingTicks":6237,"commandHash":"2f8a16b50c8634fa25f8725526c2f91a70a62ad07f50b94629e9e817105edf5c","stateHash":"807cd8b08823942926182951a97f614c1aedcd5f13da1012c0e62135b3f13c24"}
+{"seed":9,"matchSeed":407595811,"capturedAt":47.5,"endTick":950,"winner":null,"owners":[2,1,0,2,0,2,1],"attempted":60,"accepted":33,"acceptedMoves":17,"paidPurchases":3,"movingTicks":6543,"commandHash":"e063d05cfab70fc161d779ba73949c155e99a5d5546f4058e703b50585a0075f","stateHash":"525775041b81b7f5d2d35330af7619ee8f72c4611d2b20ac8125cc0f5da3aa0d"}
+{"seed":10,"matchSeed":797165516,"capturedAt":84.6,"endTick":1692,"winner":null,"owners":[2,1,0,0,0,2,1],"attempted":58,"accepted":48,"acceptedMoves":21,"paidPurchases":4,"movingTicks":10965,"commandHash":"ebde7060da9225dc00abb5cc64d6e91372fd67c05a283bdcad805b3ec2ed69b0","stateHash":"60839374c4cc6cf79c7fd6df5c97c7cf876975064d717985ff84ce65c1901e2d"}
+{"seed":11,"matchSeed":1186735221,"capturedAt":85.4,"endTick":1708,"winner":null,"owners":[1,1,0,0,0,2,1],"attempted":63,"accepted":51,"acceptedMoves":21,"paidPurchases":5,"movingTicks":9841,"commandHash":"11149d2495b4794edd98ea8e145caea8752924d722604b5d638524c0c75b511e","stateHash":"7fc90bdfcc1fd0726fe1e903ca14d5049a39d8297b8c2fc4c14f713b15bad1fc"}
+{"seed":12,"matchSeed":1576304926,"capturedAt":46.35,"endTick":927,"winner":null,"owners":[2,1,1,0,0,2,1],"attempted":68,"accepted":28,"acceptedMoves":12,"paidPurchases":3,"movingTicks":5402,"commandHash":"6fd880325caa2e25a68284384eada76be4986f2862bffbe6b247767086718ede","stateHash":"ec0235c44e08d4479feb60d89fb47609ca1a4ddc9f1d0b92d3d11c28efeb162d"}
+{"seed":13,"matchSeed":1965874631,"capturedAt":78.85,"endTick":1577,"winner":null,"owners":[2,1,0,0,1,2,1],"attempted":109,"accepted":51,"acceptedMoves":20,"paidPurchases":5,"movingTicks":9406,"commandHash":"178177c4194a0248e8d8ed6b939921fdfc5b7381f078d0609bfcd3daca3d534d","stateHash":"ee0fed47b813ef149b99a0af3ffb422e120102454eb23a8a6060e1b09f91b16d"}
+{"seed":14,"matchSeed":2355444336,"capturedAt":75.6,"endTick":1512,"winner":null,"owners":[2,1,1,0,0,2,1],"attempted":49,"accepted":38,"acceptedMoves":16,"paidPurchases":3,"movingTicks":8814,"commandHash":"55f0b582dcc33179a333e76b167a1d4508ed8d22ac85edf43c69fb7c7df3678f","stateHash":"97020c61a23af2b644e4ae935e73549bbcf26c80c4510e760ffe1bcbd2249cd7"}
+{"seed":15,"matchSeed":2745014041,"capturedAt":67.6,"endTick":1352,"winner":null,"owners":[1,1,2,2,0,2,1],"attempted":63,"accepted":40,"acceptedMoves":20,"paidPurchases":3,"movingTicks":8500,"commandHash":"fae9c9f999608e5dfcfe592eacc4a8f259a64cb8b23a1f107d1273b15532090f","stateHash":"abfffafedae6a9354636dc171752ee0dc2d00b4fa795559627e3a0bb73c3011f"}
+{"seed":16,"matchSeed":3134583746,"capturedAt":49.85,"endTick":997,"winner":null,"owners":[0,2,1,0,0,2,1],"attempted":29,"accepted":25,"acceptedMoves":10,"paidPurchases":3,"movingTicks":5893,"commandHash":"fdc105e6d826fac11c4a9eea33d911d8e495877df2e0c552d844e13f680eacdf","stateHash":"9a253f9f60104af7d46984032ed442031f531d0728769095099eef1f3d74c376"}
+{"seed":17,"matchSeed":3524153451,"capturedAt":100.1,"endTick":2002,"winner":null,"owners":[2,1,0,0,0,2,1],"attempted":129,"accepted":70,"acceptedMoves":30,"paidPurchases":4,"movingTicks":12418,"commandHash":"5c90bb1f433f0683b2c084bb7b12385a5961fa0c0ea2d475f199b512ba7e15e3","stateHash":"3833e33907e3cbf1e612631fa926e185c28a22b73c28f8b03ef3953248d06842"}
+{"seed":18,"matchSeed":3913723156,"capturedAt":110.6,"endTick":2212,"winner":null,"owners":[2,0,0,2,1,2,1],"attempted":92,"accepted":68,"acceptedMoves":33,"paidPurchases":7,"movingTicks":14891,"commandHash":"3f01b165b78ea67b7b10d87af44765c0bd268490e916ece57bc2247c8c4a3650","stateHash":"8828c41bd16fff3bfe19740db41c3ede73685dc622779be6a72a937a8a622d65"}
+{"seed":19,"matchSeed":8325565,"capturedAt":62.35,"endTick":1247,"winner":null,"owners":[2,1,0,0,0,2,1],"attempted":74,"accepted":37,"acceptedMoves":15,"paidPurchases":3,"movingTicks":7227,"commandHash":"8f6a470a310a19e3fca4d15e813224e6775dc415e68a93b829a054e268d378df","stateHash":"224e81d314c7cf270d6848f879756abb2734f01f4aacb8616bb2480ddeb860de"}
+{"seed":20,"matchSeed":397895270,"capturedAt":54.75,"endTick":1095,"winner":null,"owners":[2,2,1,0,0,2,1],"attempted":30,"accepted":30,"acceptedMoves":12,"paidPurchases":3,"movingTicks":6420,"commandHash":"33cefe388bcbe86d6b01e95024889147d7146ace25f9b92318dc296b02343c32","stateHash":"871485704875ef96bf37e5561c2bb696d66fd2999e62fa370bef134ae96bcf2a"}
+{"seed":21,"matchSeed":787464975,"capturedAt":76.35,"endTick":1527,"winner":null,"owners":[1,1,0,0,0,2,1],"attempted":77,"accepted":55,"acceptedMoves":23,"paidPurchases":5,"movingTicks":9410,"commandHash":"27ab417f320e2d2d45faa5cec9f5b274dd836869bed87bbcdf9ceda22a20b5bc","stateHash":"25117ce18d536ef84bda9fdee350ccccd76c309e087aade2021c533ebd3c053e"}
+{"seed":22,"matchSeed":1177034680,"capturedAt":54.05,"endTick":1081,"winner":null,"owners":[1,2,1,0,0,2,1],"attempted":35,"accepted":33,"acceptedMoves":15,"paidPurchases":3,"movingTicks":6544,"commandHash":"01c02eb8d15340b82a77f15e33c9dd07b17ab997a7f6b42410415e29e2555e4a","stateHash":"2cbc0cddded74058824de604582182ddcea5b894f7e151a924b5dad935511194"}
+{"seed":23,"matchSeed":1566604385,"capturedAt":65.55,"endTick":1311,"winner":null,"owners":[1,1,0,0,0,2,1],"attempted":55,"accepted":44,"acceptedMoves":19,"paidPurchases":3,"movingTicks":8174,"commandHash":"e9c1cd567d69d49e356e9ab1e2eada73eb87ea3ffc367a45d83b6cd21d6cf1fb","stateHash":"74759d4a577cb9d17a821f5e7afb311a293ecce0390c56e7c5214a129f67b014"}
+{"seed":24,"matchSeed":1956174090,"capturedAt":46.7,"endTick":934,"winner":null,"owners":[2,2,1,0,0,2,1],"attempted":34,"accepted":24,"acceptedMoves":9,"paidPurchases":3,"movingTicks":4802,"commandHash":"cc86c98859b56bc6eff2c6562a050ff8994bd624de4a785b0a8f9bfde802e240","stateHash":"c33499ea0345b233eef6e89f588ef994f7729787ee7ec1b31a354c365523c6af"}
+{"seed":25,"matchSeed":2345743795,"capturedAt":48.05,"endTick":961,"winner":null,"owners":[2,1,1,0,0,2,1],"attempted":49,"accepted":33,"acceptedMoves":14,"paidPurchases":3,"movingTicks":5420,"commandHash":"4f2ce288e386927c8fd1632632936b80243549acd9e55fa62b5b6bb5a976a0e9","stateHash":"48097892963f6d619227f16c0cbb3a16666bfd55b1df06b6d15595d3a570c57d"}
+{"seed":26,"matchSeed":2735313500,"capturedAt":54.3,"endTick":1086,"winner":null,"owners":[2,1,1,0,0,2,1],"attempted":33,"accepted":33,"acceptedMoves":16,"paidPurchases":3,"movingTicks":7233,"commandHash":"d8db173d9d159227841690c8a730e6b532af5435041e0f8bebb6521a9f962490","stateHash":"76ba0831016b26aa65e8831a7caa20fda49ad2e8badcbac53d1b3078bf09b53f"}
+{"seed":27,"matchSeed":3124883205,"capturedAt":76.1,"endTick":1522,"winner":null,"owners":[1,1,0,0,0,2,1],"attempted":52,"accepted":50,"acceptedMoves":23,"paidPurchases":4,"movingTicks":9464,"commandHash":"fc5e69aca69f2b79a39f78253a8db1fe653c907d478d916d659f2c23b5b8d865","stateHash":"a755f801191df9ede7119e731a6bdd80e7df648ede3377f5468b5e8c4f773968"}
+{"seed":28,"matchSeed":3514452910,"capturedAt":43.2,"endTick":864,"winner":null,"owners":[0,1,1,0,0,2,1],"attempted":42,"accepted":28,"acceptedMoves":13,"paidPurchases":3,"movingTicks":5456,"commandHash":"0d076c068751a5471f082784a2fe408e0cea26d5c35d341697c71888f3b79318","stateHash":"06e71f2b4e4ae60bc040e5c292e266b5dfa9e5caafbff5de918ee7fae58acf61"}
+{"seed":29,"matchSeed":3904022615,"capturedAt":44.25,"endTick":885,"winner":null,"owners":[2,1,1,0,0,2,1],"attempted":48,"accepted":33,"acceptedMoves":12,"paidPurchases":3,"movingTicks":5391,"commandHash":"16816b9f1996c71e1005fdbfafe8538f5afedf2db250b8526f671c67179b25e9","stateHash":"cae4c564eba1e8dbcd197418c6484218b706e3765256f0798e61f27b36b836bd"}
+{"seed":30,"matchSeed":4293592320,"capturedAt":77.8,"endTick":1556,"winner":null,"owners":[2,1,0,0,0,2,1],"attempted":69,"accepted":45,"acceptedMoves":21,"paidPurchases":4,"movingTicks":9682,"commandHash":"81a63afca1b43fb8d6d43a5a90adc2c9ea578db4df5a9775505798dabab90459","stateHash":"24195e6f1edc83966168c270318e78cae1c528fb87f1fcc2ade18de1bc132a4a"}
+{"seed":31,"matchSeed":388194729,"capturedAt":49.85,"endTick":997,"winner":null,"owners":[1,1,1,0,0,2,1],"attempted":30,"accepted":29,"acceptedMoves":12,"paidPurchases":3,"movingTicks":6428,"commandHash":"1981dab0aa4a213da71b96d9a0044166f2ec54b60fa37cba4cff0dbcdf08895d","stateHash":"0d281af65ed0b0ef92c965edd07acaf835393e08be93c7701f38e501316798d7"}
+{"seed":32,"matchSeed":777764434,"capturedAt":66.2,"endTick":1324,"winner":null,"owners":[2,1,2,0,0,2,1],"attempted":46,"accepted":44,"acceptedMoves":17,"paidPurchases":4,"movingTicks":7234,"commandHash":"1db804c5a899ee2a4a2027af5e753985f0177dad4d679e43b665b24c591fb51a","stateHash":"ba180d6ccf423a4e372c95522ddb74d7d05b2885abd6138383aa3b2fe400c8ee"}
+{"seed":33,"matchSeed":1167334139,"capturedAt":81,"endTick":1620,"winner":null,"owners":[1,1,0,0,1,2,1],"attempted":47,"accepted":45,"acceptedMoves":21,"paidPurchases":5,"movingTicks":11001,"commandHash":"2d8505c321ede799d72f812910782b380df7350588a6fb31dbb6490b6ac91902","stateHash":"f5e60bf7d0db84f2130197a772e283ba334a7206ab6c61a29fc017bf68adcefd"}
+{"seed":34,"matchSeed":1556903844,"capturedAt":94.6,"endTick":1892,"winner":null,"owners":[0,2,0,0,0,2,1],"attempted":49,"accepted":49,"acceptedMoves":24,"paidPurchases":3,"movingTicks":11836,"commandHash":"0b8fd061dd34a01704a83e4c5fb63b038063ccbc81575db3bdb3db62480cecf4","stateHash":"277401cce99948a825d4072e75989d5e235c1f7219707019ffddf4658248d67a"}
+{"seed":35,"matchSeed":1946473549,"capturedAt":62,"endTick":1240,"winner":null,"owners":[2,1,2,0,0,2,1],"attempted":85,"accepted":35,"acceptedMoves":15,"paidPurchases":3,"movingTicks":5991,"commandHash":"1b4bb5be7a4d36c9c6e7ab3de850733aac1797d5124f9c16fa23b5083b396b86","stateHash":"fb618f3085ae9f9ec0deff9c1cd36d1e9c967bf30e304f5697e894a392163cde"}
+{"seed":36,"matchSeed":2336043254,"capturedAt":84.9,"endTick":1698,"winner":null,"owners":[2,1,1,0,0,2,1],"attempted":54,"accepted":52,"acceptedMoves":27,"paidPurchases":5,"movingTicks":11319,"commandHash":"e208179e9b78335f1358fb1ace02abe9ee92646e709be41cdfacf1a22d7870ce","stateHash":"e4ba2edde2dd0c5aba4f2c57dab619ba2e9794cc05a8bb083a7f1eab9c34ca58"}
+{"seed":37,"matchSeed":2725612959,"capturedAt":66.35,"endTick":1327,"winner":null,"owners":[1,1,2,0,0,2,1],"attempted":99,"accepted":40,"acceptedMoves":16,"paidPurchases":3,"movingTicks":7114,"commandHash":"476b77ad2dde500a8e35e8839fd90552bf9b0629f6b5748ad55ff64245d8427f","stateHash":"86bd2da4cdc2f4d2b204762be5fba4dfe5bbec2bde3bb2aa66d46674286eca2a"}
+{"seed":38,"matchSeed":3115182664,"capturedAt":59.7,"endTick":1194,"winner":null,"owners":[0,1,2,0,0,2,1],"attempted":63,"accepted":35,"acceptedMoves":14,"paidPurchases":3,"movingTicks":6861,"commandHash":"531aabae918c1a9fb60eae078af41565f13660e5f2a0f6ea59ec7f1fab59f186","stateHash":"6066a2b7a127d753b75c7077017bdc96538da81a772384e01360b2f10fe31a61"}
+{"seed":39,"matchSeed":3504752369,"capturedAt":33.5,"endTick":670,"winner":null,"owners":[2,1,1,0,0,2,1],"attempted":49,"accepted":23,"acceptedMoves":9,"paidPurchases":3,"movingTicks":4671,"commandHash":"0953bdcff409a04af641e5382507b94a8d5a62d1f7b91975878a48b0cf99418d","stateHash":"e3daa3b577f0a116ea32666b388c7646f00eae7b11a0dec510009d53e20a24f8"}
+{"seed":40,"matchSeed":3894322074,"capturedAt":65.6,"endTick":1312,"winner":null,"owners":[2,0,0,0,2,2,1],"attempted":61,"accepted":37,"acceptedMoves":17,"paidPurchases":5,"movingTicks":7453,"commandHash":"1530ebc3da0a5315102cf436921d4f96f21ce319f47e34cc753094e3aa51e92f","stateHash":"abd25190e6f67f5e8e06971ceb1d692f8920161fcc854895b667be90479d181d"}
+{"seeds":[1,2,3,4,5,6,7,8,9,10,11,12,13,14,15,16,17,18,19,20,21,22,23,24,25,26,27,28,29,30,31,32,33,34,35,36,37,38,39,40],"passing":40,"failures":[]}
+{"positive":{"neutralOwner":0,"initialNeutralOrders":[[8,40.18356685093031,17.08420673258915]],"footId":8,"footMoved":true,"commands":[{"cmd":{"t":"move","orders":[[8,40.18356685093031,17.08420673258915]]}}]},"vehicle":{"neutralOwner":-1,"initialNeutralOrders":[],"footMoved":false,"commands":[{"cmd":{"t":"stance","ids":[8],"key":"autoRetreat","on":true}},{"cmd":{"t":"amove","orders":[[8,17.61059807837283,17.969360187485805]]}}]},"moving":{"neutralOwner":-1,"initialNeutralOrders":[],"footId":8,"footMoved":true,"commands":[]},"held":{"neutralOwner":-1,"initialNeutralOrders":[[9,39.91756024149175,17.14924368867613]],"footId":8,"footMoved":false,"commands":[{"cmd":{"t":"cover","ids":[8]},"result":"noCover"},{"cmd":{"t":"move","orders":[[9,39.91756024149175,17.14924368867613]]}}]},"threatened":{"neutralOwner":1,"initialNeutralOrders":[],"footId":8,"footMoved":false,"commands":[]},"locked":{"neutralOwner":-1,"initialNeutralOrders":[],"footId":8,"footMoved":true,"commands":[{"cmd":{"t":"stance","ids":[8,9],"key":"autoRetreat","on":true}},{"cmd":{"t":"amove","orders":[[8,15.136429061816207,24.99767271185273],[9,17.77218896788111,18.116431321026276]]}}]},"incoming":{"neutralOwner":0,"initialNeutralOrders":[],"footId":8,"footMoved":false,"commands":[]}}
+Causal native orders: per-row commitment, danger separation, accepted stale delivery deduplication and victim-scoped damage controls passed.
+{
+  "motion": [
+    {
+      "mode": "selection",
+      "level": "easy",
+      "seeds": 20,
+      "successes": 19,
+      "maximumDisplacement": 140.23133503819736
+    },
+    {
+      "mode": "selection",
+      "level": "normal",
+      "seeds": 20,
+      "successes": 20,
+      "maximumDisplacement": 73.68087095227293
+    },
+    {
+      "mode": "selection",
+      "level": "hard",
+      "seeds": 20,
+      "successes": 20,
+      "maximumDisplacement": 42.78244119809392
+    },
+    {
+      "mode": "target",
+      "level": "easy",
+      "seeds": 20,
+      "successes": 20,
+      "maximumDisplacement": 137.8545327494146
+    },
+    {
+      "mode": "target",
+      "level": "normal",
+      "seeds": 20,
+      "successes": 20,
+      "maximumDisplacement": 73.68087095227315
+    },
+    {
+      "mode": "target",
+      "level": "hard",
+      "seeds": 20,
+      "successes": 20,
+      "maximumDisplacement": 42.78244119809415
+    }
+  ],
+  "contracts": "stationary endpoint error, deterministic travel, paid motor/RNG/deadline/caps, stale/offscreen/dead/full-pose privacy, actual subset formation/context, named actor, stance and engineering negatives"
+}
+PASS accepted group reuse, actual subsets, rejection, bounded history, member guards and nine-key LRU
+Actual human canvas dispatch and native AI off-world destination clipping passed.
+{"test":"AI humanity storage","matches":3,"seats":9,"inputs":133,"commands":64,"events":55,"completeMeasurementFrames":48,"nativeBytes":true,"completeGraphs":true,"nativeReducers":true,"exactGzip":true,"merge":true,"errors":true,"backpressure":true,"cleanup":true}
+ww2-rts on http://127.0.0.1:0
+Spectator recipient, map source privacy and authored start checks passed over HTTP and WebSocket
+ww2-rts on http://127.0.0.1:0
+Scenario start rollback checks passed
+ww2-rts on http://127.0.0.1:0
+Server setup ordering, pending input, disconnect, fog, deltas and rollback checks passed
+building breach checks passed: partial live geometry, shared cache, supported sections, retained materials, bounded updates, rebuild, Ghost memory and disposal
+World authoring checks passed
+vehicle terrain pose checks passed: native footprints, composed slope normals and support, all nine vehicles, yaw/reverse, suspension ordering, crests, resets and hidden sampling
+PASS workshop relief: 25080 composed poses across 8 scenes and faction models
+AI observed-terrain and effect privacy checks passed
+en editor bindings passed: Add, condition/reference options, area picking, advanced JSON error/apply, material labels, support Apply validation and authoritative validation
+es editor bindings passed: Add, condition/reference options, area picking, advanced JSON error/apply, material labels, support Apply validation and authoritative validation
+[
+  {
+    "mode": "conquest",
+    "level": "hard",
+    "seed": 6,
+    "firstDelivery": 2,
+    "firstNativeTicks": [
+      45,
+      80,
+      47
+    ]
+  },
+  {
+    "mode": "classic",
+    "level": "hard",
+    "seed": 6,
+    "firstDelivery": 2,
+    "firstNativeTicks": [
+      46,
+      80,
+      47
+    ]
+  },
+  {
+    "mode": "world",
+    "level": "hard",
+    "seed": 6,
+    "firstDelivery": 2,
+    "firstNativeTicks": [
+      47,
+      80,
+      47
+    ]
+  },
+  {
+    "mode": "world",
+    "level": "normal",
+    "seed": 4,
+    "firstDelivery": 2,
+    "firstNativeTicks": [
+      116,
+      93,
+      95
+    ]
+  },
+  {
+    "mode": "world",
+    "level": "easy",
+    "seed": 4,
+    "firstDelivery": 2,
+    "firstNativeTicks": [
+      154,
+      124,
+      126
+    ]
+  }
+]
+AI public start: forbidden reads, detached setup, no commands, actor delivery2, original bands and late fresh look PASS
+AI opening preference saving passed (34 guard/planner checks, 7 delivered counter controls, 6 native simulations).
+AI purchase receipt guards passed (13 checks).
+Producer substitution: real World HQ, unfinished and completed barracks, factions, native motor and caps passed.
+Human engineer target shortage: native purchases, singleton HUD and selection negatives passed.
+AI formations match actual client selection order for tied recall, retained selection, dead pruning, singleton and physical partial selection
+PASS private tick0 oracle isolation: 36 actual-engine runs, nine mode/level pairs
+PASS local idle engineer: native assistance, paid depot, and eleven guards
+[{"acceptedBeforeArrival":3,"acceptedAfterArrival":0,"snapDistance":2.3999999999999986,"changedPointAccepted":true},{"actualMovementAwayRetry":true},{"intentOption":"type","accepted":true},{"intentOption":"queue","accepted":true},{"intentOption":"face","accepted":true},{"override":"danger","accepted":true},{"override":"base","accepted":true},{"refusalDoesNotCredit":true,"paidRetryAccepted":true},{"actorOrderMapping":true,"changedOrderAccepted":true},{"partialActualSelectionOnly":true},{"changedGroupAccepted":true},{"mergedOriginalIntentsStopAfterArrival":true}]
+armor: hit308, event308, accepted native move353
+cover: hit308, event308, accepted native move348
+Attended stationary armor and suppressed-hit cover: native actions, observed destinations, protected negatives and creation floors PASS
+PASS paid native garrison framing and six controls
+{"status":"PASS","policy":"screen-manual-v2","assertions":162,"nativeInputs":2,"nativeCommands":1}
+{"mode":"conquest","level":"easy","status":"PASS","commands":16,"inputs":30}
+{"mode":"conquest","level":"normal","status":"PASS","commands":19,"inputs":35}
+{"mode":"conquest","level":"hard","status":"PASS","commands":19,"inputs":38}
+{"mode":"classic","level":"easy","status":"PASS","commands":9,"inputs":22}
+{"mode":"classic","level":"normal","status":"PASS","commands":11,"inputs":28}
+{"mode":"classic","level":"hard","status":"PASS","commands":12,"inputs":33}
+{"mode":"world","level":"easy","status":"PASS","commands":9,"inputs":27}
+{"mode":"world","level":"normal","status":"PASS","commands":15,"inputs":36}
+{"mode":"world","level":"hard","status":"PASS","commands":16,"inputs":38}
+{"status":"PASS","policy":"screen-manual-v2","modeLevels":9,"treatments":27,"seconds":15}
+all engine debris checks passed
+ww2-rts on http://127.0.0.1:0
+node:internal/modules/run_main:107
+    triggerUncaughtException(
+    ^
+
+AssertionError [ERR_ASSERTION]: unobserved terrain cannot change the initial voluntary trajectory
++ actual - expected
+
+  [
+    {
+      rot: 0,
++     tick: 12,
+-     tick: 10,
+      x: 40,
+      z: 55
+    },
+    {
+      rot: 0,
+
+    at file:///home/judiazm/.t3/worktrees/ww2-rts/ai-human-commander/test-engine-traffic-privacy.js:191:12 {
+  generatedMessage: false,
+  code: 'ERR_ASSERTION',
+  actual: [
+    { tick: 12, x: 40, z: 55, rot: 0 },
+    { tick: 14, x: 40, z: 55, rot: 0 },
+    { tick: 16, x: 40, z: 55, rot: 0 },
+    { tick: 18, x: 40, z: 55, rot: 0.2 }
+  ],
+  expected: [
+    { tick: 10, x: 40, z: 55, rot: 0 },
+    { tick: 14, x: 40, z: 55, rot: 0 },
+    { tick: 16, x: 40, z: 55, rot: 0 },
+    { tick: 18, x: 40, z: 55, rot: 0.2 }
+  ],
+  operator: 'deepStrictEqual',
+  diff: 'simple'
+}
+
+Node.js v24.21.0
+node:internal/errors:986
+  const err = new Error(message);
+              ^
+
+Error: Command failed: /usr/bin/node test-engine-traffic-privacy.js
+    at genericNodeError (node:internal/errors:986:15)
+    at wrappedFn (node:internal/errors:540:14)
+    at checkExecSyncError (node:child_process:942:11)
+    at execFileSync (node:child_process:978:15)
+    at file:///home/judiazm/.t3/worktrees/ww2-rts/ai-human-commander/test.js:54:5
+    at process.processTicksAndRejections (node:internal/process/task_queues:104:5) {
+  status: 1,
+  signal: null,
+  output: [ null, null, null ],
+  pid: 1628585,
+  stdout: null,
+  stderr: null
+}
+
+Node.js v24.21.0

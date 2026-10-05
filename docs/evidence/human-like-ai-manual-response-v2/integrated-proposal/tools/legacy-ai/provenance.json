@@ -1,0 +1,24 @@
+{
+  "commit": "5293ddb1a0267f90e9ddba5a1d2cc725ba3f7bd3",
+  "sources": [
+    "shared/ai.js",
+    "shared/ai-view.js",
+    "shared/ai-mind.js"
+  ],
+  "changes": "Only non-AI import paths changed. The commander, observation, and memory logic are frozen; engine and utility helpers use the current shared simulation.",
+  "purpose": "Offline old-versus-new measurements only. Never imported by server or client.",
+  "hashes": {
+    "ai.js": {
+      "originalSHA256": "8fc9dfc5f94b5f5f315846dc56ab7f7cd38672d37474ecc611aadb78267fc0ba",
+      "frozenSHA256": "49575f9089365e13592a804b852b8eeec8c1dcc96bd64d236eaf3757904bcf4d"
+    },
+    "ai-view.js": {
+      "originalSHA256": "dbedde30d793132c99245f2bc48a0918bc47369683b587490dabed85166cb514",
+      "frozenSHA256": "c8e5332611ec5d18d5f7b0ab9093c30df5006a6f566c106a312a64900be17d5f"
+    },
+    "ai-mind.js": {
+      "originalSHA256": "517701dc493e1271416bed815b5852cdcbab518db83d1b8f72aa401c5feea936",
+      "frozenSHA256": "c2941813a4fb6d655a50b579270e5887723cfc42ea18c9d767735904c78c2d54"
+    }
+  }
+}

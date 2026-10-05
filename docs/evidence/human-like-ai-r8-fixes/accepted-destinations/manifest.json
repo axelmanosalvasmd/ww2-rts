@@ -1,0 +1,553 @@
+{
+  "schema": "ww2-native-evidence-copy-v1",
+  "originals": [
+    {
+      "originalPath": "/tmp/ai-accepted-destinations-r8/REVIEW.md",
+      "member": "original-agent-fixture-migration/REVIEW.md",
+      "bytes": 3534,
+      "sha256": "c0d7c277bd5cc5a0b934c944f22b290ea4f6cfe5d77c5c7a7debf3827afdf42a"
+    },
+    {
+      "originalPath": "/tmp/ai-accepted-destinations-r8/baseline/client/keys.js",
+      "member": "original-agent-fixture-migration/baseline/client/keys.js",
+      "bytes": 7361,
+      "sha256": "867e3105b7e4665f8a313c2ab46e23fc3df9407f2163fd6862bb537a01ecd276"
+    },
+    {
+      "originalPath": "/tmp/ai-accepted-destinations-r8/baseline/inspect.js",
+      "member": "original-agent-fixture-migration/baseline/inspect.js",
+      "bytes": 8627,
+      "sha256": "ad57a4b0e642a92289361852cb93065cc16fff22c44afc98eae05ff20823e469"
+    },
+    {
+      "originalPath": "/tmp/ai-accepted-destinations-r8/baseline/package.json",
+      "member": "original-agent-fixture-migration/baseline/package.json",
+      "bytes": 17,
+      "sha256": "6dc1b06d6b093e9cccb20bee06a93836eee0420ae26803ca2ce4065d82f070d1"
+    },
+    {
+      "originalPath": "/tmp/ai-accepted-destinations-r8/baseline/shared/ai-attention.js",
+      "member": "original-agent-fixture-migration/baseline/shared/ai-attention.js",
+      "bytes": 31888,
+      "sha256": "a55272249248bf1a7166da3038fa44794d7db3a163089010f6f3b905ccc3405a"
+    },
+    {
+      "originalPath": "/tmp/ai-accepted-destinations-r8/baseline/shared/ai-commander.js",
+      "member": "original-agent-fixture-migration/baseline/shared/ai-commander.js",
+      "bytes": 30998,
+      "sha256": "16538e56be6a730b8f92480cd96e2726a1a1ca35312fc509a4c44011e929fba6"
+    },
+    {
+      "originalPath": "/tmp/ai-accepted-destinations-r8/baseline/shared/ai-hands.js",
+      "member": "original-agent-fixture-migration/baseline/shared/ai-hands.js",
+      "bytes": 70724,
+      "sha256": "d209f6861bf1d4165012372d21398c46985d51e357b79009c5b7e4b8dffbdaa9"
+    },
+    {
+      "originalPath": "/tmp/ai-accepted-destinations-r8/baseline/shared/ai-mind.js",
+      "member": "original-agent-fixture-migration/baseline/shared/ai-mind.js",
+      "bytes": 19553,
+      "sha256": "18bb411cb1d057ce8cffe0b042c21f64b71238ae157b584242df206d708e6b92"
+    },
+    {
+      "originalPath": "/tmp/ai-accepted-destinations-r8/baseline/shared/ai-perception.js",
+      "member": "original-agent-fixture-migration/baseline/shared/ai-perception.js",
+      "bytes": 34765,
+      "sha256": "50e611a932728940c5047a61bf4fd7554c696f93880d7907a952d8b39fdcf3fd"
+    },
+    {
+      "originalPath": "/tmp/ai-accepted-destinations-r8/baseline/shared/ai-persona.js",
+      "member": "original-agent-fixture-migration/baseline/shared/ai-persona.js",
+      "bytes": 3586,
+      "sha256": "34de5882046129d2000e5502e354123786f3ad7b7133f31e93863dcc36ba66cf"
+    },
+    {
+      "originalPath": "/tmp/ai-accepted-destinations-r8/baseline/shared/ai-priority.js",
+      "member": "original-agent-fixture-migration/baseline/shared/ai-priority.js",
+      "bytes": 8934,
+      "sha256": "597c6ae80d69bbe9bb77a794096be4dd98c5f0791cd7da0f7a11359536850ab9"
+    },
+    {
+      "originalPath": "/tmp/ai-accepted-destinations-r8/baseline/shared/ai-rng.js",
+      "member": "original-agent-fixture-migration/baseline/shared/ai-rng.js",
+      "bytes": 641,
+      "sha256": "2d2f95266eda45ec4fa4862cb01079fc8464a98d8c88fa97ca89b54a5d6f8b90"
+    },
+    {
+      "originalPath": "/tmp/ai-accepted-destinations-r8/baseline/shared/ai-view.js",
+      "member": "original-agent-fixture-migration/baseline/shared/ai-view.js",
+      "bytes": 13935,
+      "sha256": "4466958fc4b8e7a5d2f2bcb8dc3814e27c817a7480b0c765aa6ee2a98cbc87f7"
+    },
+    {
+      "originalPath": "/tmp/ai-accepted-destinations-r8/baseline/shared/ai.js",
+      "member": "original-agent-fixture-migration/baseline/shared/ai.js",
+      "bytes": 91945,
+      "sha256": "685c178754646223ba57cbf6b0d795b0676b0a5cba84f51bfdfcae0cd71bc005"
+    },
+    {
+      "originalPath": "/tmp/ai-accepted-destinations-r8/baseline/shared/alert-events.js",
+      "member": "original-agent-fixture-migration/baseline/shared/alert-events.js",
+      "bytes": 8219,
+      "sha256": "df5f0ae98145034e6893ce0b70c2df8938a2d786cc8de37a1fbbc1a9c8b634b0"
+    },
+    {
+      "originalPath": "/tmp/ai-accepted-destinations-r8/baseline/shared/command-feedback.js",
+      "member": "original-agent-fixture-migration/baseline/shared/command-feedback.js",
+      "bytes": 303,
+      "sha256": "e851bb8f7e48291bd75f09be66fdeecbe7dca68dcc82c839c5c033083ce77a07"
+    },
+    {
+      "originalPath": "/tmp/ai-accepted-destinations-r8/baseline/shared/debris-motion.js",
+      "member": "original-agent-fixture-migration/baseline/shared/debris-motion.js",
+      "bytes": 4384,
+      "sha256": "d6a0f330f958ec6d78cfcc7f95b209aa5c099369576bf15dfd1c84770287b3b4"
+    },
+    {
+      "originalPath": "/tmp/ai-accepted-destinations-r8/baseline/shared/formation.js",
+      "member": "original-agent-fixture-migration/baseline/shared/formation.js",
+      "bytes": 4865,
+      "sha256": "265fa63c8c72588f6c8f67057921fd4daa88f96e9d823faa2e41ba10a7dba005"
+    },
+    {
+      "originalPath": "/tmp/ai-accepted-destinations-r8/baseline/shared/grid.js",
+      "member": "original-agent-fixture-migration/baseline/shared/grid.js",
+      "bytes": 2873,
+      "sha256": "30b0a5d67d99e54548d189374684e6b28863ecb7bf92de5221359e5c24fc5afc"
+    },
+    {
+      "originalPath": "/tmp/ai-accepted-destinations-r8/baseline/shared/human-input.js",
+      "member": "original-agent-fixture-migration/baseline/shared/human-input.js",
+      "bytes": 7966,
+      "sha256": "dec728db485690620e527f912fa2a0b491f545c5bbdaafc4dc25fd1e425763ff"
+    },
+    {
+      "originalPath": "/tmp/ai-accepted-destinations-r8/baseline/shared/local-traffic.js",
+      "member": "original-agent-fixture-migration/baseline/shared/local-traffic.js",
+      "bytes": 7408,
+      "sha256": "abad3f6ba310783c3620cec8d599df90dac38bb74eed6509be7d19a8af1490f6"
+    },
+    {
+      "originalPath": "/tmp/ai-accepted-destinations-r8/baseline/shared/navigation.js",
+      "member": "original-agent-fixture-migration/baseline/shared/navigation.js",
+      "bytes": 19838,
+      "sha256": "c277c12f86c9990e281ae28a703dc374126aa1c737d9dc94a300f8d99c898472"
+    },
+    {
+      "originalPath": "/tmp/ai-accepted-destinations-r8/baseline/shared/projectiles.js",
+      "member": "original-agent-fixture-migration/baseline/shared/projectiles.js",
+      "bytes": 7769,
+      "sha256": "ded50f3bcd60cf79238d5dba48236d54e33b2b8032f704813118d1419708ccd7"
+    },
+    {
+      "originalPath": "/tmp/ai-accepted-destinations-r8/baseline/shared/scenarios.js",
+      "member": "original-agent-fixture-migration/baseline/shared/scenarios.js",
+      "bytes": 16044,
+      "sha256": "93f6cda90224a805cc97f42418b2dc11c49e3ea80654b66e0036de55f9b9ba97"
+    },
+    {
+      "originalPath": "/tmp/ai-accepted-destinations-r8/baseline/shared/sim.js",
+      "member": "original-agent-fixture-migration/baseline/shared/sim.js",
+      "bytes": 355291,
+      "sha256": "5e5f4c2d43d048be36d94f0cbcc68fb974c812fc8ab7e071cddb0a59079d89fa"
+    },
+    {
+      "originalPath": "/tmp/ai-accepted-destinations-r8/baseline/shared/story.js",
+      "member": "original-agent-fixture-migration/baseline/shared/story.js",
+      "bytes": 3738,
+      "sha256": "fa33e53e61a7d636959dd1d1916d7b5c3359db72b523dc730b16ceab525d170f"
+    },
+    {
+      "originalPath": "/tmp/ai-accepted-destinations-r8/baseline/shared/structures.js",
+      "member": "original-agent-fixture-migration/baseline/shared/structures.js",
+      "bytes": 4029,
+      "sha256": "933b100a9a4c19a0285f5b137cd29b46e44271776f031045a537009e0176e5a2"
+    },
+    {
+      "originalPath": "/tmp/ai-accepted-destinations-r8/baseline/shared/tutorial.js",
+      "member": "original-agent-fixture-migration/baseline/shared/tutorial.js",
+      "bytes": 6342,
+      "sha256": "3aaa5e6affd936dae0ae4741d5173eee5d006132a1705d4b553097d3d8fabf42"
+    },
+    {
+      "originalPath": "/tmp/ai-accepted-destinations-r8/baseline/shared/vehicle-motion.js",
+      "member": "original-agent-fixture-migration/baseline/shared/vehicle-motion.js",
+      "bytes": 12185,
+      "sha256": "05bd1e985a91b3268065a0a84ec4b9aee2c1079aafc4054c38a70677dfb1493b"
+    },
+    {
+      "originalPath": "/tmp/ai-accepted-destinations-r8/baseline/shared/weather.js",
+      "member": "original-agent-fixture-migration/baseline/shared/weather.js",
+      "bytes": 7228,
+      "sha256": "faad682d6e40fdc6629533f684e1caeec5c9ae49e26e9922651773727c0bc1e5"
+    },
+    {
+      "originalPath": "/tmp/ai-accepted-destinations-r8/baseline/shared/world-conquest.js",
+      "member": "original-agent-fixture-migration/baseline/shared/world-conquest.js",
+      "bytes": 7203,
+      "sha256": "1c251e6d340586d7fb367d4f47938d5898f5239824dac46f054880a3d897aeef"
+    },
+    {
+      "originalPath": "/tmp/ai-accepted-destinations-r8/baseline/shared/world-landforms.js",
+      "member": "original-agent-fixture-migration/baseline/shared/world-landforms.js",
+      "bytes": 6645,
+      "sha256": "ecb6916db6785484f8bb813f7745c8c48ccea370f084fea290ff736edc968e34"
+    },
+    {
+      "originalPath": "/tmp/ai-accepted-destinations-r8/baseline/shared/world-layers.js",
+      "member": "original-agent-fixture-migration/baseline/shared/world-layers.js",
+      "bytes": 6770,
+      "sha256": "f51f34b99946192107ada9a7077d787761c1a9cb6b1e316d7b7e243dd273bb22"
+    },
+    {
+      "originalPath": "/tmp/ai-accepted-destinations-r8/baseline/shared/world-roads.js",
+      "member": "original-agent-fixture-migration/baseline/shared/world-roads.js",
+      "bytes": 6491,
+      "sha256": "5fb243b63fa9e2c082135b5b093ee753e8a92c197a076d78067e53f08f1885db"
+    },
+    {
+      "originalPath": "/tmp/ai-accepted-destinations-r8/baseline/shared/world-territories.js",
+      "member": "original-agent-fixture-migration/baseline/shared/world-territories.js",
+      "bytes": 4110,
+      "sha256": "bb33a449d7f2c4d657dbceab8dbd0171eb8ccaa7494cedf9e18707822d8f717f"
+    },
+    {
+      "originalPath": "/tmp/ai-accepted-destinations-r8/baseline-case.json",
+      "member": "original-agent-fixture-migration/baseline-case.json",
+      "bytes": 433967,
+      "sha256": "e7d3de0cb2ca8dbb01a7b786acf209dac097ada314f7e6592117203eb3bc6673"
+    },
+    {
+      "originalPath": "/tmp/ai-accepted-destinations-r8/baseline-failure.log",
+      "member": "original-agent-fixture-migration/baseline-failure.log",
+      "bytes": 179611,
+      "sha256": "31fd2451e4b66f5ed5852024f5afb4b809bebd1564a29fea7e9d755afe7368dd"
+    },
+    {
+      "originalPath": "/tmp/ai-accepted-destinations-r8/candidate/client/keys.js",
+      "member": "original-agent-fixture-migration/candidate/client/keys.js",
+      "bytes": 7361,
+      "sha256": "867e3105b7e4665f8a313c2ab46e23fc3df9407f2163fd6862bb537a01ecd276"
+    },
+    {
+      "originalPath": "/tmp/ai-accepted-destinations-r8/candidate/inspect.js",
+      "member": "original-agent-fixture-migration/candidate/inspect.js",
+      "bytes": 9931,
+      "sha256": "f88d981731faf3177c2b1c030bff1459d0d78574b68a95ee6e03e95fa5e716ae"
+    },
+    {
+      "originalPath": "/tmp/ai-accepted-destinations-r8/candidate/package.json",
+      "member": "original-agent-fixture-migration/candidate/package.json",
+      "bytes": 17,
+      "sha256": "6dc1b06d6b093e9cccb20bee06a93836eee0420ae26803ca2ce4065d82f070d1"
+    },
+    {
+      "originalPath": "/tmp/ai-accepted-destinations-r8/candidate/shared/ai-attention.js",
+      "member": "original-agent-fixture-migration/candidate/shared/ai-attention.js",
+      "bytes": 31888,
+      "sha256": "a55272249248bf1a7166da3038fa44794d7db3a163089010f6f3b905ccc3405a"
+    },
+    {
+      "originalPath": "/tmp/ai-accepted-destinations-r8/candidate/shared/ai-commander.js",
+      "member": "original-agent-fixture-migration/candidate/shared/ai-commander.js",
+      "bytes": 30998,
+      "sha256": "16538e56be6a730b8f92480cd96e2726a1a1ca35312fc509a4c44011e929fba6"
+    },
+    {
+      "originalPath": "/tmp/ai-accepted-destinations-r8/candidate/shared/ai-hands.js",
+      "member": "original-agent-fixture-migration/candidate/shared/ai-hands.js",
+      "bytes": 70724,
+      "sha256": "d209f6861bf1d4165012372d21398c46985d51e357b79009c5b7e4b8dffbdaa9"
+    },
+    {
+      "originalPath": "/tmp/ai-accepted-destinations-r8/candidate/shared/ai-mind.js",
+      "member": "original-agent-fixture-migration/candidate/shared/ai-mind.js",
+      "bytes": 19553,
+      "sha256": "18bb411cb1d057ce8cffe0b042c21f64b71238ae157b584242df206d708e6b92"
+    },
+    {
+      "originalPath": "/tmp/ai-accepted-destinations-r8/candidate/shared/ai-perception.js",
+      "member": "original-agent-fixture-migration/candidate/shared/ai-perception.js",
+      "bytes": 34765,
+      "sha256": "50e611a932728940c5047a61bf4fd7554c696f93880d7907a952d8b39fdcf3fd"
+    },
+    {
+      "originalPath": "/tmp/ai-accepted-destinations-r8/candidate/shared/ai-persona.js",
+      "member": "original-agent-fixture-migration/candidate/shared/ai-persona.js",
+      "bytes": 3586,
+      "sha256": "34de5882046129d2000e5502e354123786f3ad7b7133f31e93863dcc36ba66cf"
+    },
+    {
+      "originalPath": "/tmp/ai-accepted-destinations-r8/candidate/shared/ai-priority.js",
+      "member": "original-agent-fixture-migration/candidate/shared/ai-priority.js",
+      "bytes": 8934,
+      "sha256": "597c6ae80d69bbe9bb77a794096be4dd98c5f0791cd7da0f7a11359536850ab9"
+    },
+    {
+      "originalPath": "/tmp/ai-accepted-destinations-r8/candidate/shared/ai-rng.js",
+      "member": "original-agent-fixture-migration/candidate/shared/ai-rng.js",
+      "bytes": 641,
+      "sha256": "2d2f95266eda45ec4fa4862cb01079fc8464a98d8c88fa97ca89b54a5d6f8b90"
+    },
+    {
+      "originalPath": "/tmp/ai-accepted-destinations-r8/candidate/shared/ai-view.js",
+      "member": "original-agent-fixture-migration/candidate/shared/ai-view.js",
+      "bytes": 13935,
+      "sha256": "4466958fc4b8e7a5d2f2bcb8dc3814e27c817a7480b0c765aa6ee2a98cbc87f7"
+    },
+    {
+      "originalPath": "/tmp/ai-accepted-destinations-r8/candidate/shared/ai.js",
+      "member": "original-agent-fixture-migration/candidate/shared/ai.js",
+      "bytes": 91945,
+      "sha256": "685c178754646223ba57cbf6b0d795b0676b0a5cba84f51bfdfcae0cd71bc005"
+    },
+    {
+      "originalPath": "/tmp/ai-accepted-destinations-r8/candidate/shared/alert-events.js",
+      "member": "original-agent-fixture-migration/candidate/shared/alert-events.js",
+      "bytes": 8219,
+      "sha256": "df5f0ae98145034e6893ce0b70c2df8938a2d786cc8de37a1fbbc1a9c8b634b0"
+    },
+    {
+      "originalPath": "/tmp/ai-accepted-destinations-r8/candidate/shared/command-feedback.js",
+      "member": "original-agent-fixture-migration/candidate/shared/command-feedback.js",
+      "bytes": 303,
+      "sha256": "e851bb8f7e48291bd75f09be66fdeecbe7dca68dcc82c839c5c033083ce77a07"
+    },
+    {
+      "originalPath": "/tmp/ai-accepted-destinations-r8/candidate/shared/debris-motion.js",
+      "member": "original-agent-fixture-migration/candidate/shared/debris-motion.js",
+      "bytes": 4384,
+      "sha256": "d6a0f330f958ec6d78cfcc7f95b209aa5c099369576bf15dfd1c84770287b3b4"
+    },
+    {
+      "originalPath": "/tmp/ai-accepted-destinations-r8/candidate/shared/formation.js",
+      "member": "original-agent-fixture-migration/candidate/shared/formation.js",
+      "bytes": 4865,
+      "sha256": "265fa63c8c72588f6c8f67057921fd4daa88f96e9d823faa2e41ba10a7dba005"
+    },
+    {
+      "originalPath": "/tmp/ai-accepted-destinations-r8/candidate/shared/grid.js",
+      "member": "original-agent-fixture-migration/candidate/shared/grid.js",
+      "bytes": 2873,
+      "sha256": "30b0a5d67d99e54548d189374684e6b28863ecb7bf92de5221359e5c24fc5afc"
+    },
+    {
+      "originalPath": "/tmp/ai-accepted-destinations-r8/candidate/shared/human-input.js",
+      "member": "original-agent-fixture-migration/candidate/shared/human-input.js",
+      "bytes": 7966,
+      "sha256": "dec728db485690620e527f912fa2a0b491f545c5bbdaafc4dc25fd1e425763ff"
+    },
+    {
+      "originalPath": "/tmp/ai-accepted-destinations-r8/candidate/shared/local-traffic.js",
+      "member": "original-agent-fixture-migration/candidate/shared/local-traffic.js",
+      "bytes": 7408,
+      "sha256": "abad3f6ba310783c3620cec8d599df90dac38bb74eed6509be7d19a8af1490f6"
+    },
+    {
+      "originalPath": "/tmp/ai-accepted-destinations-r8/candidate/shared/navigation.js",
+      "member": "original-agent-fixture-migration/candidate/shared/navigation.js",
+      "bytes": 19838,
+      "sha256": "c277c12f86c9990e281ae28a703dc374126aa1c737d9dc94a300f8d99c898472"
+    },
+    {
+      "originalPath": "/tmp/ai-accepted-destinations-r8/candidate/shared/projectiles.js",
+      "member": "original-agent-fixture-migration/candidate/shared/projectiles.js",
+      "bytes": 7769,
+      "sha256": "ded50f3bcd60cf79238d5dba48236d54e33b2b8032f704813118d1419708ccd7"
+    },
+    {
+      "originalPath": "/tmp/ai-accepted-destinations-r8/candidate/shared/scenarios.js",
+      "member": "original-agent-fixture-migration/candidate/shared/scenarios.js",
+      "bytes": 16044,
+      "sha256": "93f6cda90224a805cc97f42418b2dc11c49e3ea80654b66e0036de55f9b9ba97"
+    },
+    {
+      "originalPath": "/tmp/ai-accepted-destinations-r8/candidate/shared/sim.js",
+      "member": "original-agent-fixture-migration/candidate/shared/sim.js",
+      "bytes": 355291,
+      "sha256": "5e5f4c2d43d048be36d94f0cbcc68fb974c812fc8ab7e071cddb0a59079d89fa"
+    },
+    {
+      "originalPath": "/tmp/ai-accepted-destinations-r8/candidate/shared/story.js",
+      "member": "original-agent-fixture-migration/candidate/shared/story.js",
+      "bytes": 3738,
+      "sha256": "fa33e53e61a7d636959dd1d1916d7b5c3359db72b523dc730b16ceab525d170f"
+    },
+    {
+      "originalPath": "/tmp/ai-accepted-destinations-r8/candidate/shared/structures.js",
+      "member": "original-agent-fixture-migration/candidate/shared/structures.js",
+      "bytes": 4029,
+      "sha256": "933b100a9a4c19a0285f5b137cd29b46e44271776f031045a537009e0176e5a2"
+    },
+    {
+      "originalPath": "/tmp/ai-accepted-destinations-r8/candidate/shared/tutorial.js",
+      "member": "original-agent-fixture-migration/candidate/shared/tutorial.js",
+      "bytes": 6342,
+      "sha256": "3aaa5e6affd936dae0ae4741d5173eee5d006132a1705d4b553097d3d8fabf42"
+    },
+    {
+      "originalPath": "/tmp/ai-accepted-destinations-r8/candidate/shared/vehicle-motion.js",
+      "member": "original-agent-fixture-migration/candidate/shared/vehicle-motion.js",
+      "bytes": 12185,
+      "sha256": "05bd1e985a91b3268065a0a84ec4b9aee2c1079aafc4054c38a70677dfb1493b"
+    },
+    {
+      "originalPath": "/tmp/ai-accepted-destinations-r8/candidate/shared/weather.js",
+      "member": "original-agent-fixture-migration/candidate/shared/weather.js",
+      "bytes": 7228,
+      "sha256": "faad682d6e40fdc6629533f684e1caeec5c9ae49e26e9922651773727c0bc1e5"
+    },
+    {
+      "originalPath": "/tmp/ai-accepted-destinations-r8/candidate/shared/world-conquest.js",
+      "member": "original-agent-fixture-migration/candidate/shared/world-conquest.js",
+      "bytes": 7203,
+      "sha256": "1c251e6d340586d7fb367d4f47938d5898f5239824dac46f054880a3d897aeef"
+    },
+    {
+      "originalPath": "/tmp/ai-accepted-destinations-r8/candidate/shared/world-landforms.js",
+      "member": "original-agent-fixture-migration/candidate/shared/world-landforms.js",
+      "bytes": 6645,
+      "sha256": "ecb6916db6785484f8bb813f7745c8c48ccea370f084fea290ff736edc968e34"
+    },
+    {
+      "originalPath": "/tmp/ai-accepted-destinations-r8/candidate/shared/world-layers.js",
+      "member": "original-agent-fixture-migration/candidate/shared/world-layers.js",
+      "bytes": 6770,
+      "sha256": "f51f34b99946192107ada9a7077d787761c1a9cb6b1e316d7b7e243dd273bb22"
+    },
+    {
+      "originalPath": "/tmp/ai-accepted-destinations-r8/candidate/shared/world-roads.js",
+      "member": "original-agent-fixture-migration/candidate/shared/world-roads.js",
+      "bytes": 6491,
+      "sha256": "5fb243b63fa9e2c082135b5b093ee753e8a92c197a076d78067e53f08f1885db"
+    },
+    {
+      "originalPath": "/tmp/ai-accepted-destinations-r8/candidate/shared/world-territories.js",
+      "member": "original-agent-fixture-migration/candidate/shared/world-territories.js",
+      "bytes": 4110,
+      "sha256": "bb33a449d7f2c4d657dbceab8dbd0171eb8ccaa7494cedf9e18707822d8f717f"
+    },
+    {
+      "originalPath": "/tmp/ai-accepted-destinations-r8/candidate/test-engine-ai-accepted-destinations.js",
+      "member": "original-agent-fixture-migration/candidate/test-engine-ai-accepted-destinations.js",
+      "bytes": 9293,
+      "sha256": "8b2cffd8f6e074510b9dc4da53044af6289239053879f5fec93e0f46cae6035a"
+    },
+    {
+      "originalPath": "/tmp/ai-accepted-destinations-r8/declaration.json",
+      "member": "original-agent-fixture-migration/declaration.json",
+      "bytes": 493,
+      "sha256": "b489fe41315aaf12882570038fd9f3031ee35e4858db2737e00a40cc08779889"
+    },
+    {
+      "originalPath": "/tmp/ai-accepted-destinations-r8/final-native-proof.json",
+      "member": "original-agent-fixture-migration/final-native-proof.json",
+      "bytes": 411662,
+      "sha256": "dc8849103cd020e9042d7d4a4fb8490c5bb6b45d4258d1904a066e1b3cdb15dd"
+    },
+    {
+      "originalPath": "/tmp/ai-accepted-destinations-r8/final-native-proof.log",
+      "member": "original-agent-fixture-migration/final-native-proof.log",
+      "bytes": 168882,
+      "sha256": "ac8998da87ef2b8247308d70b64170cc22830555f3b16a672c84e52c72050dca"
+    },
+    {
+      "originalPath": "/tmp/ai-accepted-destinations-r8/final-test.log",
+      "member": "original-agent-fixture-migration/final-test.log",
+      "bytes": 568,
+      "sha256": "92712b3e415e2cd6bb32ea609e21e009d394ef1770cf9d3a59f3cce22e02849e"
+    },
+    {
+      "originalPath": "/tmp/ai-accepted-destinations-r8/fixture.patch",
+      "member": "original-agent-fixture-migration/fixture.patch",
+      "bytes": 3132,
+      "sha256": "d08d4b413e686d170cad4f2dbb15c49fe4c3f883eaae1216e3114c0f10e4e394"
+    },
+    {
+      "originalPath": "/tmp/ai-accepted-destinations-r8/original-fixture.js",
+      "member": "original-agent-fixture-migration/original-fixture.js",
+      "bytes": 7989,
+      "sha256": "85fc81c2a08cd9af9907a4e0dc78a78292904f17bafc5c95fd8df181f2bea450"
+    },
+    {
+      "originalPath": "/tmp/ai-accepted-destinations-r8/prose-lint.log",
+      "member": "original-agent-fixture-migration/prose-lint.log",
+      "bytes": 83,
+      "sha256": "9de26fbd97daa374cfe5826f203d7635c8b20e011059d5f6a53bba816050274e"
+    },
+    {
+      "originalPath": "/tmp/ai-accepted-destinations-r8/source-bindings.json",
+      "member": "original-agent-fixture-migration/source-bindings.json",
+      "bytes": 4387,
+      "sha256": "30c9e21599b48bac7a4d6a0587d75994f4fcd6b0b3dc6d21a47b4fed34707061"
+    },
+    {
+      "originalPath": "/tmp/ai-accepted-destinations-r8/test-engine-ai-accepted-destinations.js",
+      "member": "original-agent-fixture-migration/test-engine-ai-accepted-destinations.js",
+      "bytes": 9293,
+      "sha256": "8b2cffd8f6e074510b9dc4da53044af6289239053879f5fec93e0f46cae6035a"
+    },
+    {
+      "originalPath": "/tmp/ai-accepted-destinations-r8/verification.json",
+      "member": "original-agent-fixture-migration/verification.json",
+      "bytes": 743,
+      "sha256": "95dc337dd6bcbcfd7549c1a35d60de0c44ebff9e4a1aa29a94f303e5920b3c43"
+    },
+    {
+      "originalPath": "/tmp/human-ai-r8-accepted-destinations-root/native.log",
+      "member": "independent-ROOT-fixture-check/native.log",
+      "bytes": 568,
+      "sha256": "92712b3e415e2cd6bb32ea609e21e009d394ef1770cf9d3a59f3cce22e02849e"
+    },
+    {
+      "originalPath": "/tmp/human-ai-r8-accepted-destinations-root/receipt.json",
+      "member": "independent-ROOT-fixture-check/receipt.json",
+      "bytes": 1006,
+      "sha256": "3b24fbfd6144cb4a6a0380bfd08d984b967545d8ed1bf5a0265fef33d1e0ca3a"
+    },
+    {
+      "originalPath": "/home/judiazm/.t3/worktrees/ww2-rts/ai-human-commander/test-engine-ai-accepted-destinations.js",
+      "member": "ROOT-check-recorded-source/test-engine-ai-accepted-destinations.js",
+      "bytes": 9293,
+      "sha256": "8b2cffd8f6e074510b9dc4da53044af6289239053879f5fec93e0f46cae6035a"
+    },
+    {
+      "originalPath": "/home/judiazm/.t3/worktrees/ww2-rts/ai-human-commander/shared/ai-hands.js",
+      "member": "ROOT-check-recorded-source/shared/ai-hands.js",
+      "bytes": 70724,
+      "sha256": "d209f6861bf1d4165012372d21398c46985d51e357b79009c5b7e4b8dffbdaa9"
+    },
+    {
+      "originalPath": "/home/judiazm/.t3/worktrees/ww2-rts/ai-human-commander/shared/ai-commander.js",
+      "member": "ROOT-check-recorded-source/shared/ai-commander.js",
+      "bytes": 31105,
+      "sha256": "54ac57367727010017122c1d29c9050890537eced8c9d2b547f84927dc67f0f2"
+    },
+    {
+      "originalPath": "/home/judiazm/.t3/worktrees/ww2-rts/ai-human-commander/shared/ai-priority.js",
+      "member": "ROOT-check-recorded-source/shared/ai-priority.js",
+      "bytes": 11238,
+      "sha256": "8bf45be46b77ac78436356190de8b2b2e26005e65879cf61b0a87f840484dc60"
+    },
+    {
+      "originalPath": "/tmp/r8-inspection-destination-durable-package/accepted-destinations-source-qualification.json",
+      "member": "accepted-destinations-source-qualification.json",
+      "bytes": 709,
+      "sha256": "0d35fd476453b1723b1b8d37b4ca57610202c49631f4fecbb8664d68eda38465"
+    }
+  ],
+  "copiedOriginalBytes": 3004934,
+  "copyAssertions": {
+    "fixtureOnlyNoGameplayChange": true,
+    "allOriginalDirectoryFilesRetained": true,
+    "nativePrefixThroughOriginal380BoundaryRetained": true,
+    "validActor": 8,
+    "paidSelectTick": 396,
+    "paidMoveTick": 400,
+    "ROOTIndependentExitCode": 0,
+    "ROOTRecordedSeconds": 3.0763683319091797,
+    "ROOTBeforeAfterSourceEqual": true,
+    "agentBaselineSharedCopiesMatchImmutableArchive": true
+  },
+  "packagingExecution": "Copying, compression and byte-integrity checks only. No simulation, test, scoring run, staging or commit."
+}

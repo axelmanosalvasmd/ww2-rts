@@ -1,0 +1,22 @@
+--- a/test.js
++++ b/test.js
+@@ -5814,12 +5814,16 @@
+       assert.ok(room.state === 'play' && !room.pause && room.players.every(p => !p.ai), 'a spectator cannot leave for a player, end or pause the match');
+       assert.ok(!last(invite, 'deny'), 'the orders of a spectator are dropped without an answer');
+       await h.tick(); assert.equal(room.game.tick, tick + 1, 'the match runs on');
+-      await ben.close(); await ana.send({ t: 'end' });
++      await ben.close();
++      const beforeEnd = invite.messages.length; await ana.send({ t: 'end' });
++      await invite.wait('lobby', message => message.state === 'lobby', beforeEnd);
+       assert.equal(last(invite, 'lobby').state, 'lobby', 'the spectator is back in the lobby with everyone');
+-      await invite.send({ t: 'sit' });
++      const beforeSit = invite.messages.length; await invite.send({ t: 'sit' });
++      await invite.wait('lobby', message => message.state === 'lobby' && message.spectator === false, beforeSit);
+       assert.equal(last(invite, 'lobby').spectator, false, 'a spectator can take a seat in the lobby');
+       assert.equal(room.players.length, 2, 'the disconnected match seat was freed for the invite');
+-      await invite.send({ t: 'spectate' });
++      const beforeSpectate = invite.messages.length; await invite.send({ t: 'spectate' });
++      await invite.wait('lobby', message => message.state === 'lobby' && message.spectator === true && message.you === -1, beforeSpectate);
+       assert.deepEqual([room.players.length, room.spectators.length, last(invite, 'lobby').you], [1, 1, -1], 'a seated player can step back to watch');
+     });
+     // An all-AI room: the host steps back to watch, still hosts, and the room lives while a spectator is connected.

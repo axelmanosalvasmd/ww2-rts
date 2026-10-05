@@ -1,0 +1,4 @@
+{"treatment":"candidate","level":"easy","seed":8,"status":"exact-prefix-PASS","throughTick":806}
+{"treatment":"candidate","level":"hard","seed":14,"status":"exact-prefix-PASS","throughTick":650}
+{"treatment":"candidate","level":"hard","seed":16,"status":"exact-prefix-PASS","throughTick":768}
+{"status":"PASS","counts":{"base":{},"candidate":{"other":3}},"cases":3,"matches":3}

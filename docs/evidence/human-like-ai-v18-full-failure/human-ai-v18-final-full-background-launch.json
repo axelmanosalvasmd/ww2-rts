@@ -1,0 +1,13 @@
+{
+  "launchedAtUnix": 1791143123.6312287,
+  "supervisorPID": 1694027,
+  "command": [
+    "/usr/bin/python3",
+    "/tmp/human-ai-v18-final-full-finalize.py",
+    "--run-after-root-freeze"
+  ],
+  "cwd": "/home/judiazm/.t3/worktrees/ww2-rts/ai-human-commander",
+  "controllerLog": "/tmp/human-ai-v18-final-full-controller.log",
+  "predeclaredProtocolSHA256": "5b9fcf77cb14ca54a49ddac50f44c86f80d240e4a9355d8a16f411f1300e7fb3",
+  "outerTimeout": null
+}

@@ -1,0 +1,556 @@
+{
+  "verifiedAtUnix": 1791164787.4350047,
+  "archive": "/home/judiazm/.t3/worktrees/ww2-rts/ai-human-commander/docs/evidence/human-like-ai-r8-performance/r8-four-row-and-preflight-failure.tar.gz",
+  "archiveSHA256": "a16c5a04e495715845052638e2ef9add70c351457a4d7ab038eb5fee2028ed23",
+  "originalPayloadCount": 78,
+  "verifiedMembers": [
+    {
+      "member": "original-protocol-and-attempts/human-ai-final-performance-protocol-r8-perf.json",
+      "originalPath": "/tmp/human-ai-final-performance-protocol-r8-perf.json",
+      "sha256": "6dd0f20f59d8060ce1b585f52ab74045e54a1d6addf1118919f25d534999480d",
+      "bytes": 48903,
+      "originalBytesCurrentlyEqual": true
+    },
+    {
+      "member": "original-protocol-and-attempts/human-ai-final-performance-protocol-r8-perf.py",
+      "originalPath": "/tmp/human-ai-final-performance-protocol-r8-perf.py",
+      "sha256": "e7a0148f5c387bab59b4a879dbbe5b664f12011da1f9e0c958d9a36f9bef5a28",
+      "bytes": 23404,
+      "originalBytesCurrentlyEqual": true
+    },
+    {
+      "member": "original-protocol-and-attempts/human-ai-final-performance-protocol-r8-perf.py.diff",
+      "originalPath": "/tmp/human-ai-final-performance-protocol-r8-perf.py.diff",
+      "sha256": "0d33c4616af413f545faf78d6a2343c9ab8834885b431f14e41d673b83c4f13d",
+      "bytes": 7280,
+      "originalBytesCurrentlyEqual": true
+    },
+    {
+      "member": "original-protocol-and-attempts/human-ai-performance-r8-perf-authorization-original.json",
+      "originalPath": "/tmp/human-ai-performance-r8-perf-authorization-original.json",
+      "sha256": "3ea21e61a64607a32d2dbb9af41e2f7d660aba165ff64997f2062028584d03dd",
+      "bytes": 833,
+      "originalBytesCurrentlyEqual": true
+    },
+    {
+      "member": "original-protocol-and-attempts/human-ai-performance-r8-perf-authorization.json",
+      "originalPath": "/tmp/human-ai-performance-r8-perf-authorization.json",
+      "sha256": "c290d49fd7f0ba9e63a8d2f55acfc7998e68488a49a0a88d1b070f952300d099",
+      "bytes": 884,
+      "originalBytesCurrentlyEqual": true
+    },
+    {
+      "member": "original-protocol-and-attempts/human-ai-performance-r8-perf-pause-journal.jsonl",
+      "originalPath": "/tmp/human-ai-performance-r8-perf-pause-journal.jsonl",
+      "sha256": "b60c367cef6892294deefcc164ff33300b90fce582e797facc77c1a6067ccf3b",
+      "bytes": 11703,
+      "originalBytesCurrentlyEqual": true
+    },
+    {
+      "member": "original-protocol-and-attempts/human-ai-performance-r8-perf-pause-plan-original.json",
+      "originalPath": "/tmp/human-ai-performance-r8-perf-pause-plan-original.json",
+      "sha256": "ebee9f2e5cf52545f59691d602517cafe9e3bf4e6d98ad19fbd0251743e3dc11",
+      "bytes": 10558,
+      "originalBytesCurrentlyEqual": true
+    },
+    {
+      "member": "original-protocol-and-attempts/human-ai-performance-r8-perf-pause-plan.json",
+      "originalPath": "/tmp/human-ai-performance-r8-perf-pause-plan.json",
+      "sha256": "aa6979f99b50cdc7ba2c931c63c0c3b61a8e99293d497af84503dce238eeee3c",
+      "bytes": 12130,
+      "originalBytesCurrentlyEqual": true
+    },
+    {
+      "member": "original-protocol-and-attempts/human-ai-performance-r8-perf-predeclared.json",
+      "originalPath": "/tmp/human-ai-performance-r8-perf-predeclared.json",
+      "sha256": "06be6f2dedd45a799aad2337a6322347d96502f7b2aaadcaa2384de7abd67a78",
+      "bytes": 51973,
+      "originalBytesCurrentlyEqual": true
+    },
+    {
+      "member": "original-protocol-and-attempts/human-ai-performance-r8-perf-preregistration-draft.json",
+      "originalPath": "/tmp/human-ai-performance-r8-perf-preregistration-draft.json",
+      "sha256": "6d879275da9b65bd8a64ab375a53009a1cc60556b7c179d95f64f6db02f5c220",
+      "bytes": 29475,
+      "originalBytesCurrentlyEqual": true
+    },
+    {
+      "member": "original-protocol-and-attempts/human-ai-performance-r8-perf-quiet-lease.json",
+      "originalPath": "/tmp/human-ai-performance-r8-perf-quiet-lease.json",
+      "sha256": "8e4f2ff4a41f57093164d3429ea2b8c622ae2d01a411780a35be7b40aa447499",
+      "bytes": 170,
+      "originalBytesCurrentlyEqual": true
+    },
+    {
+      "member": "original-protocol-and-attempts/human-ai-r8-perf-launch-identity-refreshed.json",
+      "originalPath": "/tmp/human-ai-r8-perf-launch-identity-refreshed.json",
+      "sha256": "4165dc117e4ec2d6068cd319896a29569197eed1177a475496c70d135eb31356",
+      "bytes": 410,
+      "originalBytesCurrentlyEqual": true
+    },
+    {
+      "member": "original-protocol-and-attempts/human-ai-r8-perf-launch.json",
+      "originalPath": "/tmp/human-ai-r8-perf-launch.json",
+      "sha256": "04c1640afca59f46c77f58cbcca2ba40bd71f79290807fc05ff0d324e4178677",
+      "bytes": 291,
+      "originalBytesCurrentlyEqual": true
+    },
+    {
+      "member": "original-protocol-and-attempts/human-ai-r8-perf-preflight-failure-descendants.json",
+      "originalPath": "/tmp/human-ai-r8-perf-preflight-failure-descendants.json",
+      "sha256": "e2ba0dbceb048b238b4efe87f9347690499e408167105c2447a5ab16f02c1586",
+      "bytes": 4701,
+      "originalBytesCurrentlyEqual": true
+    },
+    {
+      "member": "original-protocol-and-attempts/human-ai-r8-perf-preparation-proof.json",
+      "originalPath": "/tmp/human-ai-r8-perf-preparation-proof.json",
+      "sha256": "e50fb51284b62fd733d0657f59aad01042e972ab97c56e5d9feb004f6db32895",
+      "bytes": 1055,
+      "originalBytesCurrentlyEqual": true
+    },
+    {
+      "member": "original-protocol-and-attempts/human-ai-r8-perf-preparation-review.md",
+      "originalPath": "/tmp/human-ai-r8-perf-preparation-review.md",
+      "sha256": "618066a383a09c712324c67e47b41f5311573fe1841b5bf91ce18bc2f937bd59",
+      "bytes": 4052,
+      "originalBytesCurrentlyEqual": true
+    },
+    {
+      "member": "original-protocol-and-attempts/human-ai-r8-perf-quiet-wrapper.py",
+      "originalPath": "/tmp/human-ai-r8-perf-quiet-wrapper.py",
+      "sha256": "d77954dddf63ceaa8981bc5761d3010b0021ddd486a3b7127a30c37341aabedd",
+      "bytes": 11153,
+      "originalBytesCurrentlyEqual": true
+    },
+    {
+      "member": "original-protocol-and-attempts/human-ai-r8-perf-quiet-wrapper.py.diff",
+      "originalPath": "/tmp/human-ai-r8-perf-quiet-wrapper.py.diff",
+      "sha256": "d8c11b285b00390f27ed0fbac19e93f96059e3d2f13916c65e13e7086318c4bb",
+      "bytes": 1422,
+      "originalBytesCurrentlyEqual": true
+    },
+    {
+      "member": "original-protocol-and-attempts/human-ai-r8-perf-source-copy-receipt.json",
+      "originalPath": "/tmp/human-ai-r8-perf-source-copy-receipt.json",
+      "sha256": "cedf19d0ef6d0d6f7f374ad8a86750bd5f216fbcfaa09e411d26b5899a8ea7fc",
+      "bytes": 21797,
+      "originalBytesCurrentlyEqual": true
+    },
+    {
+      "member": "original-protocol-and-attempts/human-ai-r8-perf-wrapper-identity-refreshed.log",
+      "originalPath": "/tmp/human-ai-r8-perf-wrapper-identity-refreshed.log",
+      "sha256": "ff5aec0e3cb08cb49168b56454775c7b4a270e9f299667810e2fae1072876257",
+      "bytes": 4925,
+      "originalBytesCurrentlyEqual": true
+    },
+    {
+      "member": "original-protocol-and-attempts/human-ai-r8-perf-wrapper.log",
+      "originalPath": "/tmp/human-ai-r8-perf-wrapper.log",
+      "sha256": "5b572170546dd46674cb74d8afe5c871e9fd321fb4255a47eef667da807501fd",
+      "bytes": 778,
+      "originalBytesCurrentlyEqual": true
+    },
+    {
+      "member": "four-native-rows/human-ai-bench-r8-perf-before.json",
+      "originalPath": "/tmp/human-ai-bench-r8-perf-before.json",
+      "sha256": "59e2a56ad28ae5c03ba6aa5817041eaf9510f00480eabf87528406a838cb4db8",
+      "bytes": 7603,
+      "originalBytesCurrentlyEqual": true
+    },
+    {
+      "member": "four-native-rows/human-ai-bench-r8-perf-before.log",
+      "originalPath": "/tmp/human-ai-bench-r8-perf-before.log",
+      "sha256": "fe0666c85f3867bedd6e24b6178c197c2a2f9e492943fdd3f1c832e75d01dc2e",
+      "bytes": 98,
+      "originalBytesCurrentlyEqual": true
+    },
+    {
+      "member": "four-native-rows/human-ai-bench-r8-perf-after.json",
+      "originalPath": "/tmp/human-ai-bench-r8-perf-after.json",
+      "sha256": "2d291d236d9b60054d35f5467ce1cb1eca382f702e84003e04f0a11366aed5c4",
+      "bytes": 7606,
+      "originalBytesCurrentlyEqual": true
+    },
+    {
+      "member": "four-native-rows/human-ai-bench-r8-perf-after.log",
+      "originalPath": "/tmp/human-ai-bench-r8-perf-after.log",
+      "sha256": "1da21f3c4dd933d5868efc0877314d776416290be78a8daab3eff14b9b073d15",
+      "bytes": 96,
+      "originalBytesCurrentlyEqual": true
+    },
+    {
+      "member": "four-native-rows/human-ai-bench-r8-perf-before-counts.json",
+      "originalPath": "/tmp/human-ai-bench-r8-perf-before-counts.json",
+      "sha256": "4213bd731dc6aae018029fbf7e3102466df38240bc599c1c81c3bde33644c9d9",
+      "bytes": 7730,
+      "originalBytesCurrentlyEqual": true
+    },
+    {
+      "member": "four-native-rows/human-ai-bench-r8-perf-before-counts.log",
+      "originalPath": "/tmp/human-ai-bench-r8-perf-before-counts.log",
+      "sha256": "478382305826bac557ffd6d0426269fdf910b51d28bd5e3c7d98264a3057b820",
+      "bytes": 105,
+      "originalBytesCurrentlyEqual": true
+    },
+    {
+      "member": "four-native-rows/human-ai-bench-r8-perf-after-counts.json",
+      "originalPath": "/tmp/human-ai-bench-r8-perf-after-counts.json",
+      "sha256": "7eb3d2f99a076a09c83a2ba619bacd5a9edf33e99505376a4e761ee0968efb2e",
+      "bytes": 7732,
+      "originalBytesCurrentlyEqual": true
+    },
+    {
+      "member": "four-native-rows/human-ai-bench-r8-perf-after-counts.log",
+      "originalPath": "/tmp/human-ai-bench-r8-perf-after-counts.log",
+      "sha256": "7dd1ba0eccf12ef6cc0124c0c8a65c88dd50d6f36ff8c1c621c5d7420db8f105",
+      "bytes": 103,
+      "originalBytesCurrentlyEqual": true
+    },
+    {
+      "member": "frozen-benchmark-source/client/keys.js",
+      "originalPath": "/tmp/human-ai-perf-r8-perf-frozen/client/keys.js",
+      "sha256": "867e3105b7e4665f8a313c2ab46e23fc3df9407f2163fd6862bb537a01ecd276",
+      "bytes": 7361,
+      "originalBytesCurrentlyEqual": true
+    },
+    {
+      "member": "frozen-benchmark-source/maps/king-of-the-hill.json",
+      "originalPath": "/tmp/human-ai-perf-r8-perf-frozen/maps/king-of-the-hill.json",
+      "sha256": "69e0ac471f65043ff32119c819e859b58cda2291bcec984a415cbbd875eaffe8",
+      "bytes": 36005,
+      "originalBytesCurrentlyEqual": true
+    },
+    {
+      "member": "frozen-benchmark-source/maps/six-fronts.json",
+      "originalPath": "/tmp/human-ai-perf-r8-perf-frozen/maps/six-fronts.json",
+      "sha256": "247228c85e88e76879b4117fd07f143ff38820d93e8a8129175312b3bd376255",
+      "bytes": 47514,
+      "originalBytesCurrentlyEqual": true
+    },
+    {
+      "member": "frozen-benchmark-source/maps/test-arena.json",
+      "originalPath": "/tmp/human-ai-perf-r8-perf-frozen/maps/test-arena.json",
+      "sha256": "44eca010e3c08ecc4a01abfe3c4092415aa5fe25dbd77879978c7ee34a2cc9af",
+      "bytes": 7178,
+      "originalBytesCurrentlyEqual": true
+    },
+    {
+      "member": "frozen-benchmark-source/maps/the-great-bridge.json",
+      "originalPath": "/tmp/human-ai-perf-r8-perf-frozen/maps/the-great-bridge.json",
+      "sha256": "50145f185bef8a946d582c639bb8fa93f22002b711065bb3a1874649157c7c48",
+      "bytes": 26359,
+      "originalBytesCurrentlyEqual": true
+    },
+    {
+      "member": "frozen-benchmark-source/package.json",
+      "originalPath": "/tmp/human-ai-perf-r8-perf-frozen/package.json",
+      "sha256": "38b34423b2e37b851381576f5dd67d9103d951ab7c7ddcf5cacb4112507b34db",
+      "bytes": 211,
+      "originalBytesCurrentlyEqual": true
+    },
+    {
+      "member": "frozen-benchmark-source/server.js",
+      "originalPath": "/tmp/human-ai-perf-r8-perf-frozen/server.js",
+      "sha256": "16004b2b7f3cd427d3fb61750a6a2788f9fe0e7bd8a22c92b4cd01d486677e57",
+      "bytes": 44801,
+      "originalBytesCurrentlyEqual": true
+    },
+    {
+      "member": "frozen-benchmark-source/shared/ai-attention.js",
+      "originalPath": "/tmp/human-ai-perf-r8-perf-frozen/shared/ai-attention.js",
+      "sha256": "a55272249248bf1a7166da3038fa44794d7db3a163089010f6f3b905ccc3405a",
+      "bytes": 31888,
+      "originalBytesCurrentlyEqual": true
+    },
+    {
+      "member": "frozen-benchmark-source/shared/ai-commander.js",
+      "originalPath": "/tmp/human-ai-perf-r8-perf-frozen/shared/ai-commander.js",
+      "sha256": "16538e56be6a730b8f92480cd96e2726a1a1ca35312fc509a4c44011e929fba6",
+      "bytes": 30998,
+      "originalBytesCurrentlyEqual": true
+    },
+    {
+      "member": "frozen-benchmark-source/shared/ai-hands.js",
+      "originalPath": "/tmp/human-ai-perf-r8-perf-frozen/shared/ai-hands.js",
+      "sha256": "d209f6861bf1d4165012372d21398c46985d51e357b79009c5b7e4b8dffbdaa9",
+      "bytes": 70724,
+      "originalBytesCurrentlyEqual": true
+    },
+    {
+      "member": "frozen-benchmark-source/shared/ai-mind.js",
+      "originalPath": "/tmp/human-ai-perf-r8-perf-frozen/shared/ai-mind.js",
+      "sha256": "18bb411cb1d057ce8cffe0b042c21f64b71238ae157b584242df206d708e6b92",
+      "bytes": 19553,
+      "originalBytesCurrentlyEqual": true
+    },
+    {
+      "member": "frozen-benchmark-source/shared/ai-perception.js",
+      "originalPath": "/tmp/human-ai-perf-r8-perf-frozen/shared/ai-perception.js",
+      "sha256": "50e611a932728940c5047a61bf4fd7554c696f93880d7907a952d8b39fdcf3fd",
+      "bytes": 34765,
+      "originalBytesCurrentlyEqual": true
+    },
+    {
+      "member": "frozen-benchmark-source/shared/ai-persona.js",
+      "originalPath": "/tmp/human-ai-perf-r8-perf-frozen/shared/ai-persona.js",
+      "sha256": "34de5882046129d2000e5502e354123786f3ad7b7133f31e93863dcc36ba66cf",
+      "bytes": 3586,
+      "originalBytesCurrentlyEqual": true
+    },
+    {
+      "member": "frozen-benchmark-source/shared/ai-priority.js",
+      "originalPath": "/tmp/human-ai-perf-r8-perf-frozen/shared/ai-priority.js",
+      "sha256": "597c6ae80d69bbe9bb77a794096be4dd98c5f0791cd7da0f7a11359536850ab9",
+      "bytes": 8934,
+      "originalBytesCurrentlyEqual": true
+    },
+    {
+      "member": "frozen-benchmark-source/shared/ai-rng.js",
+      "originalPath": "/tmp/human-ai-perf-r8-perf-frozen/shared/ai-rng.js",
+      "sha256": "2d2f95266eda45ec4fa4862cb01079fc8464a98d8c88fa97ca89b54a5d6f8b90",
+      "bytes": 641,
+      "originalBytesCurrentlyEqual": true
+    },
+    {
+      "member": "frozen-benchmark-source/shared/ai-view.js",
+      "originalPath": "/tmp/human-ai-perf-r8-perf-frozen/shared/ai-view.js",
+      "sha256": "4466958fc4b8e7a5d2f2bcb8dc3814e27c817a7480b0c765aa6ee2a98cbc87f7",
+      "bytes": 13935,
+      "originalBytesCurrentlyEqual": true
+    },
+    {
+      "member": "frozen-benchmark-source/shared/ai.js",
+      "originalPath": "/tmp/human-ai-perf-r8-perf-frozen/shared/ai.js",
+      "sha256": "685c178754646223ba57cbf6b0d795b0676b0a5cba84f51bfdfcae0cd71bc005",
+      "bytes": 91945,
+      "originalBytesCurrentlyEqual": true
+    },
+    {
+      "member": "frozen-benchmark-source/shared/alert-events.js",
+      "originalPath": "/tmp/human-ai-perf-r8-perf-frozen/shared/alert-events.js",
+      "sha256": "df5f0ae98145034e6893ce0b70c2df8938a2d786cc8de37a1fbbc1a9c8b634b0",
+      "bytes": 8219,
+      "originalBytesCurrentlyEqual": true
+    },
+    {
+      "member": "frozen-benchmark-source/shared/command-feedback.js",
+      "originalPath": "/tmp/human-ai-perf-r8-perf-frozen/shared/command-feedback.js",
+      "sha256": "e851bb8f7e48291bd75f09be66fdeecbe7dca68dcc82c839c5c033083ce77a07",
+      "bytes": 303,
+      "originalBytesCurrentlyEqual": true
+    },
+    {
+      "member": "frozen-benchmark-source/shared/debris-motion.js",
+      "originalPath": "/tmp/human-ai-perf-r8-perf-frozen/shared/debris-motion.js",
+      "sha256": "d6a0f330f958ec6d78cfcc7f95b209aa5c099369576bf15dfd1c84770287b3b4",
+      "bytes": 4384,
+      "originalBytesCurrentlyEqual": true
+    },
+    {
+      "member": "frozen-benchmark-source/shared/formation.js",
+      "originalPath": "/tmp/human-ai-perf-r8-perf-frozen/shared/formation.js",
+      "sha256": "265fa63c8c72588f6c8f67057921fd4daa88f96e9d823faa2e41ba10a7dba005",
+      "bytes": 4865,
+      "originalBytesCurrentlyEqual": true
+    },
+    {
+      "member": "frozen-benchmark-source/shared/grid.js",
+      "originalPath": "/tmp/human-ai-perf-r8-perf-frozen/shared/grid.js",
+      "sha256": "30b0a5d67d99e54548d189374684e6b28863ecb7bf92de5221359e5c24fc5afc",
+      "bytes": 2873,
+      "originalBytesCurrentlyEqual": true
+    },
+    {
+      "member": "frozen-benchmark-source/shared/human-input.js",
+      "originalPath": "/tmp/human-ai-perf-r8-perf-frozen/shared/human-input.js",
+      "sha256": "dec728db485690620e527f912fa2a0b491f545c5bbdaafc4dc25fd1e425763ff",
+      "bytes": 7966,
+      "originalBytesCurrentlyEqual": true
+    },
+    {
+      "member": "frozen-benchmark-source/shared/local-traffic.js",
+      "originalPath": "/tmp/human-ai-perf-r8-perf-frozen/shared/local-traffic.js",
+      "sha256": "abad3f6ba310783c3620cec8d599df90dac38bb74eed6509be7d19a8af1490f6",
+      "bytes": 7408,
+      "originalBytesCurrentlyEqual": true
+    },
+    {
+      "member": "frozen-benchmark-source/shared/navigation.js",
+      "originalPath": "/tmp/human-ai-perf-r8-perf-frozen/shared/navigation.js",
+      "sha256": "c277c12f86c9990e281ae28a703dc374126aa1c737d9dc94a300f8d99c898472",
+      "bytes": 19838,
+      "originalBytesCurrentlyEqual": true
+    },
+    {
+      "member": "frozen-benchmark-source/shared/projectiles.js",
+      "originalPath": "/tmp/human-ai-perf-r8-perf-frozen/shared/projectiles.js",
+      "sha256": "ded50f3bcd60cf79238d5dba48236d54e33b2b8032f704813118d1419708ccd7",
+      "bytes": 7769,
+      "originalBytesCurrentlyEqual": true
+    },
+    {
+      "member": "frozen-benchmark-source/shared/scenarios.js",
+      "originalPath": "/tmp/human-ai-perf-r8-perf-frozen/shared/scenarios.js",
+      "sha256": "93f6cda90224a805cc97f42418b2dc11c49e3ea80654b66e0036de55f9b9ba97",
+      "bytes": 16044,
+      "originalBytesCurrentlyEqual": true
+    },
+    {
+      "member": "frozen-benchmark-source/shared/sim.js",
+      "originalPath": "/tmp/human-ai-perf-r8-perf-frozen/shared/sim.js",
+      "sha256": "5e5f4c2d43d048be36d94f0cbcc68fb974c812fc8ab7e071cddb0a59079d89fa",
+      "bytes": 355291,
+      "originalBytesCurrentlyEqual": true
+    },
+    {
+      "member": "frozen-benchmark-source/shared/story.js",
+      "originalPath": "/tmp/human-ai-perf-r8-perf-frozen/shared/story.js",
+      "sha256": "fa33e53e61a7d636959dd1d1916d7b5c3359db72b523dc730b16ceab525d170f",
+      "bytes": 3738,
+      "originalBytesCurrentlyEqual": true
+    },
+    {
+      "member": "frozen-benchmark-source/shared/structures.js",
+      "originalPath": "/tmp/human-ai-perf-r8-perf-frozen/shared/structures.js",
+      "sha256": "933b100a9a4c19a0285f5b137cd29b46e44271776f031045a537009e0176e5a2",
+      "bytes": 4029,
+      "originalBytesCurrentlyEqual": true
+    },
+    {
+      "member": "frozen-benchmark-source/shared/tutorial.js",
+      "originalPath": "/tmp/human-ai-perf-r8-perf-frozen/shared/tutorial.js",
+      "sha256": "3aaa5e6affd936dae0ae4741d5173eee5d006132a1705d4b553097d3d8fabf42",
+      "bytes": 6342,
+      "originalBytesCurrentlyEqual": true
+    },
+    {
+      "member": "frozen-benchmark-source/shared/vehicle-motion.js",
+      "originalPath": "/tmp/human-ai-perf-r8-perf-frozen/shared/vehicle-motion.js",
+      "sha256": "05bd1e985a91b3268065a0a84ec4b9aee2c1079aafc4054c38a70677dfb1493b",
+      "bytes": 12185,
+      "originalBytesCurrentlyEqual": true
+    },
+    {
+      "member": "frozen-benchmark-source/shared/weather.js",
+      "originalPath": "/tmp/human-ai-perf-r8-perf-frozen/shared/weather.js",
+      "sha256": "faad682d6e40fdc6629533f684e1caeec5c9ae49e26e9922651773727c0bc1e5",
+      "bytes": 7228,
+      "originalBytesCurrentlyEqual": true
+    },
+    {
+      "member": "frozen-benchmark-source/shared/world-conquest.js",
+      "originalPath": "/tmp/human-ai-perf-r8-perf-frozen/shared/world-conquest.js",
+      "sha256": "1c251e6d340586d7fb367d4f47938d5898f5239824dac46f054880a3d897aeef",
+      "bytes": 7203,
+      "originalBytesCurrentlyEqual": true
+    },
+    {
+      "member": "frozen-benchmark-source/shared/world-landforms.js",
+      "originalPath": "/tmp/human-ai-perf-r8-perf-frozen/shared/world-landforms.js",
+      "sha256": "ecb6916db6785484f8bb813f7745c8c48ccea370f084fea290ff736edc968e34",
+      "bytes": 6645,
+      "originalBytesCurrentlyEqual": true
+    },
+    {
+      "member": "frozen-benchmark-source/shared/world-layers.js",
+      "originalPath": "/tmp/human-ai-perf-r8-perf-frozen/shared/world-layers.js",
+      "sha256": "f51f34b99946192107ada9a7077d787761c1a9cb6b1e316d7b7e243dd273bb22",
+      "bytes": 6770,
+      "originalBytesCurrentlyEqual": true
+    },
+    {
+      "member": "frozen-benchmark-source/shared/world-roads.js",
+      "originalPath": "/tmp/human-ai-perf-r8-perf-frozen/shared/world-roads.js",
+      "sha256": "5fb243b63fa9e2c082135b5b093ee753e8a92c197a076d78067e53f08f1885db",
+      "bytes": 6491,
+      "originalBytesCurrentlyEqual": true
+    },
+    {
+      "member": "frozen-benchmark-source/shared/world-territories.js",
+      "originalPath": "/tmp/human-ai-perf-r8-perf-frozen/shared/world-territories.js",
+      "sha256": "bb33a449d7f2c4d657dbceab8dbd0171eb8ccaa7494cedf9e18707822d8f717f",
+      "bytes": 4110,
+      "originalBytesCurrentlyEqual": true
+    },
+    {
+      "member": "frozen-benchmark-source/tickmeter.js",
+      "originalPath": "/tmp/human-ai-perf-r8-perf-frozen/tickmeter.js",
+      "sha256": "4687535fa1d155e88648610230edda26df2fc60eb2bae017240a0020b2ce0d92",
+      "bytes": 2198,
+      "originalBytesCurrentlyEqual": true
+    },
+    {
+      "member": "frozen-benchmark-source/tools/ai-screen-v1-oracle-provenance.json",
+      "originalPath": "/tmp/human-ai-perf-r8-perf-frozen/tools/ai-screen-v1-oracle-provenance.json",
+      "sha256": "7d6de7111625c96649ab2d80e3d2cb7cb4510a3dc6ec407dfc85ba3e0a797400",
+      "bytes": 576,
+      "originalBytesCurrentlyEqual": true
+    },
+    {
+      "member": "frozen-benchmark-source/tools/ai-screen-v1-oracle.js",
+      "originalPath": "/tmp/human-ai-perf-r8-perf-frozen/tools/ai-screen-v1-oracle.js",
+      "sha256": "6b3894b551f3bf9151372b048b2efc77ffc86a6a173d0871278b27417358b398",
+      "bytes": 28180,
+      "originalBytesCurrentlyEqual": true
+    },
+    {
+      "member": "frozen-benchmark-source/tools/bench-engine-counts.mjs",
+      "originalPath": "/tmp/human-ai-perf-r8-perf-frozen/tools/bench-engine-counts.mjs",
+      "sha256": "9dfbfe81f500da9298058f286405925a85345c5c372efb4ce583c137ada0691c",
+      "bytes": 32486,
+      "originalBytesCurrentlyEqual": true
+    },
+    {
+      "member": "frozen-benchmark-source/tools/bench-engine.mjs",
+      "originalPath": "/tmp/human-ai-perf-r8-perf-frozen/tools/bench-engine.mjs",
+      "sha256": "4e84f2b7f86009b9ee47585bc6fc592b50defc2cea0cc1d9cc484ed85d0568be",
+      "bytes": 32433,
+      "originalBytesCurrentlyEqual": true
+    },
+    {
+      "member": "frozen-benchmark-source/tools/bench.mjs",
+      "originalPath": "/tmp/human-ai-perf-r8-perf-frozen/tools/bench.mjs",
+      "sha256": "0c026604acaba5ec8f477080b83a948e901d4724c8bf06d325d334a1b244b49d",
+      "bytes": 8183,
+      "originalBytesCurrentlyEqual": true
+    },
+    {
+      "member": "frozen-benchmark-source/tools/json-stream.mjs",
+      "originalPath": "/tmp/human-ai-perf-r8-perf-frozen/tools/json-stream.mjs",
+      "sha256": "34f01a09d4996f356a3dafc61084aae27a4bf18cd8e6b63b2fda9e95c5168798",
+      "bytes": 9588,
+      "originalBytesCurrentlyEqual": true
+    },
+    {
+      "member": "frozen-benchmark-source/tools/legacy-ai/ai-mind.js",
+      "originalPath": "/tmp/human-ai-perf-r8-perf-frozen/tools/legacy-ai/ai-mind.js",
+      "sha256": "c2941813a4fb6d655a50b579270e5887723cfc42ea18c9d767735904c78c2d54",
+      "bytes": 17983,
+      "originalBytesCurrentlyEqual": true
+    },
+    {
+      "member": "frozen-benchmark-source/tools/legacy-ai/ai-view.js",
+      "originalPath": "/tmp/human-ai-perf-r8-perf-frozen/tools/legacy-ai/ai-view.js",
+      "sha256": "c8e5332611ec5d18d5f7b0ab9093c30df5006a6f566c106a312a64900be17d5f",
+      "bytes": 11525,
+      "originalBytesCurrentlyEqual": true
+    },
+    {
+      "member": "frozen-benchmark-source/tools/legacy-ai/ai.js",
+      "originalPath": "/tmp/human-ai-perf-r8-perf-frozen/tools/legacy-ai/ai.js",
+      "sha256": "49575f9089365e13592a804b852b8eeec8c1dcc96bd64d236eaf3757904bcf4d",
+      "bytes": 64127,
+      "originalBytesCurrentlyEqual": true
+    },
+    {
+      "member": "frozen-benchmark-source/tools/legacy-ai/provenance.json",
+      "originalPath": "/tmp/human-ai-perf-r8-perf-frozen/tools/legacy-ai/provenance.json",
+      "sha256": "dc60cceedaf44362e4ee8042b204544f3e9e0e312abf831218af827a2105e55e",
+      "bytes": 1048,
+      "originalBytesCurrentlyEqual": true
+    }
+  ],
+  "unresolved": [],
+  "allPayloadsVerified": true
+}

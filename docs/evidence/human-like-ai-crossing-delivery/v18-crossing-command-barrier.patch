@@ -1,0 +1,14 @@
+--- a/test-engine-acceptance.js
++++ b/test-engine-acceptance.js
+@@ -253,6 +253,11 @@
+     }
+     await tick(8);
+     await left.send({ t: 'move', orders: orders[0] }); await right.send({ t: 'move', orders: orders[1] });
++    for (const seat of [left, right]) {
++      const after = seat.messages.length, c = `crossing-command-barrier-${seat.token}`;
++      await seat.send({ t: 'ping', c });
++      assert.equal((await seat.wait('pong', after)).c, c, 'the ordered WebSocket reply confirms the preceding crossing order was handled');
++    }
+     await tick(800);
+     for (const [id, target] of targets) {
+       const current = row(target.owner === 0 ? left : right, id);
