@@ -5,6 +5,8 @@ AI-vs-AI runs (see DESIGN.md for the balance log). Add new entries under **Unrel
 
 ## Unreleased
 
+### 2026-10-05: Windows naval source fingerprints (`d8bda15`)
+
 - Fixed naval asset checks rejecting unchanged model sources on Windows because of line endings. Export and
   validation now use the same source fingerprints on Windows and Unix; real source edits still invalidate models.
 
