@@ -105,6 +105,8 @@ const jobsOf = (s, id) => s.productionJobs.find(row => row[0] === id)?.[1] ?? []
     constructor() { this.children = []; this.style = {}; this.attrs = {}; this.dataset = {}; this.events = {}; }
     append(...children) { for (const child of children) { child.parent = this; this.children.push(child); } }
     prepend(child) { child.parent = this; this.children.unshift(child); }
+    insertBefore(child, before) { child.parent = this; const i = this.children.indexOf(before); if (i < 0) this.children.push(child); else this.children.splice(i, 0, child); }
+    get nextSibling() { return this.parent?.children[this.parent.children.indexOf(this) + 1] ?? null; }
     replaceChildren(...children) { this.children = []; this.append(...children); }
     remove() { if (this.parent) this.parent.children = this.parent.children.filter(child => child !== this); }
     setAttribute(key, value) { this.attrs[key] = value; }
@@ -112,13 +114,13 @@ const jobsOf = (s, id) => s.productionJobs.find(row => row[0] === id)?.[1] ?? []
     getBoundingClientRect() { return { width: 200, right: 1000, top: 500 }; }
   }
   const saved = Object.fromEntries(['document', 'performance', 'addEventListener', 'innerWidth', 'innerHeight'].map(key => [key, globalThis[key]]));
-  const box = new Element(), mm = new Element(), jumps = []; let clockMs = 0, sounds = 0;
-  Object.assign(globalThis, { document: { getElementById: id => id === 'alerts' ? box : mm, createElement: () => new Element() }, performance: { now: () => clockMs }, addEventListener() {}, innerWidth: 1200, innerHeight: 800 });
+  const box = new Element(), mm = new Element(), top = new Element(), jumps = []; let clockMs = 0, sounds = 0;
+  Object.assign(globalThis, { document: { getElementById: id => ({ alerts: box, minimap: mm, top })[id] ?? null, createElement: () => new Element() }, performance: { now: () => clockMs }, addEventListener() {}, innerWidth: 1200, innerHeight: 800 });
   const { audio } = await import('./client/audio.js'), savedAlert = audio.alert; audio.alert = () => sounds++;
   try {
     const source = readFileSync(new URL('./client/alerts.js', import.meta.url), 'utf8').replace(/from '([^']+)'/g, (_, path) => `from '${path.startsWith('/shared/') ? new URL('.' + path, import.meta.url) : new URL('./client/' + path.slice(2), import.meta.url)}'`);
     const { alerts } = await import('data:text/javascript;base64,' + Buffer.from(source).toString('base64'));
-    alerts.init({ me: () => 0, friend: slot => slot === 0, jump: (x, z) => jumps.push([x, z]), pointPos: () => ({ x: 90, z: 100 }), onScreen: () => false });
+    alerts.init({ me: () => 0, friend: slot => slot === 0, jump: (x, z) => jumps.push([x, z]), pointPos: () => ({ x: 90, z: 100 }), onScreen: () => false, home: () => ({ x: 0, z: 50 }), unitName: type => UNITS[type].name });
     alerts.startMatch('adapter-a'); alerts.push('pointLost', 20, 30, 'Point lost');
     assert.equal(sounds, 1); clockMs = 9000; alerts.frame(); assert.deepEqual(alerts.lines, []);
     alerts.navigate(1); assert.deepEqual(jumps, [[20, 30]]); assert.equal(sounds, 1, 'history revisit never repeats sound');
@@ -128,6 +130,41 @@ const jobsOf = (s, id) => s.productionJobs.find(row => row[0] === id)?.[1] ?? []
     alerts.snapshot(next, prev); assert.equal(alerts.history.length, 2, 'duplicate snapshot cannot repeat retained events');
     alerts.snapshot({ ...next, tick: 80 }, null); assert.equal(alerts.history.length, 2, 'reconnect baseline cannot clear delivered entries');
     alerts.startMatch('adapter-b'); assert.equal(alerts.history.length, 0);
+    alerts.push('unitLost', 40, 50, 'Light Tank lost');
+    const lossBox = box.children.find(el => el.id === 'lossAlerts');
+    assert.ok(lossBox?.children.length, 'a unit loss appears in the right-side alert stack');
+    assert.equal(top.children.length, 0, 'loss notices leave the center HUD clear');
+    const notice = lossBox.children[0];
+    assert.equal(notice.children[0].textContent, 'Unit lost');
+    assert.equal(notice.children[1].textContent, 'Light Tank lost');
+    for (let n = 0; n < 6; n++) alerts.push('event', 80 + n, 90, `Tip ${n}`);
+    assert.equal(box.children[0], lossBox, 'loss notices remain above routine tips on the right');
+    assert.ok(alerts.lines.includes('Light Tank lost'), 'routine messages cannot evict a loss notice');
+    assert.deepEqual(alerts.newest(), { x: 40, z: 50 }, 'Space prioritizes the visible unit loss over tips');
+    notice.onkeydown({ code: 'Enter', preventDefault() {}, stopPropagation() {} });
+    assert.deepEqual(jumps.at(-1), [40, 50], 'keyboard activation jumps to the loss location');
+    clockMs += 9000; alerts.frame();
+    assert.ok(alerts.lines.includes('Light Tank lost'), 'a loss stays readable longer than six seconds');
+    clockMs += 3100; alerts.frame();
+    assert.ok(!alerts.lines.includes('Light Tank lost'), 'loss notices expire after twelve seconds');
+    assert.deepEqual(alerts.newest(), { x: 85, z: 90 }, 'Space returns to routine alerts when the loss expires');
+    alerts.push('unitLost', 10, 20, 'Rifle Squad lost');
+    alerts.push('unitLost', 30, 40, 'Medium Tank lost');
+    alerts.push('unitLost', 50, 60, 'Churchill lost');
+    assert.equal(lossBox.children.length, 2, 'separate losses cannot cover the battlefield with notices');
+    alerts.startMatch('adapter-c');
+    assert.equal(lossBox.children.length, 0, 'a new match clears prominent loss notices too');
+    const unit = (id, x, flags = 0) => [id, 'tank', 0, x, 50, 0, 0, 100, 0, 0, 0, 0, flags];
+    const row = (tick, units, shots = []) => ({ tick, units, points: [], shots });
+    alerts.snapshot(row(40, []), row(20, [unit(1, 40)]));
+    alerts.snapshot(row(60, []), row(40, [unit(2, 45)]));
+    assert.deepEqual(alerts.lines, ['2 units lost'], 'nearby deaths still merge into one prominent notice');
+    assert.equal(lossBox.children.length, 1);
+    alerts.startMatch('adapter-d');
+    alerts.snapshot(row(40, []), row(20, [unit(1, 2, 1)]));
+    assert.deepEqual(alerts.lines, [], 'a retreating unit reaching home is not reported destroyed');
+    alerts.snapshot(row(60, [], [{ t: 2, kill: true }]), row(40, [unit(2, 2, 1)]));
+    assert.equal(lossBox.children.length, 1, 'a confirmed kill still raises a loss notice near home');
   } finally {
     audio.alert = savedAlert;
     for (const [key, value] of Object.entries(saved)) { if (value === undefined) delete globalThis[key]; else globalThis[key] = value; }

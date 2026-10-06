@@ -271,14 +271,21 @@ try {
       const gun = fixtureUnit(g, 0, weaponType, 15, 35), target = fixtureUnit(g, 1, targetType, 53, 35), laneFriend = owned(g, 0, 'rifle');
       place(laneFriend, 35, 35); target.rot = 0; await tick(8);
       const beforeHP = row(host, target.id)[7], friendHP = row(host, laneFriend.id)[7], since = host.messages.length, hiddenSince = distant.messages.length;
-      await host.send({ t: 'attack', ids: [gun.id], target: target.id }); await tick(2);
-      const launch = events(host, since).find(event => event.k === 'flight' && event.kind === weaponType);
+      await host.send({ t: 'attack', ids: [gun.id], target: target.id });
+      // Compressed commands can arrive after the fixture's short settle delay under load.
+      await until(() => gun.attackId === target.id, 'the server accepts the attack before simulation advances');
+      await tick(2);
+      const launch = await until(() => events(host, since).find(event => event.k === 'flight' && event.kind === weaponType), 'the launched flight snapshot reaches its recipient');
       assert.ok(launch?.flight, 'ordinary attack creates an identified authoritative flight');
       assert.equal(row(host, target.id)[7], beforeHP, 'a launched shell causes no pre-arrival damage');
       assert.ok(host.latest('s').flights.some(flight => flight.flight === launch.flight), 'the recipient sees the live flight');
       assert.ok(!distant.latest('s').flights.some(flight => flight.flight === launch.flight), 'an uninformed recipient receives no hidden trajectory');
       await host.send({ t: 'stop', ids: [gun.id] });
-      if (outcome === 'moving') await targetOwner.send({ t: 'move', orders: [[target.id, 53, 60]] });
+      await until(() => gun.attackId === 0, 'the server stops further fire before advancing the flight');
+      if (outcome === 'moving') {
+        await targetOwner.send({ t: 'move', orders: [[target.id, 53, 60]] });
+        await until(() => target.worldGoal?.z === 60, 'the server accepts the evasion order before simulation advances');
+      }
       if (outcome === 'wall') {
         assert.equal(typeof sim.mutateWorldCell, 'function');
         sim.mutateWorldCell(g, 17 * g.w + 17, { object: 'B' });

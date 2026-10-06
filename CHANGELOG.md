@@ -8,6 +8,13 @@ AI-vs-AI runs (see DESIGN.md for the balance log). Add new entries under **Unrel
 - Fixed the Engineers' Build card in Classic and World Conquest showing only an empty "Build" tab after a Conquest
   (or other recruit-bar) match in the same page. The recruit bar's tab layout stayed on and hid every building card.
 
+- Unit losses now appear as larger red notices on the right above the minimap for 12 seconds, with the unit name and a
+  shortcut to look at the loss location. Routine tips stay above the minimap and cannot hide these notices.
+  Space prioritizes a visible loss; nearby losses still combine, and at most two notices show at once.
+  Projectile acceptance checks also wait for compressed commands to arrive before advancing the simulation,
+  preventing intermittent validation failures on busy machines.
+  The full-match AI smoke test uses a fixed seed while retaining its capture, combat and victory checks.
+
 ### 2026-10-05: Windows naval source fingerprints (`d8bda15`)
 
 - Fixed naval asset checks rejecting unchanged model sources on Windows because of line endings. Export and

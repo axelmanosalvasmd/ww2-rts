@@ -4619,20 +4619,24 @@ const aiMap = () => ({ w: 80, h: 80, rows: Array(80).fill('.'.repeat(80)),
 }
 // Three AIs play a full match on the real map: they must capture, fight, and finish.
 {
-  const g = createGame(JSON.parse(readFileSync('maps/default.json', 'utf8')), ['a', 'b', 'c']);
-  let spawned = g.nextId, t0 = performance.now(), capturedAt = 0;
-  for (let i = 0; i < 20 * 60 * 40 && g.winner === null; i++) {
-    for (let s = 0; s < 3; s++) if ((g.tick + s * 13) % 40 === 0) think(g, s);
-    step(g);
-    if (!capturedAt && g.points.every(p => p.owner >= 0)) capturedAt = g.tick / 20;
-  }
-  const secs = g.tick / 20, bought = g.nextId - spawned, dead = g.nextId - 1 - g.units.size;
-  console.log(`AI match: winner ${g.winner} after ${Math.round(secs)}s, all points taken at ${Math.round(capturedAt)}s, ${bought} bought, ${dead} killed, VP ${g.players.map(p => Math.floor(p.vp))}, sim ${Math.round((performance.now() - t0) / g.tick * 1000)}µs/tick`);
-  assert.ok(capturedAt > 0 && capturedAt < 180, 'AIs take every point within 3 minutes');
-  assert.ok(dead >= 5, 'AIs actually fight');
-  assert.notEqual(g.winner, null, 'match ends within 30 minutes');
-  assert.ok(g.story.every(s => s.mpSpent > 0) && g.story.some(s => s.kills > 0 && s.captures > 0), 'the story counts the match');
-  assert.ok(g.timeline.length >= secs / 10, 'and samples it every 10 s');
+  const originalRandom = Math.random;
+  Math.random = aiRandom(617);
+  try {
+    const g = createGame(JSON.parse(readFileSync('maps/default.json', 'utf8')), ['a', 'b', 'c']);
+    let spawned = g.nextId, t0 = performance.now(), capturedAt = 0;
+    for (let i = 0; i < 20 * 60 * 40 && g.winner === null; i++) {
+      for (let s = 0; s < 3; s++) if ((g.tick + s * 13) % 40 === 0) think(g, s);
+      step(g);
+      if (!capturedAt && g.points.every(p => p.owner >= 0)) capturedAt = g.tick / 20;
+    }
+    const secs = g.tick / 20, bought = g.nextId - spawned, dead = g.nextId - 1 - g.units.size;
+    console.log(`AI match: winner ${g.winner} after ${Math.round(secs)}s, all points taken at ${Math.round(capturedAt)}s, ${bought} bought, ${dead} killed, VP ${g.players.map(p => Math.floor(p.vp))}, sim ${Math.round((performance.now() - t0) / g.tick * 1000)}µs/tick`);
+    assert.ok(capturedAt > 0 && capturedAt < 180, 'AIs take every point within 3 minutes');
+    assert.ok(dead >= 5, 'AIs actually fight');
+    assert.notEqual(g.winner, null, 'match ends within 30 minutes');
+    assert.ok(g.story.every(s => s.mpSpent > 0) && g.story.some(s => s.kills > 0 && s.captures > 0), 'the story counts the match');
+    assert.ok(g.timeline.length >= secs / 10, 'and samples it every 10 s');
+  } finally { Math.random = originalRandom; }
 }
 
 // The end of a match (shared/story.js, finish() in sim.js, holdEnding() in server.js): every win records why and where,

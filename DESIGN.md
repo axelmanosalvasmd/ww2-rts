@@ -907,6 +907,14 @@ or big celebratory banners. Corners 0 to 2 px, 1 px hairlines, 13 to 15 px body 
 - As built, slice 2 (alerts): `client/alerts.js` and `client/alerts.css`, worked out client-side from two snapshots in
   a row. "Enemy Air Support incoming" covers the aviation calls too (dive bomber, paratroopers) but not fighter cover;
   your planes count as units for "under attack" and "lost".
+  Since 2026-10-05 unit losses have their own red notices on the right above the minimap and routine alerts.
+  They show a heading, the unit name or grouped loss count, and the camera shortcut for 12 seconds.
+  Two loss notices and four routine notices have independent limits, so tips cannot evict a loss. Nearby losses
+  still merge within two seconds. While losses show, only the two newest routine notices are displayed below
+  them to keep room for the resource controls; history keeps all delivered notices. Space visits the newest
+  visible loss first, then the newest routine alert;
+  clicking or activating a notice visits its own location. Minimap pings, sound and history retain the same
+  loss information. The notices wrap long names, respect reduced motion and clear at the start of a new match.
 - As built, slice 3 (world): `client/light.js` (sun, sky fill, haze, the table and board edge, the far-edge blur and
   the Graphics High / Low button), `client/ground.js` (the painted ground canvas, repainted in tiles when cells
   change), `client/surfaces.js` (textured structure materials) and `client/markers.js` (rings, badges, order lines,
