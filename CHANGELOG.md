@@ -5,14 +5,17 @@ AI-vs-AI runs (see DESIGN.md for the balance log). Add new entries under **Unrel
 
 ## Unreleased
 
+- Fixed the Engineers' Build card in Classic and World Conquest showing only an empty "Build" tab after a Conquest
+  (or other recruit-bar) match in the same page. The recruit bar's tab layout stayed on and hid every building card.
+
+### 2026-10-06: Tank abilities and Annihilation lag fix (`6ec1a2b`, `3d22e08`)
+
 - Fixed multi-second ping for everyone (host included) in Annihilation and other non-World matches as a match went
   on. The server tick (budget 50 ms) climbed to 47 ms median by minute 6 with only 80 units, so snapshots queued up.
   Cause: the remembered-terrain path view was rebuilt from scratch on every call, and unit traffic and route checks
   call it per unit several times a tick. It is now built once per tick (or when terrain or vision
   changes). Headless 4-AI Annihilation on the default map, with the in-progress logistics and movement work loaded:
   step 50 to 83 ms per tick at minute 5, now 12 to 22 ms.
-- Fixed the Engineers' Build card in Classic and World Conquest showing only an empty "Build" tab after a Conquest
-  (or other recruit-bar) match in the same page. The recruit bar's tab layout stayed on and hid every building card.
 
 - Only the Light Tank and the Armored Car lay smoke now. The heavier tanks get their own abilities instead:
   - Medium Tank, HE Shell: fires a high-explosive round at a spot up to 38 m away (blast 5 m, kills about two men of
@@ -22,6 +25,7 @@ AI-vs-AI runs (see DESIGN.md for the balance log). Add new entries under **Unrel
     the squads in them (about three men of a squad). 45 s cooldown.
   The shells fly flat from the turret instead of being lobbed like a grenade. The AI now loads AP rounds against any
   vehicle, not only Light Tanks.
+
 ### 2026-10-06: Horde Kaiju boss (`cedf7ba`)
 
 - Horde has a boss. Every tenth Wave a Kaiju walks on with the rest: a 17 m atomic lizard with glowing back
