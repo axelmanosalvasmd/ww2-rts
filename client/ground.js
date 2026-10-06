@@ -151,7 +151,7 @@ function cellAttrs(S, grid) {
   const scar = new Uint8Array(n); // 0 none, 1 shell or burnt, 2 rubble. The base material stays ordinary ground.
   const at = (x, y) => grid[y]?.[x];
   for (let y = 0; y < h; y++) for (let x = 0; x < w; x++) {
-    const i = y * w + x, ch = grid[y][x], L = levelOf(map.heights?.[y]?.[x] ?? '0');
+    const i = y * w + x, object = grid[y][x], ch = object === 'N' ? S.objectGrid?.[y]?.[x] && S.objectGrid[y][x] !== '.' ? S.objectGrid[y][x] : S.groundGrid?.[y]?.[x] ?? '.' : object, L = levelOf(map.heights?.[y]?.[x] ?? '0');
     const st = S.state ? S.state[i] : startState(ch, i), worn = st & 3;
     lev[i] = L;
     let p = GRASS, s = DIRT, a = 0;
@@ -526,7 +526,7 @@ function overlays(S, c, cx0, cy0, cx1, cy1) {
     c.strokeStyle = '#2b2218'; c.lineWidth = P * 0.5; c.stroke();
     c.strokeStyle = 'rgba(128, 102, 66, 0.5)'; c.lineWidth = Math.max(1, P * 0.07); c.stroke(); // duckboards
   }
-  // contours: marching squares over the cell-center levels, one line per half level, clamped past the map edge
+  // Keep contour ink near true cliffs. Ordinary ramps use their geometry and slope shading.
   const lv = (x, y) => lev[Math.min(h - 1, Math.max(0, y)) * w + Math.min(w - 1, Math.max(0, x))];
   c.beginPath();
   let any = false;
@@ -534,6 +534,7 @@ function overlays(S, c, cx0, cy0, cx1, cy1) {
     const a = lv(x, y), b = lv(x + 1, y), cc = lv(x + 1, y + 1), d = lv(x, y + 1);
     const lo = Math.min(a, b, cc, d), hi = Math.max(a, b, cc, d);
     if (lo === hi) continue;
+    if (Math.max(Math.abs(a - b), Math.abs(b - cc), Math.abs(cc - d), Math.abs(d - a)) < 2) continue;
     const ox = (x + 0.5) * P, oy = (y + 0.5) * P;
     for (let t = lo + 0.5; t < hi; t++) {
       // crossing points on the top, right, bottom and left edges of the square
@@ -714,7 +715,7 @@ export function createGround(map, renderer, { frames = null, budgetMs = 8, tiles
   S.map = map; S.renderer = renderer; S.fields = fieldsOf(map);
   S.repaint = () => fullPaint(S);
   if (typeof window !== 'undefined') window.__ground = S; // debug handle, like window.__game
-  return { canvas: S.canvas, ctx: S.ctx, tex: S.tex, px: P, material: S.material, paint: (grid, state) => { S.state = state; paint(S, grid); },
+  return { canvas: S.canvas, ctx: S.ctx, tex: S.tex, px: P, material: S.material, paint: (grid, state, groundGrid, objectGrid) => { S.state = state; S.groundGrid = groundGrid; S.objectGrid = objectGrid; paint(S, grid); },
     isRoad: (x, y) => x >= 0 && y >= 0 && x < S.w && y < S.h && S.attrs?.prim[y * S.w + x] === ROAD, loading,
     cells: () => S.attrs, version: () => S.version ?? 0, dispose: () => { if (S.owner === owner) { cancelPaint(S); S.attrs = null; } } };
 }

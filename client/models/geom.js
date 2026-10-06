@@ -8,9 +8,9 @@
 // or with a paint to tint it. Plain shapes take their paint from part() like the built-in boxes.
 // What a part is made of (painted armor, rubber, wood...) rides along the same way in a 'matId' attribute: see
 // MATS below. wheel() and track() tag their rubber and track links themselves.
-// Axes follow the unit models: +x forward, +y up. Only 'three' is imported, so the browser and the Node tests
-// load this file the same way.
+// Axes follow the unit models: +x forward, +y up. The browser and Node tests share these geometry helpers.
 import * as THREE from 'three';
+import { mergeTracks, applyTracks, scaleTracks } from './track-data.js';
 
 // ---------------------------------------------------------------- materials
 
@@ -20,7 +20,7 @@ import * as THREE from 'three';
 // The per-vertex 'matId' attribute holds the index here, PLAIN or UNSET. merge() items take `mat` (a name) for
 // the vertices their shape left UNSET, so a wheel keeps its rubber tire whatever its disc is made of; tag() sets
 // every vertex. mergeParts in client/unit-models.js works the same way with part(..., mat).
-export const MATS = ['armor-paint', 'cast-armor', 'gunmetal', 'track-steel', 'rubber', 'wood', 'canvas', 'wool', 'leather', 'aluminum', 'aircraft-paint', 'mud'];
+export const MATS = ['armor-paint', 'cast-armor', 'gunmetal', 'track-steel', 'rubber', 'wood', 'canvas', 'wool', 'leather', 'aluminum', 'aircraft-paint', 'mud', 'asphalt', 'concrete'];
 export const PLAIN = -1, UNSET = -2;
 // the id of a material name (null or undefined: UNSET); unknown names throw, so a typo shows up at once
 export function matId(name) {
@@ -38,6 +38,23 @@ export function tag(geo, mat) {
 }
 // a vertex's material id with any baked grime (the fraction mergeParts adds) dropped
 export const baseMat = (v) => Math.floor(v + 0.25);
+
+// A wheel's authored axle is z through the origin. Radius zero leaves a vertex fixed.
+export function tagWheel(geo, radius) {
+  const g = geo.clone(), pivots = new Float32Array(g.attributes.position.count * 4);
+  for (let i = 3; i < pivots.length; i += 4) pivots[i] = radius;
+  g.setAttribute('wheelPivot', new THREE.BufferAttribute(pivots, 4));
+  return g;
+}
+
+// BufferGeometry.scale transforms positions and normals, so scale wheel centers and radii alongside it.
+export function scaleWheelPivots(geo, scale) {
+  const pivots = geo.attributes.wheelPivot;
+  if (pivots) for (let i = 0; i < pivots.count; i++) {
+    pivots.setXYZW(i, pivots.getX(i) * scale, pivots.getY(i) * scale, pivots.getZ(i) * scale, pivots.getW(i) * Math.abs(scale));
+  }
+  return scaleTracks(geo, scale);
+}
 
 const TAU = Math.PI * 2;
 const v3 = (p) => (p.isVector3 ? p.clone() : new THREE.Vector3(p[0], p[1], p[2]));
@@ -138,17 +155,23 @@ function combine(items, colored) {
   for (const { geo } of parts) { const c = geo.attributes.position.count; nv += c; ni += geo.index ? geo.index.count : c; }
   const tagged = colored || parts.some((p) => p.mat != null || p.geo.attributes.matId);
   const pos = new Float32Array(nv * 3), nor = new Float32Array(nv * 3), col = colored ? new Float32Array(nv * 3) : null, mat = tagged ? new Float32Array(nv) : null;
+  const wheels = parts.some(p => p.geo.attributes.wheelPivot) ? new Float32Array(nv * 4) : null;
   const idx = nv > 65535 ? new Uint32Array(ni) : new Uint16Array(ni), nm = new THREE.Matrix3(), t = new THREE.Vector3(), c = new THREE.Color(), one = new THREE.Matrix4();
   let vo = 0, io = 0;
   for (const p of parts) {
     const m = p.matrix ?? p.m ?? one, P = p.geo.attributes.position, N = p.geo.attributes.normal, C = p.geo.attributes.color, I = p.geo.index, base = tint(p.color);
-    const M = p.geo.attributes.matId, fill = matId(p.mat);
+    const M = p.geo.attributes.matId, fill = matId(p.mat), W = p.geo.attributes.wheelPivot;
+    const wheelScale = W ? Math.hypot(m.elements[0], m.elements[1], m.elements[2]) : 1;
     nm.getNormalMatrix(m);
     for (let i = 0; i < P.count; i++) {
       t.fromBufferAttribute(P, i).applyMatrix4(m).toArray(pos, (vo + i) * 3);
       t.fromBufferAttribute(N, i).applyMatrix3(nm).normalize().toArray(nor, (vo + i) * 3);
       if (col) { c.copy(base); if (C) { c.r *= C.getX(i); c.g *= C.getY(i); c.b *= C.getZ(i); } c.toArray(col, (vo + i) * 3); }
       if (mat) { const own = M ? M.getX(i) : UNSET; mat[vo + i] = baseMat(own) === UNSET ? fill : own; }
+      if (wheels && W && W.getW(i) > 0) {
+        t.set(W.getX(i), W.getY(i), W.getZ(i)).applyMatrix4(m).toArray(wheels, (vo + i) * 4);
+        wheels[(vo + i) * 4 + 3] = W.getW(i) * wheelScale;
+      }
     }
     const flip = m.determinant() < 0, n = I ? I.count : P.count;
     for (let i = 0; i < n; i += 3) {
@@ -162,6 +185,8 @@ function combine(items, colored) {
   g.setAttribute('normal', new THREE.BufferAttribute(nor, 3));
   if (col) g.setAttribute('color', new THREE.BufferAttribute(col, 3));
   if (mat) g.setAttribute('matId', new THREE.BufferAttribute(mat, 1));
+  if (wheels) g.setAttribute('wheelPivot', new THREE.BufferAttribute(wheels, 4));
+  applyTracks(g, mergeTracks(parts));
   g.setIndex(new THREE.BufferAttribute(idx, 1));
   g.computeBoundingSphere();
   return g;

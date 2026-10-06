@@ -1,0 +1,20 @@
+{
+  "image_path": "/Users/judiazm/Projects/ww2-rts/art/model-reference-2026-10-03/painted-steel-albedo.png",
+  "prompt": "One seamless tileable texture image, square, edge to edge uniform grayscale-neutral painted steel albedo for runtime tinting of WWII armored vehicles. Completely neutral gray color without green or blue tint. Very restrained fine painted-metal grain, sparse tiny soft scratches and micro-wear, modest low contrast suitable for small game models. Flat diffuse albedo only: no baked directional lighting, no shadows, no highlights, no vignette, no gradients. No panels, seams, rivets, symbols, text, identifiable shapes, large dirt patches or rust patches. The entire image is one continuous subtle material texture and its opposite edges should tile seamlessly. Medium gray average value.",
+  "revised_prompt": "One seamless tileable texture image, square, edge to edge uniform grayscale-neutral painted steel albedo for runtime tinting of WWII armored vehicles. Completely neutral gray color without green or blue tint. Very restrained fine painted-metal grain, sparse tiny soft scratches and micro-wear, modest low contrast suitable for small game models. Flat diffuse albedo only: no baked directional lighting, no shadows, no highlights, no vignette, no gradients. No panels, seams, rivets, symbols, text, identifiable shapes, large dirt patches or rust patches. The entire image is one continuous subtle material texture and its opposite edges should tile seamlessly. Medium gray average value.",
+  "quality": "low",
+  "format": "png",
+  "is_transparent": false,
+  "input_image": null,
+  "ts": "2026-10-03T19:40:37Z",
+  "image_model": "gpt-image-2-codex",
+  "resolved_background": "opaque",
+  "transparency_mode": null,
+  "requested_image_model": null,
+  "resolved_quality": "low",
+  "actual_dimensions": {
+    "width": 1254,
+    "height": 1254
+  },
+  "requested_dimensions": "1024x1024"
+}

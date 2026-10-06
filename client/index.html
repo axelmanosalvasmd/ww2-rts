@@ -65,6 +65,15 @@
   #editor label { display: grid; gap: 3px; }
   .ed-tools { display: grid; grid-template-columns: 1fr 1fr; gap: 4px; }
   .ed-tools button.on { border-color: var(--line-hot); background: rgba(214, 178, 94, 0.16); color: var(--brass); }
+  #edScenario details { border: 1px solid var(--line-soft); padding: 6px; }
+  #edScenario summary { cursor: pointer; font-weight: 600; }
+  #edScenario .scenario-body, #edScenario .scenario-fields { display: grid; gap: 7px; margin-top: 8px; }
+  #edScenario .scenario-body p { margin: 0; }
+  #edScenario .scenario-body > .row > label { flex: 1; }
+  #edScenario .scenario-card { display: grid; gap: 6px; padding: 7px; border: 1px solid var(--line-soft); }
+  #edScenario .scenario-card .row { justify-content: space-between; }
+  #edScenario textarea { width: 100%; resize: vertical; font: 12px/1.4 monospace; color: var(--text); background: var(--cell-lo); border: 1px solid var(--line-soft); padding: 6px; }
+  #edScenario .scenario-advanced { margin-top: 5px; }
 
   /* ---------- lobby: the room form on one gunmetal panel ---------- */
   #overlay { position: fixed; inset: 0; display: grid; place-items: center; background: #16191b; z-index: 10; padding: 16px; }
@@ -227,6 +236,9 @@
   .pt { display: grid; place-items: center; overflow: hidden; color: var(--dim); }
   .pt > img { display: block; width: 100%; height: 100%; object-fit: cover; }
   .pt > .sym { width: 58%; height: 58%; opacity: 0.6; }
+  /* Command Card cards show the unit's silhouette at full strength instead of a 3D render */
+  .uc .pt > .sym { width: 84%; height: 84%; opacity: 1; color: var(--text); }
+  .uc:hover:not(:disabled) .pt > .sym { color: var(--brass); }
 
   /* bottom center: the Command Card, between the bottom-left column and the minimap */
   #buy { position: absolute; bottom: var(--gap); left: calc(var(--left-w) + 2 * var(--gap)); right: calc(var(--mm) + 2 * var(--gap)); width: fit-content; max-width: calc(100vw - var(--left-w) - var(--mm) - 4 * var(--gap)); margin: 0 auto;
@@ -235,6 +247,17 @@
   #buy .grp { min-width: 0; }
   #buy .grp + .grp { border-left: 1px solid var(--line-soft); padding-left: 12px; }
   #buy .hd { display: flex; align-items: center; gap: 5px; }
+  /* the recruit row (outside Classic): the group headers are a row of tabs and only the open group's cards show,
+     on a second row spanning all the tabs. Nothing is open until a tab (or its letter in recruit mode) is picked */
+  #buy.fit { display: grid; grid-template-columns: repeat(var(--ng), auto); column-gap: 4px; row-gap: 6px; align-items: end; }
+  #buy.fit .grp { display: contents; }
+  #buy.fit .grp + .grp { border: 0; padding: 0; }
+  #buy.fit .hd { grid-row: 1; padding: 5px 10px; font: 600 13px var(--type); color: var(--dim); }
+  #buy.fit .hd:hover { color: var(--text); }
+  #buy.fit .grp.open .hd { color: var(--brass); border-color: var(--line-hot); background: rgba(214, 178, 94, 0.1); }
+  #buy.fit .grp:not(.open) .cards { display: none; }
+  #buy.fit .grp.open .cards { grid-row: 2; grid-column: 1 / -1; justify-content: center; }
+  #buy.fit.picked .grp:not(.open) { opacity: 1; }
   #buy .hd .ico { width: 17px; height: 17px; margin: -2px 0; }
   #buy .cards { display: flex; gap: 4px; }
   .uc { width: clamp(80px, 5.9vw, 100px); padding: 0; display: flex; flex-direction: column; align-items: stretch; overflow: hidden; }
@@ -428,6 +451,9 @@
         <dt><kbd>Space</kbd> / <kbd>Shift+Space</kbd></dt><dd>Jump to newest alert or selection / follow selection</dd>
         <dt><kbd>1</kbd>–<kbd>9</kbd></dt><dd>Recall a control group; tap twice to center</dd>
         <dt><kbd>Ctrl+1</kbd>–<kbd>Ctrl+9</kbd></dt><dd>Set a control group; Shift adds to it</dd>
+        <dt><kbd>Alt+1</kbd>–<kbd>Alt+9</kbd></dt><dd>Move selected units to a control group and remove them from other groups</dd>
+        <dt><kbd>Alt+H</kbd></dt><dd>Open or close Alert history</dd>
+        <dt><kbd>Alt+Left</kbd> / <kbd>Alt+Right</kbd></dt><dd>Visit the previous or next Alert at its recorded location</dd>
         <dt><kbd>H</kbd> / <kbd>Shift+H</kbd></dt><dd>Go home in Classic / set army rally point</dd>
         <dt><kbd>Esc</kbd></dt><dd>Clear selection, cancel aiming, or release captured mouse</dd>
       </dl></section>

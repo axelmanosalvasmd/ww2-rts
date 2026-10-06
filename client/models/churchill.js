@@ -14,7 +14,8 @@
 // origin is the turret ring. Drawn in metres from the real vehicle (7.4 m long, 3.25 m wide, 2.75 m tall) and
 // scaled by S into the Tiger's size class. Axes: +x forward, +y up, +z the vehicle's right side, the ground at y = 0.
 import * as THREE from 'three';
-import { merge, mirrorZ, loft, lathe, chamferBox, star, place, ao, xf, tag, matId, UNSET } from './geom.js';
+import { tagTrack } from './track-data.js';
+import { merge, mirrorZ, loft, lathe, chamferBox, star, place, ao, xf, tag, tagWheel, scaleWheelPivots, matId, UNSET } from './geom.js';
 
 const TAU = Math.PI * 2;
 const BOX = new THREE.BoxGeometry(1, 1, 1);
@@ -119,12 +120,15 @@ function bands(list, seg) {
 }
 
 // a road wheel, axle along z, outer face toward +z: rubber tire, dished disc, hub cap
-function roadWheel(R, w, paint, { seg = 10, rim = 0.78, hub = 0.3, spokes = 0, tire = RUBBER, rubber = true } = {}) {
+function roadWheel(R, w, paint, { seg = 28, rim = 0.78, hub = 0.3, spokes = 0, tire = RUBBER, rubber = true } = {}) {
   const h = w / 2, Rr = R * rim, Rh = R * hub, tm = rubber ? 'rubber' : null;
-  return bands([
+  return tagWheel(bands([
     [[R, -h], [R, h * 0.4], tire, null, null, tm], [[R, h * 0.4], [Rr, h], tire, null, null, tm],
-    [[Rr, h], [Rh, h * 0.6], dim(paint, 1.12), spokes ? dim(paint, 0.2) : null, paint], [[Rh, h * 0.6], [0, h * 1.1], dim(paint, 0.85)],
-  ], spokes ? spokes * 2 : seg);
+    [[Rr, h], [Rr * 0.91, h * 1.06], dim(paint, 1.12)],
+    [[Rr * 0.91, h * 1.06], [Rh * 1.3, h * 0.6], paint, spokes ? dim(paint, 0.2) : null, dim(paint, 0.75)],
+    [[Rh * 1.3, h * 0.6], [Rh, h * 1.3], dim(paint, 0.8)],
+    [[Rh, h * 1.3], [Rh * 0.82, h * 1.5], dim(paint, 1.05)], [[Rh * 0.82, h * 1.5], [0, h * 1.5], dim(paint, 0.9)],
+  ], spokes ? Math.max(seg, spokes * 4) : seg), R);
 }
 
 // a drive sprocket, axle along z, outer face toward +z: a toothed plate with worn tooth edges and a hub
@@ -139,7 +143,7 @@ function sprocketWheel(R, w, teeth, paint) {
     F.poly([[p[0], p[1], -h], [q[0], q[1], -h], [q[0], q[1], h], [p[0], p[1], h]], [q[1] - p[1], p[0] - q[0], 0], edge, 'track-steel');
   });
   const hub = dim(paint, 0.7);
-  return merge([F.geometry(), bands([[[R * 0.42, h], [R * 0.3, h * 1.9], hub], [[R * 0.3, h * 1.9], [0, h * 1.9], hub]], 8)]);
+  return tagWheel(merge([F.geometry(), bands([[[R * 0.42, h], [R * 0.3, h * 1.9], hub], [[R * 0.3, h * 1.9], [0, h * 1.9], hub]], 8)]), R);
 }
 
 // The convex outline (counter-clockwise, in xy) around circles [[x, y, r], ...], each grown by d
@@ -175,21 +179,34 @@ function trackBelt(circles, z, width, { thick = 0.12, pitch = 0.17, color = LINK
     const p = loop[a], q = loop[(a + 1) % loop.length], t = (s - len[a]) / Math.max(1e-9, len[a + 1] - len[a]);
     return [p[0] + (q[0] - p[0]) * t, p[1] + (q[1] - p[1]) * t];
   };
-  const F = flat('track-steel'), z0 = z - width / 2, z1 = z + width / 2, h = thick / 2, lit = col(color), dark = dim(color, 0.84), rim = col(edge), rim2 = dim(edge, 0.84), deep = col(back);
+  const F = flat('track-steel'), extra = flat('track-steel'), z0 = z - width / 2, z1 = z + width / 2, h = thick / 2, lit = col(color), dark = dim(color, 0.84), rim = col(edge), rim2 = dim(edge, 0.84), deep = col(back);
   for (let k = 0; k < n; k++) {
     const A = at(k * step + step * 0.03), B = at((k + 1) * step - step * 0.03), A0 = at(k * step), B0 = at((k + 1) * step), l = Math.hypot(B[0] - A[0], B[1] - A[1]);
     const nx = (B[1] - A[1]) / l, ny = (A[0] - B[0]) / l;
     const Ao = [A[0] + nx * h, A[1] + ny * h], Bo = [B[0] + nx * h, B[1] + ny * h], Ai = [A0[0] - nx * h, A0[1] - ny * h], Bi = [B0[0] - nx * h, B0[1] - ny * h];
-    if (ny > -0.85) {
-      F.poly([[Ao[0], Ao[1], z0], [Bo[0], Bo[1], z0], [Bo[0], Bo[1], z1], [Ao[0], Ao[1], z1]], [nx, ny, 0], k % 2 ? lit : dark);
-      // the Churchill's cast links: a raised cross bar on every tread plate
-      const m0 = 0.4, m1 = 0.6, C0 = [Ao[0] + (Bo[0] - Ao[0]) * m0 + nx * 0.02, Ao[1] + (Bo[1] - Ao[1]) * m0 + ny * 0.02], C1 = [Ao[0] + (Bo[0] - Ao[0]) * m1 + nx * 0.02, Ao[1] + (Bo[1] - Ao[1]) * m1 + ny * 0.02];
-      F.poly([[C0[0], C0[1], z0 + 0.03], [C1[0], C1[1], z0 + 0.03], [C1[0], C1[1], z1 - 0.03], [C0[0], C0[1], z1 - 0.03]], [nx, ny, 0], rim);
-    } else F.poly([[Ai[0], Ai[1], z0], [Bi[0], Bi[1], z0], [Bi[0], Bi[1], z1], [Ai[0], Ai[1], z1]], [-nx, -ny, 0], k % 2 ? dark : dim(color, 0.7));
+    F.poly([[Ao[0], Ao[1], z0], [Bo[0], Bo[1], z0], [Bo[0], Bo[1], z1], [Ao[0], Ao[1], z1]], [nx, ny, 0], k % 2 ? lit : dark);
+    F.poly([[Ai[0], Ai[1], z0], [Bi[0], Bi[1], z0], [Bi[0], Bi[1], z1], [Ai[0], Ai[1], z1]], [-nx, -ny, 0], deep);
+    // A solid transverse cleat has a worn crown and four vertical edges.
+    // Cleats on the exposed run leave the original ground contact unchanged.
+    {
+      const detail = ny > -0.85 ? F : extra;
+      const rise = 0.038, za = z0 + 0.025, zb = z1 - 0.025;
+      const point = (t, r, zz) => [Ao[0] + (Bo[0] - Ao[0]) * t + nx * r, Ao[1] + (Bo[1] - Ao[1]) * t + ny * r, zz];
+      const a = point(0.34, 0, za), b = point(0.66, 0, za), c = point(0.66, 0, zb), d = point(0.34, 0, zb);
+      const ca = point(0.34, rise, za), cb = point(0.66, rise, za), cc = point(0.66, rise, zb), cd = point(0.34, rise, zb);
+      const tx = (cb[0] - ca[0]) / l, ty = (cb[1] - ca[1]) / l;
+      detail.poly([ca, cb, cc, cd], [nx, ny, 0], rim);
+      detail.poly([a, ca, cd, d], [-tx, -ty, 0], dark);
+      detail.poly([b, cb, cc, c], [tx, ty, 0], dark);
+      detail.poly([a, b, cb, ca], [0, 0, -1], rim2);
+      detail.poly([d, c, cc, cd], [0, 0, 1], rim2);
+    }
+    F.poly([[Ai[0], Ai[1], z0], [Bi[0], Bi[1], z0], [Bo[0], Bo[1], z0], [Ao[0], Ao[1], z0]], [0, 0, -1], deep);
     const r = k % 2 ? rim : rim2;
     F.poly([[Ai[0], Ai[1], z1], [Bi[0], Bi[1], z1], [Bo[0], Bo[1], z1], [Ao[0], Ao[1], z1]], [0, 0, 1], [deep, deep, r, r]);
   }
-  return F.geometry();
+  const original = F.geometry();
+  return tagTrack(merge([original, extra.geometry()]), loop, z, original);
 }
 
 // a gun tube along +x from x = 0: breech sleeve, taper, a muzzle lip; the bore a dark dot. Bare gunmetal.
@@ -266,13 +283,23 @@ function churchill7(f) {
   // sprocket at the back; the top run lies along the pannier tops
   const tz = 1.28, TW = 0.56, t = 0.1, R = 0.13, wy = t + R, stations = Array.from({ length: 11 }, (_, k) => 2.3 - k * 0.435);
   const id = [3.32, 1.2, 0.3], sp = [-3.33, 1.1, 0.33];
-  G.add(trackBelt([[id[0], id[1], id[2]], ...stations.map((x) => [x, wy, R]), [sp[0], sp[1], sp[2]]], tz, TW, { thick: t, pitch: 0.25 }));
-  G.add(roadWheel(id[2] - 0.02, 0.2, dim(paint, 0.9), { seg: 10, rim: 0.84, hub: 0.26, tire: dim(paint, 0.8), rubber: false }), 0xffffff, xf(id[0], id[1], tz + 0.12));
+  G.add(trackBelt([[id[0], id[1], id[2]], ...stations.map((x) => [x, wy, R]), [sp[0], sp[1], sp[2]]], tz, TW, { thick: t, pitch: 0.17 }));
+  G.add(roadWheel(id[2] - 0.02, 0.2, dim(paint, 0.9), { seg: 32, rim: 0.84, hub: 0.26, tire: dim(paint, 0.8), rubber: false }), 0xffffff, xf(id[0], id[1], tz + 0.12));
   G.add(sprocketWheel(sp[2], 0.22, 12, paint), 0xffffff, xf(sp[0], sp[1], tz + 0.14));
-  // each bogie: its outer wheel, only a tire and a flat dished face (the inner one of the pair and the upper half
-  // stay hidden behind the plate), and the bracket where a mud chute shows it
-  const outer = bands([[[R, -0.05], [R, 0.05], RUBBER, null, null, 'rubber'], [[R, 0.05], [0, 0.06], dim(paint, 1.05), null, dim(paint, 0.8)]], 6);
-  stations.forEach((x, k) => { G.add(outer, 0xffffff, xf(x, wy, tz + 0.15)); if (k % 2) G.box(dim(paint, 0.72), 0.16, 0.3, 0.42, x, 0.44, tz); });
+  // Eleven paired wheels sit below the armored pannier. Their axle bosses and
+  // suspension arms remain visible through the mud chutes.
+  const outer = roadWheel(R, 0.1, paint, { seg: 16, rim: 0.83, hub: 0.32 });
+  const inner = tagWheel(bands([
+    [[R, -0.05], [R, 0.05], RUBBER, null, null, 'rubber'],
+    [[R, 0.05], [R * 0.82, 0.065], RUBBER, null, null, 'rubber'],
+    [[R * 0.82, 0.065], [0, 0.07], dim(paint, 0.7)],
+  ], 12), R);
+  stations.forEach((x) => {
+    G.add(outer, 0xffffff, xf(x, wy, tz + 0.15)).add(inner, 0xffffff, xf(x, wy, tz - 0.15));
+    G.cyl(IRON, 0.065, 0.34, x, wy, tz, Math.PI / 2, 0, 0, 8);
+    G.add(chamferBox(0.12, 0.27, 0.1, 0.02), dim(paint, 0.7), xf(x + 0.055, wy + 0.15, tz + 0.09, 0, 0, -0.35));
+    G.cyl(dim(paint, 0.8), 0.08, 0.07, x + 0.1, 0.46, tz + 0.12, Math.PI / 2, 0, 0, 12);
+  });
   // the pannier side plate inside the track loop: an upper plate and, along its bottom, the band with the mud chutes
   const ZP = 1.585, ZI = 1.0, band = [0.3, 0.62];
   const region = clip(clip(circleHull([[id[0], id[1], id[2] - 0.03], ...stations.map((x) => [x, wy, R]), [sp[0], sp[1], sp[2] - 0.03]]), ([x]) => id[0] - 0.34 - x), ([x]) => x - sp[0] - 0.37);
@@ -369,23 +396,28 @@ function churchill7(f) {
 
   // ---- turret: ring at x = 0.5; round cast sides bulging out a little above the ring, a flatter cast front,
   // the welded roof
-  const TH = 0.72, N = 24, outline = [];
+  const TH = 0.72, N = 64, outline = [];
   for (let i = 0; i < N; i++) {
     const a = (i / N) * TAU, c = Math.cos(a), s = Math.sin(a), e = 2 / 2.9;
     outline.push([(c > 0 ? 0.98 : 1.02) * Math.sign(c) * Math.abs(c) ** e - 0.02, 0.97 * Math.sign(s) * Math.abs(s) ** e]);
   }
   const ring = (k, pts = outline) => pts.map(([x, z]) => [x * k, z * k]);
-  T.add(vloft([{ y: 0, pts: ring(0.95) }, { y: 0.3, pts: ring(1) }, { y: TH - 0.12, pts: ring(0.97) }, { y: TH, pts: ring(0.89) }], { normals: 35 }), cast, undefined, 'cast-armor');
+  T.add(vloft([
+    { y: 0, pts: ring(0.91) }, { y: 0.07, pts: ring(0.96) },
+    { y: 0.18, pts: ring(0.99) }, { y: 0.32, pts: ring(1) },
+    { y: 0.45, pts: ring(0.995) }, { y: 0.56, pts: ring(0.975) },
+    { y: 0.65, pts: ring(0.94) }, { y: TH, pts: ring(0.89) },
+  ], { normals: 'smooth' }), cast, undefined, 'cast-armor');
   T.add(vloft([{ y: 0, pts: ring(0.955) }, { y: 0.05, pts: ring(0.975) }], { caps: false, normals: 35 }), dim(paint, 0.45));
   // the welded roof plate's seam and bolts
   TF.poly([[-0.75, TH + 0.003, -0.84], [-0.73, TH + 0.003, -0.84], [-0.73, TH + 0.003, 0.84], [-0.75, TH + 0.003, 0.84]], [0, 1, 0], seam);
   rivets(TF, [0.62, TH + 0.003, -0.6], [0.62, TH + 0.003, 0.6], 5, [0, 1, 0], bolt, 0.016);
   // the rounded mantlet, the gun collar and the 75 mm with its muzzle sleeve; the coaxial Besa (left) and the
   // sight (right)
-  T.add(mantlet(0.36, [[0.82, 0.82, 0.56], [0.98, 0.8, 0.54], [1.1, 0.68, 0.46, 3.2], [1.18, 0.42, 0.32, 3]], 12), cast, undefined, 'cast-armor');
+  T.add(mantlet(0.36, [[0.82, 0.82, 0.56, 2.8], [0.9, 0.82, 0.56, 2.8], [0.98, 0.8, 0.54, 2.6], [1.04, 0.76, 0.51, 2.4], [1.1, 0.68, 0.46, 2.2], [1.15, 0.56, 0.38, 2], [1.18, 0.42, 0.32, 2]], 32), cast, undefined, 'cast-armor');
   T.cyl(dim(cast, 0.92), 0.11, 0.2, 1.24, 0.36, 0, 0, 0, -Math.PI / 2, 10, 'cast-armor');
   const gL = 2.35;
-  T.add(gunTube(gL, 0.068, GUN, { lip: 0.22, lipR: 1.22, seg: 8 }), 0xffffff, xf(1.25, 0.36, 0));
+  T.add(gunTube(gL, 0.068, GUN, { lip: 0.22, lipR: 1.22, seg: 20 }), 0xffffff, xf(1.25, 0.36, 0));
   T.cyl(IRON, 0.022, 0.16, 1.2, 0.36, -0.25, 0, 0, -Math.PI / 2, 6).box(BLACK, 0.02, 0.05, 0.06, 1.15, 0.48, 0.24);
   // roof: the commander's cupola (right rear) with its episcopes and split hatch, the loader's hatch (left), the
   // gunner's and loader's periscopes, the 2 in bomb thrower, the ventilator and the No. 19 set's aerial
@@ -418,6 +450,11 @@ function churchill7(f) {
       T.box(k % 2 ? LINK : dim(LINK, 0.88), 0.2, 0.42, 0.05, x, 0.3, s * (z + 0.03), 0, ry, 0, 'track-steel').box(LINK_LIT, 0.05, 0.1, 0.04, x, 0.3, s * (z + 0.06), 0, ry, 0);
     });
   }
+  // Raised grab handles on the cupola and loader's hatch keep their openings visible.
+  for (const [z, y] of [[0.42, TH + 0.245], [-0.42, TH + 0.08]]) {
+    T.box(IRON, 0.15, 0.025, 0.03, -0.3, y, z);
+    for (const dx of [-0.06, 0.06]) T.box(IRON, 0.025, 0.045, 0.03, -0.3 + dx, y - 0.025, z);
+  }
   T.add(TF.geometry());
   return { hull: H, turret: T, ring: [0.5, Y, 0], tip: [1.25 + gL, 0.36, 0], s: 0.82, height: 1.4 };
 }
@@ -439,7 +476,7 @@ export function churchill(f) {
   if (!out) {
     const m = churchill7(f), s = m.s;
     out = {
-      hull: shade(m.hull.geometry(), 0, m.height).scale(s, s, s),
+      hull: scaleWheelPivots(shade(m.hull.geometry(), 0, m.height).scale(s, s, s), s),
       turret: shade(m.turret.geometry(), m.ring[1], m.height).scale(s, s, s),
       ring: m.ring.map((v) => v * s), tip: m.tip.map((v) => v * s),
     };

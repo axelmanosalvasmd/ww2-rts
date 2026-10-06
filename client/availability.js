@@ -1,3 +1,4 @@
+import { worldLayers, composeWorldCell } from '../shared/world-layers.js';
 import { UNITS, FORTS, CFG, TERRAIN, CELL, priceOf, supCost, popCap, popUse, dropPop, abCost, levelOf, teamSees, buildKinds, builderTypes, isSkirmishBaseMode, productionAccess, productionBuildings } from '../shared/sim.js';
 
 // Server denials deliberately contain no target details.
@@ -10,6 +11,8 @@ export const DENY_SENTENCES = Object.freeze({
   queueFull: 'The training queue is full', ordersFull: 'This unit already has 8 queued orders',
   retreating: 'That squad is retreating', noBuilders: 'Select a builder squad',
   noCover: 'No cover within reach',
+  notWaiting: 'That recruit is no longer waiting',
+  scenario: 'This scenario cannot start with the selected sides, factions or mode',
   territory: 'Build inside territory your team owns',
   coast: 'A Shipyard needs open water beside it', shore: 'Too far from the shore to land',
 });
@@ -49,6 +52,11 @@ export function availability(s, cfg = CFG, action = {}) {
     const pop = popTotal(own, queued), cap = s.world?.cap ?? popCap(s);
     return pop + need > cap ? no(`Army at its limit (${pop}/${cap})`) : yes();
   };
+  if (action.t === 'cancelProduction') {
+    if (sudden) return no(DENY_SENTENCES.suddenDeath);
+    const jobs = (s.productionJobs ?? []).find(row => row[0] === action.id)?.[1] ?? [];
+    return own.some(v => v.id === action.id && v.built >= 1) && jobs.some(job => job.id === action.job && job.status === 'waiting') ? yes() : no(DENY_SENTENCES.notWaiting);
+  }
   if (action.t === 'buy') {
     const def = UNITS[action.unit];
     if (!def || def.structure || (def.classic && !classic)) return no('Unavailable in this mode');
@@ -134,9 +142,9 @@ export function buyCount(s, cfg, action, want) {
 }
 
 // Adapter for the shared server placement and sight rules, using unsmoothed snapshot positions.
-export function placementState(s, map, grid, teams) {
-  const chars = grid.flat(), w = map.w, h = map.h, us = snapshotUnits(s);
-  const g = { w, h, chars, mode: s.mode, world: s.world ? { regions: s.world.regions } : undefined, naval: map.naval === true, flags: chars.map((ch) => TERRAIN[ch] ?? 0),
+export function placementState(s, map, grid, teams, layers) {
+  const chars = grid.flat(), w = map.w, h = map.h, us = snapshotUnits(s), authored = worldLayers(map), ground = layers?.groundGrid?.flat() ?? authored.ground, objects = layers?.objectGrid?.flat() ?? authored.objects;
+  const g = { w, h, chars, ground, objects, mode: s.mode, world: s.world ? { regions: s.world.regions } : undefined, naval: map.naval === true, flags: chars.map((ch, c) => TERRAIN[ch === 'N' ? composeWorldCell(ground[c], objects[c]) : ch] ?? 0),
     height: Array.from({ length: w * h }, (_, c) => levelOf(map.heights?.[Math.floor(c / w)]?.[c % w] ?? '0')),
     smokes: (s.smokes ?? []).map(([x, z, r]) => ({ x, z, r })),
     units: new Map(us.map((v) => [v.id, v])), players: teams.map((team) => ({ team })),

@@ -1,8 +1,12 @@
 import * as THREE from 'three';
+import { worldLayers, composeWorldCell } from '/shared/world-layers.js';
+import { createRubbleDecals } from './rubble-decals.js';
 import { createHud } from './hud.js';
 import { setPortraitSource } from './portraits.js';
 import { createLobbyView } from './lobby-view.js';
 import { createEffects } from './fx.js';
+import { createProjectileView } from './projectiles.js';
+import { createDebrisView } from './debris.js';
 import { bindings, match } from './keys.js';
 import { createSelection, selectionDragged } from './selection.js';
 import { selectionPoints } from './selection-view.js';
@@ -30,6 +34,7 @@ import { pings } from './pings.js';
 import { label, symbolBadge, fadeLabels, ownerRing, setOwnerRing, selectionRing, hqRing, flagMat, clickRing, capturePoint, planLayer, nodeSquare, strikeZone, aimMarker, cellLayer, coverRings, setTerrain, refreshTerrain, MOVE_COLOR, PLAN_COLORS } from './markers.js';
 import { disposeTree } from './upkeep.js';
 import { audio } from './audio.js';
+import { vehicleDamageFrame, vehicleTerrainPose, environmentalMix } from './engine-presentation.js';
 import { battleFrame } from './battle-sound.js';
 import { createProps } from './props.js';
 import { createWater } from './water.js';
@@ -37,7 +42,8 @@ import { createAviation } from './aircraft.js';
 import { epilogue } from './epilogue.js';
 import { createObjectives } from './objectives.js';
 import { endgame } from './endgame.js';
-import { buildModel, animate, createBodies, setSurfaces, setBuildings, crowd, drawSoldiers } from './unit-models.js';
+import { buildModel, animate, createBodies, setSurfaces, setBuildings, crowd, drawSoldiers, animationInterest, vehicleBody, updateBuildingBreach, releaseBuildingBreach } from './unit-models.js';
+import { releaseWheels, wheelMaterial } from './wheel-motion.js';
 import { loadModelTextures } from './model-textures.js';
 import { perf, renderScale } from './perf.js';
 import { createStats } from './stats.js';
@@ -411,6 +417,7 @@ addEventListener('resize', resize); resize();
 
 const matCache = new Map();
 const mat = (color) => matCache.get(color) || matCache.set(color, new THREE.MeshLambertMaterial({ color })).get(color);
+const wreckMaterial = wheelMaterial(new THREE.MeshLambertMaterial({ color: 0x1d1b18 }));
 const GEO = {
   box: new THREE.BoxGeometry(1, 1, 1), cyl: new THREE.CylinderGeometry(1, 1, 1, 12),
   body: new THREE.CapsuleGeometry(0.3, 0.8, 4, 8), helmet: new THREE.SphereGeometry(0.27, 10, 6, 0, Math.PI * 2, 0, Math.PI / 2),
@@ -437,13 +444,16 @@ let lastStart = null;
 function startGame(m, restored = null) {
   lobbyView.hide(); // frees the backdrop's renderer before the match builds its world
   clearFacing(); formationPreview.group.removeFromParent();
-  pings.reset(); autocast.reset();
+  pings.reset(); autocast.reset(); alerts.startMatch(m.matchId);
   me = m.you; names = m.names; teams = m.teams ?? names.map((_, i) => i); factions = m.factions ?? []; lastStart = m; mmImage = null;
   if (!EDIT) audio.start({ faction: facOf(me), slot: me });
   const map = m.map;
   worldRegions?.dispose(); worldRegions = null;
   terrain?.ground.dispose();
+  rubbleDecals?.dispose(); rubbleDecals = null;
   relief?.dispose(); apron?.dispose(); fogMesh?.material.dispose(); fogMesh = null;
+  for (const v of units.values()) releaseBuildingBreach(v);
+  for (const v of ghosts.values()) releaseBuildingBreach(v);
   if (world) { scene.remove(world); disposeTree(world, SHARED_GEOS); fogOfWar?.dispose(); } // Play again reuses the page
   world = new THREE.Group(); scene.add(world);
   world.add(formationPreview.group);
@@ -452,7 +462,7 @@ function startGame(m, restored = null) {
     for (const id of restored.selected || []) if (Number.isSafeInteger(id)) selected.add(id);
     for (const [n, ids] of Object.entries(restored.groups || {})) if (/^[1-9]$/.test(n) && Array.isArray(ids)) groups[n] = ids.filter(Number.isSafeInteger);
   }
-  fx.length = 0; lastSnap = null; unitRows.clear(); hulks.clear(); effects.reset(); for (const m of strikeMarks.values()) m.dispose(); strikeMarks.clear(); aviation.reset(); epilogue.reset(); snapshotAt = 0; snapshotGap = 100;
+  fx.length = 0; lastSnap = null; unitRows.clear(); hulks.clear(); projectiles.reset(); debris.reset(); effects.reset(); for (const m of strikeMarks.values()) m.dispose(); strikeMarks.clear(); aviation.reset(); epilogue.reset(); snapshotAt = 0; snapshotGap = 100;
   document.body.classList.toggle('observing', watching);
   objectives.reset(); endgame.reset();
   MW = map.w * CELL; MH = map.h * CELL;
@@ -463,27 +473,28 @@ function startGame(m, restored = null) {
     frames: { request: callback => requestAnimationFrame(callback), cancel: id => cancelAnimationFrame(id) },
     budgetMs: 6, tilesPerFrame: 2,
   });
-  terrain = { w: map.w, grid: map.rows.map(r => [...r]), ctx: gp.ctx, tex: gp.tex, px: gp.px, ground: gp, group: new THREE.Group() };
+  const layers = worldLayers(map);
+  terrain = { w: map.w, groundGrid: Array.from({ length: map.h }, (_, y) => layers.ground.slice(y * map.w, (y + 1) * map.w)), objectGrid: Array.from({ length: map.h }, (_, y) => layers.objects.slice(y * map.w, (y + 1) * map.w)), physicalGrid: Array.from({ length: map.h }, (_, y) => layers.ground.slice(y * map.w, (y + 1) * map.w).map((ch, x) => composeWorldCell(ch, layers.objects[y * map.w + x]))), mineGrid: Array.from({ length: map.h }, (_, y) => [...layers.mineLayer.slice(y * map.w, (y + 1) * map.w)]), materials: layers.materials, structuralSections: new Map(), grid: map.rows.map(r => [...r]), ctx: gp.ctx, tex: gp.tex, px: gp.px, ground: gp, group: new THREE.Group() };
   world.add(terrain.group);
   // what the server says about a cell besides its type: wear, burnt, damage stage (see startState in shared/sim.js)
   terrain.state = Uint8Array.from(map.rows.join(''), startState);
   if (map.world) map.discovered = new Uint8Array(map.w * map.h);
-  for (const [cell, ch, lv, st] of m.cells || []) { if (map.discovered) map.discovered[cell] = 1; terrain.grid[Math.floor(cell / map.w)][cell % map.w] = ch; terrain.state[cell] = st ?? 0; if (lv !== undefined) setLevel(map, cell, lv); }
+  for (const [cell, ch, lv, st, data] of m.cells || []) { if (data) { terrain.groundGrid[Math.floor(cell / map.w)][cell % map.w] = data.ground; terrain.objectGrid[Math.floor(cell / map.w)][cell % map.w] = data.object; terrain.materials.set(cell, data.material); if (data.section) terrain.structuralSections.set(cell, data.section); } terrain.mineGrid[Math.floor(cell / terrain.w)][cell % terrain.w] = ch === 'N' ? 1 : 0; terrain.physicalGrid[Math.floor(cell / terrain.w)][cell % terrain.w] = ch === 'N' ? composeWorldCell(terrain.groundGrid[Math.floor(cell / terrain.w)][cell % terrain.w], terrain.objectGrid[Math.floor(cell / terrain.w)][cell % terrain.w]) : ch; if (map.discovered) map.discovered[cell] = 1; terrain.grid[Math.floor(cell / map.w)][cell % map.w] = ch; terrain.state[cell] = st ?? 0; if (lv !== undefined) setLevel(map, cell, lv); }
   if (map.world) map.rows = terrain.grid.map(r => r.join(''));
-  gp.paint(terrain.grid, terrain.state);
+  gp.paint(terrain.grid, terrain.state, terrain.groundGrid, terrain.objectGrid);
   // the fog overlay shares the relief's live geometry, which a crater replaces
-  relief = createRelief(map, terrain.grid, { texture: gp.tex, isRoad: gp.isRoad, gfx, low: gfx.low || !!map.world,
+  relief = createRelief(map, terrain.physicalGrid, { texture: gp.tex, isRoad: gp.isRoad, gfx, low: gfx.low || !!map.world,
     onGeometry: geometry => { if (fogMesh) fogMesh.geometry = geometry; mapView?.setGeometry(geometry); } });
   const ground = relief.mesh;
   world.add(ground); groundMesh = ground;
-  apron = createApron({ ground: gp, relief, grid: terrain.grid, map });
+  apron = createApron({ ground: gp, relief, grid: terrain.physicalGrid, map });
   world.add(apron.mesh, apron.fogMesh); apron.fogMesh.visible = !EDIT;
   setTerrain(hAt, MW, MH); // rings, order lines and zones follow this ground on the GPU (client/overlay.js)
 
   buildStructures();
-  water?.dispose(); water = createWater(terrain.grid, map, hAt); if (water) world.add(water.mesh);
+  water?.dispose(); water = createWater(terrain.physicalGrid, map, hAt); if (water) world.add(water.mesh);
 
-  props?.dispose(); props = EDIT ? null : createProps({ map, grid: terrain.grid, hAt, parent: world });
+  props?.dispose(); props = EDIT ? null : createProps({ map, grid: terrain.physicalGrid, hAt, parent: world });
 
   // capture points
   const assault = ['assault', 'annihilation', 'horde'].includes(lobbyState?.mode); // no VP in these
@@ -542,17 +553,21 @@ function startGame(m, restored = null) {
 // ---------- terrain that can change mid-match (digging, destruction) ----------
 let terrain = null;
 let props = null;
+let rubbleDecals = null;
 // big battles change cells every snapshot: the 3D pieces and the minimap's terrain are redone at most every 0.25 s
 const terrainDue = { pieces: false, minimap: false, props: false, wait: 0 };
 function terrainFrame(dt) {
   if ((terrainDue.wait -= dt) > 0 || !(terrainDue.pieces || terrainDue.minimap || terrainDue.props)) return;
   if (terrainDue.pieces && terrain) buildStructures();
-  if (terrainDue.props && lastStart?.map.world) { props?.dispose(); props = createProps({ map: lastStart.map, grid: terrain.grid, hAt, parent: world }); }
+  if (terrainDue.props && lastStart?.map.world) { props?.dispose(); props = createProps({ map: lastStart.map, grid: terrain.physicalGrid, hAt, parent: world }); }
   if (terrainDue.minimap) { mmImage = null; mapView?.refresh(); }
   terrainDue.pieces = terrainDue.minimap = terrainDue.props = false; terrainDue.wait = 0.25;
 }
 // all 3D terrain pieces (client/structures.js), rebuilt from the grid whenever a cell changes
-function buildStructures() { buildPieces(terrain.group, terrain.grid, lastStart.map.rows, hAt, terrain.state, lastStart.map.buildings); }
+function buildStructures() {
+  buildPieces(terrain.group, terrain.physicalGrid, lastStart.map.rows.map((row, y) => [...row].map((ch, x) => ch === 'N' ? composeWorldCell(terrain.groundGrid[y][x], terrain.objectGrid[y][x]) : ch).join('')), hAt, terrain.state, lastStart.map.buildings, terrain.mineGrid);
+  if (!rubbleDecals) { rubbleDecals = createRubbleDecals({ parent: world, hAt, w: terrain.w, grid: terrain.objectGrid, materialAt: c => terrain.materials.get(c) }); rubbleDecals.update(terrain.objectGrid.flatMap((row, y) => row.flatMap((ch, x) => ch === 'R' ? [y * terrain.w + x] : []))); }
+}
 
 // bombs and shells lower the ground: patch the map's height rows
 function setLevel(map, cell, lv) {
@@ -569,11 +584,13 @@ function applyCells(cells) {
   const shaped = [];
   let pieces = false;
   for (const entry of cells) {
-    const [cell, ch, lv, st = 0] = entry, x = cell % terrain.w, y = Math.floor(cell / terrain.w), heights = lastStart.map.heights;
-    const moved = terrain.grid[y][x] !== ch || (lv !== undefined && levelOf(heights?.[y]?.[x] ?? '0') !== lv);
+    const [cell, ch, lv, st = 0, data] = entry, x = cell % terrain.w, y = Math.floor(cell / terrain.w), heights = lastStart.map.heights;
+    const physical = ch === 'N' ? composeWorldCell(data?.ground ?? terrain.groundGrid[y][x], data?.object ?? terrain.objectGrid[y][x]) : ch;
+    const moved = terrain.grid[y][x] !== ch || terrain.physicalGrid[y][x] !== physical || (lv !== undefined && levelOf(heights?.[y]?.[x] ?? '0') !== lv);
     if (moved) shaped.push(entry);
     pieces ||= moved || (terrain.state[cell] ^ st) >> 3 > 0;
     terrain.grid[y][x] = ch; terrain.state[cell] = st;
+    if (data) { terrain.groundGrid[y][x] = data.ground; terrain.objectGrid[y][x] = data.object; terrain.materials.set(cell, data.material); if (data.section) terrain.structuralSections.set(cell, data.section); } terrain.mineGrid[Math.floor(cell / terrain.w)][cell % terrain.w] = ch === 'N' ? 1 : 0; terrain.physicalGrid[Math.floor(cell / terrain.w)][cell % terrain.w] = ch === 'N' ? composeWorldCell(terrain.groundGrid[Math.floor(cell / terrain.w)][cell % terrain.w], terrain.objectGrid[Math.floor(cell / terrain.w)][cell % terrain.w]) : ch;
     if (lastStart.map.world) {
       if (!lastStart.map.discovered[cell]) terrainDue.props = true;
       lastStart.map.discovered[cell] = 1;
@@ -581,15 +598,25 @@ function applyCells(cells) {
     }
     if (lv !== undefined) setLevel(lastStart.map, cell, lv);
   }
-  terrain.ground.paint(terrain.grid, terrain.state); // repaints only the tiles around changed cells
+  terrain.ground.paint(terrain.grid, terrain.state, terrain.groundGrid, terrain.objectGrid);
+ // repaints only the tiles around changed cells
   if (shaped.length) {
     const xs = shaped.map(([cell]) => cell % terrain.w), ys = shaped.map(([cell]) => Math.floor(cell / terrain.w));
     const box = [Math.min(...xs) * CELL, Math.min(...ys) * CELL, (Math.max(...xs) + 1) * CELL, (Math.max(...ys) + 1) * CELL];
     relief.update(shaped); props?.refresh(box);
-    if (!water && shaped.some(([, ch]) => 'WF='.includes(ch))) { water = createWater(terrain.grid, lastStart.map, hAt); if (water) world.add(water.mesh); }
+    if (!water && shaped.some(([, ch]) => 'WF='.includes(ch))) { water = createWater(terrain.physicalGrid, lastStart.map, hAt); if (water) world.add(water.mesh); }
     else water?.changed(shaped); terrainDue.minimap = true; // the fog overlay follows the relief through onGeometry
     refreshTerrain(...box);
   }
+  const rubbleCells = new Set(cells.map(entry => entry[0]));
+  for (const [c, , lv] of cells) if (lv !== undefined) {
+    const x = c % terrain.w, y = Math.floor(c / terrain.w);
+    for (let dz = -1; dz <= 1; dz++) for (let dx = -1; dx <= 1; dx++) {
+      const nx = x + dx, ny = y + dz;
+      if (nx >= 0 && nx < terrain.w && ny >= 0 && ny < terrain.grid.length && terrain.objectGrid[ny][nx] === 'R') rubbleCells.add(ny * terrain.w + nx);
+    }
+  }
+  rubbleDecals?.update(rubbleCells);
   if (pieces) terrainDue.pieces = true; // rebuilt at most 4 times a second (frame loop)
   coverPreview.dirty(); // cover marks follow new cells and shot-up walls
 }
@@ -633,7 +660,7 @@ function insideMap(im, ox, oz, pad) {
 
 function makeUnit(id, type, owner) {
   const def = UNITS[type], f = look(owner), root = new THREE.Group();
-  const v = { id, type, owner, root, models: [], alive: def.models, x: 0, z: 0, rot: 0, aim: 0, turret: null };
+  const v = { id, type, owner, root, models: [], maxHealth: def.models * def.hpPer, alive: def.models, x: 0, z: 0, rot: 0, aim: 0, turret: null };
   // owner ring, then the selection ring (it carries the weapon range rings, and the minimum range of rocket salvos)
   const base = ownerRing(def.radius + 0.4, f.color);
   Object.assign(v, selectionRing(def.radius + 1, def.w ? [def.w.range, def.w.minRange].filter(Boolean) : []));
@@ -704,6 +731,8 @@ function seatTrench(v) {
 
 const hulks = new Map(); // wreck id -> its model
 function removeUnit(v) {
+  releaseBuildingBreach(v);
+  releaseWheels(v);
   world.remove(v.bars);
   for (const m of [v.barBg, v.hpBar, v.suppBar, ...v.stars, v.shield]) m.material.dispose(); // the badge's material is shared
   if (isAir(v.type)) {
@@ -773,12 +802,12 @@ function applySnapshot(s) {
   snapshotAt = arrived;
   const seen = new Set();
   trenchTaken.clear();
-  for (const [id, type, owner, x, z, rot, aim, hp, supp, tgt, cover, cd, flags, stars, built] of s.units) {
+  for (const [id, type, owner, x, z, rot, aim, hp, supp, tgt, cover, cd, flags, stars, built, moveSpeed, vx, vz, travelDir] of s.units) {
     seen.add(id);
     let v = units.get(id);
     if (!v) { v = makeUnit(id, type, owner); Object.assign(v, { x, z, rot, aim }); units.set(id, v); }
-    Object.assign(v, { owner, tx: x, tz: z, trot: rot, taim: aim, hp, supp, tgt, cover, cd, flags, vet: stars || 0, garr: !!(flags & 32), built: built ?? 1, plan: null, orders: [] });
-    if (!productionAccess({ mode: s.mode, players: teams.map(team => ({ team })) }, v, me)) { v.rally = null; v.queue = []; }
+    Object.assign(v, { owner, tx: x, tz: z, trot: rot, taim: aim, hp, supp, tgt, cover, cd, flags, vet: stars || 0, moveSpeed: moveSpeed ?? 0, vx: vx ?? 0, vz: vz ?? 0, travelDir: travelDir ?? rot, garr: !!(flags & 32), built: built ?? 1, plan: null, orders: [] });
+    if (!productionAccess({ mode: s.mode, players: teams.map(team => ({ team })) }, v, me)) { v.rally = null; v.queue = []; v.productionJobs = []; }
     if (v.body) v.body.scale.y = 0.15 + 0.85 * v.built; // a construction site rises as it's built
     v.stars.forEach((st, i) => (st.visible = i < v.vet));
     const cl = !v.garr && COVER_LOOK[cover];
@@ -823,23 +852,25 @@ function applySnapshot(s) {
   // planes' strike warnings are left out so nothing is drawn twice
   // the wind first: it carries this snapshot's smoke, dust and flames
   if (s.wx) { setWind(s.wx[2], s.wx[3]); atmos.setRain(s.wx[0], s.wx[1]); } // showers and wet ground (the line: wx.snapshot)
-  const fires = (s.fires ?? []).map(c => [(c % terrain.w + 0.5) * CELL, (Math.floor(c / terrain.w) + 0.5) * CELL, terrain.grid[Math.floor(c / terrain.w)]?.[c % terrain.w]]);
+  const fires = (s.fires ?? []).map(c => [(c % terrain.w + 0.5) * CELL, (Math.floor(c / terrain.w) + 0.5) * CELL, terrain.physicalGrid[Math.floor(c / terrain.w)]?.[c % terrain.w]]);
+  projectiles.snapshot(s);
   effects.snapshot({ ...s, fires, shots: s.shots.filter(sh => !airShot(sh)), strikes: (s.strikes ?? []).filter(([k]) => !SUPPORT_PLANES[k]) }, seen);
   objectives.snapshot(s); // capture point rings, flips, building smoke and collapse banners (client/objectives.js)
   for (const v of [...units.values()]) if (!seen.has(v.id)) removeUnit(v);
   // burnt-out vehicles stay on the field as cover until the sim clears the oldest away
   const left = new Set((s.wrecks ?? []).map(w => w[0]));
-  for (const [id, root] of hulks) if (!left.has(id)) { world.remove(root); hulks.delete(id); }
+  for (const [id, root] of hulks) if (!left.has(id)) { releaseWheels({ root }); world.remove(root); hulks.delete(id); }
   for (const [id, type, owner, x, z, rot] of s.wrecks ?? []) {
     let root = hulks.get(id);
     if (!root) {
       const v = makeUnit(id, type, owner); world.remove(v.bars); root = v.root; hulks.set(id, root);
-      root.traverse(o => { if (o.isMesh) { o.material = o.material.isMeshBasicMaterial ? o.material : mat(0x1d1b18); } });
+      root.traverse(o => { if (o.isMesh) { o.material = o.material.isMeshBasicMaterial ? o.material : wreckMaterial; } });
       root.children.slice(0, 2).forEach(o => (o.visible = false)); // no owner ring, no selection ring
       root.rotation.y = -rot;
     }
-    root.position.set(x, hAt(x, z), z); // craters under it come later
+    root.rotation.set(0, -rot, 0); root.position.set(x, hAt(x, z), z); // craters under it come later
   }
+  debris.snapshot(s);
   for (const [id, kind, tx, tz, ...path] of s.plans ?? []) { const v = units.get(id); if (v) v.plan = { kind, tx, tz, path }; }
   for (const [id, n, ...points] of s.orders ?? []) {
     const v = units.get(id); if (v?.owner !== me) continue;
@@ -847,6 +878,7 @@ function applySnapshot(s) {
   }
   for (const [id, prog, rx, rz, ...queue] of s.queues ?? []) { const v = units.get(id); if (v) Object.assign(v, { prog, queue, rally: rx >= 0 ? { x: rx, z: rz } : null }); }
   applyGhosts(s.ghosts);
+  for (const [id, jobs] of s.productionJobs ?? []) { const v = units.get(id); if (v) v.productionJobs = jobs; }
   coverGroup ??= coverRings(); // fighter cover rings, pooled (client/markers.js)
   if (coverGroup.group.parent !== world) world.add(coverGroup.group);
   coverGroup.set(s.covers ?? [], hAt);
@@ -863,6 +895,8 @@ function applySnapshot(s) {
 
   syncStrikes(s.strikes);
   applyCells(s.cells);
+  for (const v of units.values()) if (UNITS[v.type].building) updateBuildingBreach(v, terrain.structuralSections, terrain.w, CELL);
+  for (const v of ghosts.values()) updateBuildingBreach(v, terrain.structuralSections, terrain.w, CELL);
   const ending = !epilogue.active();
   epilogue.snapshot(s, teams[me] ?? me); // the first one with a winner starts the ending (client/epilogue.js)
   if (ending && epilogue.active()) { rig.skipIntro(); rig.cancelFollow(); } // the ending's camera glide takes over the camera
@@ -938,14 +972,14 @@ const explainUnavailable = (result) => { if (!result.ok) feedback.show(result.re
 let placementCache = null;
 function placementView() {
   if (!terrain || !lastSnap || !lastStart) return null;
-  if (placementCache?.snapshot !== lastSnap) placementCache = { snapshot: lastSnap, ...placementState(lastSnap, lastStart.map, terrain.grid, teams) };
+  if (placementCache?.snapshot !== lastSnap) placementCache = { snapshot: lastSnap, ...placementState(lastSnap, lastStart.map, terrain.grid, teams, terrain) };
   return placementCache;
 }
 const hud = createHud({
   get me() { return me; }, get teams() { return teams; }, get names() { return names; }, get PRIORITY() { return PRIORITY; }, get host() { return !!lobbyState?.amHost; }, get watching() { return watching; },
   units, selected, look, facOf, color: (slot) => css(look(slot).color), classic: () => classicMode(), naval: () => lastStart?.map?.naval === true, send: sendCmd, blip,
   retreat: () => retreat(), takeCover: (q) => takeCover(q), stance: (k) => toggleStance(k), entrench: (k) => startEntrench(k), stop: () => { sendCmd({ t: 'stop', ids: [...selected] }); blip(330); }, amove: () => selected.size && setAim('amove'), area: () => startArea(), rally: () => startRally(),
-  dig: (k) => startDig(k), form: () => fm, setForm: (p) => setFormation(p), reform: (d) => reform(d), unload: () => unload(), build: (k) => startBuild(k), ability: (t) => useAbility(t), support: (k) => aimSupport(k), fType: () => fKeyType(),
+  transferGroup: (n) => transferGroup(n), dig: (k) => startDig(k), form: () => fm, setForm: (p) => setFormation(p), reform: (d) => reform(d), unload: () => unload(), build: (k) => startBuild(k), ability: (t) => useAbility(t), support: (k) => aimSupport(k), fType: () => fKeyType(),
   autocast: (t) => { const on = autocast.toggle(t, [...selected].map(id => units.get(id)).filter(v => v?.type === t && v.owner === me), classicMode()); if (on !== null) blip(); },
   builders: () => builders(), owns: (t) => owns(t), canPlace: (k) => canPlace(k), explain: (reason) => feedback.show(reason),
   // add: Shift/Ctrl adds the unit to the selection, or takes it out if it is already in
@@ -1072,10 +1106,12 @@ function applyGhosts(list) {
       gv.root.traverse(o => { if (o.isMesh) { o.material = o.material.clone(); Object.assign(o.material, { transparent: true, opacity: 0.35, depthWrite: false }); } });
       ghosts.set(id, gv);
     }
+    Object.assign(gv, { x, z, tx: x, tz: z });
     gv.root.position.set(x, hAt(x, z), z);
     if (gv.body) gv.body.scale.y = 0.15 + 0.85 * built;
+    updateBuildingBreach(gv, terrain.structuralSections, terrain.w, CELL);
   }
-  for (const [id, gv] of ghosts) if (!keep.has(id)) { world.remove(gv.root, gv.bars); ghosts.delete(id); }
+  for (const [id, gv] of ghosts) if (!keep.has(id)) { releaseBuildingBreach(gv); releaseWheels(gv); world.remove(gv.root, gv.bars); ghosts.delete(id); }
 }
 function nodeMark(x, z, rate, fuel) {
   const g = new THREE.Group();
@@ -1285,11 +1321,18 @@ const centerSelection = (list) => {
 };
 const selection = createSelection({ units, selected, groups, owner: () => (observing() ? -1 : me), definitions: UNITS, canUseBuilding: v => productionAccess({ mode: lastSnap?.mode, players: teams.map(team => ({ team })) }, v, me), // a spectator selects nothing, so orders nothing
   screenOf: (v) => screenOf(v), screenPointsOf: (v) => selectionPoints(v, camera, screenOf, innerWidth, innerHeight), viewport: () => ({ width: innerWidth, height: innerHeight }), center: centerSelection });
+function transferGroup(number) {
+  if (observing()) return;
+  const eligible = [...selected].filter(id => { const v = units.get(id); return v?.owner === me && !UNITS[v.type].structure && !(v.flags & (512 | 262144)) && v.hp > 0; });
+  selection.group(String(number), 'transfer', performance.now());
+  feedback.show(`Moved ${eligible.length} units to group ${number}; removed from other groups`); blip(990);
+}
 const actions = {
   stop: () => { sendCmd({ t: 'stop', ids: [...selected] }); blip(330); },
   retreat, unload, cover: () => takeCover(), ability: () => useAbility(fKeyType()), amove: () => selected.size && setAim('amove'), area: startArea,
   mute: toggleMute,
   alert: () => { rig.cancelFollow(); const al = alerts.newest(); if (al) { cam.x = al.x; cam.z = al.z; } else centerSelection([...selected].map(id => units.get(id)).filter(Boolean)); },
+  alertHistory: () => alerts.toggleHistory(), alertPrevious: () => alerts.navigate(1), alertNext: () => alerts.navigate(-1),
   follow: followSelected, rally: startRally,
   formation: cycleFormation, tighten: () => reform(-0.25), spread: () => reform(0.25),
   home: () => {
@@ -1315,6 +1358,7 @@ for (const { id } of bindings) {
   else if (kind === 'stance') actions[id] = () => toggleStance(value);
   else if (kind === 'build') actions[id] = () => startBuild(value);
   else if (kind === 'group') actions[id] = () => {
+    if (value === 'transfer') { transferGroup(number); return; }
     selection.group(number, value, performance.now()); if (value !== 'recall') blip(990);
     if (value === 'set') groupForm.set(number, { ...fm });
     else if (value === 'recall' && groupForm.has(number)) Object.assign(fm, groupForm.get(number));
@@ -1326,6 +1370,7 @@ const inMatch = () => lobbyState?.state === 'play' && !$('hud').classList.contai
 const keyContexts = () => [classicMode() ? 'classic' : 'army', ...(!inMatch() ? [] : hud.recruiting() ? ['recruit'] : hud.lettered() ? ['building'] : []), ...(targeting ? ['targeting'] : [])];
 addEventListener('keydown', (e) => {
   if (e.code === 'Escape') clearFacing();
+  if (e.target.closest?.('.alert-history')) return;
   if (['INPUT', 'SELECT', 'TEXTAREA'].includes(e.target.tagName) || e.target.isContentEditable) return;
   if (e.code === 'F1' && !$('hud').classList.contains('hidden')) {
     e.preventDefault(); if (controlsSheet.open) closeControls(); else openControls(); return;
@@ -1384,7 +1429,7 @@ function pick(mx, my, test, r) {
   }
   return best;
 }
-const groundAt = (mx, my) => marchGround(camera, hAt, mx, my, innerWidth, innerHeight, MW || 160, MH || 160);
+const groundAt = (mx, my) => marchGround(camera, hAt, mx, my, innerWidth, innerHeight, MW || 160, MH || 160, relief?.mesh);
 
 renderer.domElement.addEventListener('mousedown', (e) => {
   if (EDIT) return;
@@ -1621,6 +1666,11 @@ function rangeRings() {
 const lerpAngle = (a, b, k) => a + (Math.atan2(Math.sin(b - a), Math.cos(b - a))) * k;
 
 const effects = createEffects({ scene, camera, cam, hAt, units, colorOf: (slot) => look(slot).color, airAlt: AIR_ALT, mapW: () => terrain?.w ?? 0 });
+const projectiles = createProjectileView({ trail: effects.projectileTrail, remove: effects.projectileRemove, launch: effects.projectileLaunch, contact: effects.projectileContact });
+const debris = createDebrisView({ pose: (id, row) => {
+  if (row.kind === 'section') effects.sectionPose(id, row);
+  else { const root = hulks.get(row.wreckId); if (root) { root.position.set(row.x, row.y, row.z); root.rotation.set(0, -row.hullDir, row.tilt); } }
+}, remove: effects.sectionRemove, contact: effects.worldContact });
 const objectives = createObjectives({ points: () => points, units, effects, hAt, camera, cam, colorOf: (slot) => look(slot).color, me: () => me, friend: (slot) => !foe(slot) });
 objectives.init();
 const atmos = createAtmosphere({ scene, renderer, camera, cam }); // client/atmosphere.js
@@ -1628,6 +1678,7 @@ const atmos = createAtmosphere({ scene, renderer, camera, cam }); // client/atmo
 const coverPreview = createCoverPreview({ scene, camera, canvas: renderer.domElement, units, selected, hAt, groundAt, gfx, foe,
   me: () => me, mouse: () => mouse, targeting: () => targeting, grid: () => terrain?.grid, state: () => terrain?.state, wrecks: () => lastSnap?.wrecks, fog: () => fogOfWar });
 endgame.init({ me: () => me, teams: () => teams, watching: () => watching });
+let ambienceTimer = 0;
 renderer.setAnimationLoop(() => {
   const now = performance.now(), dt = Math.min(0.1, (now - lastT) / 1000); lastT = now;
   const sdt = epilogue.frame(dt, cam); // screen time: slower once the match is decided, and the camera glides there
@@ -1636,7 +1687,7 @@ renderer.setAnimationLoop(() => {
   rig.update(dt);
 
   // units: smooth toward the latest server state
-  const k = 1 - Math.exp(-sdt * 1000 / snapshotGap), ranges = rangeRings();
+  const k = 1 - Math.exp(-sdt * 1000 / snapshotGap), ranges = rangeRings(), interested = animationInterest(camera);
   for (const v of units.values()) {
     v.x += (v.tx - v.x) * k; v.z += (v.tz - v.z) * k;
     v.rot = lerpAngle(v.rot, v.trot, k); v.aim = lerpAngle(v.aim, v.taim, k * 0.6);
@@ -1652,17 +1703,27 @@ renderer.setAnimationLoop(() => {
     // garrisoned squad keeps it, since its roof bar is what you click (client/selection-view.js)
     v.barBg.visible = v.hpBar.visible = v.sel.visible || v === hovered || v.hpBar.scale.x < 2.299 || v.supp > 0 || v.garr;
     if (v.range) v.range.visible = ranges && v.sel.visible;
-    if (v.trench) seatTrench(v);
-    animate(v, sdt, camera.position, hAt); // posture from suppression and retreat, far-away soldiers (client/unit-models.js)
+    const detailed = v.animationDetailed = interested(v, v.sel.visible);
+    if (v.trench && detailed) seatTrench(v);
+    animate(v, sdt, camera.position, hAt, detailed); // posture from suppression and retreat, far-away soldiers (client/unit-models.js)
+    if (isVeh(v.type) && !UNITS[v.type].structure && !UNITS[v.type].air && !UNITS[v.type].naval) {
+      vehicleTerrainPose(v, sdt, detailed, hAt, vehicleBody(v), UNITS[v.type]);
+      vehicleDamageFrame(v, sdt, detailed, (unit, level) => effects.vehicleDamage(unit, level));
+    }
   }
   battleFrame(cam, units, me);
+  if (!EDIT && (ambienceTimer -= dt) <= 0) {
+    ambienceTimer = 0.4;
+    audio.environment(environmentalMix({ ...terrain, cell: CELL, camera: cam, weather: wx.now, wx: lastSnap?.wx,
+      known: (x, z) => !!fogOfWar && ['seen', 'explored'].includes(fogOfWar.at(x, z)) }));
+  }
   bodies.update(sdt, effects, hAt, camera); // men killed by a blast are thrown (client/unit-models.js)
   for (let i = fx.length - 1; i >= 0; i--) {
     const e = fx[i]; e.life -= sdt;
     if (e.life <= 0) { world.remove(e.obj); e.dispose?.(); fx.splice(i, 1); } else e.update(e.max ? e.life / e.max : 1);
   }
   worldRegions?.frame(sdt);
-  objectives.frame(sdt); effects.update(sdt); atmos.update(sdt);
+  objectives.frame(sdt); projectiles.frame(); debris.frame(); effects.update(sdt); atmos.update(sdt);
   aviation.update(sdt);
   fogOfWar?.frame(dt, !lastStart?.map.world && epilogue.active()); // the match is decided: the fog lifts
   alerts.frame();
@@ -1708,7 +1769,7 @@ if (EDIT) { $('overlay').classList.add('hidden'); import('./editor.js').then(m =
 window.__game = { renderer, scene, camera, cam, units, selected, sendCmd, makeUnit, hAt, groundAt, rig, pointer, pings, alerts, epilogue, effects, bodies, atmos, aviation, objectives, endgame, coverPreview, get gesture() { return facingGesture ? { button: facingGesture.button, face: facingGesture.face ?? null, reach: facingGesture.reach ?? 0 } : null; }, get groundMesh() { return groundMesh; }, get fog() { return fogOfWar; }, get me() { return me; }, get water() { return water; }, get relief() { return relief; }, get apron() { return apron; }, get snapshot() { return lastSnap; }, get mapView() { return mapView; }, get points() { return points; } };
 // the alerts list above the minimap (client/alerts.js) sees the match through these
 alerts.init({ me: () => me, team: () => teams[me] ?? me, friend: (slot) => !foe(slot), unitName: (type, owner) => look(owner).names[type] ?? UNITS[type].name, playerName: (slot) => names[slot] ?? 'An ally',
-  resetPings: pings.reset, pointPos: (i) => points[i]?.g.position, home: () => home, jump: (x, z) => { rig.cancelFollow(); cam.x = x; cam.z = z; },
+  matchTime: () => (lastSnap?.tick ?? 0) / 20, resetPings: pings.reset, pointPos: (i) => points[i]?.g.position, home: () => home, jump: (x, z) => { rig.cancelFollow(); cam.x = x; cam.z = z; },
   onScreen: (x, z) => { const p = screenOf({ x, z }); return p.front && p.x >= 0 && p.x <= innerWidth && p.y >= 0 && p.y <= innerHeight; } });
 
 pings.init({ scene, hAt, send: sendCmd, playerName: (slot) => names[slot] ?? 'An ally' });

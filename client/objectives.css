@@ -12,3 +12,4 @@
   font: 600 16px/1.35 'Barlow Semi Condensed', 'Arial Narrow', sans-serif; text-align: center; pointer-events: none;
 }
 #objective-goal[hidden] { display: none; }
+#objective-goal.scenario-goals { white-space: pre-line; max-height: 28vh; overflow-y: auto; pointer-events: auto; text-align: left; }

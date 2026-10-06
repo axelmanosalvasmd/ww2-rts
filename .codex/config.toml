@@ -1,0 +1,21 @@
+[mcp_servers.blender]
+command = "/bin/bash"
+args = ["-c", 'exec /bin/bash "$(git rev-parse --show-toplevel)/tools/blender/mcp/server.sh"']
+startup_timeout_sec = 30
+tool_timeout_sec = 300
+
+[mcp_servers.mcp-for-blender]
+command = "/bin/bash"
+args = ["-c", 'exec /bin/bash "$(git rev-parse --show-toplevel)/tools/blender/mcp/community/server.sh"']
+startup_timeout_sec = 30
+tool_timeout_sec = 600
+
+[mcp_servers.mcp-for-blender.env]
+BLENDER_MCP_APPS = "1"
+BLENDER_MCP_OPENAI_FORMS = "1"
+
+[mcp_servers.blend-ai]
+command = "/bin/bash"
+args = ["-c", 'exec /bin/bash "$(git rev-parse --show-toplevel)/tools/blender/mcp/blend-ai/server.sh"']
+startup_timeout_sec = 30
+tool_timeout_sec = 300

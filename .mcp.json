@@ -1,0 +1,31 @@
+{
+  "mcpServers": {
+    "blender": {
+      "type": "stdio",
+      "command": "/bin/bash",
+      "args": [
+        "-c",
+        "exec /bin/bash \"$(git rev-parse --show-toplevel)/tools/blender/mcp/server.sh\""
+      ],
+      "env": {}
+    },
+    "mcp-for-blender": {
+      "type": "stdio",
+      "command": "/bin/bash",
+      "args": [
+        "-c",
+        "exec /bin/bash \"$(git rev-parse --show-toplevel)/tools/blender/mcp/community/server.sh\""
+      ],
+      "env": {}
+    },
+    "blend-ai": {
+      "type": "stdio",
+      "command": "/bin/bash",
+      "args": [
+        "-c",
+        "exec /bin/bash \"$(git rev-parse --show-toplevel)/tools/blender/mcp/blend-ai/server.sh\""
+      ],
+      "env": {}
+    }
+  }
+}

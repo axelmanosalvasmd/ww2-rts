@@ -79,9 +79,13 @@ export function createSelection({ units, selected, groups, owner, definitions, s
     },
     group(number, operation = 'recall', now = Date.now()) {
       prune();
-      if (operation === 'set' || operation === 'append') {
-        const ids = rows().map(v => v.id);
-        groups[number] = operation === 'append' ? [...new Set([...(groups[number] || []), ...ids])] : ids;
+      if (operation === 'set' || operation === 'append' || operation === 'transfer') {
+        const ids = rows().filter(operation === 'transfer' ? selectable : () => true).map(v => v.id);
+        if (operation === 'transfer') {
+          const moving = new Set(ids);
+          for (const key of Object.keys(groups)) if (String(key) !== String(number)) groups[key] = groups[key].filter(id => !moving.has(id));
+        }
+        groups[number] = operation !== 'set' ? [...new Set([...(groups[number] || []), ...ids])] : ids;
         lastGroup = null;
         lastRecall = -Infinity;
         return groups[number];

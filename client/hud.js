@@ -104,13 +104,15 @@ export function createHud(ctx) {
     const n = name(t, slot), base = UNITS[t].name, r = unitRole(t, base), role = r !== base ? r : '';
     return `${n}${n !== base ? ` (${base})` : ''}${role ? `: ${role}` : ''}${extra}`;
   };
-  // a Command Card card: name, portrait of the unit (client/portraits.js), cost (and a second line in Classic)
+  // a Command Card card: name, the unit's silhouette (client/symbols.js), cost (and a second line in Classic).
+  // A flat symbol tells the types apart at a glance; the small 3D renders all looked alike.
+  const cardSymbol = (t) => `<span class="pt">${symbolSVG(t)}</span>`;
   // (its card letter, if any, is added once the card is laid out: lettered())
   const unitCard = (t, attr, cost, sub, tip) => `<button class="uc" ${attr} title="${esc(tip)}" aria-label="${esc(name(t))}">` +
-    `<span class="nm">${soft(name(t))}</span>${portrait(t, ctx.me)}<span class="cost">${cost}</span>${sub ? `<span class="sub">${sub}</span>` : ''}</button>`;
+    `<span class="nm">${soft(name(t))}</span>${cardSymbol(t)}<span class="cost">${cost}</span>${sub ? `<span class="sub">${sub}</span>` : ''}</button>`;
   const groupsHTML = (types, card) => GROUPS.map((_, g) => {
     const ts = types.filter((t) => groupOf(t) === g).sort((a, b) => rank(a) - rank(b));
-    return ts.length ? `<div class="grp"><div class="hd">${icon(GROUP_ICONS[g])}${GROUPS[g]}</div><div class="cards">${ts.map(card).join('')}</div></div>` : '';
+    return ts.length ? `<div class="grp"><button class="hd" aria-expanded="false">${icon(GROUP_ICONS[g])}${GROUPS[g]}</button><div class="cards">${ts.map(card).join('')}</div></div>` : '';
   }).join('');
   // an order or support button: icon, hotkey badge, cost or cooldown underneath
   const orderBtn = (data, ico, key, tip, sym) => `<button class="ob" ${data} title="${esc(tip)}" aria-label="${esc(tip.split(/[:(]/)[0].trim())}">` +
@@ -173,8 +175,12 @@ export function createHud(ctx) {
         // a wave on the map: how many are left (reserve included). Between waves: the break's countdown
         const on = !!s.mode.active;
         setText(mode, on ? `Wave ${s.mode.wave}` : `Wave ${s.mode.wave + 1} in`); setText(clk, on ? `${s.mode.left} left` : clock(s.mode.timeLeft));
+        let threat = score.lead.querySelector('[data-wave-threat]');
+        if (!threat) { threat = document.createElement('span'); threat.dataset.waveThreat = ''; threat.className = 'wave-threat'; score.lead.append(threat); }
+        const profile = { mixed: 'Mixed forces', infantry: 'Infantry assault', armor: 'Armored assault', siege: 'Siege weapons' }[s.mode.nextProfile];
+        setText(threat, !on && profile ? `Next Wave: ${profile}` : ''); show(threat, !on && !!profile);
         score.lead.title = 'Hold the bunker. The next wave comes 45 seconds after this one is dead';
-        show(score.lead.lastChild, !on && ctx.host);
+        show(score.lead.querySelector('button'), !on && ctx.host);
       } else if (kind === 'assault') {
         setText(mode, mine === s.mode.defenderTeam ? 'Assault: hold out' : 'Assault: take the bunker'); setText(clk, clock(s.mode.timeLeft));
         score.lead.title = mine === s.mode.defenderTeam ? 'Hold out until the clock runs out' : 'Destroy the command bunker before the clock runs out';
@@ -336,7 +342,8 @@ export function createHud(ctx) {
         menuBtn('form', 'Formation: shape, spacing, marching together and snapping to trenches. Right-drag sets the facing and the width; double right-click turns to face a spot') +
         (dig ? menuBtn('build', 'Build: sandbags, wire, traps, nests, mines, bridges and more') + menuBtn('trench', 'Trench patterns: lines, zigzags, rings and strongpoints the builder squads dig together') : '') +
         types.map((t) => { const ab = UNITS[t].ab; return orderBtn(`data-a="${t}"`, ab.id === 'smoke' ? 'smokeab' : ab.id, '', `${ab.name}: ${name(t)}${AIMED.has(ab.id) ? ', click where' : ''}. ${ab.cd}s cooldown. Right-click: autocast on/off`, t); }).join('') +
-        '</div>' + (menu ? `<div class="hd sub">${MENUS[menu][2]}</div><div class="grid">${menuHTML(menu)}</div>` : '');
+        '</div><div class="control-transfer"><label>Control group <select data-group-destination aria-label="Destination control group">' + Array.from({ length: 9 }, (_, i) => `<option value="${i + 1}">${i + 1}</option>`).join('') + '</select></label><button data-group-transfer title="Alt+1 to Alt+9 moves selected units and removes them from other groups">Move to group</button></div>' + (menu ? `<div class="hd sub">${MENUS[menu][2]}</div><div class="grid">${menuHTML(menu)}</div>` : '');
+      el.querySelector('[data-group-transfer]')?.addEventListener('click', () => ctx.transferGroup(el.querySelector('[data-group-destination]').value));
       el.querySelectorAll('button[data-a]').forEach((b) => {
         const a = b.dataset.a;
         b.onclick = (e) => {
@@ -407,7 +414,7 @@ export function createHud(ctx) {
     const card = $('buy');
     card.querySelectorAll('.key').forEach((k) => k.remove());
     slots().forEach((b, i) => { if (CARD_KEYS[i]) (b.querySelector(':scope > .hd') ?? b).insertAdjacentHTML('beforeend', `<kbd class="key">${CARD_KEYS[i]}</kbd>`); });
-    card.querySelectorAll('.grp').forEach((g, i) => g.classList.toggle('open', i === grp));
+    card.querySelectorAll('.grp').forEach((g, i) => { g.classList.toggle('open', i === grp); g.querySelector('.hd')?.setAttribute('aria-expanded', String(i === grp)); });
     card.classList.toggle('picked', grp >= 0);
   }
   function pressCard(n, many) {
@@ -453,8 +460,11 @@ export function createHud(ctx) {
     card.classList.remove('hidden');
     const types = UNIT_TYPES.filter((t) => canBuild(t, ctx.facOf(ctx.me)) && !UNITS[t].classic && (!UNITS[t].naval || ctx.naval()));
     card.innerHTML = groupsHTML(types, (t) => unitCard(t, `data-unit="${t}"`, `${UNITS[t].cost}<span class="cu"> MP</span>`, '', unitTip(t, ctx.me, `. ${UNITS[t].cost} MP`)));
-    // the stylesheet shares the room between the cards (14 since aviation); narrow cards drop the name and keep it in the tooltip
-    card.classList.add('fit'); card.style.setProperty('--nc', types.length); card.style.setProperty('--ng', card.querySelectorAll('.grp').length);
+    // Each group is a tab: a click shows its cards and hides the rest, so only one type's cards fill the screen.
+    // The stylesheet shares the room between the widest group's cards; narrow cards drop the name for the tooltip.
+    const sizes = GROUPS.map((_, g) => types.filter((t) => groupOf(t) === g).length).filter(Boolean);
+    card.classList.add('fit'); card.style.setProperty('--nc', Math.max(...sizes, 1)); card.style.setProperty('--ng', sizes.length);
+    card.querySelectorAll('.grp').forEach((g, i) => { g.querySelector('.hd').onclick = (e) => { grp = grp === i ? -1 : i; lettered(); quietBadges(); e.currentTarget.blur(); }; });
     card.querySelectorAll('[data-unit]').forEach((b) => { b._buy = (many) => buy(recruitAction(snapshot, ctx.me, b.dataset.unit, [...ctx.selected], ctx.teams), many); b.onclick = () => b._buy(false); });
     lettered();
     const tab = document.createElement('button');
@@ -501,14 +511,14 @@ export function createHud(ctx) {
       const info = (t, status, hint) => `<div class="cinfo"><div class="ci-t">${symbolSVG(t)}<b>${esc(UNITS[t].name)}</b></div><div class="ci-s">${status}</div><div class="ci-h">${hint}</div></div>`;
       if (bld && bld.built < 1) card.innerHTML = info(bld.type, 'Under construction <span data-built></span>', 'Right-click it with Engineers to help') +
         '<button class="cancel" data-cancel title="Cancel the building and get 75% of its cost back">Cancel<span>75% back</span></button>';
-      else if (bld) card.innerHTML = info(bld.type, '<span data-queue></span>', 'Right-click the ground: rally point') +
+      else if (bld) card.innerHTML = info(bld.type, '<span data-queue></span><div data-production-jobs class="production-jobs"></div>', 'Right-click the ground: rally point') +
         groupsHTML((UNITS[bld.type].makes ?? []).filter((t) => canBuild(t, ctx.facOf(ctx.me))), (t) => {
           const pr = priceOf(s, t), fuel = pr.fuel ? `${pr.fuel} Fuel, ` : '';
           return unitCard(t, `data-train="${t}"`, `${pr.mp} MP`, `${fuel}${UNITS[t].train}s`, unitTip(t, ctx.me, `. ${pr.mp} MP${pr.fuel ? ` + ${pr.fuel} Fuel` : ''}, trains in ${UNITS[t].train}s`));
         });
       else if (eng) card.innerHTML = '<div class="grp"><div class="hd">Build</div><div class="cards">' + BUILDABLE.map((k) =>
         `<button class="uc wide" data-build="${k}" title="${esc(`${UNITS[k].name}${BUILD_KEYS[k] ? ` (${BUILD_KEYS[k]})` : ''}: ${BUILD_ROLE[k] ?? ''}. ${UNITS[k].cost} MP, ${UNITS[k].buildTime}s`)}">` +
-        `<span class="nm">${esc(UNITS[k].name)} <kbd>${BUILD_KEYS[k] ?? ''}</kbd></span>${portrait(k, ctx.me)}<span class="cost">${UNITS[k].cost} MP, ${UNITS[k].buildTime}s</span>` +
+        `<span class="nm">${esc(UNITS[k].name)} <kbd>${BUILD_KEYS[k] ?? ''}</kbd></span>${cardSymbol(k)}<span class="cost">${UNITS[k].cost} MP, ${UNITS[k].buildTime}s</span>` +
         `<span class="sub" data-note></span></button>`).join('') + '</div></div>';
       else if (recovery) card.innerHTML = `<button class="uc wide" data-recover><span class="nm">Restore ${missingHQ ? 'HQ' : 'Engineer'}</span><span class="cost">${recoveryCost} MP</span><span class="sub">Deploys in friendly territory</span></button>`;
       else card.innerHTML = '';
@@ -525,6 +535,30 @@ export function createHud(ctx) {
     if (bld && bld.built >= 1) {
       const q = bld.queue ?? [], nm = (t) => name(t);
       setText(card.querySelector('[data-queue]'), q.length ? `Training ${nm(q[0])} ${Math.round((bld.prog ?? 0) * 100)}%` + (q.length > 1 ? `, then ${q.slice(1).map(nm).join(', ')}` : '') : 'Idle');
+      const jobs = bld.productionJobs ?? [], list = card.querySelector('[data-production-jobs]');
+      if (list) {
+        const key = jobs.map(job => `${job.id}:${job.status}`).join(',');
+        if (list.dataset.jobs !== key) {
+          list.dataset.jobs = key;
+          list.replaceChildren(...jobs.map(job => {
+            const row = document.createElement('div'), text = document.createElement('span');
+            row.className = 'production-job';
+            text.textContent = tr(`${job.status === 'active' ? 'Training' : 'Waiting'}: ${name(job.type)}`);
+            row.append(text);
+            if (job.status === 'waiting') {
+              const button = document.createElement('button');
+              button.type = 'button'; button.dataset.job = job.id;
+              button.textContent = tr(`Cancel: refund ${job.mp} MP, ${job.fuel} Fuel`);
+              button.title = tr(`Cancel ${name(job.type)}: refund ${job.mp} MP, ${job.fuel} Fuel`);
+              button.setAttribute('aria-label', button.title);
+              button.onclick = () => attempt({ t: 'cancelProduction', id: bld.id, job: job.id }, () => { button.disabled = true; ctx.send({ t: 'cancelProduction', id: bld.id, job: job.id }); });
+              row.append(button);
+            }
+            return row;
+          }));
+        }
+        for (const button of list.querySelectorAll('[data-job]')) setAvailability(button, check({ t: 'cancelProduction', id: bld.id, job: +button.dataset.job }));
+      }
       for (const b of card.querySelectorAll('[data-train]')) {
         const pr = priceOf(s, b.dataset.train), broke = s.mp < pr.mp || (s.fuel ?? 0) < pr.fuel;
         setAvailability(b, check({ t: 'buy', unit: b.dataset.train, from: bld.id }));

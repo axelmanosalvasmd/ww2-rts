@@ -1,4 +1,5 @@
 import * as THREE from 'three';
+import { lang } from './i18n.js';
 import { UNITS } from '/shared/sim.js';
 import { gfx } from './gfx.js';
 
@@ -59,7 +60,13 @@ export function createObjectives(hooks) {
 
   // Read only the received units, never ghosts. Lost vision stops the emitter on the next snapshot.
   function snapshot(s) {
-    const time = now(), points = hooks.points(), text = s.mode?.goal ? `Objective: ${s.mode.goal}` : '';
+    const time = now(), points = hooks.points();
+    const scenarioGoals = (s.scenario?.objectives ?? []).filter(o => o.state === 'active' || o.state === 'complete');
+    const text = s.mode?.goal ? `Objective: ${s.mode.goal}` : scenarioGoals.map(o => {
+      const label = typeof o.text === 'string' ? o.text : o.text?.[lang] ?? o.text?.en ?? '';
+      return `${o.state === 'complete' ? '✓' : '•'} ${label}`;
+    }).join('\n');
+    if (goal) goal.classList.toggle('scenario-goals', scenarioGoals.length > 0);
     if (goal && goal.textContent !== text) { goal.textContent = text; goal.hidden = !text; placeBanner(); }
     for (let i = 0; i < (s.points ?? []).length; i++) {
       const [owner, capper, progress, contested = 0, cut = 0, locked = 0] = s.points[i], old = pointState[i];

@@ -1,0 +1,16 @@
+{
+  "image_path": "/Users/judiazm/Projects/ww2-rts/art/model-reference-2026-10-03/infantry-face-v3.png",
+  "prompt": "A photorealistic front-facing male head for a 3D character diffuse texture projection. One European male age 30, lean angular face, short dark brown buzz cut, tired blue grey eyes looking straight forward, subtle beard stubble, neutral closed lips, pale weathered skin with fine pores and slight dirt and natural imperfections. Precisely symmetrical frontal orthographic mugshot, head perfectly upright, both ears visible equally. Full head and short neck visible; eyes open normally, mouth relaxed and closed. White diffuse shadowless cross-polarized studio illumination, no side lighting, no dramatic shadow, no highlights, no perspective distortion, no clothes, no hat, no helmet, no text. Head fills 80 percent of image height, centered on plain mid-grey background. This is a realistic color scan texture reference, not an illustration, not a render, not a wax mannequin.",
+  "revised_prompt": "A photorealistic front-facing male head for a 3D character diffuse texture projection. One European male age 30, lean angular face, short dark brown buzz cut, tired blue grey eyes looking straight forward, subtle beard stubble, neutral closed lips, pale weathered skin with fine pores and slight dirt and natural imperfections. Precisely symmetrical frontal orthographic mugshot, head perfectly upright, both ears visible equally. Full head and short neck visible; eyes open normally, mouth relaxed and closed. White diffuse shadowless cross-polarized studio illumination, no side lighting, no dramatic shadow, no highlights, no perspective distortion, no clothes, no hat, no helmet, no text. Head fills 80 percent of image height, centered on plain mid-grey background. This is a realistic color scan texture reference, not an illustration, not a render, not a wax mannequin.",
+  "size": "1024x1024",
+  "quality": "low",
+  "format": "png",
+  "is_transparent": false,
+  "input_image": null,
+  "ts": "2026-10-03T20:47:15Z",
+  "image_model": "gpt-image-2-codex",
+  "resolved_background": "opaque",
+  "transparency_mode": null,
+  "requested_image_model": null,
+  "resolved_quality": "medium"
+}

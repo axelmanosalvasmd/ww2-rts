@@ -1,0 +1,8 @@
+[project]
+name = "ww2-rts-blend-ai"
+version = "0.1.0"
+requires-python = ">=3.10"
+dependencies = ["blend-ai==1.7.0"]
+
+[tool.uv.sources]
+blend-ai = { git = "https://github.com/HoldMyBeer-gg/blend-ai.git", rev = "ce8fca24f2cd76db38d30c4bfd5fde7540c343bd" }

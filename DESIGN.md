@@ -22,6 +22,49 @@ Implementation sequence: separate production access from Classic economics, test
 
 Verification lives in `test-skirmish-bases.js`, `test-skirmish-client.js` and `test-skirmish-ai.js`, registered in `test.js`. Legacy combat fixtures use `test-fixtures.js` to supply temporary producers solely while assembling isolated armies; all new production tests use the authoritative, unwrapped command. No combat stats, income or victory thresholds were retuned. Competitive balance still needs human playtesting.
 
+## Thermopylae navigation and cliffs (2026-10-05)
+
+- The Hot Gates mountain-road gate is on level 2 beside an isolated level-4 plateau. Horde's 5 m spawn scatter
+  could land at (101,135), on that plateau, with no path to the bunker. Spawn placement now uses the unit's
+  movement mask and the gate's connected region. Ordinary land recruitment uses its home region too. Naval
+  recruitment keeps its search for nearby water. Crowds respect each unit's movement mask, so vehicles stay off
+  rubble, wrecks and tank traps while infantry can still cross them.
+- The road elevations and route stay as drawn. The stricter vehicle footprint system from origin exposed
+  20 rubble cells closing the mountain roadway; these move onto adjacent cliff shoulders. Regression checks cover eight scatter directions at every gate,
+  obstacle crowd pushes and four-vehicle Light Tank and Churchill convoys through both gullies in both directions.
+  Mixed tank and Churchill traffic can still jam when a faster tank tries to pass on the narrow road.
+- Cliffs share deterministic ragged rim offsets between the plateau and wall. Convex corners cut inward and
+  concave corners fill outward to soften the grid staircase. Bilinear offsets carry these bevels through each
+  touching cell without folding its triangles. Broad rock faces continue across cell boundaries and bends;
+  larger embedded outcrops and scattered fallen stones join the existing terrain mesh and draw call.
+  High detail uses four vertical bands, Low uses two;
+  maps above 65,536 cells use one band without foot rocks to retain the terrain triangle ceiling. Stone paint
+  uses darker, irregular weathering instead of horizontal stripes and pale caps. Face winding points toward
+  the low ground in all four orientations. Regression checks cover sealed convex and concave bends. Terrain
+  updates rebuild the stones along with the wall. Simulation heights and obstacle rules do not depend on the rocks.
+  Render contact and ground picking query the actual reshaped triangles through a cell index; ordinary terrain
+  keeps its existing contact query, and maps above 65,536 cells keep the existing inexpensive cliff query.
+  Plateau centres retain their original positions and heights, including near shell scars. Decorative crest
+  boulders can rise above the backing; they do not affect ground contact or picking.
+  The Hot Gates surface scan retains one pre-existing folded ground triangle (two before this revision).
+- Cliff rock models (2026-10-05): the wall sheet stays as the sealed backing and contact surface. In front of it,
+  six fractured rock models (an icosahedron, detail 1 on High and 0 on Low, displaced by noise and cut by a
+  flat outward face, a ledge and seven cleavage planes) are stacked per half cell edge, one per 3 m stratum,
+  each leaning 0.95 m further back per full rise. About 28% of halves get one tall buttress instead. Crest
+  boulders sit on the lip; scree sits at the foot. Lattice corners with one low cell (notch) get a rock pile
+  that rises 0.25 m over the lip; corners with one high cell (tooth) get a column kept within a metre of the
+  corner. Both need true cliff edges, not a diagonal level gap. Models carry rock paint 0.98: they shade like
+  stone but stay out of ground contact and picking, with no lip band, and upward faces take a grassy ledge
+  tint. A regression check keeps every model vertex near a mountain-road cell centre below 0.3 m. Deeper
+  convex bevels were tried and rejected because they break the shared mixed-height junction.
+  Ground triangles keep the existing ceiling. Decorative triangles have a separate per-cliff-edge budget,
+  scaled by the number of strata. Map regressions compare ragged cliff contact to independent mesh rays;
+  unchanged terrain still checks centred ramps, monotonic slopes and closed grid edges.
+- Authored naval sources use LF-normalized fingerprints in both export and validation, so a Windows checkout
+  keeps the same asset identity as a Unix checkout while actual source edits still invalidate the payload.
+- This fixes placement and crowd handling, without changing unit stats or wave budgets. No balance tuning was
+  performed. A running match's already stranded units need a restart; no recovery teleport is added.
+
 ## World Conquest (2026-10-03)
 
 World Conquest is a separate multiplayer mode with a generated, connected continent. Huge has 64 regions;
@@ -752,27 +795,29 @@ the playable map. The HUD target remains `docs/concepts/g-hud-gunmetal.jpg`, and
 Richer procedural models are built with the toolkit in `client/models/geom.js` (rounded and chamfered boxes,
 lofted hulls, lathed barrels and helmets, wheels, tracks, tubes, painted markings, baked vertex shading). Each model
 still merges into one vertex-colored mesh on the shared paint material, so detail costs vertices, not draw calls.
-- Model textures (`client/model-textures.js`): units are textured so they read as weathered real equipment, not
-  painted toys. Twelve seamless layers generated with gpt-image-2 (`client/textures/models/`, 512 px: painted armor,
-  cast armor, gunmetal, track steel, rubber, wood, canvas, wool, leather, aluminum, aircraft paint, mud) sit in one
+- Model textures (`client/model-textures.js`): fourteen surface layers share one 512-pixel texture array. Twelve
+  model layers generated with GPT Image (`client/textures/models/`: painted armor, cast armor, gunmetal, track
+  steel, rubber, wood, canvas, wool, leather, aluminum, aircraft paint and mud), plus the existing road and plaster
+  images for asphalt and concrete, sit in one
   texture array. The shared materials (PAINT, VEHICLE_PAINT, the plane body and blades) sample each fragment's layer with triplanar
   mapping in the model's own space (after the posture morphs, so nothing swims on a turning turret or a prone
   soldier). The texture's light and dark scale the vertex color, so faction paint, markings and the owner color keep
-  their hue; paint is faded a little and mottled with broad blotches, and some layers (track steel, wood, leather)
+  their hue; paint is faded a little, and some layers (track steel, wood, leather)
   bring part of their own color. Grime is baked per vertex at merge time by height: a dust film everywhere and dried
-  mud clumps on lower hulls, wheels, tracks and boots (none on planes). No extra draw calls; on Low, and until the
-  textures load, the shader compiles without any of it. Tuning per layer (texels per metre, strength, hue, fade, and
+  mud clumps on lower hulls, wheels, tracks and boots (none on planes or ships). No extra draw calls; on Low, and until the
+  textures load, texture sampling and relief are omitted. Roughness and metalness still follow the material ID;
+  Low caps effective metalness at 0.25 so the diffuse sky fill keeps bare metal readable without reflections.
+  Tuning per layer (texels per metre, strength, hue, fade, roughness, metalness, relief and
   film: how much grime it holds) is in `LAYERS` at the top of the module. Grime is greyed and never much brighter than
   the part under it, so dark tracks, tires and gunmetal stay dark instead of turning into an orange band.
-- Vehicle shade (2026-10-01): Neutral tone mapping subtracts most neutral light at low brightness and leaves the
-  blue sky tint on dark grey paint. Vehicle meshes use their own shared Lambert material with a textured-albedo
-  bounce fill, strongest away from the sun. The world light and soldier/gun materials stay as before. The fill adds
-  no draws or texture samples. German and Soviet light-tank paints are warm grey and olive; the Sd.Kfz. 222's dark
+- Vehicle shade: units, corpses, planes and base buildings use Standard materials. A small filtered outdoor
+  environment provides reflections on High; Low omits it. Painted steel stays dielectric, while exposed gunmetal,
+  track steel and aluminum reflect more light. Texture detail also varies roughness and surface normals. The old
+  artificial emissive fill is removed. German and Soviet light-tank paints are warm grey and olive; the Sd.Kfz. 222's dark
   paint shades are warm grey. Stuart sponsons add a lower rivet row, T-70 sides have weld seams, Tiger wheels have
   wider rubber rims and distinct inner/outer depth, and ZSU shields sit below the barrel with a visible breech,
-  recoil rail and case tray. Counts (hull + turret): Stuart 2,976/3,000, Panzer II 2,974/3,000, T-70 2,818/3,000,
-  Tiger 4,907/5,000, ZSU-37 2,954/3,000. All armor models remain two draws; tests check budgets, normals and muzzle
-  points. Panzer IV before/after viewer captures on the Apple M3 Max confirm readable rear plates at 3,908 tris.
+  recoil rail and case tray. Current geometry budgets and validation are recorded in the model finish section below.
+  All armor models remain two draws; tests check budgets, normals and muzzle points.
 - Tagging what a part is made of: `part(geo, paint, sx, sy, sz, x, y, z, mat)` in `client/unit-models.js`,
   `{ geo, color, matrix, mat }` items in `geom.merge()`, or `tag(geo, mat)`. `mat` is a name from `MATS` in
   `client/models/geom.js` or `'plain'` (no texture: faces, glass, the soldier's base). A shape's own tags win over the
@@ -833,6 +878,12 @@ or big celebratory banners. Corners 0 to 2 px, 1 px hairlines, 13 to 15 px body 
   and look (faction and player color), so they follow the models as those improve. A small renderer of its own
   starts 1.2 s after the match starts and renders one portrait per frame; colors are pulled 20% toward grey so the
   renders sit quietly on the panels. Until a portrait is ready its slot shows the silhouette icon.
+  Since 2026-10-05 only the selection list uses portraits. Recruit, train and build cards show the flat silhouette
+  symbol at full strength: at card size the 3D renders all looked alike and players could not tell units apart.
+- Recruit row tabs (2026-10-05): outside Classic the Command Card groups are a row of tabs, and only the open group's
+  cards show, on a row under the tabs. Nothing is open by default, so the panel is just the tabs until you pick one.
+  A click and a recruit-mode letter set the same open group, and Esc or a second click on the tab closes it.
+  Classic building cards keep every group open.
 - Layout: score and clock top center; MP / Munitions / Fuel, income and pop top right with the support calls as an icon
   row under them; bottom left the selection list and its orders (icon grid with hotkeys); bottom center the Command
   Card (always-visible recruit row outside Classic, grouped Infantry / Support weapons / Vehicles; train and build in
@@ -1050,8 +1101,13 @@ or big celebratory banners. Corners 0 to 2 px, 1 px hairlines, 13 to 15 px body 
   row runs of up to 32 cells. It imports `../shared/sim.js` by relative path, so test.js runs it in Node.
 - Cliff and slope rules: cell centres keep their exact sim height (`level x CFG.levelHeight`). A step of two or more
   levels between connected cells is a cliff: the sides get separate vertices and a vertical rock strip between them,
-  painted as warm strata with a pale lip and a soil foot. A one-level step is an eased ramp (smoothstep) between the two
-  cell centres, steepest at the boundary, painted with dry earth on the steep part. Cliffs are a heightfield, so there are no overhangs. Roads
+  painted as warm strata with a pale lip and a soil foot. Ordinary ramps use cubic interpolation with shared,
+  limited gradients. Consecutive rising cells keep their slope through cell centres instead of making a shelf
+  at every level. Flat tops, centre heights and cliff connectivity remain intact. Normals come from the same
+  interpolation, and the existing quarter-cell triangles remain the surface sampled by grounding and picking.
+  Ordinary hills use continuous slope paint; contour ink and lip/foot bands stay near actual cliffs.
+  Crater rims retain their existing visual edge displacement, which can differ from contact sampling.
+  Cliffs are a heightfield, so there are no overhangs. Roads
   sink 0.1 m with a shallow centre fan, and building cells are never sunk. Water cells are carved below the frozen
   water line of their body (`client/water-levels.js`): fords 0.15 m so they stay wadeable, channels 0.42 m at the
   bank row and 0.38 m deeper per row inward, with sloping banks. Bridge cells keep their deck height.
@@ -1223,6 +1279,142 @@ the page. Adding text to the game means adding its Spanish to `client/es.js`.
    Before tuning: USSR won 74% (conscripts at 60 MP were too efficient) and the German AI stalled saving for the Tiger.
 
 Tuning knobs: `CFG` and `UNITS` at the top of `shared/sim.js`.
+
+### Engine and game feel (2026-10-03)
+
+[Issue #39](https://github.com/axelmanosalvasmd/ww2-rts/issues/39) implements the seven engine directions, nine
+gameplay/presentation additions and realistic physics/world destruction in the
+[implementation contract](docs/engine-game-feel-spec.md). [Verification](docs/engine-game-feel-verification.md)
+records the multiplayer scenes, fixtures, measured hardware and limits. Research documents retain the sources and
+original proposals; they are not evidence of measured gains.
+
+Traffic steering uses nearby visible units, stable priority, waiting age and validated temporary detours. It preserves
+manual destinations, queues, garrisons and protected work. Ground vehicles use rectangular swept footprints,
+acceleration/braking and hull turn limits while retaining the existing flat-ground top speeds. For example, a light
+tank accelerates at 4.8 m/s², brakes at 7.5 m/s² and turns at 1.5 rad/s; a Tiger uses 2.3, 5 and 0.95. Reverse speed
+is 40% to 50% of forward top speed by profile. Hierarchical navigation and local smoothing use the recipient's
+remembered terrain, costs and hull clearance. Live hidden terrain cannot choose a route or retry.
+
+Movement lab fixes (2026-10-04): braking reserves a discrete tick of stopping distance, and acceleration from rest
+uses the forward or reverse profile instead of the braking rate. An exact vehicle destination must have the same
+turning clearance as the navigation cell center. A click too close to a wall resolves to that open center, while
+the retained order still uses its accepted `routeEnd` for completion. Destination checks read remembered source
+flags before hull inflation, so they cannot reveal unseen obstacles.
+
+Hull recovery accepts an escape only if its endpoint permits the following turn. Its deliberately slow forward
+or reverse progress counts as movement, rather than restarting the maneuver as stuck. Short reverse intent
+survives a replacement route to the same endpoint. Vehicle contact keeps a small numerical tolerance instead of
+allowing centimetre overlap that repeatedly zeroes both vehicles' speed. Cliff checks walk every crossed cell
+and reject both cliff flanks and a two-level climb at an exact diagonal corner.
+
+The [movement lab](docs/movement-lab.md) runs normal authoritative commands with controlled terrain and time.
+It contains 24 scenarios for all nine ground vehicle profiles, rifles and support guns, with Stop, Retreat,
+replacement orders, queues, ramps, road bends, traffic, new traps and wrecks, crossing closure and deferred searches.
+The browser shows live hulls, waypoints, goals, steering and motion measurements; it also accepts manual disruptions.
+Regression checks require every queued destination in order and independently inspect crossed height cells.
+Deliberately dropping a middle queue entry or disabling cliff collision must make those checks fail.
+
+Vehicle terrain alignment (2026-10-04): a separate chassis transform follows the visible relief under the native
+track or tire footprint. Forward pitch and side roll share a ground normal and retain the commanded horizontal
+heading. A 60-degree limit protects against cliff samples without flattening ordinary one-level ramps, which
+rise 2.5 m per 2 m cell. Terrain vertices and footprint-edge intersections support the hull across crests and
+dips, including narrow ridges between its front and rear. Suspension motion sits inside this terrain transform;
+turrets and muzzle mounts follow both.
+The simulation position, speed, routing, damage and selection markers retain their existing rules.
+Hidden or off-screen vehicles skip terrain sampling and evaluate the current pose when they return.
+
+Native tank wheel and belt animation (2026-10-04): authored road wheels, idlers, sprockets and return rollers carry axle
+centers and radii through the existing hull bake. Signed root travel includes ground height changes; heading
+changes give each side its own travel distance. Paired discs share their track's steering distance. Rotation
+occurs around each local z axle before terrain and suspension transforms, so reversing, pivot turns, stopping
+and hills keep coherent wheel motion. Hidden returns,
+teleports and paused seeks reset the displacement baseline without inventing travel. Each hull retains one draw
+and shares its static geometry and textured material, with two private motion values used by color and shadow
+passes. Visible links and cleats circulate around each native track loop using a shared sampled path table.
+Previously omitted bottom details complete the belt for circulation. The original vertices still define the terrain
+support footprint, and moving details stay above the native floor. Removing the hull frees only its private buffer
+and binding.
+Coverage includes Stuart, Panzer II, T-70, Sherman, Panzer IV, T-34, Tiger, Churchill, Cromwell, M10, StuG, SU-85,
+Calliope, Wirbelwind and ZSU-37, including existing faction model fallbacks. Suspension fittings and
+spare wheels remain fixed. Wheeled and halftrack families are outside this tank animation change.
+
+The [terrain workshop](docs/terrain-workshop.md) renders the game's models and relief through the same animation
+pipeline on seven authored scenes: climb and descent, cross slope, rounded hill, ramp beside a cliff, crest,
+trench and flat ground, plus a full generated World Conquest map with seed 20261003. It offers
+scrubbing, single-frame playback, forward/reverse/stopped motion, faction and vehicle choices, four camera views
+including close side inspection, and a level-hull comparison. Wheel telemetry reports native axle centers,
+radii and current rotation; belt telemetry reports signed travel and a circulating vertex.
+Its scripted paths test presentation, while the movement lab remains the authority for navigation and commands.
+Support samples approximate a rigid contact footprint; they do not add airborne vehicle physics or rollover.
+The original straight ramp and cross-slope fixtures remain unchanged for before/after comparisons. Broad
+authored plateaus and generated level regions retain their height contract. This change blends their ramps
+without changing high-ground bonuses, cliff collision, navigation or vehicle terrain alignment.
+
+Authoritative projectile flights sweep terrain and moving bodies between 20-Hz ticks. Contact applies damage and
+suppression once, even after the shooter dies. Small arms travel at 230 m/s, sniper rounds at 420 and direct shells
+at 150. Direct shells use gravity 9.81 m/s²; grenade/artillery profiles retain the existing 25 m/s² gameplay arcs.
+Explosive contacts terminate. A shallow nonexplosive hit below 0.28 incidence on material hardness at least 0.7 can
+ricochet within a two-contact budget with reduced energy. Full armor penetration and living-unit blast displacement
+remain outside this implementation.
+
+Version 2 maps store ground, objects and mine overlays separately, with independent material overrides. Legacy maps
+migrate without inventing buried roads. Clearing a mine reveals the original object and ground, including wear.
+Sections connect only to neighboring supports in the same structure and need a path to an anchor. Losing an anchor
+fails its unsupported dependents; independent anchored sections survive. A constructed building keeps its existing
+health budget, queue and identity during a local breach. Repair may restore supported cells in a surviving footprint;
+free repair cannot revive a destroyed building. Fire damages sections progressively, and material hardness controls
+ground deformation.
+
+Falling sections and wrecks have mass, impulse, gravity, damped motion and bounded swept contacts. There are at most
+96 active bodies, 8 contacts per body and 2.5 seconds of motion. Section travel stops within 4 metres and wreck travel
+within 2; overflow solves and settles immediately. Settled rubble/wrecks become normal pathing and cover objects.
+Debris does not displace or damage living units. Snapshots hydrate the current pose and durable footprint without
+replaying old collapse contacts. The transparent rubble atlas uses one draw call for up to 2,048 remembered patches.
+
+AI assaults preserve membership and role positions through assembly, advance, regroup and withdrawal. Initial timing
+is 12 seconds to assemble, 8 to regroup, 10 for a blocked operation, a 100-second lifetime and an 18-second withdrawal
+cooldown. Pressure thresholds are 1.25 to withdraw and 0.75 to resume; MG and armor matchups also matter. AI keeps
+the human observation and command boundary, and handing control back clears its operation claims. Horde uses the
+normal budget and unlocks, with mixed/infantry/armor/siege profiles announced during the break. Defining purchase
+shares target 65% infantry, 50% armor and 45% siege; a category repeats at most twice. These are initial behavior
+settings, not a faction-balance conclusion.
+
+The first full-engine comparison used four paired seeds on Default Conquest with three Normal AI seats,
+Standard armies and the normal 20 Hz step/10 Hz observation schedule. Both variants finished all four matches
+and recorded USA/Germany/USSR wins of 2/1/1. Median match duration changed from 548.425 to 595.050 seconds;
+three final matches lasted longer and one ended sooner. Authoritative combat kills totaled 80 before and 56 after.
+This eight-match behavior pilot compares the full engine changes and does not establish faction balance or isolate
+AI strength. Exact per-seed results, movement outcomes and frozen source hashes are in the
+[verification record](docs/engine-game-feel-verification.md#integrated-engine-pilot).
+
+Large idle Horde launches keep a private Wave-scoped FIFO and submit four ordinary ground move orders per
+100 ms observation beat (the normal 10 Hz delivery). A 238-unit staged batch launches in 59 following beats (5.9 seconds), with at most
+6 seconds including the first observation wait. Adaptive 5 Hz delivery doubles that bound to 12 seconds. Dead units, changed owner/orders, a break, a new Wave and a
+controller reset discard stale work. Fielded units still count toward ordinary Wave completion; direct player
+commands retain immediate path searches. This spreads initial searches without reducing total search work.
+The baseline and rebased four-defender Wave 10 Massive bridge fixture measured a 728.910 ms baseline maximum tick and
+32.601 ms on the final engine, including a 29.161 ms maximum AI phase, over 160 ticks on the local i5-12400.
+The earlier integrated engine reached 1,047.132 ms before staggering. Both fixtures reached the existing
+240 field and Reserve caps. The baseline predates the strategic geography merge and was not rerun. Final p95
+increased from 5.558 to 27.244 ms, with more path work spread across ticks;
+this is a bounded fixture measurement, not a total CPU reduction or universal latency guarantee.
+Current-only Huge/Massive World fixtures measured 30.607/49.943 ms p95, with 47.787/124.532 ms maximums above the
+40 ms tick budget. Their random seeds, staged resources, unpaced ticks and disabled compression limit comparison.
+Exact conditions and source hashes are in the [verification record](docs/engine-game-feel-verification.md#measured-workloads).
+
+Waiting production jobs have stable owner-only IDs and retain the charge paid at purchase. Canceling a waiter refunds
+that exact MP/Fuel charge once and releases its reserved population without resetting active training. Alert history
+keeps 100 local notices, including their delivered text and positions. Alt+number explicitly transfers selection
+out of other control groups. Vehicle damage smoke enters at 65% health and severe smoke at 32%, clearing through
+71%/38% hysteresis after repair. Location/weather ambience uses only known delivered terrain and the master volume.
+Detailed animation is gated before expensive unit work; camera return uses the current pose with no emission debt.
+
+Scenario authoring uses stable IDs, localized text, bounded conditions/actions, player/team/match scopes and finite
+repeat policies. Trigger dependencies cannot cycle. Reinforcements use normal arrival/population/terrain rules and
+finite expiry. Reconnect preserves execution identity without issuing rewards again. Scenario and mine source is
+available only to authenticated editing; public previews and match starts conceal future script contents. Failed
+validation leaves the previous match/lobby intact. The separate effect-priority/load-control proposal remains outside
+the approved scope.
 
 ## Naval warfare (decided 2026-10-01, slice 1 built)
 Goal: a big-map mode where players slowly take resource nodes, fortify their coast, then cross the sea to invade.
@@ -1927,3 +2119,51 @@ every new search, retaining current terrain, wear, weather and bunker insertion,
 economy or balance rule changed. `node test.js` includes the focused performance checks; CI also runs
 `node test-world.js`. `tools/test-render-browser.html` provides the native WebGL adapter check when served from the
 repository root by a local static server.
+
+## Model finish and Blender workflow (2026-10-03)
+
+- Naval models use shaped chine hulls, deck fittings, glazed bridges and individual gun mounts. The landing
+  craft keeps its open passenger well and bow ramp. Patrol boats keep two draws, landing craft one, and
+  destroyers five. Gun pivots and muzzle points retain the existing animation and firing contracts.
+- Naval geometry is cached by faction and owner paint, with material tags in the same shared texture array as
+  other vehicles. Raw hulls use curved transverse sections and cambered decks. Blender applies bounded bevels and
+  weighted normals, then exports a synchronous runtime payload with source hashes and separate tint masks.
+  Shared arrays are losslessly compressed in the 3.78 MB ES module and decoded once during module loading;
+  individual model construction stays synchronous. Final counts are 7,422 for landing craft, 15,680 for patrol
+  boats and 38,252 to 38,329 for destroyers, depending on faction.
+  Checks cover all four factions, finite geometry, face winding, footprints, mount counts and
+  budgets of 15,000 / 30,000 / 50,000 triangles for landing craft / patrol boats / destroyers.
+- Multi-view concept sheets and a neutral painted-steel texture were generated using the Codex Image workflow.
+  The sheets are visual guidance, not historical blueprints. The shipped armor texture is a 512-pixel JPEG;
+  faction colors still come from vertex paint. The earlier texture remains available as a source asset.
+- The Blender setup is project-scoped for Codex and Claude Code. Modeling and scene inspection use the existing
+  three-integration workflow, while the browser model viewer remains the authority for shipped rendering.
+  Simulation movement, collision rules, weapon stats and balance are unchanged by this visual pass.
+
+- Infantry detail stays within 3,000 triangles per near soldier and 145 per far soldier. Near figures have curved
+  limbs, facial features, shaped helmets and distinct weapon profiles. The far geometry and posture/gait contracts
+  are preserved. Field guns stay within 4,000 triangles. Armor uses curved castings or beveled welded plates, rounded
+  tires, perforated wheels and physical track cleats; budgets are 8,000 for light tanks, 18,000 for medium tanks and
+  20,000 for heavy tanks. Wheeled vehicles stay below 12,000 triangles. Aircraft budgets are 6,000 for fighters,
+  6,500 for attackers and 10,000 for bombers and transports. Base buildings retain one draw each, with thick roofs,
+  rounded log walls, glazed openings and recognizable workshop equipment.
+- Land hulls lean slightly with acceleration and steering; boats use bounded pitch, roll and heave. A visual
+  child group keeps position, heading and ground markers stable. Muzzle effects follow the animated geometry.
+  Infantry gait weights ease between poses and stride length settles when suppression changes posture.
+- Sky and ground fill expose shaded model details without adding lights or shadow maps. Cloud edges soften;
+  river mist and fog banks share a weather-tinted shader with mild UV distortion and a near-camera fade.
+  Mist stops drifting under reduced-motion preferences. Graphics Low retains its existing cheaper effects.
+- Standard shading costs more per fragment than Lambert. The shared texture array, merged draws and existing
+  infantry distance LOD remain in use. The reflection map is generated once per renderer, with no added per-frame
+  capture or post-processing pass. This visual pass does not claim a new frame-rate target.
+
+## Infantry asset and traffic maintenance (2026-10-03)
+
+Near infantry now uses a 5,984-triangle textured source fitted in Blender to the existing pose rig.
+Factions share its base uniform cut, with separate colors, helmets and weapons. The distant figures,
+weapon reach, muzzle positions, unit stats and combat rules are unchanged. Low graphics keeps the
+base-color atlas but skips its normal map. See `tools/blender/infantry.md` for the retained source and rebuild.
+
+Infantry pairs use soft separation throughout local traffic planning, including the occupancy tests
+for passing legs. A waiting engineer must not invalidate every route around a stationary HQ when
+those same infantry pairs would not block one another during ordinary travel.

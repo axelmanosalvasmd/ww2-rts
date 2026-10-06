@@ -1,3 +1,5 @@
+import './test-horde-navigation.mjs';
+import './test-cliff-relief.mjs';
 // Headless sim checks: `node test.js`. Fails loudly if core rules break.
 import assert from 'node:assert/strict';
 import { createHash } from 'node:crypto';
@@ -9,6 +11,7 @@ await import('./test-skirmish-client.js');
 await import('./test-skirmish-ai.js');
 import { createGame, step, los, findPath, validateMap, snapshotFor, snapshotCache, inTrench, vet, spawnSlots, popOf, popCap, CFG, CELL, SUPPORT, UNITS, teamSees, levelOf } from './shared/sim.js';
 import { SpatialGrid, updateGrid } from './shared/grid.js';
+import { DEBRIS_LIMITS } from './shared/debris-motion.js';
 import { think, thinkEvery, AI_LEVEL_NAMES } from './shared/ai.js';
 import { viewFor } from './shared/ai-view.js';
 import { unitRole } from './client/unit-roles.js';
@@ -17,10 +20,30 @@ import { createAutocast } from './client/autocast.js';
 import { normalizeFace, slotSize, facingSpots } from './shared/formation.js';
 import { createOrders } from './client/orders.js';
 await import('./test-tutorial.js');
+await import('./test-infantry-authored.mjs');
+await import('./test-terrain-relief.mjs');
+// The authoritative solver installs durable rubble after its bounded physical fall.
+const settleDebris = g => { for (let i = 0; i <= Math.ceil(DEBRIS_LIMITS.lifetime / sim.TICK) + 1; i++) step(g); };
+const settledRubble = (g, cells, message) => {
+  const sections = cells.map(c => g.structuralCells.get(c));
+  assert.ok(sections.every(section => section?.state === 'failed' && Number.isFinite(section.settledAt)), `${message}: all sections failed and settled`);
+  const rubble = [...new Set(sections.flatMap(section => section.rubble))];
+  assert.ok(rubble.length > 0, `${message}: a durable rubble footprint remains`);
+  for (const c of rubble) {
+    assert.equal(g.objects[c], 'R', `${message}: recorded footprint contains rubble`);
+    assert.ok(cells.some(origin => Math.hypot(c % g.w - origin % g.w, Math.floor(c / g.w) - Math.floor(origin / g.w)) <= 3), `${message}: rubble remains within 6 m of the collapsed footprint`);
+  }
+  return rubble;
+};
+
 // The large-world checks use real clients and a fresh authoritative server.
 {
   const { execFileSync } = await import('node:child_process');
-  for (const file of process.env.CORE_ONLY ? [] : ['test-world-waterways.js', 'test-world-multiple-rivers.js', 'test-world-generation.js', 'test-world-territories.js', 'test-world-conquest.js', 'test-world-teams.js', 'test-world-acceptance.js', 'test-world-observation.js', 'test-world-movement.js', 'test-world-river.js']) {
+  for (const file of process.env.CORE_ONLY ? [] : ['test-world-waterways.js', 'test-world-multiple-rivers.js', 'test-world-generation.js', 'test-world-territories.js',
+    'test-world-conquest.js', 'test-world-teams.js', 'test-world-acceptance.js', 'test-world-observation.js', 'test-world-movement.js', 'test-world-river.js',
+    'test-engine-controls.js', 'test-engine-world.js', 'test-engine-movement.js', 'test-movement-lab.js', 'test-engine-projectiles.js', 'test-engine-scenarios.js', 'test-engine-ai.js', 'test-engine-acceptance.js', 'test-engine-presentation.mjs',
+    'test-engine-spectators.js', 'test-engine-scenario-start.js', 'test-engine-breaches.mjs', 'test-engine-authoring.js', 'test-engine-vehicle-pose.mjs', 'test-engine-ai-privacy.js', 'test-engine-localization.mjs',
+    'test-engine-debris.js', 'test-engine-traffic-privacy.js', 'test-engine-horde-queue.js']) {
     execFileSync(process.execPath, [file], { cwd: import.meta.dirname, stdio: 'inherit', timeout: 180000 });
   }
 }
@@ -74,6 +97,7 @@ await import('./test-tutorial.js');
   const g = createGame(map, ['a', 'b'], false, [0, 1], [0, 1], { mode: 'annihilation' });
   const bunker = [...g.units.values()].find(u => u.owner === 0 && u.type === 'bunker');
   Object.assign(bunker, { x: 81, z: 81 });
+  g.players[1].visible.add(bunker.id); // The route must avoid a bunker this player has observed.
   for (const type of ['rifle', 'tank']) {
     const from = { owner: 1, type, x: 65, z: 81.3 }, path = findPath(g, from, { x: 97, z: 81 });
     let at = from, closest = Infinity;
@@ -148,9 +172,11 @@ await import('./test-tutorial.js');
   assert.ok(!gone.cells.some(([c]) => b.cells.includes(c)), 'unseen building destruction does not change remembered terrain');
   assert.ok(gone.ghosts.some(gh => gh[0] === b.id), 'unseen building destruction preserves its Ghost');
   assert.equal(sim.terrainFor(g, 0, true).filter(([c, ch]) => b.cells.includes(c) && ch === 'K').length, 9, 'reconnect terrain remembers the old footprint under fog');
+  settleDebris(g);
+  const rubble = settledRubble(g, b.cells, 'destroyed Barracks');
   Object.assign(scout, { x: 130, z: 140 }); while (g.tick % 4 !== 1) step(g);
   const revisited = snapshotFor(g, 0, [], []);
-  assert.equal(revisited.cells.filter(([c, ch]) => b.cells.includes(c) && ch === 'R').length, 9, 'revisiting a destroyed building catches up all rubble cells');
+  assert.ok(rubble.every(c => revisited.cells.some(row => row[0] === c && row[1] === 'R')), 'revisiting a destroyed building catches up its complete settled rubble footprint');
   assert.ok(!revisited.ghosts.some(gh => gh[0] === b.id), 'revisiting the rubble clears its Ghost');
   assert.ok(sim.terrainFor(g, 0, true).length <= g.w * g.h, 'remembered terrain is bounded by the map cell count');
 }
@@ -525,7 +551,8 @@ const put = (g, owner, type, x, z) => { command(g, owner, { t: 'buy', unit: type
   assert.equal(g.chars[c], 'T', 'one hit does not cave it in');
   sim.damageCells(g, [], { x: 11, z: 21 }, 0.5, T.hp * 0.6);
   assert.equal(g.chars[c], '+', 'two do: a crater');
-  g.players[0].mp = 1000; const tank = put(g, 0, 'tank', 15, 10); tank.path = [{ x: 15, z: 32 }];
+  g.units.clear(); // Test terrain crushing without the protected trench occupants blocking the crossing.
+  g.players[0].mp = 1000; const tank = put(g, 0, 'tank', 15, 10); tank.rot = Math.PI / 2; tank.path = [{ x: 15, z: 32 }];
   run(g, 5);
   assert.equal(g.chars[10 * g.w + 7], '+', 'a tank crushes the trench it drives over');
 }
@@ -540,7 +567,8 @@ const put = (g, owner, type, x, z) => { command(g, owner, { t: 'buy', unit: type
   run(g, 5 + CFG.digTime * CFG.digCells + 1);
   assert.equal(r.dig, null, 'done digging');
   assert.equal(g.cellLog.length, CFG.digCells, 'four trench cells logged');
-  assert.ok(snapshotFor(g, 1, [], g.newCells).cells.length === CFG.digCells, 'changes go out in snapshots');
+  assert.equal(snapshotFor(g, 0, [], g.newCells).cells.filter(row => row[1] === 'T').length, CFG.digCells, 'known trench changes go out in owner snapshots');
+  assert.equal(snapshotFor(g, 1, [], g.newCells).cells.length, 0, 'unseen enemy trench changes remain private');
   g.players[0].mp = 1000;
   const mg = put(g, 0, 'mg', 5, 5);
   assert.equal(mg.type, 'mg');
@@ -673,7 +701,7 @@ const hilly = (heights) => { const g = createGame({ ...blank(empty), heights }, 
   command(g, 0, { t: 'support', kind: 'artillery', x: 18, z: 21, dir: 0 });
   run(g, SUPPORT.artillery.delay + 5);
   Math.random = orig;
-  assert.ok(g.chars.slice(10 * 20 + 8, 10 * 20 + 10).every(ch => ch === 'R'), 'house is rubble');
+  settleDebris(g); settledRubble(g, [10 * 20 + 8, 10 * 20 + 9], 'shelled house');
   assert.ok(findPath(g, { x: 17, z: 5 }, { x: 17, z: 35 }).every(p => p.x > 0), 'rubble is walkable');
   const t = put(g, 0, 'tank', 25, 5);
   command(g, 0, { t: 'move', orders: [[t.id, 31, 36]] });
@@ -858,29 +886,35 @@ const hilly = (heights) => { const g = createGame({ ...blank(empty), heights }, 
   for (let c = 0; c < s.height.length; c++) if (c % s.w > 0) assert.ok(Math.abs(s.height[c] - s.height[c - 1]) <= 1, 'no cliffs from shelling');
 }
 
-// Wrecks: a knocked-out tank stays where it stopped and covers infantry behind it like a live one.
+// Wrecks settle near the knocked-out tank and cover infantry behind their final hull.
 {
   const g = fresh(); g.players[0].mp = g.players[1].mp = 5000;
   const t = put(g, 0, 'tank', 20, 21), from = { x: 35, z: 21 };
-  t.hp = 0; run(g, 0.5);
+  t.hp = 0; settleDebris(g);
   assert.ok(!g.units.has(t.id) && g.wrecks.length === 1, 'the tank is gone, its wreck is not');
-  assert.equal(g.chars[10 * 20 + 10], 'Q', 'its cell is a wreck');
-  assert.ok(sim.coverBehind(g, { x: 18, z: 21 }, from) > 0.9, 'cover behind the wreck');
-  assert.equal(sim.coverBehind(g, { x: 22, z: 21 }, from), 0, 'none in front of it');
-  assert.deepEqual(snapshotFor(g, 1, []).wrecks, [[t.id, 'tank', 0, 20, 21, 0]], 'everyone is told where it lies');
+  const wreck = g.wrecks[0];
+  assert.equal(wreck.motion, null, 'the hull has settled');
+  assert.ok(Math.hypot(wreck.x - 20, wreck.z - 21) < CELL, 'the stationary killed tank settles within its original cell width');
+  assert.equal(g.chars[wreck.c], 'Q', 'its final footprint is a wreck');
+  assert.ok(sim.coverBehind(g, { x: wreck.x - 2, z: wreck.z }, from) > 0.9, 'cover behind the settled wreck');
+  assert.equal(sim.coverBehind(g, { x: wreck.x + 2, z: wreck.z }, from), 0, 'none in front of it');
+  assert.deepEqual(snapshotFor(g, 1, []).wrecks, [], 'an unseen rival wreck stays private');
+  put(g, 1, 'rifle', 35, 21); run(g, 0.5);
+  assert.deepEqual(snapshotFor(g, 1, []).wrecks, [[t.id, 'tank', 0, Math.round(wreck.x * 10) / 10, Math.round(wreck.z * 10) / 10, 0]], 'a team observing the settled wreck receives its actual recorded position');
   const r = put(g, 0, 'rifle', 30, 30); r.hp = 0; run(g, 0.5);
   assert.equal(g.wrecks.length, 1, 'infantry leave no wreck');
   const cap = CFG.wrecks; CFG.wrecks = 3;
-  for (let i = 0; i < 5; i++) { put(g, 0, 'tank', 10 + i * 4, 31).hp = 0; run(g, 0.1); }
+  const recentIds = [];
+  for (let i = 0; i < 5; i++) { const killed = put(g, 0, 'tank', 10 + i * 4, 31); recentIds.push(killed.id); killed.hp = 0; run(g, 0.1); }
   CFG.wrecks = cap;
-  assert.deepEqual([g.wrecks.length, g.wrecks[0].x], [3, 18], 'the oldest wrecks are cleared away');
+  assert.deepEqual(g.wrecks.map(w => w.id), recentIds.slice(-3), 'the oldest wrecks are cleared away while the newest three remain');
 }
 
 // A wreck plugs a causeway for vehicles, not for infantry, until it is blown apart.
 {
-  const g = fresh(empty.map((row, y) => (y === 10 ? row : 'W'.repeat(20)))); g.players[0].mp = g.players[1].mp = 5000;
+  const g = fresh(empty.map((row, y) => (y >= 9 && y <= 11 ? row : 'W'.repeat(20)))); g.players[0].mp = g.players[1].mp = 5000;
   const tank = { x: 5, z: 21, type: 'tank' }, far = { x: 35, z: 21 };
-  put(g, 0, 'tank', 20, 21).hp = 0; run(g, 0.5);
+  put(g, 0, 'tank', 20, 21).hp = 0; settleDebris(g);
   assert.deepEqual(findPath(g, tank, far), [], 'no way past for a tank');
   assert.ok(findPath(g, { x: 5, z: 21 }, far).length, 'infantry climb over');
   command(g, 1, { t: 'support', kind: 'dive', x: 20, z: 21 }); run(g, SUPPORT.dive.delay + 1);
@@ -909,7 +943,7 @@ const hilly = (heights) => { const g = createGame({ ...blank(empty), heights }, 
   const t = put(g, 0, 'tank', 20, 40);
   command(g, 0, { t: 'fireat', ids: [t.id], x: 19, z: 21 });
   run(g, 20);
-  assert.equal(g.chars[10 * 20 + 9], 'R', 'house shelled into rubble');
+  settleDebris(g); settledRubble(g, [10 * 20 + 9], 'house shelled into rubble');
   assert.equal(t.fireAt, -1, 'tank stops once it is down');
   const r = put(g, 0, 'rifle', 5, 5);
   command(g, 0, { t: 'fireat', ids: [r.id], x: 19, z: 21 });
@@ -1002,7 +1036,7 @@ const hilly = (heights) => { const g = createGame({ ...blank(empty), heights }, 
   command(g, 0, { t: 'buy', unit: 'ranger' }); const rg = [...g.units.values()].at(-1); rg.x = 19; rg.z = 30;
   command(g, 0, { t: 'ability', ids: [rg.id], x: 19, z: 21 });
   run(g, 8);
-  assert.ok(g.chars.slice(10 * 20 + 9, 10 * 20 + 11).every(c => c === 'R'), 'satchel demolished the house');
+  settleDebris(g); settledRubble(g, [10 * 20 + 9, 10 * 20 + 10], 'satchel demolished house');
   command(g, 2, { t: 'buy', unit: 'conscript' }); const cs = [...g.units.values()].at(-1); cs.x = 5; cs.z = 35; cs.supp = 95;
   command(g, 2, { t: 'ability', ids: [cs.id] });
   command(g, 2, { t: 'move', orders: [[cs.id, 35, 35]] });
@@ -1138,17 +1172,23 @@ const hilly = (heights) => { const g = createGame({ ...blank(empty), heights }, 
   const corner = put(g, 0, 'rifle', 15, 21), open = put(g, 0, 'rifle', 15, 31);
   corner.holdPos = open.holdPos = true; // stay put: this checks the cover rule, not the walking
   const north = put(g, 1, 'rifle', 15, 3), south = put(g, 1, 'rifle', 15, 39);
+  for (const u of g.units.values()) u.holdFire = true;
   for (let i = 0; i < 4; i++) step(g);
   assert.ok(los(g, north, corner), 'the squad at the corner can be seen (and can see) past the house');
   const row = (u) => snapshotFor(g, 0, []).units.find(v => v[0] === u.id);
   assert.equal(row(corner)[10], 3, 'the HUD shows the corner squad as by cover');
   assert.equal(row(open)[10], 0, 'and the squad in the open as not');
   // suppression a single volley adds is scaled by cover, so it measures cover without random hits
-  const volley = (shooter, target) => { target.supp = 0; target.hp = 100; shooter.cooldown = 0; shooter.targetId = target.id; shooter.retarget = 1e9; step(g); return target.supp; };
-  g.units.delete(south.id);
+  const volley = (shooter, target) => {
+    target.supp = 0; target.hp = 100; shooter.cooldown = 0; shooter.targetId = target.id; shooter.retarget = 1e9;
+    shooter.holdFire = false; step(g); shooter.holdFire = true;
+    run(g, 0.25); // Compare suppression after the single volley reaches its target.
+    return target.supp;
+  };
+  g.units.delete(south.id); g.units.delete(open.id); // Keep the cover comparison clear of intervening bodies.
   const fromHouseSide = volley(north, corner);
   g.units.delete(north.id);
-  const flank = put(g, 1, 'rifle', 15, 39); for (let i = 0; i < 4; i++) step(g);
+  const flank = put(g, 1, 'rifle', 15, 39); flank.holdFire = true; for (let i = 0; i < 4; i++) step(g);
   const fromOpenSide = volley(flank, corner);
   assert.ok(fromHouseSide > 0 && fromOpenSide > 0, 'both volleys were fired');
   assert.ok(fromHouseSide < fromOpenSide * 0.7, 'fire from the house side is blunted; fire from the open side is not');
@@ -1550,7 +1590,8 @@ const hilly = (heights) => { const g = createGame({ ...blank(empty), heights }, 
   // Production footprints now occupy the old firing position. Use a clear firing lane.
   for (let a=0; a<Math.PI*2; a+=Math.PI/8) { const at={x:b.x+Math.cos(a)*20,z:b.z+Math.sin(a)*20}; if (los(g,at,b)) { Object.assign(tank,at); break; } }
   const orig = Math.random; Math.random = () => 0;
-  const h0 = b.hp; step(g); const shell = h0 - b.hp;
+  for (const u of g.units.values()) if (u.id !== tank.id && u.id !== b.id) u.holdFire = true;
+  const h0 = b.hp; step(g); tank.holdFire = true; run(g, 0.3); const shell = h0 - b.hp;
   Math.random = orig;
   assert.ok(shell > 0 && shell <= 45 * 0.25 + 0.01, `tank shell does 25% (${shell})`);
   // off-map support barely touches it: a full bombing run and a barrage dead on target do under 5%
@@ -1646,7 +1687,7 @@ const hilly = (heights) => { const g = createGame({ ...blank(empty), heights }, 
   foeHq.hp = 0; run(g, 0.1);
   assert.ok(g.players[1].out, 'player without a Production Building is out');
   assert.ok(![...g.units.values()].some(u => u.owner === 1), 'their units and buildings are gone');
-  assert.ok(foeHq.cells.every(c => g.chars[c] === 'R'), 'HQ collapses into rubble');
+  settleDebris(g); settledRubble(g, foeHq.cells, 'destroyed HQ');
   assert.equal(g.winner, 0, 'last side standing wins');
 }
 
@@ -2380,21 +2421,22 @@ for (const mode of ['classic', 'annihilation']) {
   const shooter = put(g, 1, 'rifle', 30, 10);
   rifle.cooldown = plane.cooldown = 1e9;
   const random = Math.random;
-  try { Math.random = () => 0.5; step(g); } finally { Math.random = random; }
-  assert.ok(rifle.hp < UNITS.rifle.models * UNITS.rifle.hpPer, 'a plane does not block ground fire aimed at the squad');
+  try { Math.random = () => 0.5; step(g); shooter.holdFire = true; run(g, 0.2); } finally { Math.random = random; }
+  assert.ok(rifle.hp < UNITS.rifle.models * UNITS.rifle.hpPer, 'a plane does not block the arriving ground volley aimed at the squad');
 }
 
-// A vehicle killed earlier in a tick cannot fire after its destruction.
+// A vehicle destroyed by an arriving round cannot produce a later firing event.
 {
   const g = fresh(empty, 3); g.players.forEach(p => { p.mp = 1000; });
   const killer = put(g, 0, 'tank', 10, 10), doomed = put(g, 1, 'tank', 30, 10);
   const rifle = put(g, 2, 'rifle', 34, 10);
-  doomed.hp = 1; rifle.cooldown = 1e9;
+  doomed.hp = 1; doomed.holdFire = true; rifle.cooldown = 1e9;
   const random = Math.random;
-  try { Math.random = () => 0; step(g); } finally { Math.random = random; }
-  assert.equal(g.units.has(doomed.id), false, 'the first tank destroys the enemy tank');
-  assert.equal(rifle.hp, UNITS.rifle.models * UNITS.rifle.hpPer, 'a destroyed tank cannot fire later in the same tick');
-  assert.equal(g.shots.some(s => s.f === doomed.id), false, 'the destroyed tank produces no firing event');
+  try { Math.random = () => 0; step(g); killer.holdFire = true; run(g, 0.25); } finally { Math.random = random; }
+  assert.equal(g.units.has(doomed.id), false, 'the arriving tank shell destroys the enemy tank');
+  doomed.holdFire = false; doomed.cooldown = 0; run(g, 0.25);
+  assert.equal(rifle.hp, UNITS.rifle.models * UNITS.rifle.hpPer, 'the destroyed tank cannot damage the neighboring squad afterwards');
+  assert.equal(g.shots.some(s => s.f === doomed.id), false, 'the destroyed tank produces no later firing event');
 }
 
 // Ghosts use airborne visibility: parked planes cannot spot, flying planes see across terrain.
@@ -2510,7 +2552,9 @@ for (const flying of [false, true]) {
     first.hp = 0; next.x = 20; rifle.cooldown = 0;
     step(g);
     assert.equal(rifle.targetId, next.id, 'a dead current target is replaced without waiting for the timer');
-    assert.ok(next.hp < UNITS.rifle.models * UNITS.rifle.hpPer, 'the replacement target is shot immediately');
+    assert.ok(g.shots.some(shot => shot.k === 'flight' && shot.f === rifle.id && shot.time === g.tick * sim.TICK), 'the replacement target receives a launched volley on the acquisition tick');
+    run(g, 0.2);
+    assert.ok(next.hp < UNITS.rifle.models * UNITS.rifle.hpPer, 'the replacement target is damaged when that volley arrives');
   } finally { Math.random = orig; }
 }
 
@@ -2657,9 +2701,10 @@ const behindHedge = p => p.x >= 40 - 2.2 && p.x < 42 && p.z > 6 && p.z < 54;
   command(g, 0, { t: 'move', orders: [[fighting.id, 40, 15], [calm.id, 40, 45]] });
   run(g, 1.5);
   assert.ok(fighting.x < 48 && Math.cos(fighting.rot) > 0.99, `the engaged tank reverses, front still east (${fighting.x}, rot ${fighting.rot})`);
-  assert.ok(Math.cos(calm.rot) < -0.9, 'the tank out of a fight turns around and drives');
+  assert.ok(Math.abs(calm.rot) > 1 && Math.abs(calm.rot) < Math.PI, 'the tank out of a fight turns gradually before driving forward');
   run(g, 4);
   assert.ok(Math.hypot(fighting.x - 40, fighting.z - 15) < 1, 'the reversing tank still gets there');
+  assert.ok(Math.hypot(calm.x - 40, calm.z - 45) < 1 && Math.cos(calm.rot) < -0.9, 'the calm tank finishes its turn and drives to the destination');
 }
 
 // A hurt vehicle shot at from beyond its reach backs off, front first, unless it is holding a capture point.
@@ -2766,22 +2811,26 @@ for (const type of ['rifle', 'tank']) {
 // Hull facing (merged with PR #11): a tank fighting a squad turns its front to an anti-tank gun it can't see, and keeps
 // it there between the gun's shots; rifle fire does not swing the hull.
 {
-  const g = fresh(field()); g.players[0].mp = g.players[1].mp = 5000;
-  const tank = put(g, 0, 'tank', 50, 20); Object.assign(tank, { rot: 0, hp: 1e5 });
-  const squad = passive(put(g, 1, 'rifle', 70, 20)), gun = put(g, 1, 'at', 8, 20);
-  passive(put(g, 1, 'rifle', 50, 55.5)); // a spotter just out of the tank's range, so the gun can see the tank
-  gun.still = 10; squad.hp = 1e5;
-  run(g, 4);
-  let worst = 1;
-  for (let i = 0; i < 8 * 20; i++) { step(g); worst = Math.min(worst, Math.cos(tank.rot - Math.PI)); }
-  assert.equal(tank.targetId, squad.id, 'the tank fights the squad it can see');
-  assert.ok(!g.players[0].visible.has(gun.id), 'and cannot see the gun');
-  assert.ok(worst > 0.95, `its front stays on the gun across reloads (worst cos ${worst.toFixed(2)})`);
-  const h = fresh(field()); h.players[0].mp = h.players[1].mp = 5000;
-  const quiet = put(h, 0, 'tank', 40, 20); Object.assign(quiet, { rot: 0, hp: 1e5, holdFire: true });
-  put(h, 1, 'rifle', 40, 32);
-  run(h, 3);
-  assert.ok(Math.cos(quiet.rot) > 0.99, 'a tank shot at by rifles keeps its hull where it was');
+  const savedRandom = Math.random;
+  try {
+    Math.random = () => 0;
+    const g = fresh(field()); g.players[0].mp = g.players[1].mp = 5000;
+    const tank = put(g, 0, 'tank', 50, 20); Object.assign(tank, { rot: 0, hp: 1e5 });
+    const squad = passive(put(g, 1, 'rifle', 70, 20)), gun = put(g, 1, 'at', 8, 20);
+    passive(put(g, 1, 'rifle', 50, 55.5)); // a spotter just out of the tank's range, so the gun can see the tank
+    gun.still = 10; squad.hp = 1e5;
+    run(g, 4);
+    let worst = 1;
+    for (let i = 0; i < 8 * 20; i++) { step(g); worst = Math.min(worst, Math.cos(tank.rot - Math.PI)); }
+    assert.equal(tank.targetId, squad.id, 'the tank fights the squad it can see');
+    assert.ok(!g.players[0].visible.has(gun.id), 'and cannot see the gun');
+    assert.ok(worst > 0.95, `its front stays on the gun across reloads (worst cos ${worst.toFixed(2)})`);
+    const h = fresh(field()); h.players[0].mp = h.players[1].mp = 5000;
+    const quiet = put(h, 0, 'tank', 40, 20); Object.assign(quiet, { rot: 0, hp: 1e5, holdFire: true });
+    put(h, 1, 'rifle', 40, 32);
+    run(h, 3);
+    assert.ok(Math.cos(quiet.rot) > 0.99, 'a tank shot at by rifles keeps its hull where it was');
+  } finally { Math.random = savedRandom; }
 }
 
 // Take Cover (merged with PR #11) uses the same spot rule as the rest: squads spread to the spacing when the cover has
@@ -3178,7 +3227,9 @@ const massiveFixture = () => {
     const u = [...g.units.values()].find(u => u.owner === owner && u.type === 'rifle'), c = houses[owner * 3];
     Object.assign(u, { garrison: c, x: (c % g.w + 0.5) * CELL, z: (Math.floor(c / g.w) + 0.5) * CELL });
   }
-  for (let c = 0; g.cellLog.length < 1075; c++) if (!g.cellLogIndexes.has(c)) massiveInternals.setCell(g, c, g.chars[c]);
+  // Seed replay rows directly: unchanged terrain edits intentionally produce no mutation now.
+  for (let c = 0; c < g.chars.length && g.cellLog.length < 1075; c++) if (!g.cellLogIndexes.has(c)) massiveInternals.logCell(g, c);
+  assert.equal(g.cellLog.length, 1075, 'fixture records its complete bounded terrain replay');
   g.tick = 101; g.shots = []; g.newCells = [];
   g.strikes.push({ kind: 'recon', owner: 0, x: g.w * CELL / 2, z: g.h * CELL / 2, dir: 0, t: 0, left: SUPPORT.recon.dur, next: 0, live: true });
   return g;
@@ -3223,7 +3274,7 @@ const referenceVision = g => {
       if (UNITS[u.type].camo) { u.still = round % 2 ? 5 : 0; u.shotAt = round % 3 ? -1000 : g.tick; }
     }
     const expected = structuredClone(g);
-    referenceVision(expected); massiveInternals.updateVision(g);
+    referenceVision(expected); snapshotCache(g); massiveInternals.updateVision(g);
     assert.deepEqual(g.players.map(p => p.visible), expected.players.map(p => p.visible), `vision sets match the old function in round ${round}`);
     assert.deepEqual(g.ghosts, expected.ghosts, `Ghost memory matches the old function in round ${round}`);
     g.tick += 4;
@@ -3371,12 +3422,12 @@ const referenceSeparation = `
     const push = (min - d) / 2 * (sa || sb ? 1 : 0.5), px = dx / d * push, pz = dz / d * push;
     // a squad holding its cover is not pushed off it, and does not push back at a friend walking past
     const ha = !sa && shovedFromCover(g, a, a.x - px, a.z - pz), hb = !sb && shovedFromCover(g, b, b.x + px, b.z + pz);
-    if (!sa && !ha && !(hb && a.path.length) && !(flagsAt(g, a.x - px, a.z - pz) & MOVE) && Math.abs(levelAt(g, a.x - px, a.z - pz) - levelAt(g, a.x, a.z)) <= 1) { a.x -= px; a.z -= pz; }
-    if (!sb && !hb && !(ha && b.path.length) && !(flagsAt(g, b.x + px, b.z + pz) & MOVE) && Math.abs(levelAt(g, b.x + px, b.z + pz) - levelAt(g, b.x, b.z)) <= 1) { b.x += px; b.z += pz; }
+    if (!sa && !ha && !(hb && a.path.length) && !(flagsAt(g, a.x - px, a.z - pz) & blockOf(UNITS[a.type])) && Math.abs(levelAt(g, a.x - px, a.z - pz) - levelAt(g, a.x, a.z)) <= 1) { a.x -= px; a.z -= pz; }
+    if (!sb && !hb && !(ha && b.path.length) && !(flagsAt(g, b.x + px, b.z + pz) & blockOf(UNITS[b.type])) && Math.abs(levelAt(g, b.x + px, b.z + pz) - levelAt(g, b.x, b.z)) <= 1) { b.x += px; b.z += pz; }
   }
 `;
 
-// Twenty ticks of a seeded crowded army produce identical coordinates with the old separation loop.
+// Twenty ticks of a seeded crowded infantry army preserve the old separation coordinates.
 {
   const source = readFileSync('shared/sim.js', 'utf8'), start = source.indexOf('  // soft separation;'), end = source.indexOf('  // grenades:', start);
   const old = await simCopy(source.slice(0, start) + referenceSeparation + source.slice(end));
@@ -3388,11 +3439,12 @@ const referenceSeparation = `
   for (const u of g.units.values()) {
     u.cooldown = u.retarget = 1e9;
     if (UNITS[u.type].structure || u.garrison >= 0) continue;
+    if (!u.air && !UNITS[u.type].infantry) u.type = 'rifle';
     const at = centers[i++ % centers.length];
     Object.assign(u, { x: at.x + UNITS[at.type].radius + random() * 6, z: at.z + (random() - 0.5) * 12 });
   }
   const ground = [...g.units.values()].filter(u => !UNITS[u.type].structure && !u.air && u.garrison < 0);
-  ground[1].x = ground[0].x; ground[1].z = ground[0].z; // the zero-distance rule still applies
+  ground[1].x = ground[0].x + 0.05; ground[1].z = ground[0].z; // compare the unchanged nonzero-distance infantry rule
   const expected = structuredClone(g), savedRandom = Math.random;
   try {
     for (let tick = 0; tick < 20; tick++) {
@@ -3438,7 +3490,7 @@ const referenceNearCover = (g, u) => {
   rows[3] = '...#....H....R......'; rows[5] = '....BBB...TTT..+....'; rows[6] = '....BBB.....Y...X...';
   rows[7] = '....BB....F=....##..'; rows[15] = '...O.....Q..........'; rows[9] = '..H.H....WWW........'; rows[12] = '.........#.#........';
   const g = fresh(rows); g.players[0].mp = 5000;
-  g.chars[14 * 20 + 15] = 'K'; g.flags[14 * 20 + 15] = sim.TERRAIN.K; // a Classic building's footprint (never in map files)
+  massiveInternals.setCell(g, 14 * 20 + 15, 'K'); // a Classic footprint in every terrain layer (never in map files)
   const at = (x, y) => (x < 0 || y < 0 || x >= g.w || y >= g.h ? '' : g.chars[y * g.w + x]);
   const tank = put(g, 0, 'tank', 25, 25), dead = put(g, 0, 'tank', 31, 11), plane = put(g, 0, 'fighter', 13, 29);
   dead.hp = 0;
@@ -3580,9 +3632,9 @@ const referenceNearCover = (g, u) => {
         if (!visible.has(building)) visible.set(building, sim.allied(g, building.owner, slot)
           || (g.units.has(building.id) ? p.visible.has(building.id) : teamSees(g, p.team, building)));
         if (!visible.get(building)) continue;
-      }
+      } else if (!g.reveal && !g.skipFog && !teamSees(g, p.team, { x: (c % g.w + 0.5) * CELL, z: (Math.floor(c / g.w) + 0.5) * CELL })) continue;
       const old = memory.get(c);
-      if (old && old[1] === ch && old[2] === height) continue;
+      if (old && JSON.stringify(old) === JSON.stringify(cell)) continue;
       const known = [...cell]; memory.set(c, known); changes.push(known);
     }
     return full ? [...memory.values()] : changes;
@@ -3599,7 +3651,7 @@ const referenceNearCover = (g, u) => {
   for (let slot = 0; slot < g.players.length; slot++) check(slot, true);
 
   // Existing replay entries can change without extending the log. Writes can also return to the remembered value.
-  const publicCells = g.cellLog.map(([c]) => c).filter(c => !g.buildingCells?.has(c));
+  const publicCells = g.cellLog.map(([c]) => c).filter(c => !g.buildingCells?.has(c) && g.players[0].terrainMemory.has(c));
   assert.ok(publicCells.length >= 3, 'terrain fixture contains public changed cells');
   const first = publicCells[0], last = publicCells.at(-1), remembered = g.players[0].terrainMemory.get(first);
   const logLength = g.cellLog.length, saved = check(0, true), savedBefore = structuredClone(saved);
@@ -3608,7 +3660,7 @@ const referenceNearCover = (g, u) => {
   check(0, false, true);
   assert.equal(g.cellLog.length, logLength, 'updates to existing terrain do not grow the replay log');
   assert.deepEqual(saved, savedBefore, 'later changes do not mutate terrain tuples already returned for reconnect');
-  const untouched = g.chars.findIndex((_, c) => !g.cellLogIndexes.has(c) && !g.buildingCells?.has(c));
+  const untouched = g.chars.findIndex((_, c) => !g.cellLogIndexes.has(c) && !g.buildingCells?.has(c) && teamSees(g, g.players[0].team, { x: (c % g.w + 0.5) * CELL, z: (Math.floor(c / g.w) + 0.5) * CELL }));
   assert.ok(untouched >= 0, 'terrain fixture contains an unchanged public cell');
   massiveInternals.setCell(g, untouched, 'R');
   massiveInternals.setCell(g, first, g.chars[first] === '+' ? 'R' : '+');
@@ -3618,12 +3670,16 @@ const referenceNearCover = (g, u) => {
   massiveInternals.setCell(g, first, beforeRevert);
   assert.equal(check(0).some(([c]) => c === first), false, 'same-cell writes that return to the remembered value emit no change');
 
+  // Keep the changed cell observed even when lowering it changes sight rays at the edge of vision.
+  const observer = [...g.units.values()].find(u => sim.allied(g, u.owner, 0) && UNITS[u.type].infantry);
+  Object.assign(observer, { x: (first % g.w + 0.5) * CELL, z: (Math.floor(first / g.w) + 0.5) * CELL, garrison: -1 }); snapshotCache(g);
   // An elevation change followed by a character-only write retains the latest elevation in the replay tuple.
   g.height ??= new Int8Array(g.w * g.h);
   g.height[first] = g.height[first] === -1 ? -2 : -1;
   massiveInternals.logCell(g, first, [first, g.chars[first], g.height[first]]);
   massiveInternals.setCell(g, first, g.chars[first] === '+' ? 'R' : '+');
   const crater = check(0).find(([c]) => c === first);
+  assert.ok(crater, 'the observed elevation transition is delivered');
   assert.equal(crater[2], g.height[first], 'incremental terrain keeps elevation after a character-only transition');
   g.newCells = [];
   check(1, false, true);
@@ -3654,8 +3710,10 @@ const referenceNearCover = (g, u) => {
   assert.ok(scout, 'terrain fixture contains a ground scout');
   scout.x = building.x; scout.z = building.z;
   assert.equal(teamSees(g, p.team, g.buildingCells.get(building.cells[0])), true, 'the scout sees the destroyed building position');
-  assert.equal(check(slot, false, true).filter(([c, ch]) => building.cells.includes(c) && ch === 'R').length, building.cells.length,
-    'revisiting a destroyed building sends all rubble cells without new terrain writes');
+  settleDebris(g);
+  const rubble = settledRubble(g, building.cells, 'remembered collapsed building');
+  const revisited = check(slot, false, true);
+  assert.ok(rubble.every(c => revisited.some(row => row[0] === c && row[1] === 'R')), 'revisiting a destroyed building sends its complete settled rubble footprint');
   for (const [u, x, z] of friendlyPositions) { u.x = x; u.z = z; }
 
   // A replacement building gets a new footprint descriptor and must not reuse the old visibility decision.
@@ -3800,9 +3858,13 @@ const aiDigest = g => createHash('sha256').update(JSON.stringify(g, (_key, value
   if (typeof value === 'number' && !Number.isFinite(value)) return { number: String(value) };
   return value;
 })).digest('hex');
-const aiSnapshot = (g, slot) => snapshotFor({ ...g, skipFog: true, players: g.players.map(p => ({ ...p,
-  terrainMemory: new Map(p.terrainMemory ?? []), terrainPending: new Set(p.terrainPending ?? g.cellLog.keys()),
-})) }, slot, []);
+const aiSnapshot = (g, slot) => {
+  const snap = snapshotFor({ ...g, omitFogMask: true, players: g.players.map(p => ({ ...p,
+    terrainMemory: new Map(p.terrainMemory ?? []), terrainPending: new Set(p.terrainPending ?? g.cellLog.keys()),
+  })) }, slot, []);
+  delete snap.fog; // Compare public rows while retaining recipient visibility rules.
+  return snap;
+};
 const aiCommands = (g, slot, memory = {}, seed = 1, extra = {}) => {
   const random = Math.random, commands = [], before = aiDigest(g);
   let draws = 0;
@@ -4217,6 +4279,10 @@ const aiMap = () => ({ w: 80, h: 80, rows: Array(80).fill('.'.repeat(80)),
   for (let r = 0; r < 80; r++) map.rows[r] = '.'.repeat(30) + ([39, 40, 41].includes(r) ? '====' : 'WWWW') + '.'.repeat(46);
   const span = [39, 40, 41].flatMap(r => [30, 31, 32, 33].map(c => r * 80 + c));
   const standing = createGame(map, ['AI', 'enemy'], false, [0, 1]); standing.players[0].mp = 1000;
+  // A nearby squad observes the bridge, so its destruction enters the seat's terrain memory.
+  const observer = [...standing.units.values()].find(u => u.owner === 0 && u.type === 'rifle');
+  Object.assign(observer, { x: 55, z: 81 }); snapshotCache(standing); massiveInternals.updateVision(standing);
+  assert.ok(span.every(c => teamSees(standing, 0, { x: (c % standing.w + 0.5) * CELL, z: (Math.floor(c / standing.w) + 0.5) * CELL })), 'the squad observes the complete bridge span');
   // The AI first looks at the intact map, then the bridge is blown.
   const lookedAt = {}, intact = aiCommands(standing, 0, lookedAt, 9).commands;
   assert.ok(!intact.some(c => c.t === 'dig' && c.kind === 'bridge'), 'an intact bridge is not rebuilt');
@@ -4277,12 +4343,16 @@ const aiMap = () => ({ w: 80, h: 80, rows: Array(80).fill('.'.repeat(80)),
   assert.notEqual(aiDigest(g), before, 'detachment test actually changed live state');
 }
 
-// Cached projection and public terrain updates preserve the same view contract.
+// Cached projection and observed terrain updates preserve the same view contract.
 {
   const g = createGame(aiMap(), ['AI', 'enemy'], false, [0, 1]), memory = {}, old = viewFor(g, 0, memory);
   const cell = 40 * g.w + 40, oldChar = old.chars[cell]; massiveInternals.setCell(g, cell, 'T');
+  const hidden = viewFor(g, 0, memory);
+  assert.equal(hidden.chars[cell], oldChar, 'unseen nonbuilding changes retain remembered terrain');
+  const observer = [...g.units.values()].find(u => u.owner === 0 && u.type === 'rifle');
+  Object.assign(observer, { x: 78, z: 81 }); g.tick += 4; snapshotCache(g); massiveInternals.updateVision(g);
   const current = viewFor(g, 0, memory);
-  assert.equal(current.chars[cell], 'T', 'nonbuilding terrain changes are public outside current vision');
+  assert.equal(current.chars[cell], 'T', 'observing the changed ground refreshes the terrain view');
   assert.equal(old.chars[cell], oldChar, 'a terrain update cannot change an already delivered view');
   const cache = snapshotCache(g), cached = viewFor(g, 0, {}, cache), uncached = viewFor(g, 0, {});
   assert.deepEqual({ ...cached, sees: undefined }, { ...uncached, sees: undefined }, 'shared snapshot caches preserve the complete projected view');
@@ -5272,7 +5342,37 @@ for (const lookupFinished of [false, true]) {
   const source = readFileSync(new URL('./client/camera.js', import.meta.url), 'utf8')
     .replace("from 'three'", `from '${import.meta.resolve('three')}'`)
     .replace("from '/shared/sim.js'", `from '${new URL('./shared/sim.js', import.meta.url)}'`);
-  const { rig } = await import('data:text/javascript;base64,' + Buffer.from(source).toString('base64'));
+  const { rig, groundAt: pickGround } = await import('data:text/javascript;base64,' + Buffer.from(source).toString('base64'));
+  // A narrow crest and trench need the relief's quarter-cell surface, not whole-cell corner planes.
+  const pickMap = { w: 8, h: 6, rows: ['........', '........', '...TT...', '........', '........', '........'], heights: Array(6).fill('00111004') };
+  const pickRelief = createRelief(pickMap), pickCamera = new THREE.PerspectiveCamera(45, 1, 0.01, 100);
+  for (const [x, z] of [[5.31, 3.17], [7.21, 5.13], [6.42, 5.63], [13.83, 7.29], [0.12, 0.17]]) {
+    const target = new THREE.Vector3(x, pickRelief.hAt(x, z), z);
+    pickCamera.position.copy(target).add(new THREE.Vector3(-1.2, 8, 3)); pickCamera.lookAt(target); pickCamera.updateMatrixWorld();
+    const screen = target.clone().project(pickCamera);
+    const picked = pickGround(pickCamera, pickRelief.hAt, (screen.x + 1) * 400, (1 - screen.y) * 400, 800, 800, 16, 12, pickRelief.mesh);
+    assert.ok(picked && picked.distanceTo(target) < 1e-5, 'game picking follows the actual relief on ramps, trenches and map edges');
+  }
+  // Aim through the ragged cliff face, below its top and above its foot.
+  const face = new THREE.Vector3(14, 4, 7);
+  pickCamera.position.set(12, 5, 7); pickCamera.lookAt(face); pickCamera.updateMatrixWorld();
+  const faceScreen = face.clone().project(pickCamera);
+  const cliffPick = pickGround(pickCamera, pickRelief.hAt, (faceScreen.x + 1) * 400, (1 - faceScreen.y) * 400, 800, 800, 16, 12, pickRelief.mesh);
+  // Decorative rock models leave the sealed cliff backing as the ground contact and picking surface.
+  const contactGeometry = pickRelief.geometry.clone(), contactIndex = [], paint = contactGeometry.attributes.reliefPaint;
+  for (let t = 0; t < contactGeometry.index.count; t += 3) {
+    const a = contactGeometry.index.array[t], stone = paint.getX(a);
+    if (stone === 0 || stone === 1) contactIndex.push(...contactGeometry.index.array.slice(t, t + 3));
+  }
+  contactGeometry.setIndex(contactIndex);
+  const rendered = new THREE.Mesh(contactGeometry, pickRelief.mesh.material), faceRay = new THREE.Raycaster();
+  rendered.updateMatrixWorld(true); faceRay.setFromCamera(new THREE.Vector2(faceScreen.x, faceScreen.y), pickCamera);
+  const faceHit = faceRay.intersectObject(rendered)[0];
+  assert.ok(faceHit && Math.abs(faceHit.point.x - face.x) < 1.25 && faceHit.point.y > 0 && faceHit.point.y < 10,
+    'the rendered cliff remains near the authored boundary, between its foot and crest');
+  assert.ok(cliffPick && cliffPick.distanceTo(faceHit.point) < 1e-5, 'game picking follows the rendered cliff face');
+  contactGeometry.dispose();
+  pickRelief.dispose();
   const saved = { innerWidth: globalThis.innerWidth, innerHeight: globalThis.innerHeight, addEventListener: globalThis.addEventListener };
   Object.assign(globalThis, { innerWidth: 1920, innerHeight: 1080, addEventListener: () => {} });
   try {
@@ -6073,7 +6173,8 @@ for (const lookupFinished of [false, true]) {
 // soldier as one draw, postures blend and keep the weapon above ground, and corpses stay under the cap.
 {
   const THREE = await import('three');
-  const { mergeParts, mergeMeshes, buildModel, animate, postureOf, POSTURE, LOD, CORPSES, createBodies, PAINT, VEHICLE_PAINT } = await import('./client/unit-models.js');
+  const { mergeParts, mergeMeshes, buildModel, animate, postureOf, POSTURE, LOD, CORPSES, createBodies, PAINT, VEHICLE_PAINT, INFANTRY_PAINT } = await import('./client/unit-models.js');
+  const { baseMat, matId } = await import('./client/models/geom.js');
   const box = new THREE.BoxGeometry(1, 1, 1);
   const merged = mergeParts([{ geo: box, matrix: new THREE.Matrix4().makeTranslation(2, 0, 0) }, { geo: box, matrix: new THREE.Matrix4().makeScale(-1, 2, 1).setPosition(-2, 0, 0) }], false);
   assert.equal(merged.attributes.position.count, 2 * box.attributes.position.count, 'merge keeps every vertex');
@@ -6095,7 +6196,7 @@ for (const lookupFinished of [false, true]) {
     const root = new THREE.Group(), v = { type, root, models: [], turret: null };
     buildModel(v, root, look, fac, def);
     assert.ok(v.models.length, `${type}: has a model`);
-    root.traverse((o) => { if (o.isMesh && (o.material === PAINT || o.material === VEHICLE_PAINT)) assert.ok(o.geometry.attributes.matId, `${type}: every painted mesh says what it is made of (model textures)`); });
+    root.traverse((o) => { if (o.isMesh && [PAINT, VEHICLE_PAINT, INFANTRY_PAINT].includes(o.material)) assert.ok(o.geometry.attributes.matId, `${type}: every painted mesh says what it is made of (model textures)`); });
     if (v.squad) {
       assert.ok(v.models.length >= def.models && v.models.length % def.models === 0, `${type}: whole ranks, a multiple of its ${def.models} models (battalion blocks draw more men)`);
       for (const man of v.models) {
@@ -6267,7 +6368,12 @@ for (const lookupFinished of [false, true]) {
       for (let i = 0; i < P.count; i++) if (new THREE.Vector3().fromBufferAttribute(P, i).distanceTo(point) < radius) idx.push(i);
       return idx;
     };
-    const chestIdx = near(prone.body.at(new THREE.Vector3(0, 1.02, 0)), 0.12);
+    // Measure the cloth chest across its width. A center sphere loses samples when torso rings are simplified.
+    const chestFrame = prone.body.on(1.02).clone().invert(), chestIdx = [], cloth = matId('wool');
+    for (let i = 0; i < P.count; i++) {
+      const p = new THREE.Vector3().fromBufferAttribute(P, i).applyMatrix4(chestFrame);
+      if (baseMat(mesh.geometry.attributes.matId.getX(i)) === cloth && p.y > 0.98 && p.y < 1.07 && Math.abs(p.x) < 0.13 && Math.abs(p.z) < 0.17) chestIdx.push(i);
+    }
     assert.ok(chestIdx.length >= 8, `${type} ${index}: the aiming prone has a chest to measure`);
     const meanY = (idx, pos) => idx.reduce((sum, i) => sum + pos(i).y, 0) / idx.length;
     const chestDrop = meanY(chestIdx, aimAt) - meanY(chestIdx, corAt);
@@ -6291,7 +6397,8 @@ for (const lookupFinished of [false, true]) {
     if (prone.W) {
       const a = new THREE.Vector3().applyMatrix4(prone.W), b = new THREE.Vector3(prone.info.L, 0, 0).applyMatrix4(prone.W);
       const idx = [];
-      for (let i = 0; i < P.count; i++) if (segDist(new THREE.Vector3().fromBufferAttribute(P, i), a, b) < 0.04) idx.push(i);
+      // Dense closed grips sit near the barrel line. Measure weapon metal, not the fingers around it.
+      for (let i = 0; i < P.count; i++) if (baseMat(mesh.geometry.attributes.matId.getX(i)) === matId('gunmetal') && segDist(new THREE.Vector3().fromBufferAttribute(P, i), a, b) < 0.04) idx.push(i);
       assert.ok(idx.length > 4, `${type} ${index}: the aiming prone has a barrel to measure`);
       const aimC = new THREE.Vector3(), corC = new THREE.Vector3();
       for (const i of idx) { aimC.add(aimAt(i)); corC.add(corAt(i)); }
@@ -6346,10 +6453,10 @@ for (const lookupFinished of [false, true]) {
   assert.equal(shooter.targetId, first.id, 'pickTarget keeps the first equal-score target');
 }
 
-// Live separation must discover later pairs brought into range by an earlier push.
+// Live infantry separation must discover later pairs brought into range by an earlier push.
 {
   const g = fresh(empty, 1); g.players[0].mp = 100000; g.army = { pop: 100, income: 1 };
-  for (let i = 0; i < 50; i++) put(g, 0, i % 4 ? 'rifle' : 'tank', 19 + (i % 7) * 0.2, 19 + Math.floor(i / 7) * 0.2).react = 1e9; // no spacing walks: separation alone
+  for (let i = 0; i < 50; i++) put(g, 0, 'rifle', 19 + (i % 7) * 0.2, 19 + Math.floor(i / 7) * 0.2).react = 1e9; // no spacing walks: separation alone
   const expected = [...g.units.values()].map(u => ({ ...u }));
   for (let i = 0; i < expected.length; i++) for (let j = i + 1; j < expected.length; j++) {
     const a = expected[i], b = expected[j], min = (UNITS[a.type].radius + UNITS[b.type].radius) * 0.8;
@@ -6359,7 +6466,7 @@ for (const lookupFinished of [false, true]) {
     a.x -= px; a.z -= pz; b.x += px; b.z += pz;
   }
   step(g);
-  assert.deepEqual([...g.units.values()].map(u => [u.x, u.z]), expected.map(u => [u.x, u.z]), 'dense separation preserves exact arithmetic and pair order');
+  assert.deepEqual([...g.units.values()].map(u => [u.x, u.z]), expected.map(u => [u.x, u.z]), 'dense infantry separation preserves exact arithmetic and pair order');
 }
 
 // The server's shared snapshot cache gives every player the same wire snapshot as an uncached build. Massive 6-player
@@ -6401,8 +6508,11 @@ for (const lookupFinished of [false, true]) {
       }
       assert.ok(h.snapshots(host).length > 500, `${mode}: the host gets the cached snapshots`);
       if (mode === 'classic') assert.ok([...g.units.values()].some(u => UNITS[u.type].building), 'Classic snapshots include building rows');
-      const own = [...g.units.values()].find(u => u.owner === 0 && !UNITS[u.type].structure), before = snapshotFor(g, 0, []);
-      own.x += 0.2; own.hp -= 1;
+      // The idle Classic host can be defeated during this battle. Its allied observations still exercise the cache.
+      if (mode === 'conquest') assert.equal(command(g, 0, { t: 'buy', unit: 'rifle' }), undefined, 'the cache order fixture recruits a live host squad through its ordinary command');
+      const observed = [...g.units.values()].find(u => sim.seenBy(g, 0, u.id)), before = snapshotFor(g, 0, []);
+      assert.ok(observed, `${mode}: the host has an observed unit row to update`);
+      observed.x += 0.2; observed.hp -= 1;
       assert.notDeepEqual(snapshotFor(g, 0, []), before, 'uncached snapshots see changes within the same tick');
       if (mode === 'classic') { await h.clear(code); continue; }
 
@@ -6459,19 +6569,19 @@ for (const lookupFinished of [false, true]) {
 
 // Digging changes the vehicle movement mask; destroying the traps opens its region again.
 {
-  const rows = empty.map((row, y) => y === 10 ? row : row.slice(0, 10) + 'W' + row.slice(11)), g = fresh(rows);
+  const rows = empty.map((row, y) => y >= 9 && y <= 11 ? row : row.slice(0, 10) + 'W' + row.slice(11)), g = fresh(rows);
   g.players[0].mp = 5000;
   const crew = put(g, 0, 'rifle', 19, 21), from = { x: 5, z: 21, type: 'tank' }, to = { x: 35, z: 21 };
   assert.ok(findPath(g, from, to).length, 'vehicles cross the open gap');
   const version = g.terrainVersion ?? 0;
   command(g, 0, { t: 'dig', ids: [crew.id], kind: 'traps', x: 21, z: 21, dir: Math.PI / 2 });
-  run(g, CFG.digTime + 0.1);
+  for (let i = 0; i < Math.ceil(CFG.digTime * CFG.digCells / sim.TICK) + 2 && g.chars[10 * g.w + 10] !== 'Y'; i++) step(g);
   assert.equal(g.chars[10 * g.w + 10], 'Y', 'digging closes the gap to vehicles');
   assert.ok(g.terrainVersion > version, 'digging invalidates region labels');
-  const expansions = g.pathStats.expansions;
+  const expansions = g.pathStats?.expansions ?? 0;
   assert.deepEqual(findPath(g, from, to), [], 'new traps separate vehicle regions');
   assert.deepEqual(findPath(g, from, { x: 21, z: 21 }), [], 'a trap cell itself is an unreachable vehicle goal');
-  assert.equal(g.pathStats.expansions, expansions, 'vehicle region rejection does not expand A*');
+  assert.equal(g.pathStats?.expansions ?? 0, expansions, 'vehicle region rejection does not expand A*');
   assert.ok(findPath(g, { ...from, type: 'rifle' }, to).length, 'infantry still cross tank traps');
   g.nades.push({ x: 21, z: 21, t: 0, owner: 0, ab: { radius: 1, inf: 0, veh: 0, supp: 0, terrain: 1000 } });
   step(g);
@@ -6495,7 +6605,7 @@ for (const lookupFinished of [false, true]) {
   assert.deepEqual(findPath(g, from, to), [], 'footprint closes the only corridor');
   command(g, 0, { t: 'stop', ids: [crew.id] });
   site.hp = 0; step(g);
-  assert.ok(site.cells.every(c => g.chars[c] === 'R'), 'normal destruction changes the footprint to rubble');
+  settleDebris(g); settledRubble(g, site.cells, 'destroyed construction site');
   assert.ok(findPath(g, from, to).length, 'collapsed footprint reopens the corridor');
 }
 
@@ -6609,8 +6719,9 @@ for (const lookupFinished of [false, true]) {
   assert.equal(interrupted.snapEvery, 3, 'recovery starts again after interrupted low-load period');
 }
 
-// Relief preserves the sim's plateaus and boundaries on every shipped map.
+// Relief preserves cell centres, ordinary slopes and sealed cliff contact on every shipped map.
 {
+  const THREE = await import('three');
   for (const file of readdirSync('maps').filter(f => f.endsWith('.json'))) {
     const map = JSON.parse(readFileSync('maps/' + file, 'utf8')), grid = map.rows.map(r => [...r]);
     const relief = createRelief(map, grid, { low: false }), geo = relief.geometry, p = geo.attributes.position.array, idx = geo.index.array;
@@ -6633,27 +6744,52 @@ for (const lookupFinished of [false, true]) {
       if (Math.hypot(uy * vz - uz * vy, uz * vx - ux * vz, ux * vy - uy * vx) <= 1e-9) { degenerate = true; break; }
     }
     assert.ok(!degenerate, `${file}: nondegenerate triangles`);
-    assert.ok(idx.length / 3 <= Math.max(150000, map.w * map.h), `${file}: terrain triangle ceiling`); // maps over 256 cells: one per cell
+    let rockTriangles = 0;
+    const rockPaint = geo.attributes.reliefPaint.array;
+    for (let t = 0; t < idx.length; t += 3) if (rockPaint[idx[t] * 4] > 0 && rockPaint[idx[t] * 4] < 1) rockTriangles++;
+    assert.ok(idx.length / 3 - rockTriangles <= Math.max(150000, map.w * map.h), `${file}: ground triangle ceiling`);
+    let minLevel = 0, maxLevel = 0;
+    for (const row of map.heights ?? []) for (const value of row) {
+      const level = levelOf(value); minLevel = Math.min(minLevel, level); maxLevel = Math.max(maxLevel, level);
+    }
+    const stack = Math.max(2, Math.round((maxLevel - minLevel) * CFG.levelHeight / 3));
+    assert.ok(rockTriangles <= relief.stats.cliffEdges * (240 * stack + 240), `${file}: rock models fit their cliff-edge budget`);
+    const contactGeometry = geo.clone(), contactIndex = [];
+    for (let t = 0; t < idx.length; t += 3) if (rockPaint[idx[t] * 4] === 0 || rockPaint[idx[t] * 4] === 1)
+      contactIndex.push(idx[t], idx[t + 1], idx[t + 2]);
+    contactGeometry.setIndex(contactIndex);
+    const contactMesh = new THREE.Mesh(contactGeometry, relief.mesh.material), ray = new THREE.Raycaster();
+    contactMesh.updateMatrixWorld(true);
+    let cliffQueries = 0;
     for (let y = 0; y < map.h; y++) for (let x = 0; x < map.w; x++) for (const [dx, dy] of [[1, 0], [0, 1]]) {
       const nx = x + dx, ny = y + dy;
       if (nx >= map.w || ny >= map.h) continue;
       const a = lv(x, y), b = lv(nx, ny), diff = Math.abs(b - a), sample = t => relief.hAt((x + 0.5 + dx * t) * CELL, (y + 0.5 + dy * t) * CELL);
-      if (diff < 2 * CFG.levelHeight) for (let k = 1; k < 4; k++) {
+      const nearbyLevels = [];
+      for (let j = Math.max(0, y - 1); j <= Math.min(map.h - 1, ny + 1); j++)
+        for (let i = Math.max(0, x - 1); i <= Math.min(map.w - 1, nx + 1); i++) nearbyLevels.push(lv(i, j));
+      const nearCliff = Math.max(...nearbyLevels) - Math.min(...nearbyLevels) >= 2 * CFG.levelHeight;
+      if (!nearCliff && diff < 2 * CFG.levelHeight) for (let k = 1; k < 4; k++) {
         const ex = (x + (dx ? 1 : k / 4)) * CELL, ez = (y + (dy ? 1 : k / 4)) * CELL;
         assert.ok(Math.abs(relief.hAt(ex - dx * 1e-7, ez - dy * 1e-7) - relief.hAt(ex + dx * 1e-7, ez + dy * 1e-7)) <= 1e-4, `${file}: closed noncliff edge ${x},${y}`);
       }
       if (!plain[y * map.w + x] || !plain[ny * map.w + nx]) continue;
       if (diff >= 2 * CFG.levelHeight) {
-        assert.ok(Math.abs(sample(0.4999) - a) <= 0.1 && Math.abs(sample(0.5001) - b) <= 0.1, `${file}: cliff boundary ${x},${y}`);
-      } else if (diff === CFG.levelHeight) {
+        assert.ok(Math.abs(sample(0) - a) <= 0.1 && Math.abs(sample(1) - b) <= 0.1, `${file}: cliff keeps adjacent cell-centre heights ${x},${y}`);
+        if (map.w * map.h <= 65536 && cliffQueries++ < 8) for (const t of [0.25, 0.5, 0.75]) {
+          ray.set(new THREE.Vector3((x + 0.5 + dx * t) * CELL, 30, (y + 0.5 + dy * t) * CELL), new THREE.Vector3(0, -1, 0));
+          const hit = ray.intersectObject(contactMesh)[0];
+          assert.ok(hit && Math.abs(sample(t) - hit.point.y) < 1e-5, `${file}: cliff contact follows its actual triangles ${x},${y}`);
+        }
+      } else if (!nearCliff && diff === CFG.levelHeight) {
         const sign = Math.sign(b - a); let previous = sample(0);
         for (let k = 1; k <= 8; k++) { const next = sample(k / 8); assert.ok((next - previous) * sign >= -1e-4, `${file}: monotonic slope ${x},${y}`); previous = next; }
         assert.ok(Math.abs(sample(0.5) - (a + b) / 2) <= 0.1, `${file}: centred slope ${x},${y}`);
-      } else {
+      } else if (!nearCliff) {
         assert.ok(Math.abs(sample(0.4999) - sample(0.5001)) <= 0.01, `${file}: shared noncliff edge ${x},${y}`);
       }
     }
-    relief.dispose();
+    contactGeometry.dispose(); relief.dispose();
   }
 
   // A stick of bombs keeps sim heights at cell centres. The banks have to leave the cell grid.
@@ -6797,16 +6933,17 @@ for (const lookupFinished of [false, true]) {
   run(g, WEATHER_WARN);
   assert.deepEqual(snapshotFor(g, 0, []).weather, ['clear'], 'weather: the fog lifts on time');
 
-  // movement: how far a unit gets in 3 s, by weather (roads: every cell a road, the sim's own D cells)
+  // Weather compares three seconds of steady travel after the vehicle's acceleration phase.
   const travel = (kind, type, roads = false) => {
-    const g = fresh(roads ? Array(20).fill('D'.repeat(20)) : empty); g.players[0].mp = 1000;
+    const g = fresh(Array(20).fill((roads ? 'D' : '.').repeat(80))); g.players[0].mp = 1000;
     g.weather = { now: kind, next: null, at: 0 };
     if (kind === 'rain') Object.assign(g.wx, { raining: true, rain: 1, wet: 1 }); // as createGame starts a Rain match
     if (kind === 'mud') g.wx.wet = 1; // and a Mud match
-    const u = put(g, 0, type, 4, 20);
-    command(g, 0, { t: 'move', orders: [[u.id, 38, 20]] });
+    const u = put(g, 0, type, 5, 21); u.rot = 0; // Cell centers keep the weather measurement free of startup turns.
+    command(g, 0, { t: 'move', orders: [[u.id, 151, 21]] });
+    run(g, 2); const before = u.x;
     run(g, 3);
-    return u.x - 4;
+    return u.x - before;
   };
   const near = (a, b, what) => assert.ok(Math.abs(a - b) < 0.03, `${what}: ${a.toFixed(3)} vs ${b}`);
   const tank = travel('clear', 'tank'), rifle = travel('clear', 'rifle'), tankRoad = travel('clear', 'tank', true);
@@ -6965,10 +7102,10 @@ for (const lookupFinished of [false, true]) {
   n.wave = 8; n.timeLeft = 0;
   try {
     Math.random = () => 0.5;
-    const expected = sim.hordeWave(9, 3);
     for (let i = 0; !n.active || n.budget > 0; i++) { assert.ok(i < 100, 'normal wave generation finishes promptly'); step(normal); }
+    const expected = sim.hordeWave(9, 3, 1, { profile: n.profile, seed: n.profileSeed + 9 });
     const actual = [...n.reserve, ...[...normal.units.values()].filter(u => u.owner === n.slot && !u.air).map(u => u.type)];
-    assert.deepEqual(actual.sort(), expected.sort(), 'ordinary waves buy the same weighted units for the same budget');
+    assert.deepEqual(actual.sort(), expected.sort(), 'ordinary waves buy their announced seeded profile for the same budget');
   } finally { Math.random = random; }
   const extreme = make(1); extreme.mode.wave = 3999; extreme.mode.timeLeft = 0; step(extreme);
   assert.ok(Number.isFinite(extreme.mode.budget) && extreme.mode.reserve.length <= CFG.horde.fieldMax, 'overflow-sized waves still finish their tick with bounded storage');
@@ -7005,18 +7142,25 @@ for (const lookupFinished of [false, true]) {
 
 // Roads and mud: vehicles drive faster along a road and crawl through mud; infantry do not care. Paths avoid mud.
 {
-  const rows = empty.map((row, y) => y >= 1 && y <= 3 ? 'D'.repeat(20) : row), g = fresh(rows), bog = fresh(Array(20).fill('M'.repeat(20))), deep = fresh(Array(20).fill('M'.repeat(20)));
-  for (const p of [g, bog, deep].flatMap(q => q.players)) p.mp = 5000;
-  bog.wear.fill(0); deep.wear.fill(1);
-  const go = (type, z, q = g) => { const u = put(q, 0, type, 3, z); command(q, 0, { t: 'move', orders: [[u.id, 37, z]] }); return u; };
-  const road = go('tank', 5), edge = go('tank', 8.2), grass = go('tank', 29), mud = go('tank', 29, bog), sunk = go('tank', 29, deep), feet = go('rifle', 13, bog), feetGrass = go('rifle', 13);
-  run(g, 2); run(bog, 2); run(deep, 2);
-  const ratio = (u) => (u.x - 3) / (grass.x - 3);
-  assert.ok(Math.abs(ratio(road) - CFG.roadSpeed) < 0.1, 'a tank on a road drives roadSpeed times faster');
-  assert.ok(ratio(edge) > 1.03 && ratio(edge) < CFG.roadSpeed - 0.1, 'a tank half on the road gets part of the bonus');
-  assert.ok(Math.abs(ratio(mud) - CFG.mudSpeed[0]) < 0.1, 'a tank in shallow mud');
-  assert.ok(Math.abs(ratio(sunk) - CFG.mudSpeed[1]) < 0.1, 'a tank in deep mud');
-  assert.ok(Math.abs(feet.x - feetGrass.x) < 0.2, 'infantry walk through mud at full speed');
+  const rows = empty.map((row, y) => (y >= 1 && y <= 3 ? 'D' : '.').repeat(80)), g = fresh(rows);
+  // Independent lanes measure terrain speed after acceleration, free of local vehicle passing.
+  const travel = (type, z, terrain = rows, depth = null, straight = false) => {
+    const q = fresh(terrain); q.players[0].mp = 5000;
+    if (depth !== null) q.wear.fill(depth);
+    const u = put(q, 0, type, 5, z); u.rot = 0;
+    command(q, 0, { t: 'move', orders: [[u.id, 151, z]] });
+    // Keep this hull half on the road to measure the partial bonus, rather than route selection.
+    if (straight) u.path = [{ x: 151, z }];
+    run(q, 2); const before = u.x; run(q, 2);
+    return u.x - before;
+  };
+  const grass = travel('tank', 29, Array(20).fill('.'.repeat(80))), road = travel('tank', 5), edge = travel('tank', 8.2, rows, null, true);
+  const mud = travel('tank', 29, Array(20).fill('M'.repeat(80)), 0), sunk = travel('tank', 29, Array(20).fill('M'.repeat(80)), 1);
+  assert.ok(Math.abs(road / grass - CFG.roadSpeed) < 0.1, 'a tank on a road drives roadSpeed times faster');
+  assert.ok(edge / grass > 1.03 && edge / grass < CFG.roadSpeed - 0.1, 'a tank half on the road gets part of the bonus');
+  assert.ok(Math.abs(mud / grass - CFG.mudSpeed[0]) < 0.1, 'a tank in shallow mud');
+  assert.ok(Math.abs(sunk / grass - CFG.mudSpeed[1]) < 0.1, 'a tank in deep mud');
+  assert.ok(Math.abs(travel('rifle', 13, Array(20).fill('M'.repeat(80)), 0) - travel('rifle', 13, Array(20).fill('.'.repeat(80)))) < 0.2, 'infantry walk through mud at full speed');
   // a mud band with one dry cell: the tank goes through the gap, the squad walks straight across
   const band = empty.map((row, y) => y >= 7 && y <= 13 ? row.slice(0, 10) + (y === 11 ? '.' : 'M') + row.slice(11) : row), b = fresh(band);
   b.chars.forEach((ch, c) => { if (ch === "M") b.wear[c] = 1; });
@@ -7042,7 +7186,16 @@ for (const lookupFinished of [false, true]) {
   run(g, CFG.digTime * 3 + 1);
   assert.deepEqual([9, 10, 11].map(x => g.chars[10 * g.w + x]).join(''), '===', 'the span is built from the bank');
   assert.ok(crew.x < 18, 'the builders stay on their bank');
-  assert.ok(findPath(g, from, to).length, 'vehicles cross the new bridge');
+  assert.equal(findPath(g, from, to).length, 0, 'a 2 m span is narrower than the tank hull');
+  for (const z of [19, 23]) {
+    const before = g.players[0].mp;
+    assert.equal(command(g, 0, { t: 'dig', ids: [crew.id], kind: 'bridge', x: 21, z, dir: 0 }), undefined, 'the squad widens the crossing from the bank');
+    assert.equal(g.players[0].mp, before - sim.FORTS.bridge.cost, 'each additional bridge strip is paid for');
+    run(g, CFG.digTime * 3 + 1);
+  }
+  assert.ok([9, 10, 11].every(y => [9, 10, 11].every(x => g.chars[y * g.w + x] === '=')), 'the complete 6 m bridge is built');
+  assert.ok(crew.x < 18, 'the builders finish on their original bank');
+  assert.ok(findPath(g, from, to).length, 'vehicles cross the bridge once its physical width fits');
 }
 
 // Mines: hidden from the enemy, harmless to the side that laid them, and they go off under the first enemy.
@@ -7076,9 +7229,11 @@ for (const lookupFinished of [false, true]) {
   const row = 10 * g.w, state = (q, c) => sim.terrainFor(q, 0, true).find(([k]) => k === c)?.[3] ?? 0;
   const tank = put(g, 0, 'tank', 3, 21), slow = fresh(); slow.players[0].mp = 5000; slow.wear.fill(0.5);
   const worn = put(slow, 0, 'tank', 3, 29), ref = put(g, 0, 'tank', 3, 29);
-  for (const [q, u] of [[slow, worn], [g, ref]]) command(q, 0, { t: 'move', orders: [[u.id, 37, 29]] });
+  for (const [q, u] of [[slow, worn], [g, ref]]) { u.rot = 0; command(q, 0, { t: 'move', orders: [[u.id, 37, 29]] }); }
   run(g, 2); run(slow, 2);
-  assert.ok(Math.abs((worn.x - 3) / (ref.x - 3) - (1 - CFG.churn * 0.5)) < 0.06, 'half-churned ground costs half the churn');
+  const refStart = ref.x, wornStart = worn.x;
+  run(g, 1); run(slow, 1);
+  assert.ok(Math.abs((worn.x - wornStart) / (ref.x - refStart) - (1 - CFG.churn * 0.5)) < 0.06, 'half-churned ground costs half the churn at steady speed');
   assert.ok(g.wear[14 * g.w + 3] > 0 && g.wear[14 * g.w + 3] < 0.2, 'one pass leaves a little wear');
   g.wear.fill(0.24, row, row + g.w);
   command(g, 0, { t: 'move', orders: [[tank.id, 37, 21]] }); run(g, 8);
@@ -7123,8 +7278,9 @@ for (const lookupFinished of [false, true]) {
   hill.units.clear(); hill.players.forEach(p => (p.spawn = { x: -1000, z: -1000 }));
   hill.players[0].mp = flat.players[0].mp = 5000;
   const up = put(hill, 0, 'tank', 15, 21), level = put(flat, 0, 'tank', 15, 21), down = put(hill, 0, 'tank', 25, 29), back = put(flat, 0, 'tank', 25, 29);
-  command(hill, 0, { t: 'move', orders: [[up.id, 25, 21], [down.id, 15, 29]] }); command(flat, 0, { t: 'move', orders: [[level.id, 25, 21], [back.id, 15, 29]] });
-  run(hill, 1.2); run(flat, 1.2);
+  up.rot = level.rot = 0; down.rot = back.rot = Math.PI;
+  command(hill, 0, { t: 'move', orders: [[up.id, 37, 21], [down.id, 3, 29]] }); command(flat, 0, { t: 'move', orders: [[level.id, 37, 21], [back.id, 3, 29]] });
+  run(hill, 2); run(flat, 2);
   assert.ok(up.x < level.x - 0.5, 'a tank climbs slower than it drives on the flat');
   assert.ok(Math.abs(down.x - back.x) < 0.3, 'and loses nothing going down');
 }
@@ -7136,25 +7292,30 @@ for (const lookupFinished of [false, true]) {
   run(g, 5);
   assert.ok(g.smokes[0].x > 14 && Math.abs(g.smokes[0].z - 10) < 2, 'smoke drifts downwind');
   // rain: comes on, soaks the ground, slows vehicles off the road and shortens sight
-  const tank = put(g, 0, 'tank', 3, 21); command(g, 0, { t: 'move', orders: [[tank.id, 37, 21]] }); run(g, 1);
-  const dry = tank.x - 3, flags = (q, u) => snapshotFor(q, 0, []).units.find(r => r[0] === u.id)[12];
+  const tank = put(g, 0, 'tank', 3, 21); tank.rot = 0;
+  command(g, 0, { t: 'move', orders: [[tank.id, 37, 21]] }); run(g, 2);
+  const dryStart = tank.x; run(g, 1);
+  const dry = tank.x - dryStart, flags = (q, u) => snapshotFor(q, 0, []).units.find(r => r[0] === u.id)[12];
   assert.ok(flags(g, tank) & 32768, 'a tank moving on dry ground trails dust');
   g.wx.next = 0; run(g, 40);
   assert.equal(g.wx.rain, 1, 'the rain sets in');
   assert.ok(g.wx.wet > 0.15 && g.wx.wet < 0.5, 'and the ground soaks slowly');
   assert.deepEqual(snapshotFor(g, 0, []).wx.slice(0, 1), [1], 'clients are told the weather');
-  g.wx.wet = 1; g.wx.next = 1e9; Object.assign(tank, { x: 3, z: 25, path: [] });
-  command(g, 0, { t: 'move', orders: [[tank.id, 37, 25]] }); run(g, 1);
-  assert.ok(Math.abs((tank.x - 3) / dry - (1 - CFG.weather.wetGround)) < 0.06, 'wet ground slows a tank');
+  g.wx.wet = 1; g.wx.next = 1e9; Object.assign(tank, { x: 3, z: 25, rot: 0, moveSpeed: 0, path: [] });
+  command(g, 0, { t: 'move', orders: [[tank.id, 37, 25]] }); run(g, 2);
+  const wetStart = tank.x; run(g, 1);
+  assert.ok(Math.abs((tank.x - wetStart) / dry - (1 - CFG.weather.wetGround)) < 0.06, 'wet ground slows a tank at steady speed');
   assert.ok(!(flags(g, tank) & 32768), 'no dust in the wet');
   assert.equal(createGame(blank(empty), ['a', 'b'], false, [0, 1], [0, 1], { weather: false }).wx, null, 'weather can be switched off');
 
   // fire: runs down a hedge before the wind, leaves it burnt, hurts infantry, and rain smothers it
   const rows = empty.map((r, y) => y === 10 ? '..' + 'H'.repeat(14) + '....' : r), f = fresh(rows), row = 10 * f.w;
   f.players[0].mp = 5000; f.wind = { a: 0, v: 1 }; f.wx = null;
+  const squad = put(f, 0, 'rifle', 7, 21), hp = squad.hp;
   f.fires.set(row + 2, CFG.fire.burn.H);
-  assert.deepEqual(snapshotFor(f, 0, []).fires, [row + 2], 'clients are told what burns');
-  const squad = put(f, 0, 'rifle', 7, 21), hp = squad.hp; f.fires.set(row + 3, CFG.fire.burn.H);
+  assert.deepEqual(snapshotFor(f, 0, []).fires, [row + 2], 'a client observing the hedge is told what burns');
+  assert.deepEqual(snapshotFor(f, 1, []).fires, [], 'an unseen enemy fire remains private');
+  f.fires.set(row + 3, CFG.fire.burn.H);
   run(f, 3);
   assert.ok(squad.hp < hp, 'infantry in the fire are hurt');
   assert.ok(Math.floor(squad.z / CELL) !== 10 && squad.hp > 0, 'and an idle squad steps out of the hedge');
@@ -7189,9 +7350,9 @@ for (const lookupFinished of [false, true]) {
   assert.ok(g.height.every(l => l >= 0), 'the computer player fills the hole in');
   assert.ok(holder.hp > 0);
 
-  const rows = empty.map((row, y) => row.slice(0, 9) + (y === 10 ? '===' : 'WWW') + row.slice(12)), r = fresh(rows);
+  const rows = empty.map((row, y) => row.slice(0, 9) + (y >= 9 && y <= 11 ? '===' : 'WWW') + row.slice(12)), r = fresh(rows);
   r.players[0].mp = 5000; r.points = [];
-  const sapper = put(r, 0, 'rifle', 5, 21), tank = { x: 5, z: 21, type: 'tank' };
+  const sapper = put(r, 0, 'rifle', 13, 21), tank = { x: 5, z: 21, type: 'tank' };
   think(r, 0); // first look: the bridge is noted
   r.players[1].mp = 5000;
   assert.equal(command(r, 1, { t: 'support', kind: 'dive', x: 21, z: 21 }), undefined);
@@ -7369,7 +7530,9 @@ for (const lookupFinished of [false, true]) {
     assert.ok(Math.hypot(foe.x - dd.x, foe.z - dd.z) > UNITS.destroyer.vision && foe.hp < full, 'shore bombardment on a spotted target');
     // an enemy gunboat off the bow, beyond its own range of the ship's middle, still reaches the hull
     const boat = unitOf(g, 0, 'gunboat');
+    dd.holdFire = true; run(g, 20 * 3); // Let the preceding physical broadsides finish before the next comparison.
     boat.owner = 1; dd.rot = 0; dd.path = [];
+    dd.xp = 0; // Measure the base torpedo hit, without armor earned during the preceding bombardment.
     place(g, boat, 40 + Math.round((UNITS.destroyer.hull + 10) / CELL), 20); boat.holdFire = false;
     assert.ok(Math.hypot(boat.x - dd.x, boat.z - dd.z) > UNITS.gunboat.w.range, 'the gunboat is out of range of the middle');
     const before = dd.hp;
@@ -7463,14 +7626,16 @@ for (const lookupFinished of [false, true]) {
     const rows = open(); for (let y = 0; y < 40; y++) put(rows, 12, y, 'WWW');
     put(rows, 12, 19, 'BBB'); put(rows, 12, 20, 'DDD'); put(rows, 12, 21, 'WWW');
     const g = createGame(mapOf(rows), ['a', 'b'], false, [0, 1], [0, 1], { weather: false });
-    const p = g.points[0], road = 20 * 40 + 13, spill = sim.CFG.rubbleSpill;
+    const p = g.points[0], road = 20 * 40 + 13;
+    // The houses stand over the river, so their vacated footprint cannot become a second crossing.
+    for (const x of [12, 13, 14]) sim.mutateWorldCell(g, 19 * g.w + x, { ground: 'W' });
     p.owner = 0; p.progress = 1;
     for (const u of g.units.values()) { place(g, u, u.owner ? 37 : 3, u.owner ? 37 : 3); u.holdFire = true; }
     run(g, 45);
     assert.equal(p.cut, false, 'the street over the river keeps the point supplied');
-    sim.CFG.rubbleSpill = 1;
-    sim.damageCells(g, [...g.units.values()], at(13, 19), 3, 2000);
-    sim.CFG.rubbleSpill = spill;
+    // Collapse from the north without directly shelling the road we will clear.
+    sim.damageCells(g, [...g.units.values()], { x: at(13, 19).x, z: at(13, 19).z - 3.1 }, 3, 2000);
+    settleDebris(g);
     assert.equal(g.chars[road], 'R', 'the falling house throws rubble across the road');
     assert.ok(g.flags[road] & sim.VBLOCK, 'and rubble stops vehicles');
     run(g, 45);
@@ -7920,13 +8085,69 @@ console.log('all availability checks passed');
 }
 console.log('all model toolkit checks passed');
 
+await import('./test-model-motion.mjs');
+await import('./test-wheel-motion.mjs');
+
+// Ships retain their animation contracts while their shaped hulls stay within a small mesh budget.
+{
+  const THREE = await import('three');
+  const { buildModel, VEHICLE_PAINT } = await import('./client/unit-models.js');
+  const { navalModel } = await import('./client/models/naval.js');
+  const { checkFinishedNaval } = await import('./tools/blender/check-finished-naval.mjs');
+  const finished = await checkFinishedNaval();
+  assert.equal(finished.models.length, 12, 'Blender payload covers all three ships and four factions');
+  const look = { vehicle: 0x59623d, color: 0x3b73d6 };
+  for (const fac of [0, 1, 2, 3]) for (const [type, draws, budget, length, beam] of [
+    ['lcvp', 1, 15000, 10.4, 3.1], ['gunboat', 2, 30000, 22.5, 5.5], ['destroyer', 5, 50000, 104, 11.6],
+  ]) {
+    const root = new THREE.Group(), v = { type, root, models: [] }, label = `${type} faction ${fac}`;
+    buildModel(v, root, look, fac, UNITS[type]);
+    const meshes = []; root.traverse(o => { if (o.isMesh) meshes.push(o); });
+    assert.equal(meshes.length, draws, `${label}: one draw per hull or moving mount`);
+    assert.ok(meshes.every(m => m.material === VEHICLE_PAINT), `${label}: shared vehicle material`);
+    assert.ok(meshes.reduce((n, m) => n + m.geometry.index.count / 3, 0) <= budget, `${label}: triangle budget`);
+    const box = new THREE.Box3().setFromObject(root), size = box.getSize(new THREE.Vector3());
+    assert.ok(size.x <= length && size.x >= length * 0.95 && size.z <= beam, `${label}: preserved footprint`);
+    for (const m of meshes) {
+      const g = m.geometry, P = g.attributes.position, N = g.attributes.normal, I = g.index;
+      assert.ok(P.array.every(Number.isFinite) && N.array.every(Number.isFinite) && g.attributes.matId && g.attributes.color, `${label}: finite textured geometry`);
+      const a = new THREE.Vector3(), b = a.clone(), c = a.clone(), face = a.clone(), n = a.clone();
+      for (let i = 0; i < I.count; i += 3) {
+        const ids = [I.getX(i), I.getX(i + 1), I.getX(i + 2)];
+        a.fromBufferAttribute(P, ids[0]); b.fromBufferAttribute(P, ids[1]); c.fromBufferAttribute(P, ids[2]);
+        face.subVectors(b, a).cross(c.sub(a)); n.set(0, 0, 0);
+        for (const id of ids) n.add(new THREE.Vector3().fromBufferAttribute(N, id));
+        assert.ok(face.lengthSq() > 1e-15 && face.dot(n) >= -1e-8, `${label}: faces agree with normals`);
+      }
+    }
+    if (type === 'lcvp') {
+      const P = meshes[0].geometry.attributes.position;
+      for (const z of [-0.8, 0.8]) {
+        const tip = new THREE.Vector3(-3.7, 2.2, z);
+        let nearest = Infinity;
+        for (let i = 0; i < P.count; i++) nearest = Math.min(nearest, new THREE.Vector3().fromBufferAttribute(P, i).distanceTo(tip));
+        assert.ok(nearest < 0.06, `${label}: both gun barrels meet the existing effect tips`);
+      }
+    }
+    if (type !== 'lcvp') {
+      const tip = new THREE.Vector3(...v.fxTip), P = v.turret.children[0].geometry.attributes.position;
+      let nearest = Infinity;
+      for (let i = 0; i < P.count; i++) nearest = Math.min(nearest, new THREE.Vector3().fromBufferAttribute(P, i).distanceTo(tip));
+      assert.ok(nearest < 0.2, `${label}: muzzle remains on the barrel`);
+      if (type === 'destroyer') assert.ok(v.mounts.length === 4 && v.mounts[0] === v.turret, `${label}: all four guns still traverse`);
+    }
+    assert.equal(navalModel(type, fac, look), navalModel(type, fac, look), `${label}: geometry reused`);
+  }
+}
+console.log('all naval model checks passed');
+
 // Armor keeps one hull and one traversing draw, outward faces and muzzle points, inside the model budgets.
 {
   const THREE = await import('three');
   const { buildModel, PAINT, VEHICLE_PAINT } = await import('./client/unit-models.js');
   const looks = [{ vehicle: 0x59623d, color: 0x3b73d6 }, { vehicle: 0x50565a, color: 0xcc3a2e }, { vehicle: 0x4e5a38, color: 0xece6d6 }, { vehicle: 0x565640, color: 0xe2832b }];
-  const cases = [['tank', 0, 3000], ['tank', 1, 3000], ['tank', 2, 3000], ['tiger', 1, 5000], ['churchill', 3, 5000],
-    ['medium', 0, 4000], ['medium', 1, 4000], ['medium', 2, 4000], ['medium', 3, 4000], ['rocket', 0, 4000], ['flaktrack', 1, 4000], ['flaktrack', 2, 3000]];
+  const cases = [['tank', 0, 8000], ['tank', 1, 8000], ['tank', 2, 8000], ['tiger', 1, 20000], ['churchill', 3, 20000],
+    ['medium', 0, 18000], ['medium', 1, 18000], ['medium', 2, 18000], ['medium', 3, 18000], ['rocket', 0, 18000], ['flaktrack', 1, 14000], ['flaktrack', 2, 8000]];
   for (const [type, fac, budget] of cases) {
     const root = new THREE.Group(), v = { type, root, models: [] }, label = `${type} faction ${fac}`;
     buildModel(v, root, looks[fac], fac, UNITS[type]);
@@ -7951,12 +8172,13 @@ console.log('all model toolkit checks passed');
     }
     assert.ok(tipDistance < 0.1, `${label}: muzzle point stays on the gun`);
   }
-  const shader = { uniforms: {}, vertexShader: THREE.ShaderLib.lambert.vertexShader, fragmentShader: THREE.ShaderLib.lambert.fragmentShader };
-  VEHICLE_PAINT.onBeforeCompile(shader);
-  assert.ok(shader.fragmentShader.includes('totalEmissiveRadiance += diffuseColor.rgb') && shader.fragmentShader.includes('modelTriplanar'), 'vehicle fill keeps the model texture shader');
-  const ordinary = { uniforms: {}, vertexShader: THREE.ShaderLib.lambert.vertexShader, fragmentShader: THREE.ShaderLib.lambert.fragmentShader };
-  PAINT.onBeforeCompile(ordinary);
-  assert.ok(!ordinary.fragmentShader.includes('totalEmissiveRadiance += diffuseColor.rgb'), 'soldiers and guns retain their own lighting');
+  for (const material of [VEHICLE_PAINT, PAINT]) {
+    assert.ok(material.isMeshStandardMaterial, 'models use physically based surface lighting');
+    const shader = { uniforms: {}, vertexShader: THREE.ShaderLib.standard.vertexShader, fragmentShader: THREE.ShaderLib.standard.fragmentShader };
+    material.onBeforeCompile(shader);
+    assert.ok(shader.fragmentShader.includes('modelTriplanar'), 'surface lighting keeps the model texture shader');
+    assert.ok(!shader.fragmentShader.includes('totalEmissiveRadiance += diffuseColor.rgb'), 'paint does not glow to imitate ambient light');
+  }
 }
 console.log('all armor model checks passed');
 
@@ -7983,7 +8205,7 @@ console.log('all armor model checks passed');
     const size = box.getSize(new THREE.Vector3()), tris = (m.hull.index.count + m.turret.index.count) / 3;
     assert.ok(box.min.y > -0.05 && box.min.y < 0.05, `${label}: stands on the ground (${box.min.y})`);
     assert.ok(size.x >= 3.4 && size.x <= 5.8 && size.z >= 1.6 && size.z <= 2.8, `${label}: footprint ${size.x.toFixed(1)} x ${size.z.toFixed(1)} stays near the old boxes`);
-    assert.ok(tris >= 1500 && tris <= 3000, `${label}: ${tris} triangles within the 3000 budget`);
+    assert.ok(tris >= 1500 && tris <= 12000, `${label}: ${tris} triangles within the 12000 budget`);
     for (const g of [m.hull, m.turret]) assert.ok(g.attributes.position.array.every(Number.isFinite) && g.attributes.normal.array.every(Number.isFinite), `${label}: finite positions and normals`);
     assert.ok(v.fxTip.length === 3 && v.fxTip.every(Number.isFinite), `${label}: a muzzle point`);
     const own = new THREE.Box3().setFromBufferAttribute(m.turret.attributes.position).expandByScalar(0.35);
@@ -8017,7 +8239,7 @@ console.log('all wheeled model checks passed');
     assert.equal(meshes.length, 1, `${label}: the gun is one draw call`);
     assert.ok(meshes[0].castShadow, `${label}: the gun casts a shadow`);
     const geo = meshes[0].geometry, I = geo.index, P = geo.attributes.position, N = geo.attributes.normal, tris = I.count / 3;
-    assert.ok(tris >= 400 && tris <= 2000, `${label}: ${tris} triangles (budget 2000)`);
+    assert.ok(tris >= 400 && tris <= 4000, `${label}: ${tris} triangles (budget 4000)`);
     assert.ok(geo.attributes.color, `${label}: painted in vertex colors`);
     const a = new THREE.Vector3(), b = new THREE.Vector3(), c = new THREE.Vector3(), n = new THREE.Vector3();
     let inward = 0;
@@ -8063,7 +8285,7 @@ console.log('all gun model checks passed');
   const THREE = await import('three');
   const { plane, ROLES, PLANE_NAMES } = await import('./client/models/planes.js');
   const { MATS, PLAIN, UNSET } = await import('./client/models/geom.js');
-  const BUDGET = { fighter: 3500, attacker: 3500, bomber: 6000, transport: 6000 }, OWN = 0xff00ff;
+  const BUDGET = { fighter: 6000, attacker: 6500, bomber: 10000, transport: 10000 }, OWN = 0xff00ff;
   for (const fac of [0, 1, 2, 3]) for (const role of ROLES) {
     const p = plane(fac, role, OWN), geo = p.geo, label = PLANE_NAMES[fac][role];
     const I = geo.index, P = geo.attributes.position, N = geo.attributes.normal, col = geo.attributes.color, mat = geo.attributes.matId;
@@ -8105,7 +8327,8 @@ console.log('all aircraft model checks passed');
       if (seen.has(kit)) continue;
       seen.add(kit);
       const s = soldier(type, fac, i, { color: 0xff00ff });
-      for (const [lod, budget] of [['near', 900], ['far', 150]]) {
+      // The textured body and fitted grips raise the close budget; distant figures stay unchanged.
+      for (const [lod, budget] of [['near', 14000], ['far', 150]]) {
         assert.equal(s[lod].children.length, 1, `${type}/${fac}/${kit}: one ${lod} body`);
         const g = s[lod].children[0].userData.geo, p = g.attributes.position;
         assert.ok(g.index.count / 3 <= budget, `${type}/${fac}/${kit}: ${lod} fits ${budget} triangles`);

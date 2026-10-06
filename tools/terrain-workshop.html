@@ -1,0 +1,33 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1">
+<title>Terrain workshop | WW2 RTS</title>
+<link rel="icon" href="data:,">
+<style>
+:root{color-scheme:dark;font:14px/1.45 system-ui,sans-serif;background:#10171d;color:#eaf0f4}*{box-sizing:border-box}body{margin:0}main{max-width:1600px;margin:auto;padding:22px}header{display:flex;justify-content:space-between;align-items:center;gap:12px}h1{margin:0;font-size:28px;letter-spacing:-.5px}p{color:#b7c6cf;margin:7px 0 18px}a{color:#8bdad8}.controls{display:flex;flex-wrap:wrap;align-items:end;gap:10px;margin:16px 0}label{display:flex;flex-direction:column;gap:4px;color:#b7c6cf;font-size:12px}select,button,input{font:inherit;color:#eaf0f4;background:#21303b;border:1px solid #405461;border-radius:6px;padding:8px 11px}button{cursor:pointer}button:hover{background:#354959}button:focus-visible,select:focus-visible,input:focus-visible{outline:2px solid #8bdad8}#play{background:#28716e;min-width:80px}.layout{display:grid;grid-template-columns:minmax(0,1fr) 240px;gap:16px}.stage{position:relative;min-height:580px;height:calc(100vh - 252px);border:1px solid #405461;border-radius:9px;overflow:hidden;background:#181e24}canvas{display:block;width:100%;height:100%}#badge{position:absolute;top:14px;left:14px;background:#15242bcc;border:1px solid #53776e;color:#c2f0de;border-radius:5px;padding:7px 11px;font-weight:600;pointer-events:none}#badge.off{border-color:#9e7762;color:#ffd0ad}.panel{padding:18px;border:1px solid #364a57;border-radius:9px;background:#18242d}h2{font-size:15px;margin:0 0 15px}dl{margin:0;display:grid;grid-template-columns:1fr auto;gap:12px}dt{color:#b7c6cf}dd{margin:0;font-variant-numeric:tabular-nums}.hint{font-size:12px;color:#a7bac5;margin:22px 0 0}.scrub{margin-top:12px;display:flex;gap:12px;align-items:center}.scrub label{flex:1}.scrub input{width:100%;padding:0;accent-color:#8bdad8}#distance{min-width:85px;font-variant-numeric:tabular-nums}.toggle{flex-direction:row;align-items:center;height:36px;padding:0 8px}.toggle input{accent-color:#8bdad8}#error{color:#ffb4a7;white-space:pre-wrap}@media(max-width:850px){main{padding:14px}.layout{grid-template-columns:1fr}.stage{min-height:400px;height:55vh}.panel{padding:14px}dl{grid-template-columns:1fr auto 1fr auto}header{align-items:start}h1{font-size:24px}}
+</style>
+<script type="importmap">{"imports":{"three":"/vendor/three.module.js"}}</script>
+</head>
+<body><main>
+<header><h1>Terrain workshop</h1><a href="/tools/movement-lab.html">Movement lab</a></header>
+<p>Inspect the game's ground mesh and vehicle models on repeatable terrain.</p>
+<div class="controls">
+<label>Terrain<select id="scenario"></select></label><label>Vehicle<select id="type"></select></label>
+<label>Faction<select id="faction"><option value="0">USA</option><option value="1">Germany</option><option value="2">USSR</option><option value="3">UK</option></select></label>
+<label>Motion<select id="drive"><option value="forward">Forward</option><option value="reverse">Reverse</option><option value="stopped">Stopped</option></select></label>
+<button id="play">Run</button><button id="step">One step</button><button id="reset">Reset</button>
+<label>View<select id="view"><option value="side">Side</option><option value="close">Close side</option><option value="oblique">Oblique</option><option value="front">Front</option></select></label>
+<label class="toggle"><input id="aligned" type="checkbox" checked>Terrain alignment</label>
+</div>
+<div class="layout"><div>
+<div class="stage" id="stage"><div id="badge">Loading textures...</div></div>
+<div class="scrub"><label>Distance along path<input id="scrub" type="range" min="0" max="52" step="0.05" value="0"></label><span id="distance">0.0 / 52 m</span></div>
+</div><aside class="panel">
+<h2>Vehicle and ground</h2><dl><dt>Height</dt><dd id="height">0.00 m</dd><dt>Pitch</dt><dd id="pitch">0.0°</dd><dt>Roll</dt><dd id="roll">0.0°</dd><dt>Chassis lift</dt><dd id="lift">0.00 m</dd><dt>Probe gap</dt><dd id="gap">0.00 m</dd><dt>Elapsed</dt><dd id="elapsed">0.0 s</dd></dl>
+<p id="description" class="hint"></p>
+<p class="hint">Presentation fixture: a scripted path through authored map heights. This tool uses the game rendering pipeline. It does not simulate navigation or gravity.</p>
+<p class="hint">Turn alignment off to compare a level hull placed at the ground height under its center.</p><p id="error" role="alert"></p>
+</aside></div>
+</main><script type="module" src="/tools/terrain-workshop.js"></script></body>
+</html>

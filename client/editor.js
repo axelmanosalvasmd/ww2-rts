@@ -1,6 +1,13 @@
 // Map editor (/?edit). Reuses the game's renderer: every change rebuilds the world through startGame.
 import * as THREE from 'three';
 import { CELL, CFG, validateMap, findPath, TERRAIN, levelOf, levelChar, MAX_PLAYERS, createGame, spawnsFor, POINT_KINDS } from '/shared/sim.js';
+import { createScenarioEditor } from './scenario-editor.js';
+import { migrateScenario } from '/shared/scenarios.js';
+import { migrateWorldMap, MATERIALS } from '/shared/world-layers.js';
+import { editableLayers, layerRows, savedLayers, paintLayer, removeLayerSelection, moveLayerSelection, pruneLayerStructures } from './layer-edit.js';
+import { createStructureEditor } from './structure-editor.js';
+import { t as tr } from './i18n.js';
+import { formatWorldAuthoringError, formatMaterialLabel } from './world-authoring-error.js';
 
 const TOOLS = [
   ['sel', 'Select / move'], ['.', 'Ground'], ['B', 'Building'], ['H', 'Hedgerow'], ['#', 'Wall'], ['+', 'Crater'], ['T', 'Trench'], ['X', 'Barbed wire'], ['Y', 'Tank traps'],
@@ -14,10 +21,11 @@ const esc = (s) => String(s).replace(/[&<>"']/g, (c) => `&#${c.charCodeAt(0)};`)
 const store = { get: (k) => { try { return sessionStorage.getItem(k); } catch { return null; } }, set: (k, v) => { try { sessionStorage.setItem(k, v); } catch {} } };
 
 export async function start(api) {
-  let map, grid, heights, name = 'default', tool = 'sel', brush = 1, sel = -1, painting = 0, timer = 0;
+  let map, grid, layers, heights, name = 'default', tool = 'sel', brush = 1, sel = -1, painting = 0, timer = 0;
   let stroke = new Set();   // cells a height stroke already changed (one step per cell per drag)
   let picked = null;        // select tool: { cells: [[x,y]], ch } structure, or { marker: 'spawn'|'point', i }
   let dragFrom = null, dragOffset = [0, 0];
+  let authoringSource = false;
   let previewMode = '';     // '' = editing; else the mode the map is shown as the game would set it up
   const hl = new THREE.Group(); api.scene.add(hl);
   const pv = new THREE.Group(); api.scene.add(pv); // preview markers: bunkers, resource nodes
@@ -30,12 +38,15 @@ export async function start(api) {
     <div class="row"><select id="edSize"><option>60</option><option selected>80</option><option>100</option><option>150</option><option>200</option></select><button id="edNew">New blank</button></div>
     <div class="ed-tools">${TOOLS.map(([k, label], i) => `<button data-tool="${k}" title="${i < 10 ? `key ${(i + 1) % 10}` : ""}">${label}</button>`).join('')}</div>
     <div class="row">Brush <select id="edBrush"><option>1</option><option>2</option><option>3</option></select><span class="muted">right-drag erases / lowers</span></div>
+    <div class="row">Material <select id="edMaterial"><option value="">Automatic</option>${Object.keys(MATERIALS).map(material => `<option value="${material}">${formatMaterialLabel(material)}</option>`).join('')}</select></div>
     <div id="edToolHint" class="muted"></div>
     <div class="row">Preview <select id="edMode" title="Show the map as each mode sets it up (editing is paused)"><option value="">Editing</option><option value="conquest">Conquest</option><option value="assault">Assault</option><option value="annihilation">Annihilation</option><option value="classic">Classic</option><option value="horde">Horde</option></select></div>
     <div id="edPlayersRow" class="row hidden">Players <select id="edPlayers"></select></div>
     <div id="edModeInfo" class="muted"></div>
     <div id="edSel" class="muted"></div>
     <div id="edPoint"></div>
+    <div id="edStructure"></div>
+    <div id="edScenario"></div>
     <div id="edCheck" class="muted"></div>
     <label>Name <input id="edName" maxlength="32"></label>
     <label>Title <input id="edTitle" maxlength="40"></label>
@@ -46,21 +57,28 @@ export async function start(api) {
   document.body.append(ui);
   const $ = (id) => document.getElementById(id);
   $('edPw').value = store.get('ww2-edit-pw') || '';
+  const scenarioEditor = createScenarioEditor({ host: $('edScenario'), getMap: () => map, onChange: () => { const m = snapshot(); check(m); return validateMap(m); } });
+
+  const structureEditor = createStructureEditor({ host: $('edStructure'), getMap: () => snapshot(), onChange: structures => { map.structures = structures; rebuild(); } });
 
   // ---------- model ----------
   // the whole map, so settings the editor has no control for (naval, trenchFacing, assaultTime, triggers) survive a save.
   // A named building whose house or bridge was painted over is dropped.
   const snapshot = () => {
-    const rows = grid.map(r => r.join(''));
-    return { ...map, name: $('edTitle').value || name, rows, heights: heights.map(r => r.map(levelChar).join('')),
+    const rows = layerRows(layers);
+    return { ...map, worldVersion: 2, layers: savedLayers(layers), name: $('edTitle').value || name, rows, heights: heights.map(r => r.map(levelChar).join('')),
       buildings: (map.buildings ?? []).filter(b => rows[b.y]?.[b.x] === (b.kind === 'stone bridge' ? '=' : 'B')),
       defend: map.defend?.every(i => i < map.spawns.length) ? map.defend : undefined };
   };
-  function load(m, n) {
-    map = m; name = n; grid = m.rows.map(r => [...r]); sel = -1; picked = null;
+  function load(m, n, authorized = true) {
+    authoringSource = authorized;
+    if (!m.scenario && m.triggers?.length) { m.scenario = migrateScenario(m); delete m.triggers; }
+    map = migrateWorldMap(m); name = n; layers = editableLayers(map); grid = layerRows(layers).map(row => [...row]); sel = -1; picked = null;
     heights = (m.heights || m.rows.map(r => '0'.repeat(r.length))).map(r => [...r].map(levelOf));
-    map.points.forEach(p => { p.vp ??= 1; p.mp ??= 1; });
+    map.points.forEach((p, i) => { p.vp ??= 1; p.mp ??= 1; p.id ??= `point:${i}`; });
+    map.pointSequence = Math.max(map.pointSequence ?? 0, ...map.points.map(p => +(String(p.id).match(/^point:(\d+)$/)?.[1] ?? -1) + 1));
     $('edName').value = n; $('edTitle').value = m.name || n;
+    scenarioEditor.render();
     rebuild(true);
   }
   function blank(size) {
@@ -74,8 +92,19 @@ export async function start(api) {
   function rebuild(first = false) {
     const cam = { ...api.cam }, m = snapshot();
     pv.clear();
-    if (previewMode && validateMap(m) === null) showPreview(m);
-    else api.startGame({ map: m, you: 0, spawn: toWorld(m.spawns[0]), spawns: m.spawns.map(toWorld), cells: [], names: m.spawns.map((_, i) => 'Spawn ' + (i + 1) + (m.spawns[i].assault ? ' (Assault only)' : '')) });
+    const startEditingView = () => api.startGame({ map: m, you: 0, spawn: toWorld(m.spawns[0]), spawns: m.spawns.map(toWorld), cells: [], names: m.spawns.map((_, i) => 'Spawn ' + (i + 1) + (m.spawns[i].assault ? ' (Assault only)' : '')) });
+    if (previewMode && validateMap(m) === null) {
+      try { showPreview(m); }
+      catch (error) {
+        previewMode = '';
+        $('edMode').value = '';
+        $('edPlayersRow').classList.add('hidden');
+        $('edToolHint').textContent = toolHint();
+        startEditingView();
+        $('edModeInfo').textContent = tr(`Preview unavailable: ${formatWorldAuthoringError(error.message || String(error))}. Choose another mode or change the scenario.`);
+        $('edModeInfo').classList.add('danger');
+      }
+    } else startEditingView();
     if (!first) Object.assign(api.cam, cam);
     else { api.cam.x = m.w; api.cam.z = m.h; api.cam.dist = 120; api.cam.yaw = 0; }
     check(m);
@@ -90,6 +119,7 @@ export async function start(api) {
     $('edPlayers').innerHTML = Array.from({ length: max - 1 }, (_, i) => `<option ${i + 2 === Math.min(cur, max) ? 'selected' : ''}>${i + 2}</option>`).join('');
   }
   function showPreview(m) {
+    $('edModeInfo').classList.remove('danger');
     playersSelect(m);
     const mode = previewMode, n = +$('edPlayers').value, assault = mode === 'assault';
     // Assault: the map's defend spawns (or spawn 1) defend, the rest attack; other modes: everyone for themselves
@@ -102,7 +132,13 @@ export async function start(api) {
     const role = (i) => (used[i] < 0 ? `not used in ${mode}` : assault ? (g.players[used[i]].team === 0 ? 'defends' : 'attacks') : `player ${used[i] + 1}`);
     // building footprints show as buildings; everything Assault or Classic added is in the game's cells
     const rows = Array.from({ length: m.h }, (_, y) => g.chars.slice(y * m.w, (y + 1) * m.w).map(ch => (ch === 'K' ? 'B' : ch)).join(''));
-    const shown = { ...m, rows, points: g.points.map(p => ({ ...cellOf(p), vp: p.vp, mp: p.mp })) };
+    const materialRows = table => [...(table ?? new Map())].map(([c, material]) => ({ c, material }));
+    const shown = { ...m, worldVersion: 2, layers: {
+      ground: Array.from({ length: g.h }, (_, y) => g.ground.slice(y * g.w, (y + 1) * g.w).join('')),
+      objects: Array.from({ length: g.h }, (_, y) => g.objects.slice(y * g.w, (y + 1) * g.w).map(ch => ch === 'K' ? 'B' : ch).join('')),
+      mines: Array.from({ length: g.h }, (_, y) => [...g.mineLayer.slice(y * g.w, (y + 1) * g.w)].map(value => value ? 'N' : '.').join('')),
+      groundMaterials: materialRows(g.baseMaterials), objectMaterials: materialRows(g.objectMaterials), mineMaterials: materialRows(g.mineMaterials),
+    }, rows, points: g.points.map(p => ({ ...cellOf(p), vp: p.vp, mp: p.mp })) };
     api.startGame({ map: shown, you: 0, spawn: toWorld(m.spawns[0]), spawns: m.spawns.map(toWorld), cells: [], names: m.spawns.map((_, i) => `Spawn ${i + 1}: ${role(i)}`) });
     const mark = (p, color, w, h, y = 0.4) => { const b = new THREE.Mesh(new THREE.BoxGeometry(w, h, w), new THREE.MeshBasicMaterial({ color, transparent: true, opacity: 0.85 })); b.position.set(p.x, api.hAt(p.x, p.z) + y + h / 2, p.z); pv.add(b); };
     for (const u of g.units.values()) if (u.type === 'bunker') mark(u, 0x9a9a92, 5, 2.6, 0);
@@ -133,7 +169,7 @@ export async function start(api) {
       }));
       err = bad.slice(0, 3).join(', ');
     }
-    $('edCheck').innerHTML = err ? `<span style="color:var(--red-hi)">⚠ ${esc(err)}</span>` : '✓ playable';
+    $('edCheck').innerHTML = err ? `<span style="color:var(--red-hi)">⚠ ${esc(formatWorldAuthoringError(err))}</span>` : '✓ playable';
     return !err;
   }
 
@@ -165,7 +201,8 @@ export async function start(api) {
       : tool === 'pt' ? 'Capture point tool: click to add, click one to edit it'
       : /^s\d$/.test(tool) ? `${label} tool: click to place it`
       : HEIGHT_TOOLS[tool] ? `${label} tool: click or drag, right-drag does the opposite`
-      : `${label} tool: click or drag to paint, right-drag erases`;
+      : tool === 'N' ? 'Mines use their own layer. Laying or clearing them preserves the surface and rubble underneath.'
+      : `${label} tool: click or drag to paint ${'.D+MWF'.includes(tool) ? 'the base surface' : 'an object above the surface'}, right-drag erases mines, then objects, then ground`;
   }
   const pickTool = (k) => { tool = k; ui.querySelectorAll('[data-tool]').forEach(b => b.classList.toggle('on', b.dataset.tool === k)); $('edToolHint').textContent = toolHint(); };
   ui.querySelectorAll('[data-tool]').forEach(b => (b.onclick = () => pickTool(b.dataset.tool)));
@@ -178,7 +215,7 @@ export async function start(api) {
     const x = Math.floor(g.x / CELL), y = Math.floor(g.z / CELL);
     return x >= 0 && y >= 0 && x < map.w && y < map.h ? { x, y } : null;
   };
-  function paint(c, ch) {
+  function paint(c, ch, erase = false) {
     const r = brush - 1;
     for (let y = c.y - r; y <= c.y + r; y++) for (let x = c.x - r; x <= c.x + r; x++) {
       if (grid[y]?.[x] === undefined) continue;
@@ -186,8 +223,9 @@ export async function start(api) {
         if (stroke.has(y * map.w + x)) continue;
         stroke.add(y * map.w + x);
         heights[y][x] = Math.max(CFG.minLevel, Math.min(CFG.maxLevel, heights[y][x] + ch));
-      } else grid[y][x] = ch;
+      } else paintLayer(layers, x, y, ch, erase, $('edMaterial').value);
     }
+    grid = layerRows(layers).map(row => [...row]); pruneLayerStructures(map, layers);
     later();
   }
 
@@ -208,6 +246,7 @@ export async function start(api) {
   const NAMES = { B: 'building', H: 'hedgerow', '#': 'wall', '+': 'craters', T: 'trench', X: 'barbed wire', Y: 'tank traps', W: 'river', F: 'ford', '=': 'bridge', R: 'rubble', D: 'road', M: 'mud', N: 'mines', O: 'woods' };
   function highlight() {
     hl.clear();
+    structureEditor.render(picked);
     const sp = picked?.marker === 'spawn' && map.spawns[picked.i];
     $('edSel').innerHTML = sp ? `Spawn ${picked.i + 1}: drag to move, Delete removes it (later spawns renumber)<br><label style="display:flex;gap:6px"><input type="checkbox" id="edAssaultOnly" ${sp.assault ? 'checked' : ''}> Assault only (e.g. inside the defenders' fortress; other modes skip it)</label>` : '';
     if (sp) $('edAssaultOnly').onchange = (e) => { if (e.target.checked) sp.assault = true; else delete sp.assault; rebuild(); };
@@ -232,15 +271,15 @@ export async function start(api) {
   function commitMove() {
     const [ox, oy] = dragOffset;
     if (!picked?.cells || (!ox && !oy)) return;
-    for (const [x, y] of picked.cells) grid[y][x] = '.';
-    for (const b of map.buildings ?? []) if (picked.cells.some(([x, y]) => b.x === x && b.y === y)) { b.x += ox; b.y += oy; } // its type moves with it
-    picked.cells = picked.cells.map(([x, y]) => [x + ox, y + oy]).filter(([x, y]) => grid[y]?.[x] !== undefined);
-    for (const [x, y] of picked.cells) grid[y][x] = picked.ch;
+    const oldCells = [...picked.cells];
+    if (!moveLayerSelection(layers, picked, ox, oy, map)) { $('edMsg').textContent = 'The whole object must fit inside the map without overlapping another object.'; return; }
+    for (const b of map.buildings ?? []) if (oldCells.some(([x, y]) => b.x === x && b.y === y)) { b.x += ox; b.y += oy; } // its type moves with it
+    grid = layerRows(layers).map(row => [...row]);
   }
   function deletePicked() {
     if (picked?.marker === 'spawn' && map.spawns.length > 2) { map.spawns.splice(picked.i, 1); picked = null; rebuild(); return true; }
     if (!picked?.cells) return false;
-    for (const [x, y] of picked.cells) grid[y][x] = '.';
+    removeLayerSelection(layers, picked); pruneLayerStructures(map, layers); grid = layerRows(layers).map(row => [...row]);
     picked = null; rebuild(); return true;
   }
   function click(c) {
@@ -248,7 +287,7 @@ export async function start(api) {
     if (tool === 'pt') {
       const hit = map.points.findIndex(p => Math.hypot(p.x - c.x, p.y - c.y) <= 3);
       if (hit >= 0) sel = hit;
-      else if (map.points.length < 9) { map.points.push({ x: c.x, y: c.y, vp: 1, mp: 1 }); sel = map.points.length - 1; }
+      else if (map.points.length < 9) { const id = `point:${map.pointSequence++}`; map.points.push({ id, x: c.x, y: c.y, vp: 1, mp: 1 }); sel = map.points.length - 1; }
       rebuild();
     }
   }
@@ -256,9 +295,11 @@ export async function start(api) {
   canvas.addEventListener('mousedown', (e) => {
     if (previewMode) return; // previews are read-only
     const c = cellAt(e); if (!c) return;
+    if (e.button === 0 && scenarioEditor.consumePick(c)) { e.preventDefault(); return; }
+    if (scenarioEditor.isPicking()) return;
     stroke = new Set();
     if (HEIGHT_TOOLS[tool]) { painting = e.button === 2 ? 4 : 3; paint(c, e.button === 2 ? -HEIGHT_TOOLS[tool] : HEIGHT_TOOLS[tool]); return; }
-    if (e.button === 2) { painting = 2; paint(c, '.'); return; }
+    if (e.button === 2) { painting = 2; paint(c, '.', true); return; }
     if (e.button !== 0) return;
     if (tool === 'sel') {
       // markers first (they sit on top of terrain), then whole structures
@@ -282,7 +323,7 @@ export async function start(api) {
     if (!painting) return;
     if (!(e.buttons & 3)) { painting = 0; return; } // button released outside the window
     const c = cellAt(e); if (!c) return;
-    paint(c, painting === 2 ? '.' : painting === 3 ? HEIGHT_TOOLS[tool] : painting === 4 ? -HEIGHT_TOOLS[tool] : tool);
+    paint(c, painting === 2 ? '.' : painting === 3 ? HEIGHT_TOOLS[tool] : painting === 4 ? -HEIGHT_TOOLS[tool] : tool, painting === 2);
   });
   addEventListener('mouseup', () => {
     painting = 0;
@@ -290,7 +331,8 @@ export async function start(api) {
     dragFrom = null;
   });
   addEventListener('keydown', (e) => {
-    if (e.target.tagName === 'INPUT') return;
+    if (e.code === 'Escape' && scenarioEditor.cancelPick()) return;
+    if (['INPUT', 'TEXTAREA', 'SELECT'].includes(e.target.tagName)) return;
     const n = /^Digit(\d)$/.exec(e.code)?.[1];
     if (n) pickTool(TOOLS[(+n + 9) % 10][0]);
     if (previewMode) return;
@@ -306,16 +348,35 @@ export async function start(api) {
     const maps = await (await fetch('/maps')).json();
     $('edLoad').innerHTML = maps.map(m => `<option ${m === name ? 'selected' : ''}>${esc(m)}</option>`).join('');
   }
-  $('edOpen').onclick = async () => { const n = $('edLoad').value; load(await (await fetch(`/maps/${n}.json`)).json(), n); };
+  async function openMap(n) {
+    const password = $('edPw').value, headers = password ? { 'x-edit-password': password } : {};
+    try {
+      const response = await fetch(`/maps/${n}.json`, { headers });
+      if (!response.ok) {
+        $('edMsg').textContent = response.status === 403 ? tr('Wrong password.') : tr(`Map not opened (${response.status}).`);
+        return false;
+      }
+      load(await response.json(), n, !!password);
+      if (password) store.set('ww2-edit-pw', password);
+      $('edMsg').textContent = password ? tr('Authoring source opened.') : tr('Public preview. Enter the password and click Open before saving.');
+      return true;
+    } catch {
+      $('edMsg').textContent = tr('Map not opened. Check the connection.');
+      return false;
+    }
+  }
+  $('edOpen').onclick = () => openMap($('edLoad').value);
+  $('edPw').addEventListener('keydown', e => { if (e.key === 'Enter') { e.preventDefault(); openMap($('edLoad').value); } });
   $('edNew').onclick = () => blank(+$('edSize').value);
   $('edSave').onclick = async () => {
+    if (!authoringSource) return ($('edMsg').textContent = tr('Open the complete map with the password before saving.'));
     const n = $('edName').value.trim().toLowerCase(), m = snapshot();
     if (!/^[a-z0-9-]{1,32}$/.test(n)) return ($('edMsg').textContent = 'Name: lowercase letters, digits and dashes');
     if (!check(m)) return ($('edMsg').textContent = 'Fix the warnings first');
     store.set('ww2-edit-pw', $('edPw').value);
     const r = await fetch(`/maps/${n}`, { method: 'POST', headers: { 'content-type': 'application/json', 'x-edit-password': $('edPw').value }, body: JSON.stringify(m) });
     const body = await r.json().catch(() => ({}));
-    $('edMsg').textContent = r.ok ? `Saved as "${n}". Pick it in the lobby.` : `Not saved: ${body.error || r.status}`;
+    $('edMsg').textContent = r.ok ? `Saved as "${n}". Pick it in the lobby.` : tr(`Not saved: ${formatWorldAuthoringError(String(body.error || r.status))}`);
     if (r.ok) { name = n; refreshList(); }
   };
 
@@ -343,6 +404,10 @@ export async function start(api) {
   };
 
   await refreshList();
-  load(await (await fetch('/maps/default.json')).json(), 'default');
+  if (!await openMap('default')) {
+    const response = await fetch('/maps/default.json');
+    if (response.ok) load(await response.json(), 'default', false);
+    else blank(80);
+  }
   window.__editor = { snapshot }; // debug handle, like window.__game
 }

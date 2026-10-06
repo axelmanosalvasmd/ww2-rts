@@ -5,12 +5,164 @@ AI-vs-AI runs (see DESIGN.md for the balance log). Add new entries under **Unrel
 
 ## Unreleased
 
+- Integrated skirmish production bases (`232f3a9`) with the newer engine and recruit tabs. Preserved paid Classic queue identities/refunds, section-based building repairs, observed-terrain navigation, vehicle motion fields and shared Horde facility rallies. Updated the isolated Hot Gates vehicle fixture to supply its production prerequisite, and made combat-fixture cleanup remove layered terrain and structural collision data for starting bases. Focused skirmish, production-refund, Horde queue, AI privacy and Hot Gates navigation checks pass; merged core tests still stop at the previously documented fighter-cover assertion.
 - Conquest, Assault, Annihilation and Horde now start with a finished HQ and Barracks. Recruit instantly from surviving finished facilities, and build Motor Pools, Airfields and coastal Shipyards during the match to unlock their units. Unit prices remain MP-only with no training queues.
 - Rifle and Conscript squads construct, assist and repair production buildings. Destroyed buildings leave rebuildable rubble. Rebuilding an HQ costs 200 MP/40s; the other buildings retain Classic's construction prices and times. HQ loss disables its reinforcement zone until rebuilt.
 - Horde defenders share facilities and prerequisites while keeping individual MP and unit ownership. Existing bunker objectives and wave spawning are unchanged.
 - The build menu, recruit lock reasons, selected-facility spawning, shared facility selection/rallies and construction cancellation work with the new bases. AI builds technology and repairs/rebuilds its facilities.
 - Fixed builders reviving zero-HP buildings before destruction cleanup. Added simulation, client and AI regression coverage. No combat or income rebalance; competitive pacing remains a human-playtest follow-up.
 - Known verification gap: the latest core regression run fails the existing AI fighter-cover assertion (an announced enemy air strike should trigger fighter cover). The full suite is not green; this implementation is committed at the user's request pending regression follow-up.
+
+- Recruit panel (Conquest, Assault, Annihilation, Horde): unit cards now show each unit's flat silhouette symbol
+  instead of a small 3D render, so the types are easy to tell apart. The groups (Infantry, Support weapons,
+  Vehicles, Aircraft, Naval) are now a row of tabs: click one to show only its units, click it again to close it.
+  Keyboard recruiting works as before (a letter opens a group, a second buys) and opens the same tab.
+  Classic building cards also use the symbols; the selection list keeps its 3D portraits.
+
+- Rebuilt cliff walls with detailed rock models on every map except the huge generated ones. Faces are now stacked, fractured limestone slabs
+  that step back as they rise, with occasional full-height buttresses, grassy ledges, boulders on the crest and
+  scree at the foot. Diagonal cliff runs no longer show a cell-by-cell staircase: notches fill with rock piles
+  and convex teeth are wrapped in rock columns. Rocks are visual only and never bury mountain-road cells.
+  Cost: Hot Gates terrain goes from about 63k to 250k triangles on High (116k on Low), and a crater rebuild
+  takes about 30 ms longer there. Found and left for later: the cliff crest still steps on 45 degree runs when
+  seen from far away, because the plateau outline itself is unchanged.
+
+- Integrated the Thermopylae fixes with the updated vehicle and terrain systems. Moved 20 rubble cells off the
+  mountain road and onto the cliff shoulders so vehicles have room to pass. Ground picking and visible contact
+  now follow the reshaped cliff triangles, while neighbouring plateau centres keep their original heights.
+  Mixed tank and Churchill traffic can still jam during overtaking on the narrow road; that remains for a later fix.
+  Fixed Windows file paths in the movement and localization regression runners so their checks run on Windows too.
+  Naval asset fingerprints now treat Windows and Unix line endings equally, preventing false stale-asset errors.
+  Cliff-adjacent terrain centres stay at their simulation height even beside shell scars. Camera and map checks
+  now follow the ragged cliff backing and track decorative rock costs separately from the ground-mesh budget.
+
+- Reworked the Thermopylae cliff visuals again: softened the square stair-step corners, removed the repeating
+  wall panels and pale stripes, and added broad weathered rock faces, larger outcrops and scattered fallen stones.
+  The revised cliffs use fewer triangles than the first version and keep the same vehicle movement rules.
+  Terrain checks found two existing folded ground triangles on Hot Gates. One remains for a later ground-mesh fix.
+
+- Fixed vehicles getting stranded on Thermopylae (The Hot Gates) in Horde: arriving units stay on ground connected
+  to their gate, including the narrow mountain road, and crowds cannot shove vehicles onto rubble or tank traps.
+  Cliff walls now have ragged rims, fractured stone faces and rocks at their feet, with softer stone shading.
+  Fixed cliff faces disappearing when viewed from some directions. Convoys are checked through both mountain-road
+  corners in both directions. Existing matches need a restart to replace units already stranded on cliff tops.
+
+### 2026-10-04: Tank wheel and track animation (`5c0fb8e`)
+
+- Tank road wheels, idlers, sprockets, return rollers and visible track belts now move with actual vehicle travel,
+  reverse when backing up and move at different speeds on each side while steering. They stop with the tank
+  and follow the hull on hills. Covers native light, medium, heavy and tank destroyer models for all four factions,
+  plus tracked mobile flak and Calliope variants. Spare wheels stay fixed; wheeled and halftrack models are outside
+  this change. The terrain workshop now offers forward, reverse, stopped and close side inspection.
+
+### 2026-10-04: Natural terrain slopes (`7d67670`)
+
+- Hills blend adjoining ramps instead of flattening into a shelf at each height level. Removed repeated dark
+  contour and elevation bands from ordinary slopes, while keeping real cliff walls and their rock detail.
+  Fixed cliff faces disappearing from their lower side when the next cell was higher.
+  Grounding and game picking use the same relief surface, including narrow crests and cliff faces.
+  Minimap viewport corners keep their projection when the camera looks beyond the map. Cell heights,
+  movement and tank alignment keep their existing rules. Added rounded-hill, ramp-beside-cliff and full
+  generated-map workshop scenes.
+  Broad authored plateaus remain, and this does not change terrain balance or navigation.
+  Existing crater-rim edge displacement can still differ from contact sampling and remains for later.
+
+### 2026-10-04: Vehicle slopes and terrain workshop (`479b1f6`)
+
+- Tanks and other ground vehicles pitch uphill and downhill and lean across slopes instead of staying almost
+  level. Their native track or tire footprint supports the hull on ramps, crests and trench crossings, while
+  turrets keep turning and selection rings stay level. Fixed the order of terrain tilt and suspension motion,
+  and tracks cutting through narrow ridges between support points.
+- Added a 3D terrain workshop with the game's vehicle models and terrain mesh, five repeatable scenes,
+  frame stepping, distance scrubbing, faction and vehicle choices, and a level-hull comparison.
+  The fixtures exercise presentation; use the movement lab to test navigation and orders.
+
+### 2026-10-04: Movement recovery and disruption lab (`6a74b65`)
+
+- Vehicles brake before their final waypoint instead of overshooting and turning a full circle to return.
+  Their first movement step now respects each vehicle's forward and reverse acceleration.
+- Fixed tanks getting stuck beside walls or repeating short forward and reverse moves to make turning room.
+  Clicks too close to a wall resolve to an open position with room for the hull. Short reverse orders survive
+  rerouting, and opposing heavy vehicles keep enough separation to clear their lane.
+- Fixed infantry and tanks stopping at a cliff corner instead of following the nearby ramp. Route smoothing
+  and vehicle collision now check every crossed height cell.
+- Added a repeatable movement lab with 24 scenarios for all nine ground vehicle types, rifle squads and
+  support guns. It supports live Stop, Retreat, replacement orders and tank traps, plus seeded command-line
+  runs and comparison against another simulation revision. The 1,056-case heading matrix passes locally.
+
+### 2026-10-03: Textured Blender infantry and engine integration (`855be86`)
+
+- Replaced near infantry bodies with a textured mesh fitted and weighted in Blender. Faces, cloth folds,
+  boots and equipment now retain their surface detail through aiming, running, crouching and prone poses.
+  All factions share the base cut, with different colors, helmets, weapons and specialist equipment.
+  Distant figures remain simplified. Closed grips replace the generated reference's open hands.
+- Fixed rifle squads getting stuck behind their own HQ when another infantry squad occupied a passing
+  route's exit. Infantry now uses the same soft separation for route checks as for nearby traffic.
+- Made World Conquest acceptance checks wait for delivered snapshots and use exact positions for wall
+  collision checks, avoiding false failures caused by socket delays and rounded network coordinates.
+- Fixed the model viewer drawing its first measurement before shadow textures existed, which caused
+  a startup WebGL error. Added a neutral floor-color option and retained the infantry reference,
+  reduced source, editable Blender rig and rebuild command in the repository.
+
+### 2026-10-03: Rebuilt geometry and materials (`c60f4ce`)
+
+- Rebuilt tank castings, wheels and tracks, infantry faces and weapons, aircraft fuselages and canopies, and base
+  buildings with smoother shapes and more mechanical detail. Ships now have curved hulls, cambered decks, open
+  bridges, torpedo tubes and shaped gunhouses, with Blender finishing for panel edges and normals.
+- Painted metal, bare metal, rubber, cloth, timber, asphalt and concrete now respond differently to light.
+  Fine fabric grain replaces coarse mottling, ship hulls avoid land mud, and a filtered sky reflection improves
+  metal on High graphics. Low keeps material response while omitting texture detail and reflections.
+- Fixed the model viewer sometimes reporting textures off while texture loading was still in progress.
+- Known issue left for separate work: World Conquest can receive an early snapshot before the client world is
+  ready. The same startup error was reproduced on unchanged master; it is unrelated to these visual changes.
+
+### 2026-10-03: Model detail, lighting and movement (`fce8526`)
+
+- Vehicles settle as they accelerate and turn, boats gently ride the water, and soldiers ease between stride
+  frames and crouching or crawling movement. Selection markers stay level and muzzle effects follow the models.
+- Shaded units and buildings stay readable under brighter sky and ground fill. Clouds have softer edges, and
+  river mist and fog banks use the weather color, gentle wisps, and a fade near the camera.
+- Naval craft now have shaped hulls, detailed bridges, deck fittings and working gun mounts. Landing craft
+  have ribbed ramps, benches and an open passenger well. Both landing-craft muzzle flashes match their barrels.
+  Movement and combat rules are unchanged.
+- Infantry uniforms and equipment, tank fittings, wheel hubs, aircraft canopies and weapons, and base buildings
+  have clearer detail. Refined painted metal and subtler cast-armor and gunmetal grain keep the faction
+  colors easier to distinguish.
+- Added the three project-scoped Blender integrations for Codex and Claude Code, reusable modeling instructions,
+  model export and review tools, and generated multi-view art references.
+
+### 2026-10-03: Engine and game feel (`7e3dc83`)
+
+- Units anticipate traffic, yield through crowded crossings and keep their destination while rerouting around new
+  obstacles. Ground vehicles accelerate, brake, reverse and turn within their own limits; their visible chassis follows
+  slopes. Large-map routes use remembered terrain and hull clearance.
+- Bullets, shells, grenades and rockets travel through the world. Damage and suppression arrive at contact, moving
+  targets can leave the lane, and thin obstacles intercept a shot. Shallow hits on hard materials can ricochet once.
+- Roads, objects and mines have independent layers and materials. Clearing a mine or wreck preserves the surface
+  beneath it, including road damage. Hidden mines and destruction stay hidden from human, AI and spectator recipients.
+- Buildings and bridges fail by local sections and anchored support. A breach preserves a surviving building's owner
+  and queue. Falling sections and wrecks use gravity, mass, contacts and damping, then become persistent obstacles.
+  Active debris is capped at 96 bodies, 8 contacts each and 2.5 seconds before settling. Fire wears sections before collapse.
+- Large idle Horde groups receive orders four at a time every 100 ms, clearing a 238-unit staged launch in at most
+  6 seconds at normal 10 Hz delivery, or 12 seconds at adaptive 5 Hz delivery. In the baseline and rebased Wave 10 Massive bridge
+  fixture, maximum tick time changed from 728.910 to 32.601 ms, while p95 increased from 5.558 to 27.244 ms.
+  The earlier integrated engine reached 1,047.132 ms before staggering. Direct player orders remain immediate.
+- Enemy AI keeps combined-arms assaults together, regroups after contact and can withdraw from a losing fight.
+  Horde Waves announce their mixed, infantry, armor or siege category before arriving; defining purchases target
+  65%, 50% and 45% of the normal Wave budget respectively. This changes fights; faction balance still needs broader playtesting.
+- Cancel an individual waiting recruit with its exact MP/Fuel refund shown in the command card. The active recruit
+  keeps its progress. Battle Alert history retains the latest 100 notices and jumps back to their locations.
+  Alt+number transfers selected units out of their previous control groups.
+- Surviving vehicles show damage smoke that fades after repair. Nearby water, woodland and weather contribute to
+  ambience. Off-screen units skip detailed animation and restore their current pose on camera return.
+- The map editor supports separate surface/object/mine materials, structural sections and authored scenario
+  conditions, reinforcements, objectives and announcements in English and Spanish. Invalid starts keep the prior room
+  state; public map previews conceal mines and future scenario source, while authenticated editing preserves them.
+- Added the source-backed implementation spec, research, multiplayer acceptance scenes and performance reports.
+  Generated a transparent rubble atlas through the configured Codex image proxy. Effect prioritization remains outside this change.
+- Large World fixtures still exceeded the 40 ms tick budget at their maximum: 47.787 ms on Huge and 124.532 ms on
+  Massive. Native GPU performance and broader faction balance remain unverified.
+- CI allows 30 minutes for the expanded regression suite, including the full AI fog proof and World tests.
 
 ### 2026-10-03: Strategic geography (source commit `b351ea1`)
 

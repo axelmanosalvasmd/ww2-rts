@@ -21,9 +21,12 @@ export function fixtureCommand(g, slot, cmd, ...args) {
 }
 export function clearFixtureUnits(g) {
   // A combat-only fixture must clear the new starting footprints as well as the entities.
-  for(const b of g.units.values()) for(const c of b.cells??[]) {
-    const ch=g.initialTerrain.chars[c];g.chars[c]=ch;g.flags[c]=sim.TERRAIN[ch]??0;
-    g.cellHp[c]=0;g.buildingCells?.delete(c);
+  for(const b of g.units.values()) {
+    if(b.structureId) g.structures?.delete(b.structureId);
+    for(const c of b.cells??[]) {
+      g.structuralCells?.delete(c);g.buildingCells?.delete(c);
+      sim.mutateWorldCell(g,c,{ground:g.initialTerrain.ground[c],object:g.initialTerrain.objects[c],mine:!!g.initialTerrain.mineLayer[c],height:g.initialTerrain.height?.[c]??0});
+    }
   }
   g.units.clear();g.newCells=[];g.cellLog=[];
 }
