@@ -395,6 +395,26 @@ test('queued long movement funds the full current goal beyond its active navigat
   }
 });
 
+
+test('route reuse requires the safety hook and resumes rechecks when it rejects a changed route', () => {
+  const f = fixture(); f.troop();
+  f.step(); f.step(4);
+  const truck = f.trucks().find(t => t.convoy.state === 'delivering');
+  assert.ok(truck);
+  let searches = 0;
+  const route = f.hooks.route;
+  f.hooks.route = (...args) => { searches++; return route(...args); };
+  f.hooks.continueRoute = () => true;
+  f.step(2);
+  assert.equal(searches, 0, 'stable safe routes avoid a new route search');
+  const cargo = { ...truck.convoy.cargo };
+  f.hooks.continueRoute = () => false;
+  f.hooks.route = (u, at, safe) => safe ? [] : route(u, at);
+  f.step(2);
+  assert.equal(truck.convoy.state, 'waiting', 'unsafe routes stop at the next dispatch');
+  assert.deepEqual(truck.convoy.cargo, cargo, 'safety rechecks retain paid cargo');
+});
+
 test('a cycle with many trucks to reroute spreads their route plans over ticks', () => {
   const f = fixture(), recipient = f.troop();
   f.step(0);
