@@ -1250,6 +1250,10 @@ function observedPathView(g, slot) {
     state = { view, rows: new Map(), version: 0, initial: g.initialTerrain }; recipients.set(slot, state);
     updateObservedWalls(view, flags.keys());
   }
+  // Moving units ask for this view many times a step: rebuild once per tick, or sooner when terrain or vision moves on.
+  const key = `${g.tick}:${g.terrainVersion ?? 0}:${g.visionTick ?? -1}`;
+  if (state.key === key) return state.view;
+  state.key = key;
   const { view, rows } = state, changed = [];
   // Authored terrain is the baseline. Only the rows this recipient remembers can change it.
   for (const row of terrainFor(g, slot, true)) {
