@@ -1,6 +1,7 @@
 import assert from 'node:assert/strict';
 import { readFileSync } from 'node:fs';
-import { createGame, step, command, findPath, CELL, UNITS, blockOf } from './shared/sim.js';
+import { createGame, step, findPath, CELL, UNITS, blockOf } from './shared/sim.js';
+import { fixtureCommand as command } from './test-fixtures.js';
 import { updateGrid } from './shared/grid.js';
 
 const map = JSON.parse(readFileSync(new URL('./maps/hot-gates.json', import.meta.url), 'utf8'));

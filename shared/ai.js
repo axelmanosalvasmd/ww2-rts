@@ -1,7 +1,7 @@
 // Seat commander. Runs on the server every couple of seconds and plays through command(),
 // from a detached per-seat observation. Each look it picks one situation, wait, hold, or attack,
 // and keeps that operation while the reason for it still holds.
-import { UNITS, CELL, CFG, COVER, MOVE, TRENCH, FORTS, command, spoiled, SUPPORT, abCost, canBuild, allied, supCost, siteNear, priceOf, alive, los } from './sim.js';
+import { UNITS, CELL, CFG, COVER, MOVE, TRENCH, FORTS, command, spoiled, SUPPORT, abCost, canBuild, allied, supCost, siteNear, priceOf, alive, los, isSkirmishBaseMode, productionAccess, productionBuildings, placementCheck } from './sim.js';
 import { viewFor } from './ai-view.js';
 import { beginMind, knownSince, pointReady, lesson, pointExtra, dropEmptyGround, liveSightings, operationHolds, planAssault, clearAssault, ARMOR, ANTI_ARMOR } from './ai-mind.js';
 import { gridFor, rebuildGrid } from './grid.js';
@@ -290,15 +290,16 @@ function plan(observation, slot, opts, mem, send) {
   const adapt = classic && opts.adaptive !== false && L.adaptive, now = view.tick / 20, rule = (n) => adapt && (!opts.rules || opts.rules.includes(n));
   const recent = adapt || L.memory ? observation.sightings ?? [] : [];
   const counters = rule(1) || !!L.memory;
+  const skirmish = isSkirmishBaseMode(view) && !horde;
   const ownB = classic ? grid.ownedBy(slot).filter(b => UNITS[b.type].building) : [];
   // rule 2, rush defense: enemy fighters at my buildings in the first 4 minutes
   const rush = rule(2) && now < 240 ? recent.filter(e => now - e.t < 5 && ownB.some(b => d(b, e) < 35)) : [];
   // rule 1, counters: tanks seen lately push the Motor Pool (for AT guns) up the build order
   const seenArmor = recent.filter(e => HEAVY.has(e.type)).length, seenInf = recent.filter(e => UNITS[e.type].infantry).length;
-  const reserve = classic ? (rush.length ? 0 : 1) * buildEconomy(view, slot, all.filter(u => u.type === 'engineer'), counters && seenArmor > 0, mem, submit) : 0;
+  const reserve = classic ? (rush.length ? 0 : 1) * buildEconomy(view, slot, all.filter(u => u.type === 'engineer'), counters && seenArmor > 0, mem, submit) : skirmish ? buildSkirmishBase(view, slot, all, submit) : 0;
   // Classic: only what my finished buildings can train
-  const trains = (t) => !classic || grid.ownedBy(slot).some(b => b.built >= 1 && UNITS[b.type].makes?.includes(t));
-  const mine = all.filter(u => u.type !== 'engineer'); // Engineers build; everyone else fights
+  const trains = (t) => skirmish ? productionBuildings(view, slot, t).length > 0 : !classic || grid.ownedBy(slot).some(b => b.built >= 1 && UNITS[b.type].makes?.includes(t));
+  const mine = all.filter(u => u.type !== 'engineer' && !(skirmish && u.build)); // Engineers build; everyone else fights
   // The horde is a wave, not a player: it still arms every squad. A seat commander arms squads when it
   // sends them into a fight, or once that fight has been watched, not the whole army at the first look.
   const mindful = !horde;
@@ -396,7 +397,7 @@ function plan(observation, slot, opts, mem, send) {
   if (classic && count('engineer') < (view.nodes.some((_, i) => !view.claimedNodes.has(i)) ? 2 : 1)) buy = 'engineer';
   // Classic: save up for the next building, unless the army is nearly gone
   // big armies: buy several at a time (one per decision can't keep a 60-unit army topped up)
-  if (!horde) for (let k = 0; k < (view.army?.pop > 1 ? 4 : 1); k++) if (me.mp - (mine.length >= 3 ? reserve : 0) >= priceOf(view, buy).mp) submit({ t: 'buy', unit: buy });
+  if (!horde && trains(buy)) for (let k = 0; k < (view.army?.pop > 1 ? 4 : 1); k++) if (me.mp - (mine.length >= 3 ? reserve : 0) >= priceOf(view, buy).mp) submit({ t: 'buy', unit: buy });
 
   // how many of my units are at or heading to each point
   const pointOf = (pos) => view.points.findIndex(p => d(pos, p) <= CFG.pointRadius);
@@ -563,7 +564,7 @@ function plan(observation, slot, opts, mem, send) {
   }
   // where squads get reinforced: near the spawn, or in Classic near any finished Production Building of its team (a squad
   // that fell back to a Barracks away from the HQ used to head out again half empty)
-  const bases = classic ? [...view.units.values()].filter(b => UNITS[b.type].produces && b.built >= 1 && b.hp > 0 && allied(view, b.owner, slot)) : null;
+  const bases = classic ? [...view.units.values()].filter(b => UNITS[b.type].produces && b.built >= 1 && b.hp > 0 && allied(view, b.owner, slot)) : skirmish ? productionBuildings(view, slot).filter(b => b.type === 'hq') : null;
   const atBase = (u) => (bases ? bases.some(b => d(u, b) <= CFG.reinforceRadius) : d(u, me.spawn) <= CFG.reinforceRadius);
   const idleCombat = (u) => !u.air && !u.retreating && !busy.has(u.id) && !UNITS[u.type].medic && !u.path.length && !u.attackId && !u.targetId && !u.dig && !u.entrench && u.enter < 0 && u.fireAt < 0;
   // A watched threat on ground we hold: idle squads go there, and the attack loop will not open another objective.
@@ -803,6 +804,28 @@ function plan(observation, slot, opts, mem, send) {
   if (orders.length) submit({ t: 'move', orders });
   if (assault_.length) submit({ t: 'amove', orders: assault_ });
   for (const cmd of operation.commands) submit(cmd);
+}
+
+// Skirmish tech uses only this seat's observation and the same commands as a human.
+function buildSkirmishBase(view, slot, squads, submit) {
+  const me = view.players[slot], own = [...view.units.values()].filter(b => UNITS[b.type].building && b.hp > 0 && productionAccess(view, b, slot));
+  const has = (t, done = false) => own.some(b => b.type === t && (!done || b.built >= 1));
+  const next = !has('hq') ? 'hq' : !has('barracks') ? 'barracks' : has('barracks', true) && !has('motorpool') ? 'motorpool' : has('motorpool', true) && !has('airfield') ? 'airfield' : view.naval && !has('shipyard') ? 'shipyard' : null;
+  const free = squads.filter(u => CFG.fortBuilders.includes(u.type) && !u.retreating && !u.build && !u.targetId && !u.dig && !u.entrench && u.garrison < 0).sort((a,b) => d(a,me.spawn)-d(b,me.spawn));
+  const working = squads.some(u => u.build);
+  const u = free[0];
+  if (!u || working) return next ? UNITS[next].cost : 0;
+  const fix = own.filter(b => b.built < 1 || b.hp < UNITS[b.type].hpPer * .8).sort((a,b) => (a.built < 1 ? 0 : 1)-(b.built < 1 ? 0 : 1) || d(u,a)-d(u,b))[0];
+  if (fix) { submit({ t:'assist', ids:[u.id], id:fix.id }); return next ? UNITS[next].cost : 0; }
+  if (!next || me.mp < UNITS[next].cost) return next ? UNITS[next].cost : 0;
+  const home = own.find(b => b.type === 'hq') ?? me.spawn;
+  // Try visible nearby sites, including a coast for naval production. Never inspect hidden ground.
+  for (const r of [12, 20, 30, 42]) for (let k=0;k<8;k++) {
+    const a=k*Math.PI/4, at=siteNear(view,home.x+Math.cos(a)*r,home.z+Math.sin(a)*r,UNITS[next].size);
+    if (!at || !placementCheck(view,{kind:next,...at,team:me.team},p=>view.sees(p)).ok) continue;
+    if (submit({t:'build',ids:[u.id],kind:next,...at}) === undefined) return 0;
+  }
+  return UNITS[next].cost;
 }
 
 // a Fuel node (tanks) is worth about as much to the AI as a 2.5 MP/s node

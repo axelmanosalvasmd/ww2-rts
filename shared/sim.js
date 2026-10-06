@@ -313,7 +313,7 @@ UNITS.engineer = { name: 'Engineer Squad', classic: true, cost: 60, models: 3, h
 // Buildings: stamped size x size cells, hp on the entity. produces = counts for Annihilation.
 const building = (o) => ({ faction: -1, models: 1, speed: 0, infantry: false, structure: true, building: true, w: null, ab: { id: 'none', name: '', cd: 1e9 }, ...o });
 // makes = what it trains; needs = a finished building you must own first
-UNITS.hq = building({ name: 'HQ', cost: 0, hpPer: 3000, radius: 3, vision: 30, size: 3, produces: true, makes: ['engineer', 'rifle'] });
+UNITS.hq = building({ name: 'HQ', cost: 200, buildTime: 40, hpPer: 3000, radius: 3, vision: 30, size: 3, produces: true, makes: ['engineer', 'rifle'] });
 UNITS.depot = building({ name: 'Supply Depot', cost: 60, hpPer: 600, radius: 2, vision: 16, size: 2, buildTime: 20 });
 UNITS.barracks = building({ name: 'Barracks', cost: 150, hpPer: 1500, radius: 3, vision: 24, size: 3, buildTime: 30, produces: true, makes: ['mg', 'mortar', 'sniper', 'medic', 'flak', 'flamer', 'ranger', 'conscript', 'commando'] });
 UNITS.motorpool = building({ name: 'Motor Pool', cost: 200, hpPer: 1900, radius: 3, vision: 24, size: 3, buildTime: 45, produces: true, needs: 'barracks', makes: ['at', 'howitzer', 'halftrack', 'armoredcar', 'flaktrack', 'tank', 'medium', 'tankdestroyer', 'rocket', 'tiger', 'churchill'] });
@@ -324,13 +324,20 @@ UNITS.worldbase = building({ name: 'Regional Military Base', cost: 0, hpPer: 600
 export const BUILDABLE = ['depot', 'barracks', 'motorpool', 'airfield', 'flakpos', 'shipyard'];
 // outside Classic the fort builder squads can still put up anti-air: what they build, and who builds what where
 export const FIELD_BUILDS = ['flakpos'];
-export const buildKinds = (classic) => (classic ? BUILDABLE : FIELD_BUILDS);
+export const SKIRMISH_BUILDS = ['hq', 'barracks', 'motorpool', 'airfield', 'shipyard', 'flakpos'];
+export const buildKinds = (classic, skirmish = false) => (classic ? BUILDABLE : skirmish ? SKIRMISH_BUILDS : FIELD_BUILDS);
 export const builderTypes = (classic) => (classic ? ['engineer'] : CFG.fortBuilders);
 // Classic: seconds to train each unit at its building
 for (const [t, s] of Object.entries({ engineer: 12, rifle: 15, conscript: 12, mg: 18, flak: 20, mortar: 20, sniper: 20, medic: 15, ranger: 20, at: 22, halftrack: 22, lcvp: 20, gunboat: 25, destroyer: 75, armoredcar: 25, flaktrack: 30, fighter: 30, attacker: 35, bomber: 45, rocket: 30, tank: 35, medium: 40, tankdestroyer: 40, tiger: 50, churchill: 50, commando: 22, howitzer: 30, flamer: 20 })) UNITS[t].train = s;
 // Classic: vehicles cost Fuel and less MP
 for (const [t, mp, fuel] of [['halftrack', 140, 20], ['lcvp', 120, 15], ['gunboat', 170, 40], ['destroyer', 520, 180], ['flaktrack', 200, 30], ['fighter', 200, 40], ['attacker', 240, 70], ['armoredcar', 160, 25], ['tank', 200, 60], ['medium', 260, 90], ['tankdestroyer', 220, 80], ['bomber', 300, 100], ['rocket', 170, 50], ['tiger', 420, 150], ['churchill', 360, 130]]) Object.assign(UNITS[t], { classicCost: mp, fuel });
 export const isConstructionMode = (g) => g.mode?.kind === 'classic' || g.mode?.kind === 'world';
+export const isSkirmishBaseMode = (g) => !g.mode?.kind || ['conquest', 'assault', 'annihilation', 'horde'].includes(g.mode.kind);
+// Horde shares facilities, never wallets or the units purchased from them.
+export const productionAccess = (g, b, slot) => b.owner === slot || (g.mode?.kind === 'horde' && slot !== g.mode.slot && b.owner !== g.mode.slot && allied(g, b.owner, slot));
+export function productionBuildings(g, slot, type) {
+  return [...g.units.values()].filter(b => b.hp > 0 && b.built >= 1 && productionAccess(g, b, slot) && UNITS[b.type].makes && (!type || UNITS[b.type].makes.includes(type) || (isSkirmishBaseMode(g) && b.type === 'barracks' && type === 'rifle')));
+}
 export const priceOf = (g, t) => (isConstructionMode(g) ? { mp: UNITS[t].classicCost ?? UNITS[t].cost, fuel: UNITS[t].fuel ?? 0 } : { mp: UNITS[t].cost, fuel: 0 });
 export const UNIT_TYPES = Object.keys(UNITS);
 export const FACTION_COUNT = 4; // USA, Germany, USSR, UK
@@ -712,6 +719,7 @@ export function createGame(map, names, shuffle = true, teams = names.map((_, i) 
     g.mode.bunkers = Array(Math.max(...teams) + 1).fill(0);
     for (const u of g.units.values()) if (u.type === 'bunker') g.mode.bunkers[g.players[u.owner].team]++;
   }
+  if (isSkirmishBaseMode(g)) setupSkirmishBases(g);
   g.army = typeof opts.army === 'string' && Object.hasOwn(CFG.armies, opts.army) ? CFG.armies[opts.army] : CFG.armies.standard;
   for (const p of g.players) p.mp *= g.army.income;
   // weather (shared/weather.js): the lobby's pick ('map' by default), the same plan for the same seed
@@ -942,13 +950,18 @@ function train(g, b, dt) {
   const jobs = productionJobs(g, b), type = b.queue[0];
   if ((b.prog += dt) < UNITS[type].train) return;
   b.prog = 0; b.queue.shift(); jobs.shift(); if (jobs[0]) jobs[0].status = 'active';
-  const to = b.rally ?? { x: g.w * CELL / 2, z: g.h * CELL / 2 }, a = Math.atan2(to.z - b.z, to.x - b.x), r = UNITS[b.type].radius + 2;
-  const u = spawnUnit(g, b.owner, type);
+  return produceUnit(g, b, b.owner, type);
+}
+function produceUnit(g, b, owner, type) {
+  const to = b.rally ?? g.players[owner].rally ?? { x: g.w * CELL / 2, z: g.h * CELL / 2 }, a = Math.atan2(to.z - b.z, to.x - b.x), r = UNITS[b.type].radius + 2;
+  const u = spawnUnit(g, owner, type);
   if (u.air) { Object.assign(u, { x: b.x, z: b.z }); updateGrid(g, u); return; }
   const c = nearestFree(g, b.x + Math.cos(a) * r, b.z + Math.sin(a) * r, blockOf(UNITS[type]));
   Object.assign(u, cellCenter(g, c), { rot: a, aim: a });
   updateGrid(g, u);
   if (b.rally) { u.worldGoal = { ...b.rally }; u.path = findPath(g, u, b.rally); u.drift = 'rally'; }
+  else if (isSkirmishBaseMode(g)) sendToRally(g, u);
+  return u;
 }
 function wreckBuilding(g, u) {
   const structure = g.structures?.get(u.structureId);
@@ -1235,6 +1248,32 @@ function worldPathView(g, slot) {
   return view;
 }
 
+function setupSkirmishBases(g) {
+  const owners = g.mode?.kind === 'horde' ? g.players.slice(0, 1) : g.players;
+  for (const p of owners) {
+    const avoid = [...g.points.map(q => [q, CFG.pointRadius + 5]), ...[...g.units.values()].filter(u => UNITS[u.type].structure).map(u => [u, UNITS[u.type].radius + 5])];
+    for (const type of ['hq', 'barracks']) {
+      let c = findSite(g, p.spawn.x - 3, p.spawn.z - 3, 3, avoid);
+      // Custom maps can leave no legal footprint (for example a one-cell causeway).
+      // Like Classic's HQ, clear a small starting pad rather than crashing match creation.
+      if (c < 0) {
+        const x = Math.max(0, Math.min(g.w - 3, Math.floor(p.spawn.x / CELL) - 1 + (type === 'barracks' ? 4 : 0)));
+        const y = Math.max(0, Math.min(g.h - 3, Math.floor(p.spawn.z / CELL) - 1));
+        c = y * g.w + x;
+        const cells = footprint(g, c, 3);
+        if (!cells || cells.some(k => g.chars[k] === 'K')) continue;
+        for (const k of cells) setCell(g, k, '.');
+      }
+      const b = placeBuilding(g, p.slot, type, c, true);
+      avoid.push([b, 9]);
+    }
+  }
+  // Starting troops existed before fortifications were placed. Move any trapped squad out of the footprints.
+  for (const u of g.units.values()) if (!UNITS[u.type].structure && !u.air && (flagsAt(g, u.x, u.z) & MOVE)) {
+    Object.assign(u, cellCenter(g, nearestFree(g, u.x, u.z, blockOf(UNITS[u.type])))); updateGrid(g, u);
+  }
+}
+
 const observedPaths = new WeakMap();
 function observedPathView(g, slot) {
   let recipients = observedPaths.get(g); if (!recipients) observedPaths.set(g, recipients = new Map());
@@ -1346,6 +1385,7 @@ function setupClassic(g) {
 // Where a unit retreats to: in Classic the nearest of its owner's finished Production Buildings, else the spawn
 function homeOf(g, u) {
   const p = g.players[u.owner];
+  if (isSkirmishBaseMode(g)) return productionBuildings(g, u.owner).filter(b => b.type === 'hq').sort((a,b) => dist(u,a)-dist(u,b))[0] ?? p.spawn;
   if (!isConstructionMode(g)) return p.spawn;
   if (g.mode.kind === 'world' && u.owner < 0) return u.guardHome ?? p.spawn;
   let best = null, bd = Infinity;
@@ -1394,7 +1434,7 @@ export const airborne = (u) => !!u.air && (u.air.state === 'out' || u.air.state 
 // off-map airbase out past its owner's HQ
 function airBase(g, u) {
   let best = null, bd = Infinity;
-  for (const b of g.units.values()) if (b.type === 'airfield' && b.owner === u.owner && b.built >= 1 && b.hp > 0 && dist(b, u) < bd) { bd = dist(b, u); best = b; }
+  for (const b of g.units.values()) if (b.type === 'airfield' && productionAccess(g, b, u.owner) && b.built >= 1 && b.hp > 0 && dist(b, u) < bd) { bd = dist(b, u); best = b; }
   if (best) return { x: best.x, z: best.z };
   const p = g.players[u.owner].spawn, cx = g.w * CELL / 2, cz = g.h * CELL / 2, l = Math.hypot(p.x - cx, p.z - cz) || 1;
   return { x: p.x + (p.x - cx) / l * CFG.air.offmap, z: p.z + (p.z - cz) / l * CFG.air.offmap };
@@ -2350,7 +2390,7 @@ export function placementCheck(g, { kind, x, z, dir = 0, team }, sees = () => tr
     if (cells.length) return { ok: true, reason: undefined, cells, x, z };
     return fail('blocked', { cells });
   }
-  if (!BUILDABLE.includes(kind)) return fail('blocked');
+  if (!BUILDABLE.includes(kind) && !(kind === 'hq' && isSkirmishBaseMode(g))) return fail('blocked');
   const def = UNITS[kind];
   if (g.mode?.kind === 'world' && !sees({x,z})) return fail('notVisible');
   let c, node;
@@ -2712,14 +2752,14 @@ export function command(g, slot, cmd, auto = false) {
     tally(g, slot, 'supportCalls'); if (cur === 'mp') tally(g, slot, 'mpSpent', cost);
     const dir = angle(cmd.dir) ?? Math.atan2(z - p.spawn.z, x - p.spawn.x);
     g.strikes.push({ kind: cmd.kind, owner: slot, x, z, dir, t: sp.delay, left: sp.shells ? supShells(p.faction, cmd.kind) : sp.dur ?? 0, next: 0, live: false });
-  } else if (cmd.t === 'build' && !g.mode?.suddenDeath && buildKinds(isConstructionMode(g)).includes(cmd.kind)) {
+  } else if (cmd.t === 'build' && !g.mode?.suddenDeath && buildKinds(isConstructionMode(g), isSkirmishBaseMode(g)).includes(cmd.kind)) {
     // Engineers put up a building: a depot on the free node nearest the click, anything else centered on the click.
     // Outside construction modes the fort builder squads put up flak emplacements the same way. Paid up front; the team must see the spot.
     const p = g.players[slot], def = UNITS[cmd.kind], x = num(cmd.x, g.w * CELL), z = num(cmd.z, g.h * CELL), can = builderTypes(isConstructionMode(g));
     const engineers = ids.map(mine).filter(u => can.includes(u?.type) && !u.retreating);
     const crew = engineers.filter(u => cmd.queue !== true || (u.orders?.length ?? 0) < 8);
     if (!crew.length || x === null || z === null || p.mp < def.cost) return !crew.length ? (engineers.length ? 'queueFull' : ids.map(mine).some(u => can.includes(u?.type) && u.retreating) ? 'retreating' : 'noBuilders') : x === null || z === null ? 'blocked' : 'mp';
-    if (def.needs && ![...g.units.values()].some(b => b.owner === slot && b.type === def.needs && b.built >= 1)) return 'needs';
+    if (def.needs && ![...g.units.values()].some(b => productionAccess(g, b, slot) && b.type === def.needs && b.hp > 0 && b.built >= 1)) return 'needs';
     const place = placementCheck(g, { kind: cmd.kind, x, z, team: p.team }, at => teamSees(g, p.team, at));
     if (!place.ok) return place.reason;
     const { c, node } = place;
@@ -2733,7 +2773,7 @@ export function command(g, slot, cmd, auto = false) {
   } else if (cmd.t === 'assist') {
     // Engineers join a site, or repair a damaged building of their own team
     const b = g.units.get(cmd.id);
-    if (!b || !UNITS[b.type].building || !allied(g, b.owner, slot) || (b.built >= 1 && b.hp >= UNITS[b.type].hpPer)) return 'unseen';
+    if (!b || b.hp <= 0 || !UNITS[b.type].building || !allied(g, b.owner, slot) || (b.built >= 1 && b.hp >= UNITS[b.type].hpPer)) return 'unseen';
     const can = builderTypes(isConstructionMode(g)), crew = ids.map(mine).filter(u => can.includes(u?.type) && !u.retreating);
     if (!crew.length) return ids.some(id => can.includes(mine(id)?.type) && mine(id).retreating) ? 'retreating' : 'noBuilders';
     let assigned = false;
@@ -2763,13 +2803,13 @@ export function command(g, slot, cmd, auto = false) {
     for (const c of b.cells) setCell(g, c, '.');
     for (const n of g.nodes ?? []) if (n.depot === b.id) n.depot = 0;
   } else if (cmd.t === 'rally') {
-    if (isConstructionMode(g)) {
+    if (isConstructionMode(g) || (isSkirmishBaseMode(g) && (cmd.id !== undefined || ids.length))) {
       const x = num(cmd.x, g.w * CELL), z = num(cmd.z, g.h * CELL), list = cmd.id === undefined ? ids : [cmd.id];
       if (x === null || z === null) return 'blocked';
       let set = false;
       for (const id of list) {
         const b = g.units.get(id);
-        if (b && b.owner === slot && UNITS[b.type].makes) { b.rally = { x, z }; set = true; }
+        if (b && b.hp > 0 && productionAccess(g, b, slot) && UNITS[b.type].makes) { b.rally = { x, z }; set = true; }
       }
       if (!set) return list.some(id => g.units.get(id)?.owner === slot) ? 'needs' : 'unseen';
     } else if (cmd.id === undefined && !ids.length) {
@@ -2788,7 +2828,14 @@ export function command(g, slot, cmd, auto = false) {
     const have = own.filter(u => u.type === cmd.unit).length + queued.filter(t => t === cmd.unit).length;
     const price = priceOf(g, cmd.unit);
     if (p.mp < price.mp || (price.fuel && !(p.fuel >= price.fuel)) || pop + popUse(cmd.unit) > popCap(g, slot) || have >= (def.max ?? Infinity)) return p.mp < price.mp ? 'mp' : price.fuel && !(p.fuel >= price.fuel) ? 'fuel' : pop + popUse(cmd.unit) > popCap(g, slot) ? 'pop' : 'max';
-    if (!classic) { p.mp -= price.mp; tally(g, slot, 'mpSpent', price.mp); sendToRally(g, spawnUnit(g, slot, cmd.unit)); return; }
+    if (!classic) {
+      if (isSkirmishBaseMode(g)) {
+        const makers = productionBuildings(g, slot, cmd.unit), b = Object.hasOwn(cmd, 'from') ? makers.find(m => m.id === cmd.from) : makers[0];
+        if (!b) return 'needs';
+        p.mp -= price.mp; tally(g, slot, 'mpSpent', price.mp); produceUnit(g, b, slot, cmd.unit);
+      } else { p.mp -= price.mp; tally(g, slot, 'mpSpent', price.mp); sendToRally(g, spawnUnit(g, slot, cmd.unit)); }
+      return;
+    }
     // queue it at the building asked for, else the one with the shortest queue
     if (g.mode.suddenDeath) return 'suddenDeath';
     const makers = own.filter(b => b.built >= 1 && UNITS[b.type].makes?.includes(cmd.unit) && b.queue.length < 5);
@@ -4054,7 +4101,7 @@ export function step(g) {
     // Engineers: walk up to the site, then build
     if (u.build) {
       const s = g.units.get(u.build);
-      if (!s || (s.built >= 1 && s.hp >= UNITS[s.type].hpPer)) u.build = 0;
+      if (!s || s.hp <= 0 || (s.built >= 1 && s.hp >= UNITS[s.type].hpPer)) u.build = 0;
       else if (dist(u, s) <= UNITS[s.type].radius + CFG.classic.buildReach) { u.path = []; crews.set(s.id, (crews.get(s.id) ?? 0) + 1); }
       else if (!u.path.length && u.repath <= 0) requestStepPath(g, u, s, 'build');
     }
@@ -4284,7 +4331,9 @@ export function step(g) {
   // more engineers build faster, with diminishing returns (2 = ~1.65x, 3 = ~2.2x). Finished buildings get
   // repaired instead, for free but slowly (and slower than Sudden Death decay).
   for (const [id, n] of crews) {
-    const s = g.units.get(id), def = UNITS[s.type], crew = n ** CFG.classic.crew;
+    const s = g.units.get(id);
+    if (!s || s.hp <= 0) continue;
+    const def = UNITS[s.type], crew = n ** CFG.classic.crew;
     if (s.built >= 1) { repairBuildingSections(g, s, def.hpPer * Math.min(CFG.classic.repair * crew, g.mode?.suddenDeath ? CFG.classic.decay * 0.6 : Infinity) * dt); continue; }
     if (g.mode?.suddenDeath) continue; // construction stops
     const rate = crew / (def.buildTime ?? 1) * dt;
@@ -4418,10 +4467,10 @@ export function step(g) {
   g.smokes = g.smokes.filter(s => s.t > 0);
 
   // reinforce / repair near your own spawn (Classic: near any own or allied Production Building), paid in manpower
-  const bases = isConstructionMode(g) ? list.filter(b => UNITS[b.type].produces && b.built >= 1 && b.hp > 0) : null;
+  const bases = isConstructionMode(g) ? list.filter(b => UNITS[b.type].produces && b.built >= 1 && b.hp > 0) : isSkirmishBaseMode(g) ? list.filter(b => b.type === 'hq' && b.built >= 1 && b.hp > 0) : null;
   // a supply depot point its side holds (and is not cut off from) counts as home too
   const depots = g.points.filter(q => q.kind === 'depot' && q.owner >= 0 && !q.cut);
-  const atBase = (u) => (bases ? bases.some(b => allied(g, b.owner, u.owner) && dist(u, b) <= CFG.reinforceRadius) : dist(u, g.players[u.owner].spawn) <= CFG.reinforceRadius)
+  const atBase = (u) => (bases ? bases.some(b => (isSkirmishBaseMode(g) ? productionAccess(g, b, u.owner) : allied(g, b.owner, u.owner)) && dist(u, b) <= CFG.reinforceRadius) : dist(u, g.players[u.owner].spawn) <= CFG.reinforceRadius)
     || depots.some(q => allied(g, q.owner, u.owner) && dist(u, q) <= CFG.reinforceRadius);
   // forward aid, infantry only and slower: near their side's Field Hospital, or beside (or inside) a halted halftrack
   const tents = [...g.aid].map(([c, by]) => ({ by, ...cellCenter(g, c) })), tracks = list.filter(h => UNITS[h.type].carries && !UNITS[h.type].naval && h.hp > 0 && h.still >= 2);
@@ -4761,7 +4810,7 @@ export function snapshotFor(g, slot, shots, cells = [], cache) {
     nodes: g.mode?.kind === 'world' ? worldNodesFor(g, slot) : cache ? cache.nodes : g.nodes?.map(n => [r(n.x), r(n.z), n.rate, n.fuel ? 1 : 0]), upkeep: p.upkeep === undefined ? undefined : r(p.upkeep), out: cache ? cache.out : g.players.map(q => !!q.out),
     // your own units' orders, for drawing when selected: [id, kind, target x, target z, ...remaining waypoints x, z]
     // your Production Buildings: [id, training progress 0-1, rally x, rally z (or -1), ...queued unit types]
-    queues: cache ? cache.owners[slot].queues : [...g.units.values()].filter(b => b.owner === slot && b.queue).map(b => [b.id, b.queue.length ? r(b.prog / UNITS[b.queue[0]].train) : 0, b.rally ? r(b.rally.x) : -1, b.rally ? r(b.rally.z) : -1, ...b.queue]),
+    queues: cache && g.mode?.kind !== 'horde' ? cache.owners[slot].queues : [...g.units.values()].filter(b => productionAccess(g, b, slot) && b.queue).map(b => [b.id, b.queue.length ? r(b.prog / UNITS[b.queue[0]].train) : 0, b.rally ? r(b.rally.x) : -1, b.rally ? r(b.rally.z) : -1, ...b.queue]),
     // Owner-only identities and original paid refunds, including across reconnect.
     productionJobs: cache ? cache.owners[slot].productionJobs : [...g.units.values()].filter(b => b.owner === slot && b.queue).map(productionRow),
     plans: cache ? cache.owners[slot].plans : [...g.units.values()].filter(u => u.owner === slot && !UNITS[u.type].structure).map(u => [u.id, ...planOf(g, u).map(r), ...u.path.flatMap(q => [r(q.x), r(q.z)])]),

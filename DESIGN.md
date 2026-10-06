@@ -2,6 +2,26 @@
 
 WW2 tactics RTS in the browser for three friends. Decided 2026-09-30.
 
+## Skirmish production bases
+
+Conquest, Assault, Annihilation and Horde use completed production buildings to unlock **instant MP-only purchases**. Classic and World Conquest keep their existing resource economies and training queues. Tutorial stays unchanged.
+
+- Starting base: one finished HQ and Barracks per commander, plus the existing starting troops. Horde defenders instead share one HQ and Barracks. Existing command bunkers, flak defenses and bunker-based victory conditions stay in place.
+- Barracks: rifle squads and infantry/support teams (MG, mortar, sniper, medic, flak and faction infantry). HQ also supplies rifle squads so rebuilding remains possible after losing a Barracks. Engineers stay exclusive to Classic/World.
+- Motor Pool: AT guns, howitzers, halftracks, armored cars, tanks and rocket artillery. Requires a completed Barracks.
+- Airfield: planes. Requires a completed Motor Pool. Shipyard: boats, on maps with a sea and only at valid coastal footprints.
+- Rifle/Conscript squads construct and repair these buildings using Classic's placement, footprints, crew scaling and rubble. Buildings cost their existing MP prices and still take time to construct. Unit purchases do not queue or wait.
+- HQ reconstruction costs 200 MP and takes 40 seconds with one builder. Barracks costs 150 MP/30s, Motor Pool 200 MP/45s, Airfield 250 MP/40s, Shipyard 150 MP/30s. Starting facilities are free.
+- A destroyed or unfinished facility cannot recruit or satisfy prerequisites. Losing a prerequisite does not shut down a surviving completed higher-tier facility. Rebuild destroyed facilities on cleared rubble.
+- Retreat and base reinforcement use a surviving completed HQ, not forward production buildings. Without an HQ, units can retreat toward their original staging point but do not reinforce there. Existing hospitals, supply points and halftracks still work.
+- Horde shares access to facilities, prerequisite checks, construction assistance and facility rallies. Builders pay for their own sites. Buyers pay from their own MP and own the resulting units. Cancellation refunds only the site's owner. Other modes do not share production access.
+- Global recruit cards explain missing facilities. Selecting a compatible facility makes its cards recruit there. Builders' Build menu exposes production construction; right-click with builders to assist/repair. Selected unfinished sites have a cancellation button.
+- AI reserves MP for technology, assigns a builder, keeps it working, repairs/rebuilds facilities and buys only unlocked units. Horde waves remain scripted waves and need no base.
+
+Implementation sequence: separate production access from Classic economics, test start/instant purchase, generalize construction, integrate client/AI, then run regression, map-start and live-browser checks. Detailed task plan: `.hermes/plans/skirmish-production-bases.md`.
+
+Verification lives in `test-skirmish-bases.js`, `test-skirmish-client.js` and `test-skirmish-ai.js`, registered in `test.js`. Legacy combat fixtures use `test-fixtures.js` to supply temporary producers solely while assembling isolated armies; all new production tests use the authoritative, unwrapped command. No combat stats, income or victory thresholds were retuned. Competitive balance still needs human playtesting.
+
 ## Thermopylae navigation and cliffs (2026-10-05)
 
 - The Hot Gates mountain-road gate is on level 2 beside an isolated level-4 plateau. Horde's 5 m spawn scatter

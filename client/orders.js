@@ -1,10 +1,10 @@
 // World and minimap clicks share one command dispatcher.
 export function createOrders(ctx) {
   function selection() {
-    const sel = [...ctx.selected].map(id => ctx.units.get(id)).filter(v => v && v.owner === ctx.me);
+    const sel = [...ctx.selected].map(id => ctx.units.get(id)).filter(v => v && (v.owner === ctx.me || (ctx.defs[v.type].building && ctx.canUseBuilding?.(v))));
     const troops = sel.filter(v => !ctx.defs[v.type].structure);
     const buildings = sel.filter(v => ctx.defs[v.type].building && ctx.defs[v.type].makes?.length);
-    return { troops, buildings, planes: troops.filter(v => ctx.defs[v.type].air), eng: troops.filter(v => v.type === 'engineer') };
+    return { troops, buildings, planes: troops.filter(v => ctx.defs[v.type].air), eng: troops.filter(v => (ctx.builders?.() ?? ['engineer']).includes(v.type)) };
   }
   function kind(cursor, { troops, planes, eng }) {
     if (!troops.length) return null;

@@ -8,6 +8,14 @@ AI-vs-AI runs (see DESIGN.md for the balance log). Add new entries under **Unrel
 - Fixed the Engineers' Build card in Classic and World Conquest showing only an empty "Build" tab after a Conquest
   (or other recruit-bar) match in the same page. The recruit bar's tab layout stayed on and hid every building card.
 
+- Integrated skirmish production bases (`232f3a9`) with the newer engine and recruit tabs. Preserved paid Classic queue identities/refunds, section-based building repairs, observed-terrain navigation, vehicle motion fields and shared Horde facility rallies. Updated the isolated Hot Gates vehicle fixture to supply its production prerequisite, and made combat-fixture cleanup remove layered terrain and structural collision data for starting bases. Focused skirmish, production-refund, Horde queue, AI privacy and Hot Gates navigation checks pass; merged core tests still stop at the previously documented fighter-cover assertion.
+- Conquest, Assault, Annihilation and Horde now start with a finished HQ and Barracks. Recruit instantly from surviving finished facilities, and build Motor Pools, Airfields and coastal Shipyards during the match to unlock their units. Unit prices remain MP-only with no training queues.
+- Rifle and Conscript squads construct, assist and repair production buildings. Destroyed buildings leave rebuildable rubble. Rebuilding an HQ costs 200 MP/40s; the other buildings retain Classic's construction prices and times. HQ loss disables its reinforcement zone until rebuilt.
+- Horde defenders share facilities and prerequisites while keeping individual MP and unit ownership. Existing bunker objectives and wave spawning are unchanged.
+- The build menu, recruit lock reasons, selected-facility spawning, shared facility selection/rallies and construction cancellation work with the new bases. AI builds technology and repairs/rebuilds its facilities.
+- Fixed builders reviving zero-HP buildings before destruction cleanup. Added simulation, client and AI regression coverage. No combat or income rebalance; competitive pacing remains a human-playtest follow-up.
+- Known verification gap: the latest core regression run fails the existing AI fighter-cover assertion (an announced enemy air strike should trigger fighter cover). The full suite is not green; this implementation is committed at the user's request pending regression follow-up.
+
 ### 2026-10-06: Tank abilities and Annihilation lag fix (`6ec1a2b`, `3d22e08`)
 
 - Fixed multi-second ping for everyone (host included) in Annihilation and other non-World matches as a match went
