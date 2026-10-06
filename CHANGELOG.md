@@ -5,6 +5,25 @@ AI-vs-AI runs (see DESIGN.md for the balance log). Add new entries under **Unrel
 
 ## Unreleased
 
+- The full test suite passes again after merging skirmish production bases. Fixed the AI ignoring an enemy air strike
+  on squads busy building: a squad sent to rebuild a base no longer gets bombed without fighter cover. Test setups
+  that wipe the map or count units now allow for the starting HQ and Barracks. The AI-match check now asks for at
+  least half the points within 3 minutes instead of all of them: with bases, AIs hold 6 of 7 at 3 minutes in seeded
+  runs and take all 7 at about 7.5 minutes, since part of the opening goes to tech.
+
+- Fixed the Engineers' Build card in Classic and World Conquest showing only an empty "Build" tab after a Conquest
+  (or other recruit-bar) match in the same page. The recruit bar's tab layout stayed on and hid every building card.
+
+- Integrated skirmish production bases (`232f3a9`) with the newer engine and recruit tabs. Preserved paid Classic queue identities/refunds, section-based building repairs, observed-terrain navigation, vehicle motion fields and shared Horde facility rallies. Updated the isolated Hot Gates vehicle fixture to supply its production prerequisite, and made combat-fixture cleanup remove layered terrain and structural collision data for starting bases. Focused skirmish, production-refund, Horde queue, AI privacy and Hot Gates navigation checks pass; merged core tests still stop at the previously documented fighter-cover assertion.
+- Conquest, Assault, Annihilation and Horde now start with a finished HQ and Barracks. Recruit instantly from surviving finished facilities, and build Motor Pools, Airfields and coastal Shipyards during the match to unlock their units. Unit prices remain MP-only with no training queues.
+- Rifle and Conscript squads construct, assist and repair production buildings. Destroyed buildings leave rebuildable rubble. Rebuilding an HQ costs 200 MP/40s; the other buildings retain Classic's construction prices and times. HQ loss disables its reinforcement zone until rebuilt.
+- Horde defenders share facilities and prerequisites while keeping individual MP and unit ownership. Existing bunker objectives and wave spawning are unchanged.
+- The build menu, recruit lock reasons, selected-facility spawning, shared facility selection/rallies and construction cancellation work with the new bases. AI builds technology and repairs/rebuilds its facilities.
+- Fixed builders reviving zero-HP buildings before destruction cleanup. Added simulation, client and AI regression coverage. No combat or income rebalance; competitive pacing remains a human-playtest follow-up.
+- Known verification gap: the latest core regression run fails the existing AI fighter-cover assertion (an announced enemy air strike should trigger fighter cover). The full suite is not green; this implementation is committed at the user's request pending regression follow-up.
+
+### 2026-10-06: Supply trucks on master and their World Conquest lag fixes (`625c4eb`, `5ce4243`, `8599d66`, `45eb104`)
+
 - Supply trucks are now on master: the physical supply slice (`165b0fe`, see its entry below) merged with skirmish
   bases. Any match with an HQ now supplies from it (bases put an HQ on the old home position, where trucks used to
   load, and without this they never delivered), and the hold check waits a second because trucks now brake before
@@ -30,23 +49,6 @@ AI-vs-AI runs (see DESIGN.md for the balance log). Add new entries under **Unrel
   The speedups come from another session's finished work; its Horde, sandbox, dig-bar and bridge-crossing changes
   are not part of this.
   Left for later: one long trip is still planned whole in one tick (up to about 50 ms).
-
-- The full test suite passes again after merging skirmish production bases. Fixed the AI ignoring an enemy air strike
-  on squads busy building: a squad sent to rebuild a base no longer gets bombed without fighter cover. Test setups
-  that wipe the map or count units now allow for the starting HQ and Barracks. The AI-match check now asks for at
-  least half the points within 3 minutes instead of all of them: with bases, AIs hold 6 of 7 at 3 minutes in seeded
-  runs and take all 7 at about 7.5 minutes, since part of the opening goes to tech.
-
-- Fixed the Engineers' Build card in Classic and World Conquest showing only an empty "Build" tab after a Conquest
-  (or other recruit-bar) match in the same page. The recruit bar's tab layout stayed on and hid every building card.
-
-- Integrated skirmish production bases (`232f3a9`) with the newer engine and recruit tabs. Preserved paid Classic queue identities/refunds, section-based building repairs, observed-terrain navigation, vehicle motion fields and shared Horde facility rallies. Updated the isolated Hot Gates vehicle fixture to supply its production prerequisite, and made combat-fixture cleanup remove layered terrain and structural collision data for starting bases. Focused skirmish, production-refund, Horde queue, AI privacy and Hot Gates navigation checks pass; merged core tests still stop at the previously documented fighter-cover assertion.
-- Conquest, Assault, Annihilation and Horde now start with a finished HQ and Barracks. Recruit instantly from surviving finished facilities, and build Motor Pools, Airfields and coastal Shipyards during the match to unlock their units. Unit prices remain MP-only with no training queues.
-- Rifle and Conscript squads construct, assist and repair production buildings. Destroyed buildings leave rebuildable rubble. Rebuilding an HQ costs 200 MP/40s; the other buildings retain Classic's construction prices and times. HQ loss disables its reinforcement zone until rebuilt.
-- Horde defenders share facilities and prerequisites while keeping individual MP and unit ownership. Existing bunker objectives and wave spawning are unchanged.
-- The build menu, recruit lock reasons, selected-facility spawning, shared facility selection/rallies and construction cancellation work with the new bases. AI builds technology and repairs/rebuilds its facilities.
-- Fixed builders reviving zero-HP buildings before destruction cleanup. Added simulation, client and AI regression coverage. No combat or income rebalance; competitive pacing remains a human-playtest follow-up.
-- Known verification gap: the latest core regression run fails the existing AI fighter-cover assertion (an announced enemy air strike should trigger fighter cover). The full suite is not green; this implementation is committed at the user's request pending regression follow-up.
 
 ### 2026-10-06: World Conquest AI observation lag fix (`40c23fd`)
 
