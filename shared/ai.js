@@ -273,7 +273,24 @@ function plan(observation, slot, opts, mem, send) {
   const grid = rebuildGrid(view);
   const me = view.players[slot];
   if (me.out) return;
-  const all = grid.ownedBy(slot).filter(u => !UNITS[u.type].structure);
+  const trucks = new Set((view.logistics?.trucks ?? []).map(row => row.id));
+  const owned = grid.ownedBy(slot).filter(u => !UNITS[u.type].structure && !UNITS[u.type].logisticsTruck && !trucks.has(u.id));
+  // Withdrawal and convoy jobs belong to the simulation. Recover half the stocks before committing again.
+  const waiting = mem.supplyWaiting ??= new Set();
+  for (const id of waiting) if (!view.units.has(id)) waiting.delete(id);
+  const all = owned.filter(u => {
+    const stock = u.logistics;
+    if (!stock) { waiting.delete(u.id); return true; }
+    if (stock.forced) return false;
+    const critical = (stock.ammo !== null && stock.ammo <= 0) || stock.provisions <= 0 || (stock.fuel !== null && stock.fuel <= 36);
+    const recovered = (stock.ammo === null || stock.ammo >= 0.5) && stock.provisions >= 60 && (stock.fuel === null || stock.fuel >= 90);
+    if (waiting.has(u.id) && recovered) waiting.delete(u.id);
+    if (critical) {
+      if (!u.retreating && !waiting.has(u.id) && submit({ t: 'retreat', ids: [u.id] }) === undefined) waiting.add(u.id);
+      return false;
+    }
+    return !waiting.has(u.id);
+  });
   const horde = view.mode?.kind === 'horde' && slot === view.mode.slot; // the horde itself: no shopping, no retreat, straight at the bunker
   const assault = view.mode?.kind === 'assault' || view.mode?.kind === 'annihilation' || view.mode?.kind === 'horde', defending = assault && me.team === view.mode.defenderTeam, world = view.mode?.kind === 'world', classic = view.mode?.kind === 'classic' || world;
   // what the army marches on: assault bunkers, or in Classic the enemy's Production Buildings

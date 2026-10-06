@@ -157,6 +157,13 @@ export function viewFor(g, slot, memory = {}, cache) {
     upkeep: snap.upkeep, sup: { ...snap.sup }, rally: snap.rally ? { x: snap.rally[0], z: snap.rally[1] } : null,
     visible: new Set([...view.units.values()].filter(u => view.players[u.owner].team !== me.team).map(u => u.id)) });
   decodeOwn(view, snap);
+  if (snap.logistics?.enabled) {
+    const own = id => view.units.get(id)?.owner === slot;
+    view.logistics = copy(snap.logistics);
+    view.logistics.units = view.logistics.units.filter(row => own(row.id));
+    view.logistics.trucks = (view.logistics.trucks ?? []).filter(row => own(row.id));
+    for (const row of view.logistics.units) view.units.get(row.id).logistics = copy(row);
+  }
   for (const [id, outcome, tick] of snap.movement ?? []) {
     const u = view.units.get(id); if (u?.owner === slot) Object.assign(u, { moveOutcome: outcome, moveOutcomeTick: tick });
   }

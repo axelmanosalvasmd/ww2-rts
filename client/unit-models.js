@@ -269,6 +269,7 @@ export const LOD = { high: 110, low: 80 };
 function wheeledUnit(v, root, f, fac, key) {
   const m = wheeledModel(v.type, fac, f), hull = new THREE.Group();
   hull.add(part(m.hull, 0xffffff));
+  if (!m.turret) { root.add(hull); bake(hull, key + '|hull', true); v.models.push(root); return; }
   v.turret = new THREE.Group(); v.turret.position.set(...m.turretAt); v.turret.add(part(m.turret, 0xffffff));
   v.fxTip = m.tip;
   root.add(hull, v.turret);
@@ -279,7 +280,7 @@ function wheeledUnit(v, root, f, fac, key) {
 // Builds the model of unit v under root: v.models (soldiers, or the root for vehicles and structures), v.turret,
 // v.body (structures and planes; it scales up while built), v.fxTip (barrel tip for client/fx.js).
 // f is the owner's look (uniform, vehicle and player colors), fac the faction, def the unit's stats.
-const UK_MODELS = new Set(['churchill', 'armoredcar', 'halftrack', 'medium', 'mg', 'at', 'mortar', 'flak']);
+const UK_MODELS = new Set(['churchill', 'armoredcar', 'halftrack', 'medium', 'mg', 'at', 'mortar', 'flak', 'truck']);
 const UK_TANKS = { churchill, medium: cromwell };
 export function buildModel(v, root, f, fac, def) {
   const type = v.type, key = `${type}|${fac}|${f.color}`;
@@ -320,13 +321,18 @@ export function buildModel(v, root, f, fac, def) {
     v.body.add(part(GEO.box, f.vehicle, 6, 0.3, 6, 0, 3.3, 0), part(GEO.box, 0x4a4a44, 5.6, 0.1, 5.6, 0, 0.05, 0), part(GEO.box, post, 5.6, 1.4, 0.3, 0, 0.7, -2.7));
     for (let i = 0; i < 3; i++) v.body.add(part(GEO.cyl, 0x3a4a30, 0.4, 1.1, 0.4, 2.2, 0.55, -1.6 + i * 0.85));
     root.add(bake(v.body, key, true, 'structure')); v.models.push(root);
-  } else if (type === 'depot') {
+  } else if (type === 'depot' || type === 'supplycache') {
     // supply dump: stacked crates and fuel drums
     const crate = skin('wood', 0x6e5836);
     v.body = new THREE.Group();
     v.body.add(part(GEO.box, skin('darkwood', 0x5a4a34), 3.8, 0.2, 3.8, 0, 0.1, 0), part(GEO.box, crate, 1.4, 1.2, 1.4, -0.9, 0.7, -0.9), part(GEO.box, crate, 1.4, 1.2, 1.4, 0.7, 0.7, -0.9),
       part(GEO.box, crate, 1.2, 1, 1.2, -0.1, 1.8, -0.9));
     for (let i = 0; i < 4; i++) v.body.add(part(GEO.cyl, f.vehicle, 0.4, 1.1, 0.4, -1.1 + i * 0.75, 0.65, 1));
+    if (type === 'supplycache') {
+      v.body.add(part(GEO.box, skin('canvas', 0x81795a), 3.7, 0.18, 3.7, 0, 2.55, 0));
+      for (const x of [-1.7, 1.7]) for (const z of [-1.7, 1.7]) v.body.add(part(GEO.box, crate, 0.12, 2.5, 0.12, x, 1.25, z));
+      v.body.add(part(GEO.box, f.color, 0.95, 0.65, 0.08, 0, 2.08, 1.82));
+    }
     root.add(bake(v.body, key, true, 'structure')); v.models.push(root);
   } else if (type === 'shipyard') {
     // a timber slipway running down to the water, a shed over its head and a crane

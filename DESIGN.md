@@ -2,6 +2,63 @@
 
 WW2 tactics RTS in the browser for three friends. Decided 2026-09-30.
 
+## Physical logistics (2026-10-05)
+
+Live Conquest, Classic, Annihilation and World Conquest matches enable physical logistics. Headless fixtures
+explicitly opt in with `opts.logistics`; authored missions stay excluded unless `scenario.logistics` opts in.
+Ground infantry and vehicles carry ammunition for approximately 90 seconds of full-strength firing,
+120 seconds of provisions, and, for vehicles, 180 seconds of ordinary driving fuel plus 60 seconds of
+withdrawal fuel. Ammunition is counted per actual projectile, including partial volleys and salvos.
+Idle tanks do not burn driving fuel. Aircraft use their existing sortie stocks and ships stay excluded.
+
+Below 25% ammunition, firing intervals double. Below 25% provisions, healing, repairs and reinforcement
+halve. Empty ammunition blocks ranged fire and offensive explosives. Empty provisions stop recovery,
+halve firing and start a 20-second warning before mandatory withdrawal. Empty ordinary fuel forces
+immediate withdrawal using the emergency reserve. The shortage firing penalties do not stack.
+Exhaustion stays latched until ammunition, provisions and ordinary fuel all reach at least 50%.
+Tiny deliveries cannot reset the warning. A blocked escape leaves the unit stranded and able to defend
+with its remaining ammunition. Stop pauses escape; a direct move may seek another exit. Mandatory
+withdrawal prevents capture, construction and queued attacks. Retreat protection applies only during
+actual withdrawal progress, never while stranded. There is no teleport, automatic death or surrender.
+
+Unarmed supply trucks have 120 HP, 7.5 m/s speed, 12 m sight, zero population and no recruitment card.
+The automatic fleet is `min(24, max(2, 2 + ceil(eligibleTroops / (4 * army.pop))))`, with one spawn per second.
+Destroyed trucks lose cargo and become replaceable after 30 seconds. Empty surplus trucks retire safely
+at a source. Loading takes four seconds; deliveries unload incrementally over eight seconds. Automatic
+routes use remembered terrain and currently visible threats, rechecking every two seconds. Unknown
+ambushes remain possible. Direct movement and queued waypoints suspend dispatch; explicit Stop holds
+until Resume deliveries or another order. Explicit relief can enter known danger and supply an ally.
+
+Sources are completed HQs in construction modes and the existing home positions elsewhere. Forward
+Supply Caches cost 60 MP, take 12 seconds and have 400 HP on a 2x2 footprint. Held depot Points,
+hospitals and halted halftracks carry finite supplies. World regions receive one physical relay, empty
+when newly captured; neutralization clears stock and suspends ownership until recapture. HQ recovery
+restores a source without eliminating surviving World armies. Cargo retains its paying owner even at
+allied infrastructure. Automatic fleets spend and serve their own stocks; explicit allied relief is available.
+
+Reference stocks are 3 Munitions credit, 120 provision seconds and 180 fuel seconds. Trucks carry eight
+references of each resource, caches 32 and support stores four, scaled by army population multiplier.
+Small arms/MG/autocannon replacements cost .01 Munitions per projectile, ordinary shells .05 and
+howitzer/rocket ammunition .10. Vehicle fuel costs 6 Fuel for 180 ordinary driving seconds and 2 for
+60 emergency seconds. Classic and World pay these amounts from existing currencies. Other selected
+modes generate cargo freely; provisions are free at sources. Truck trips prepay .002 Fuel per route metre,
+including the physical return route and 20% contingency. Actual powered movement consumes funded
+metres; extended manual routes reserve additional Fuel. Income, recruitment and ability prices remain.
+Reinforcement retains MP costs and uses five provision seconds per replacement. Healing/repair uses
+one provision second per five restored HP, including medic and Engineer provider stocks.
+
+The optional overlay and cards expose owner stocks, allied stores, observed threats and known selected
+routes. Ordinary drag selection, select-all, idle selection and combat groups exclude trucks. Direct
+clicks or logistics selection permit control. Alerts group shortage, route, currency, transit, withdrawal
+and stranded states with a 20-second cooldown. Spectators receive no private reserve/cargo/job data.
+The AI uses its own stock observations, preserves mandatory withdrawal and waits for half recovery.
+
+Implementation: `shared/logistics.js` owns reserve accounting, `shared/supply-convoys.js` owns inventory,
+jobs and scheduling, and simulation hooks connect firing, actual movement, recovery, death and snapshots.
+`client/logistics.js` owns ancillary decoding and presentation helpers. Dedicated accounting, scheduler,
+simulation, World, server privacy and client tests cover this slice. Numbers are initial tuning targets;
+no faction win-rate balance claim is made. Naval logistics remains future work.
+
 ## Thermopylae navigation and cliffs (2026-10-05)
 
 - The Hot Gates mountain-road gate is on level 2 beside an isolated level-4 plateau. Horde's 5 m spawn scatter
