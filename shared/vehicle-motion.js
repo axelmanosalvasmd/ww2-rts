@@ -8,6 +8,7 @@ export const VEHICLE_PROFILES = Object.freeze({
   armoredcar: { acceleration: 6.5, reverseAcceleration: 3.5, braking: 9, reverseSpeed: 0.4, hullTurn: 1.7, tracked: false },
   halftrack: { acceleration: 5.2, reverseAcceleration: 3, braking: 8, reverseSpeed: 0.4, hullTurn: 1.5, tracked: false },
   flaktrack: { acceleration: 4, reverseAcceleration: 2.7, braking: 7, reverseSpeed: 0.4, hullTurn: 1.35, tracked: false },
+  truck: { acceleration: 5.2, reverseAcceleration: 3, braking: 8, reverseSpeed: .4, hullTurn: 1.5, tracked: false },
   rocket: { acceleration: 2.8, reverseAcceleration: 2, braking: 5.5, reverseSpeed: 0.4, hullTurn: 1.1, tracked: false },
 });
 const fallback = { acceleration: 4, reverseAcceleration: 2.5, braking: 7, reverseSpeed: 0.45, hullTurn: 1.5, tracked: true };

@@ -14,6 +14,8 @@ import { DEBRIS_LIMITS, SECTION_MASS, wreckMass, debrisBody, stepDebris, settleD
 import { navigationLeg } from './navigation.js';
 import { isGroundVehicle, movementProfile, bodyRadius, vehiclePositionClear, sweptVehicleClear, vehicleStep, vehicleNavigationView, vehicleDestinationClear, segmentCliffClear } from './vehicle-motion.js';
 import { trafficStep, rememberTrafficPosition, trafficWins } from './local-traffic.js';
+import { initializeUnit, tickReserves, consumeDrivingFuel, consumeAmmo, canFire, shortageRate, recoveryRate } from './logistics.js';
+import { setupConvoys, stepConvoys, convoyDeath, commandConvoy, logisticsSnapshot, supportProvision, convoyTravelBudget, consumeConvoyTravel } from './supply-convoys.js';
 
 import { projectileProfile, PROJECTILE_PROFILES, CONTACT_MATERIALS, launchSolution, flightAt, velocityAt, crossedCells, sweepBox, sweepBody, sweepHull, segmentDistance, contactResponse } from './projectiles.js';
 
@@ -321,10 +323,12 @@ UNITS.airfield = building({ name: 'Airfield', cost: 250, hpPer: 1800, radius: 3,
 UNITS.shipyard = building({ name: 'Shipyard', cost: 150, hpPer: 1500, radius: 3, vision: 30, size: 3, buildTime: 30, produces: true, coast: true, makes: ['lcvp', 'gunboat', 'destroyer'] });
 UNITS.flakpos = building({ name: 'Flak Emplacement', cost: 100, hpPer: 1500, radius: 2, vision: 40, size: 2, buildTime: 20, aa: { range: 55, dps: 40, chance: 0.45 } });
 UNITS.worldbase = building({ name: 'Regional Military Base', cost: 0, hpPer: 600, radius: 3, vision: 18, size: 3, produces: true, classic: true });
-export const BUILDABLE = ['depot', 'barracks', 'motorpool', 'airfield', 'flakpos', 'shipyard'];
+UNITS.truck = { name: 'Supply Truck', faction: -1, logisticsTruck: true, classic: true, cost: 0, pop: 0, models: 1, hpPer: 120, speed: 7.5, radius: 1.8, vision: 12, infantry: false, w: { range: 0, interval: 1, inf: 0, veh: 0, accInf: 0, accVeh: 0, supp: 0, moveFire: 0 }, ab: { id: 'none', name: '', cd: 1e9 } };
+UNITS.supplycache = building({ name: 'Supply Cache', cost: 60, hpPer: 400, radius: 2, vision: 12, size: 2, buildTime: 12, logisticsCache: true });
+export const BUILDABLE = ['supplycache', 'depot', 'barracks', 'motorpool', 'airfield', 'flakpos', 'shipyard'];
 // outside Classic the fort builder squads can still put up anti-air: what they build, and who builds what where
-export const FIELD_BUILDS = ['flakpos'];
-export const SKIRMISH_BUILDS = ['hq', 'barracks', 'motorpool', 'airfield', 'shipyard', 'flakpos'];
+export const FIELD_BUILDS = ['flakpos', 'supplycache'];
+export const SKIRMISH_BUILDS = ['hq', 'barracks', 'motorpool', 'airfield', 'shipyard', 'flakpos', 'supplycache'];
 export const buildKinds = (classic, skirmish = false) => (classic ? BUILDABLE : skirmish ? SKIRMISH_BUILDS : FIELD_BUILDS);
 export const builderTypes = (classic) => (classic ? ['engineer'] : CFG.fortBuilders);
 // Classic: seconds to train each unit at its building
@@ -653,6 +657,7 @@ export function createGame(map, names, shuffle = true, teams = names.map((_, i) 
     // Assault and Annihilation have no VP, so points that only pay VP are left out (clients filter the same way)
     points: map.points.filter(p => !noVp || (p.mp ?? 1) > 0).map(p => ({ scenarioId: p.id ?? `point:${map.points.indexOf(p)}`, x: (p.x + 0.5) * CELL, z: (p.y + 0.5) * CELL, vp: p.vp ?? 1, mp: p.mp ?? 1, owner: -1, capper: -1, progress: 0, cut: false, kind: p.kind, needs: -1 })),
   };
+  g.logisticsEnabled = opts.logistics === true && ['conquest', 'classic', 'annihilation', 'world'].includes(opts.mode ?? 'conquest');
   // needs: a team takes this point only while it holds that one (an index into the map's points, here into g.points;
   // a needed point the mode left out asks for nothing)
   const kept = map.points.filter(p => !noVp || (p.mp ?? 1) > 0);
@@ -743,6 +748,8 @@ export function createGame(map, names, shuffle = true, teams = names.map((_, i) 
     if (a.kind === 'reinforce' && !SCENARIO_TOOLS.allowed(g,a,a.side)) throw new Error('scenario: reinforcements are unavailable in this match');
   }
   setupScenario(g, map, SCENARIO_TOOLS);
+  setupConvoys(g);
+  stepConvoys(g, 0, supplyHooks(g));
   if (g.mode?.kind === 'world') updateVision(g);
   return g;
 }
@@ -1063,7 +1070,7 @@ function stepWorld(g, list, dt) {
   }
   const grid = gridFor(g);
   for (const r of g.world.regions) {
-    const on = grid.candidates(r, CFG.pointRadius, true, u => u.hp > 0 && !u.retreating && !u.riding && UNITS[u.type].infantry && dist(u,r) <= CFG.pointRadius);
+    const on = grid.candidates(r, CFG.pointRadius, true, u => u.hp > 0 && !u.retreating && !u.logistics?.forced && !u.riding && UNITS[u.type].infantry && dist(u,r) <= CFG.pointRadius);
     const team = on.length ? g.players[on[0].owner].team : -1;
     r.contested = on.some(u => g.players[u.owner].team !== team);
     const blockers = production.get(r.id);
@@ -1146,7 +1153,7 @@ function worldSnapshot(g, slot) {
   const p=g.players[slot], m=worldTerrainMemory(g,p.team), f=teamFog(g,p.team);
   if (g.world.regionMap && m.runsVersion !== m.version) { m.runs=knownTerritoryRuns(g.world.regionMap,m.cells.keys(),g.w); m.runsVersion=m.version; }
   const knownBases = [...g.units.values()].filter(b => seenBy(g, slot, b.id)).concat(knownBuildings(g, slot));
-  const infantry = [...g.units.values()].filter(u => u.hp > 0 && !u.retreating && !u.riding && UNITS[u.type].infantry && seenBy(g, slot, u.id));
+  const infantry = [...g.units.values()].filter(u => u.hp > 0 && !u.retreating && !u.logistics?.forced && !u.riding && UNITS[u.type].infantry && seenBy(g, slot, u.id));
   for (const r of g.world.regions) {
     const c=cellOf(g,r.x,r.z), old=m.regions.get(r.id);
     const locked = knownBases.some(b => UNITS[b.type].produces && worldRegionAt(g, b)?.id === r.id && (b.type === 'worldbase' || g.players[b.owner].team === r.team));
@@ -1385,6 +1392,7 @@ function setupClassic(g) {
 // Where a unit retreats to: in Classic the nearest of its owner's finished Production Buildings, else the spawn
 function homeOf(g, u) {
   const p = g.players[u.owner];
+  if (u.convoy && g.convoys) { const source=[...g.convoys.stores.values()].filter(s=>s.active&&s.source&&allied(g,s.owner,u.owner)).sort((a,b)=>dist(a,u)-dist(b,u))[0]; if(source)return source; }
   if (isSkirmishBaseMode(g)) return productionBuildings(g, u.owner).filter(b => b.type === 'hq').sort((a,b) => dist(u,a)-dist(u,b))[0] ?? p.spawn;
   if (!isConstructionMode(g)) return p.spawn;
   if (g.mode.kind === 'world' && u.owner < 0) return u.guardHome ?? p.spawn;
@@ -1424,10 +1432,158 @@ function spawnUnit(g, owner, type, n = g.units.size) {
     // auto-retreat starts on for everything on the ground; Shift+X turns it off
     autoRetreat: !UNITS[type].air };
   if (UNITS[type].air) { u.air = { state: 'base', fuel: CFG.air.station, ammo: UNITS[type].ammo, timer: 0, ang: 0, mission: null }; Object.assign(u, airBase(g, u)); }
+  initializeUnit(g, u, UNITS[type]);
   g.units.set(u.id, u);
   updateGrid(g, u);
   return u;
 }
+// Logistics uses the same remembered navigation and visible threats as player orders.
+const supplyRouteViews = new WeakMap();
+function supplyRoute(g, u, at, safe = false) {
+  u.supplyRouteReason = null;
+  if (!safe) return findPath(g, u, at);
+  const known = g.mode?.kind === 'world' ? worldPathView(g, u.owner) : observedPathView(g, u.owner);
+  let owners = supplyRouteViews.get(g);
+  if (!owners) supplyRouteViews.set(g, owners = new Map());
+  const epoch = Math.floor(g.tick / 40), version = known.navigationKnowledgeVersion ?? known.obstructionVersion;
+  let state = owners.get(u.owner);
+  if (!state || state.epoch !== epoch || state.version !== version) {
+    const threats = [...g.players[u.owner].visible].map(id => g.units.get(id)).filter(t => t && t.hp > 0 && !allied(g, t.owner, u.owner) && UNITS[t.type].w?.range > 0 && !t.air).map(t => ({x:t.x,z:t.z,radius:UNITS[t.type].w.range+3}));
+    state = { epoch, version, threats, flags: null }; owners.set(u.owner, state);
+  }
+  if (!state.threats.length) return findPath(g, u, at);
+  if (dist(u, at) > 4 && state.threats.some(t => dist(at, t) <= t.radius)) { u.supplyRouteReason = 'dangerous'; return []; }
+  if (!state.flags) {
+    state.flags = new Uint16Array(known.flags);
+    for (const t of state.threats) {
+      for (let y = Math.max(0, Math.floor((t.z-t.radius)/CELL)); y < Math.min(g.h,Math.ceil((t.z+t.radius)/CELL)); y++) {
+        for (let x = Math.max(0, Math.floor((t.x-t.radius)/CELL)); x < Math.min(g.w,Math.ceil((t.x+t.radius)/CELL)); x++) {
+          if (Math.hypot((x+.5)*CELL-t.x,(y+.5)*CELL-t.z)<=t.radius) state.flags[y*g.w+x] |= MOVE | VBLOCK;
+        }
+      }
+    }
+  }
+  const view = {...known, flags: new Uint16Array(state.flags)};
+  for (let y=Math.max(0,Math.floor((u.z-4)/CELL));y<Math.min(g.h,Math.ceil((u.z+4)/CELL));y++) {
+    for (let x=Math.max(0,Math.floor((u.x-4)/CELL));x<Math.min(g.w,Math.ceil((u.x+4)/CELL));x++) {
+      if(Math.hypot((x+.5)*CELL-u.x,(y+.5)*CELL-u.z)<=4) view.flags[y*g.w+x]=known.flags[y*g.w+x];
+    }
+  }
+  const path = findPath(view,u,at);
+  if (path.length && supplyPathConnected(view,u,at,path)) return path;
+  u.supplyRouteReason=findPath(g,u,at).length?'dangerous':'unreachable';return [];
+}
+
+// Large maps return bounded fine-route legs. Check the full coarse connection
+// before accepting a leg, so a distant reachable source is not a false pocket.
+function supplyPathConnected(g,u,at,path) {
+  if (!path.length) return false;
+  if (dist(path.at(-1),at)<=3) return true;
+  const def=UNITS[u.type], block=blockOf(def);
+  let view=g.navigationObserved ? g : g.mode?.kind==='world' ? worldPathView(g,u.owner) : observedPathView(g,u.owner);
+  if (isGroundVehicle(def) && !view.vehicleFootprintKnown) view=vehicleNavigationView(view,def,block);
+  return navigationLeg(view,cellOf(view,u.x,u.z),nearestFree(view,at.x,at.z,block),block).connected;
+}
+
+const handoffViews = new WeakMap();
+function supplyHandoff(g, u, store, radius) {
+  const host = u.riding && g.units.get(u.riding), start = host || (u.garrison >= 0 ? u.garrisonEntry ?? {...u,...cellCenter(g,nearestFree(g,u.x,u.z,MOVE))} : u);
+  if (dist(start, store) > radius) return false;
+  let edge = { x: store.x, z: store.z };
+  const building = store.entity && g.units.get(store.entity);
+  if (building?.cells?.length) {
+    const cells = new Set(building.cells), length = dist(start,store), dx=(start.x-store.x)/(length || 1), dz=(start.z-store.z)/(length || 1);
+    for (let d=.25;d<=length;d+=.25) { edge={x:store.x+dx*d,z:store.z+dz*d}; if (!cells.has(cellOf(g,edge.x,edge.z))) break; }
+  }
+  if (walkable(g,start,edge,MOVE,.15)) return true;
+  let state=handoffViews.get(g);
+  const epoch=Math.floor(g.tick/40), version=`${g.infantryRegionVersion}:${g.obstructionVersion}`;
+  if (!state) { state={view:{},paths:new Map()}; handoffViews.set(g,state); }
+  if (state.tick!==epoch || state.version!==version) {
+    // Preserve graph identity across deliveries. Vehicle ground wear changes the
+    // terrain snapshot, but cannot invalidate infantry handoff connectivity.
+    Object.assign(state.view,g,{navigationObserved:true,worldKnown:true,navigationKnowledgeVersion:0,worldNearWalls:nearWalls(g)});
+    state.tick=epoch; state.version=version; state.paths.clear();
+  }
+  const key=[start.x,start.z,edge.x,edge.z,radius].map(n=>Math.round(n*4)).join(':');
+  if (state.paths.has(key)) return state.paths.get(key);
+  const route=findPath(state.view,{...start,type:'rifle'},edge);
+  let length=0,prev=start;
+  for (const next of route) { length+=dist(prev,next);prev=next; }
+  const reachable=route.length>0 && dist(prev,edge)<1 && length<=radius*2;
+  state.paths.set(key,reachable);return reachable;
+}
+
+function fullConvoyRoute(g,u,at,safe) {
+  const route=supplyRoute(g,u,at,safe);
+  if (!route.length || dist(route.at(-1),at)<=3) return route;
+  const known=g.mode?.kind==='world' ? worldPathView(g,u.owner) : observedPathView(g,u.owner);
+  // Keep one navigation view across fine-route legs. Financing uses the entire
+  // planned outward and return journey, including roads around remembered banks.
+  let view=known;
+  if (safe) {
+    const state=supplyRouteViews.get(g)?.get(u.owner);
+    if(state?.flags) {
+      view={...known,flags:new Uint16Array(state.flags)};
+      for(let y=Math.max(0,Math.floor((u.z-4)/CELL));y<Math.min(g.h,Math.ceil((u.z+4)/CELL));y++) for(let x=Math.max(0,Math.floor((u.x-4)/CELL));x<Math.min(g.w,Math.ceil((u.x+4)/CELL));x++) if(Math.hypot((x+.5)*CELL-u.x,(y+.5)*CELL-u.z)<=4)view.flags[y*g.w+x]=known.flags[y*g.w+x];
+    }
+  }
+  view=vehicleNavigationView(view,UNITS[u.type],blockOf(UNITS[u.type]));
+  if (!supplyPathConnected(view,u,at,route)) {u.supplyRouteReason=safe?'dangerous':'unreachable';return [];}
+  let from={...u,...route.at(-1)};
+  for(let n=0;n<512;n++) {
+    const leg=findPath(view,from,at);
+    if(!leg.length || dist(from,leg.at(-1))<.05) {u.supplyRouteReason='unreachable';return [];}
+    route.push(...leg);
+    if(dist(leg.at(-1),at)<=3 || dist(leg.at(-1),from.routeEnd ?? at)<=.25) return route;
+    from={...u,...leg.at(-1)};
+  }
+  u.supplyRouteReason='unreachable';return [];
+}
+
+function supplyHooks(g) {
+  return {
+    route: (u, at, safe) => fullConvoyRoute(g, u, at, safe),
+    handoff: (u, store, radius) => supplyHandoff(g, u, store, radius),
+    spawn: (owner, type, source) => {
+      const nearby=[...g.units.values()].filter(t=>!t.air&&!t.riding&&t.hp>0&&dist(t,source)<30), n=nearby.filter(t=>t.type==='truck').length;
+      const u=spawnUnit(g,owner,type);
+      for(let k=0;k<40;k++){ const angle=(n+k)*2.4,radius=10+Math.floor(k/16)*5,c=nearestFree(g,source.x+Math.cos(angle)*radius,source.z+Math.sin(angle)*radius,MOVE|VBLOCK),at=cellCenter(g,c);
+        if(vehiclePositionClear(g,{...at,rot:0},UNITS[type],MOVE|VBLOCK)&&nearby.every(t=>dist(t,at)>(UNITS[t.type].radius+UNITS[type].radius)*.8+1)){Object.assign(u,at);break;} }
+      updateGrid(g,u);return u;
+    },
+    cache: (owner, region) => {
+      const c = findSite(g, region.x + 12, region.z + 4, UNITS.supplycache.size);
+      return c < 0 ? null : placeBuilding(g, owner, 'supplycache', c, true);
+    },
+    retire: u => { g.units.delete(u.id); rebuildGrid(g); },
+  };
+}
+function retreatProtected(u) {
+  return u.retreating && (!u.logistics?.forced || !u.logistics.stranded && Math.abs(u.moveSpeed || Math.hypot(u.vx ?? 0, u.vz ?? 0)) > .05);
+}
+function supplyWithdrawal(g, u) {
+  const r = u.logistics;
+  if (!r?.forced || u.riding) { if (u.supplyStarted && !r?.forced) { u.supplyStarted=false;u.supplyEscape=false;u.supplyHold=false;u.retreating=false;u.path=[];u.worldGoal=null; } return; }
+  if (!u.supplyStarted) { exitBuilding(g,u); u.supplyStarted=true; u.orders=[]; u.build=0;u.dig=null;u.entrench=null;u.nade=null;u.fireAt=-1;u.attackId=0;u.enter=-1;u.board=0; }
+  if(u.supplyHold) {r.stranded=true;u.retreating=false;u.path=[];u.worldGoal=null;return;}
+  if (u.supplyEscape && (u.path.length || u.orders.length || u.worldGoal)) { r.stranded=!u.path.length || u.stuck>1; u.retreating=!!u.path.length && !r.stranded; return; }
+  u.supplyEscape = false;
+  if (r.fuel !== null && r.fuel + r.emergency <= 0) { r.stranded = true; u.retreating = false; u.path = []; u.worldGoal = null; return; }
+  if (u.path.length) { r.stranded=u.stuck>1; u.retreating=!r.stranded; return; }
+  if (g.tick < (u.supplyRetry ?? 0)) return;
+  u.supplyRetry = g.tick + 40;
+  const stores = [...(g.convoys?.stores.values() ?? [])].filter(s => s.active && allied(g, s.owner, u.owner) && (s.source || [...s.buckets.values()].some(b => b.provisions > 0))).sort((a,b) => dist(a,u) - dist(b,u));
+  let goal = null, path = [];
+  for (const store of stores) {
+    const length = dist(store,u), d = Math.max(0, length - 10), at = { x: u.x + (store.x-u.x) / (length || 1) * d, z: u.z + (store.z-u.z) / (length || 1) * d };
+    const candidate = length <= 15 ? [] : findPath(g,u,at);
+    if (length <= 15 && supplyHandoff(g,u,store,15) || candidate.length && supplyPathConnected(g,u,at,candidate)) { goal=at; path=candidate; break; }
+  }
+  if (!goal) { r.stranded=true; u.retreating=false; u.path=[]; u.worldGoal=null; return; }
+  retreatUnit(g,u); u.path=path; u.worldGoal=path.length ? goal : null; u.retreating=!!path.length; r.stranded=false;
+}
+
 // ---------- planes ----------
 export const airborne = (u) => !!u.air && (u.air.state === 'out' || u.air.state === 'station' || u.air.state === 'home');
 // where a plane takes off and rearms: in Classic its owner's nearest finished Airfield, otherwise (or with none) an
@@ -1494,8 +1650,10 @@ function antiAir(g, list, dt) {
     if (u.holdFire && (!u.air || u.air.mission?.kind !== 'attack')) continue;
     let best = null, bd = aa.range;
     for (const t of gridFor(g).candidates(u, aa.range, true, t => t.air && airborne(t) && t.hp > 0 && !allied(g, t.owner, u.owner) && g.players[u.owner].visible.has(t.id) && (!u.holdFire || u.air.mission.id === t.id))) if (dist(u, t) <= bd) { bd = dist(u, t); best = t; }
-    if (!best) continue;
-    best.hp -= aa.dps * dt; best.lastHit = u.owner;
+    if (!best || !canFire(u) || u.logistics?.forced && !u.logistics.stranded) continue;
+    let aaRate = 1 / shortageRate(u);
+    if (u.logistics) { u.aaReserve = (u.aaReserve ?? 0) + dt * aaRate / Math.max(.1, UNITS[u.type].w.interval); if (u.aaReserve >= 1) { consumeAmmo(u, Math.floor(u.aaReserve)); u.aaReserve %= 1; } }
+    best.hp -= aa.dps * dt * aaRate; best.lastHit = u.owner;
     u.xp += Math.min(aa.dps * dt, Math.max(0, best.hp + aa.dps * dt));
     if ((u.aaShot = (u.aaShot ?? 0) - dt) <= 0) { u.aaShot = 0.35; g.shots.push({ f: u.id, t: best.id, fo: u.owner, to: best.owner, x: best.x, z: best.z, k: 'aa' }); }
     if (best.hp <= 0 && !best.downed) { best.downed = true; tally(g, u.owner, 'planesDowned'); g.shots.push({ k: 'planedown', t: best.id, to: best.owner, x: best.x, z: best.z, dir: best.rot, kill: true }); }
@@ -2390,7 +2548,7 @@ export function placementCheck(g, { kind, x, z, dir = 0, team }, sees = () => tr
     if (cells.length) return { ok: true, reason: undefined, cells, x, z };
     return fail('blocked', { cells });
   }
-  if (!BUILDABLE.includes(kind) && !(kind === 'hq' && isSkirmishBaseMode(g))) return fail('blocked');
+  if ((!BUILDABLE.includes(kind) && !(kind === 'hq' && isSkirmishBaseMode(g))) || (kind === 'supplycache' && !g.logisticsEnabled)) return fail('blocked');
   const def = UNITS[kind];
   if (g.mode?.kind === 'world' && !sees({x,z})) return fail('notVisible');
   let c, node;
@@ -2521,10 +2679,14 @@ function dispatchOrderGroups(g, slot, cmd) {
 
 export function command(g, slot, cmd, auto = false) {
   if (g.winner !== null || !Number.isInteger(slot) || !g.players[slot] || g.players[slot].out || g.players[slot].away || !cmd || typeof cmd !== 'object' || Array.isArray(cmd)) return 'blocked';
+  const convoyCommand = commandConvoy(g, slot, cmd, supplyHooks(g));
+  if (convoyCommand) return convoyCommand.result;
+  const controlledIds=Array.isArray(cmd.ids)?cmd.ids:Array.isArray(cmd.orders)?cmd.orders.map(o=>o[0]):[];
+  for(const id of controlledIds) {const u=g.units.get(id);if(u?.owner===slot&&u.logistics?.forced) {if(cmd.t==='stop')u.supplyHold=true;else if(['move','retreat'].includes(cmd.t))u.supplyHold=false;} }
   if (cmd.t === 'recover' && g.mode?.kind === 'world') return recoverWorld(g, slot);
   if (cmd.t === 'orders' && Array.isArray(cmd.commands)) return dispatchOrderGroups(g, slot, cmd);
   // a squad riding in a carrier takes no orders: its carrier does (unload)
-  const mine = (id) => { const u = g.units.get(id); return u && u.owner === slot && !UNITS[u.type].structure && !u.riding ? u : null; };
+  const mine = (id) => { const u = g.units.get(id); return u && u.owner === slot && !UNITS[u.type].structure && !u.riding && (!u.logistics?.forced || ['move', 'stop', 'retreat', 'holdFire', 'holdPos', 'autoRetreat'].includes(cmd.t) || u.logistics.stranded && ['attack', 'ability'].includes(cmd.t)) ? u : null; };
   const limit = Math.max(50, g.units.size), ids = Array.isArray(cmd.ids) ? cmd.ids.slice(0, limit) : [];
   if ((cmd.t === 'move' || cmd.t === 'amove') && Array.isArray(cmd.orders)) {
     const face = cmd.face === undefined ? null : normalizeFace(cmd.face);
@@ -2545,6 +2707,7 @@ export function command(g, slot, cmd, auto = false) {
     for (const [u, x, z] of requests) {
       if (cmd.queue === true) { if (enqueueOrder(u, { t: cmd.t, orders: [[u.id, x, z]], x, z, ...(face === null ? {} : { face }) })) moved = true; else full = true; continue; }
       moved = true;
+      if (u.logistics?.forced) { u.supplyEscape = true; u.logistics.stranded = true; }
       u.traffic = null; u.trafficWait = 0; u.moveOutcome = 'interrupted'; u.moveOutcomeTick = g.tick; u.worldGoal = null; u.orders = []; u.entrench = null; u.face = null;
       if (u.air) { sendPlane(u, { kind: 'patrol', x, z }); continue; }
       go.push([u, x, z]);
@@ -2562,6 +2725,7 @@ export function command(g, slot, cmd, auto = false) {
       u.traffic = null; u.trafficWait = 0; u.trafficEntered = false; u.trafficTrail = [];
       u.moveOutcome = 'moving'; u.moveOutcomeTick = g.tick;
       u.path = findPath(g, u, { x, z });
+      if(u.logistics?.forced) {u.retreating=!!u.path.length;u.logistics.stranded=!u.path.length;}
       reverseIfShort(g, u, engaged);
     }
     if (!moved) return full ? 'queueFull' : 'blocked';
@@ -2681,6 +2845,7 @@ export function command(g, slot, cmd, auto = false) {
         if (enqueueOrder(u, { t: 'ability', ids: [u.id], x, z })) used = true; else reason = 'queueFull';
         continue;
       }
+      if (u && ['grenade', 'satchel', 'barrage', 'ap', 'suppress'].includes(ab.id) && !canFire(u, ['grenade','satchel'].includes(ab.id) && UNITS[u.type].w?.perModel ? alive(u) : 1)) { reason = 'ammo'; continue; }
       if (!u || u.cd > 0 || u.retreating || !(g.players[slot].mun >= abCost(g, ab) || !abCost(g, ab))) { reason = !u ? 'needs' : u.cd > 0 ? 'cooldown' : u.retreating ? 'retreating' : 'mun'; continue; }
       if (AIMED_AB.has(ab.id)) {
         if (x === null || z === null) { reason = 'blocked'; continue; }
@@ -2851,7 +3016,7 @@ const suppMul = (u) => (u.supp >= 90 ? { speed: 0.3, rate: 3, acc: 0.5 } : u.sup
 
 function canShoot(g, u, t) {
   const w = UNITS[u.type].w;
-  if (!t || t.hp <= 0 || t.air || t.riding || allied(g, t.owner, u.owner) || reachDist(u, t) > w.range || !g.players[u.owner].visible.has(t.id)) return false;
+  if (!w?.range || !canFire(u) || !t || t.hp <= 0 || t.air || t.riding || allied(g, t.owner, u.owner) || reachDist(u, t) > w.range || !g.players[u.owner].visible.has(t.id)) return false;
   if (u.air) return true;
   return w.salvo ? reachDist(u, t) >= w.minRange : los(g, u, aimPoint(g, u, t)); // salvos arc over: spotting is enough
 }
@@ -3170,6 +3335,8 @@ function flightLaunch(g, p) {
     x: p.x, y: p.y, z: p.z, v: [p.vx, p.vy, p.vz], gravity: p.gravity, time: p.launched, expires: p.expires, local: true });
 }
 function launchSalvo(g, u, at, n = UNITS[u.type].w.rockets) {
+  n = consumeAmmo(u, n);
+  if (!n) return;
   const w = UNITS[u.type].w;
   const spread = w.spreadFar ? lerp(w.spread, w.spreadFar, Math.min(1, Math.max(0, (dist(u, at) - w.minRange) / (w.range - w.minRange)))) : w.spread;
   g.salvos.push({ x: at.x, z: at.z, owner: u.owner, left: n, next: w.flight, w, spread, physical: true });
@@ -3182,7 +3349,9 @@ function launchSalvo(g, u, at, n = UNITS[u.type].w.rockets) {
   g.shots.push({ f: u.id, fo: u.owner, x: at.x, z: at.z, k: 'salvo', n, r: spread, physical: true, local: true });
 }
 function fire(g, u, t, moving) {
-  if (UNITS[u.type].w.salvo) { launchSalvo(g, u, t); u.cooldown = UNITS[u.type].w.interval; return; }
+  if (!canFire(u)) return;
+  const supplyRate = shortageRate(u);
+  if (UNITS[u.type].w.salvo) { launchSalvo(g, u, t); u.cooldown = UNITS[u.type].w.interval * supplyRate; return; }
   if (UNITS[u.type].w.beam) { breathe(g, u, t); u.cooldown = UNITS[u.type].w.interval; u.shotAt = g.tick; return; }
   const w = UNITS[u.type].w, def = UNITS[t.type], inf = def.infantry, sm = suppMul(u);
   const cover = w.flame ? 1 : Math.min(coverMul(g, t, u), inf ? 1 - (1 - CFG.coverMul) * coverBehind(g, t, u) : 1);
@@ -3192,7 +3361,7 @@ function fire(g, u, t, moving) {
   if (u.buff > 0) { damageScale = 0.5; suppression *= 2.5; rate *= 0.5; }
   const ab = UNITS[u.type].ab, ap = u.ap && !inf && (!ab.naval || def.naval);
   if (ap) { acc = 1; u.ap = false; }
-  const count = w.perModel ? alive(u) : 1, suppressed = new Set(), profile = projectileProfile(u.type, w), aim = aimPoint(g, u, t);
+  const count = consumeAmmo(u, w.perModel ? alive(u) : 1), suppressed = new Set(), profile = projectileProfile(u.type, w), aim = aimPoint(g, u, t);
   for (let i = 0; i < count; i++) {
     // The old hit chance now selects launch dispersion. No accuracy roll happens at arrival.
     const accurate = Math.random() < acc, bearing = Math.atan2(aim.z - u.z, aim.x - u.x);
@@ -3202,9 +3371,10 @@ function fire(g, u, t, moving) {
       { intended: t.id, damageScale, ap: !!ap, apMultiplier: ab.mult ?? 1.5, apNaval: !!ab.naval, suppression, suppressionScale: w.perModel ? count / UNITS[u.type].models : 1,
         suppressed, explosive: !!w.shellTerrain, terrain: w.shellTerrain ?? 0, scar: w.shellTerrain ? CFG.scar.tank : 0 });
   }
-  u.cooldown = w.interval * rate; u.shotAt = g.tick;
+  u.cooldown = w.interval * rate * supplyRate; u.shotAt = g.tick;
 }
 function fireTerrain(g, u, at) {
+  if (!consumeAmmo(u, 1)) return;
   const w = UNITS[u.type].w;
   addFlight(g, u, { ...at, y: levelAt(g, at.x, at.z) * CFG.levelHeight + 0.2 }, projectileProfile(u.type, w),
     { intendedCell: cellOf(g, at.x, at.z), damageScale: 1, suppression: w.supp, suppressionScale: 1, explosive: true, terrain: w.shellTerrain, scar: CFG.scar.tank });
@@ -3220,7 +3390,7 @@ function flightDamage(g, p, t, at, direction) {
   const w = p.weapon, def = UNITS[t.type], inf = def.infantry;
   let dmg = (inf ? w.inf : w.veh) * (p.damageScale ?? 1) * p.energy;
   if (p.ap && !inf && (!p.apNaval || def.naval)) dmg *= p.apMultiplier;
-  if (t.retreating) dmg *= CFG.retreatDamage;
+  if (retreatProtected(t)) dmg *= CFG.retreatDamage;
   if (w.flame && (t.garrison >= 0 || inTrench(g, t))) dmg *= w.flame;
   dmg *= 1 - CFG.vetArmor * vet(t);
   if (def.building) dmg = (w.veh >= 20 ? w.veh : w.inf * CFG.classic.smallArms) * (p.damageScale ?? 1) * p.energy;
@@ -3707,7 +3877,7 @@ function hurt(g, t, src, fall, owner) {
   // the bunker is built to take a bombardment: off-map strikes barely touch it, it has to be taken on the ground
   const shrug = (t.type === 'bunker' && SUPPORT_SRC.has(src) ? CFG.assault.supportMul : 1) * bunkerMul(g, t)
     * (t.type === 'bunker' && src === UNITS.howitzer.w && g.mode?.kind === 'annihilation' ? CFG.assault.howitzerMul : 1);
-  t.hp -= base * shrug * fall * (t.retreating ? CFG.retreatDamage : 1) * (t.garrison >= 0 ? src.antiGarrison ?? CFG.trenchBlastMul : inTrench(g, t) ? CFG.trenchBlastMul : 1) * (1 - CFG.vetArmor * vet(t));
+  t.hp -= base * shrug * fall * (retreatProtected(t) ? CFG.retreatDamage : 1) * (t.garrison >= 0 ? src.antiGarrison ?? CFG.trenchBlastMul : inTrench(g, t) ? CFG.trenchBlastMul : 1) * (1 - CFG.vetArmor * vet(t));
   if (inf) t.supp = Math.min(100, t.supp + src.supp * (1 - CFG.vetSupp * vet(t)));
   g.shots.push({ t: t.id, fo: owner, to: t.owner, x: t.x, z: t.z, k: 'hurt', kill: t.hp <= 0 });
 }
@@ -3929,7 +4099,9 @@ function healWounded(g, list, dt) {
     }
     if (best) {
       const rate = g.tick - (best.woundAt ?? -1e9) >= A.calm / TICK ? 1 : A.hot;
-      best.hp = best.hpWas = Math.min(UNITS[best.type].models * UNITS[best.type].hpPer, best.hp + A.heal * rate * dt); best.healAt = g.tick;
+      const hp = Math.min(UNITS[best.type].models * UNITS[best.type].hpPer - best.hp, A.heal * rate * dt * recoveryRate(best) * recoveryRate(m), m.logistics ? m.logistics.provisions * 5 : Infinity);
+      if (m.logistics) m.logistics.provisions -= hp / 5;
+      best.hp = best.hpWas = best.hp + hp; best.healAt = g.tick;
     } else if (idle && far) m.path = findPath(g, m, far); // ponytail: one path per half second at most, per idle medic
   }
 }
@@ -4073,9 +4245,11 @@ export function step(g) {
   for (const u of g.units.values()) {
     if (u.hp <= 0) continue;
     const def = UNITS[u.type], w = def.w, sm = suppMul(u);
+    tickReserves(g, u, dt);
+    supplyWithdrawal(g, u);
     if (u.guardHome && dist(u, u.guardHome) > 16) { Object.assign(u, u.guardHome); u.path = []; u.attackId = 0; }
-    if (u.worldGoal && (u.retreating && g.mode?.kind === 'world' ? dist(u, u.worldGoal) <= CFG.reinforceRadius : dist(u, u.routeEnd ?? u.worldGoal) <= 0.25 && !u.path.length && Math.abs(u.moveSpeed ?? 0) < 0.1)) { u.worldGoal = null; u.moveOutcome = 'completed'; u.moveOutcomeTick = g.tick; u.moveResult = ['completed', g.tick]; if (u.retreating) { u.path = []; u.retreating = false; } }
-    if (u.worldGoal && !u.path.length && dist(u, u.worldGoal) > 0.25 && u.repath <= 0) requestStepPath(g, u, u.worldGoal, 'world');
+    if (u.worldGoal && (u.retreating && !u.logistics?.forced && g.mode?.kind === 'world' ? dist(u, u.worldGoal) <= CFG.reinforceRadius : dist(u, u.routeEnd ?? u.worldGoal) <= 0.25 && !u.path.length && Math.abs(u.moveSpeed ?? 0) < 0.1)) { u.worldGoal = null; u.moveOutcome = 'completed'; u.moveOutcomeTick = g.tick; u.moveResult = ['completed', g.tick]; if (u.retreating) { u.path = []; u.retreating = false; } }
+    if (!(u.convoy && !u.convoy.manual) && u.worldGoal && !u.path.length && dist(u, u.worldGoal) > 0.25 && u.repath <= 0) requestStepPath(g, u, u.worldGoal, 'world');
     if (!def.structure && u.hp > 0) startQueuedOrders(g, u);
     if (def.building) { if (u.queue?.length && u.built >= 1 && !g.mode.suddenDeath) train(g, u, dt); continue; }
     if (def.air) { stepPlane(g, u, dt); continue; }
@@ -4090,7 +4264,7 @@ export function step(g) {
     u.cooldown -= dt; u.retarget -= dt; u.repath -= dt; u.cd -= dt; u.buff -= dt; u.sprint -= dt; u.react -= dt;
 
     // auto-retreat: a broken unit runs for home by itself
-    if (u.autoRetreat && u.owner !== g.mode?.slot && !u.retreating && def.speed > 0 && u.hp < def.models * def.hpPer * CFG.autoRetreat && dist(u, homeOf(g, u)) > CFG.reinforceRadius) retreatUnit(g, u);
+    if (!u.convoy && u.autoRetreat && u.owner !== g.mode?.slot && !u.retreating && def.speed > 0 && u.hp < def.models * def.hpPer * CFG.autoRetreat && dist(u, homeOf(g, u)) > CFG.reinforceRadius) retreatUnit(g, u);
     // autocast: twice a second, a ready ability goes off by itself when it's worth it. Through command(), so Munitions,
     // cooldowns and checks apply; never over a player's own ability order (u.nade) and never while retreating.
     if (u.auto && u.cd <= 0 && !u.nade && !u.retreating && (g.tick + u.id) % AUTO_EVERY === 0) {
@@ -4102,7 +4276,7 @@ export function step(g) {
     if (u.build) {
       const s = g.units.get(u.build);
       if (!s || s.hp <= 0 || (s.built >= 1 && s.hp >= UNITS[s.type].hpPer)) u.build = 0;
-      else if (dist(u, s) <= UNITS[s.type].radius + CFG.classic.buildReach) { u.path = []; crews.set(s.id, (crews.get(s.id) ?? 0) + 1); }
+      else if (dist(u, s) <= UNITS[s.type].radius + CFG.classic.buildReach) { u.path = []; if (!crews.has(s.id)) crews.set(s.id, []); crews.get(s.id).push(u); }
       else if (!u.path.length && u.repath <= 0) requestStepPath(g, u, s, 'build');
     }
 
@@ -4132,23 +4306,25 @@ export function step(g) {
     // grenade order: walk into range, then throw. An autocast one thrown where the unit stands keeps its route.
     if (u.nade) {
       const ab = def.ab, halt = !u.nade.auto || u.nade.walked;
-      if ((ab.id === 'barrage' || ab.id === 'grenade' || ab.id === 'satchel') && dist(u, u.nade) <= ab.range && !payAb(g, u)) u.nade = null; // can't afford it any more
+      if ((ab.id === 'barrage' || ab.id === 'grenade' || ab.id === 'satchel') && dist(u, u.nade) <= ab.range && (!canFire(u, ['grenade','satchel'].includes(ab.id) && w?.perModel ? alive(u) : 1) || !payAb(g, u))) u.nade = null; // can't afford it any more
       else if (ab.id === 'barrage' && dist(u, u.nade) <= ab.range) {
         launchSalvo(g, u, u.nade, ab.shells); u.cooldown = w.interval; u.cd = ab.cd; u.nade = null; if (halt) u.path = [];
       } else if ((ab.id === 'grenade' || ab.id === 'satchel') && dist(u, u.nade) <= ab.range) {
+        consumeAmmo(u, w?.perModel ? alive(u) : 1);
         const at = { x: u.nade.x, z: u.nade.z, y: levelAt(g, u.nade.x, u.nade.z) * CFG.levelHeight + 0.02 };
         const flight = addFlight(g, u, at, PROJECTILE_PROFILES.grenade, { duration: ab.fuse, explosive: true, blastSource: ab, blastRadius: ab.radius, effect: 'boom' });
         g.nades.push({ x: at.x, z: at.z, t: ab.fuse, owner: u.owner, ab, flight: flight.id });
         g.shots.push({ f: u.id, fo: u.owner, x: at.x, z: at.z, k: 'throw', physical: true, local: true });
         u.nade = null; u.cd = ab.cd; if (halt) u.path = [];
-      } else if (u.repath <= 0) { requestStepPath(g, u, u.nade, 'nade'); if (u.nade) u.nade.walked = true; } // a spot with no way to it is dropped
+      } else if (u.logistics?.forced) u.nade=null;
+      else if (u.repath <= 0) { requestStepPath(g, u, u.nade, 'nade'); if (u.nade) u.nade.walked = true; } // a spot with no way to it is dropped
     }
 
     // heading into a building: walk up to it, then step inside
     if (u.enter >= 0) {
       const at = cellCenter(g, u.enter);
       if (g.chars[u.enter] !== 'B') u.enter = -1;
-      else if (dist(u, at) <= CELL * 1.6) { Object.assign(u, { garrison: u.enter, enter: -1, board: 0, x: at.x, z: at.z, path: [] }); updateGrid(g, u); }
+      else if (dist(u, at) <= CELL * 1.6) { u.garrisonEntry={x:u.x,z:u.z}; Object.assign(u, { garrison: u.enter, enter: -1, board: 0, x: at.x, z: at.z, path: [] }); updateGrid(g, u); }
       else if (!u.path.length && u.repath <= 0) requestStepPath(g, u, at, 'enter');
     }
 
@@ -4181,11 +4357,11 @@ export function step(g) {
       const t = g.units.get(u.attackId);
       if (!t || !g.players[u.owner].visible.has(t.id)) u.attackId = 0;
       else if (canShoot(g, u, t)) { u.path = []; setTarget(g, u, t.id); }
-      else if (u.repath <= 0) requestStepPath(g, u, t, 'attackId');
+      else if (!u.logistics?.forced && u.repath <= 0) requestStepPath(g, u, t, 'attackId');
     }
 
     // incoming fire and spacing for units with nothing ordered (see react)
-    if (!def.structure) react(g, u, def);
+    if (!def.structure && !u.convoy && !u.logistics?.forced) react(g, u, def);
 
     // Global waypoints, voluntary traffic steering and swept contact are separate steps.
     const before = { x: u.x, z: u.z, rot: u.rot }, groundVehicle = isGroundVehicle(def);
@@ -4195,8 +4371,10 @@ export function step(g) {
     let grade = 0;
     if (g.height && u.path.length) { const wp = u.path[0], d = dist(u, wp) || 1; grade = heightAt(g, u.x + (wp.x - u.x) / d, u.z + (wp.z - u.z) / d) - heightAt(g, u.x, u.z); }
     if (u.pace && (u.attackId || u.retreating || !u.path.length)) u.pace = 0;
-    const speed = (u.pace ? Math.min(def.speed, u.pace) : def.speed) * (u.retreating ? CFG.retreatSpeed : u.sprint > 0 ? def.ab.speed : sm.speed) * speedMul(g, u)
+    let speed = (u.pace ? Math.min(def.speed, u.pace) : def.speed) * (u.retreating ? CFG.retreatSpeed : u.sprint > 0 ? def.ab.speed : sm.speed) * speedMul(g, u)
       * (1 - CFG.slope[def.infantry ? 0 : 1] * Math.min(1, Math.max(0, grade))) * weatherSpeed(g, def);
+    if (u.logistics?.fuel !== null && u.logistics?.fuel !== undefined) speed *= Math.min(1, (u.logistics.fuel + (u.logistics.forced ? u.logistics.emergency : 0)) / dt);
+    if (u.convoy) speed = Math.min(speed, convoyTravelBudget(g, u, speed * dt) / dt);
     rememberTrafficPosition(u, dt);
     let trafficTerrain;
     const trafficView = () => trafficTerrain ??= g.mode?.kind === 'world' ? worldPathView(g, u.owner) : observedPathView(g, u.owner);
@@ -4205,7 +4383,7 @@ export function step(g) {
       clear: (a, b) => walkable(trafficView(), a, b, blockOf(def), groundVehicle ? bodyRadius(def) : 0.9),
       coverRank: at => def.infantry ? coverRank(trafficView(), at, u.hitFrom) : 3,
     });
-    if ((traffic.replan || groundVehicle && u.stuck > 0.75) && u.repath <= 0) {
+    if (!(u.convoy && !u.convoy.manual) && (traffic.replan || groundVehicle && u.stuck > 0.75) && u.repath <= 0) {
       const goal = u.worldGoal ?? u.amove ?? u.path.at(-1);
       if (goal) { const route = findPath(g, u, goal); if (route.length) u.path = route; u.repath = 1; }
     }
@@ -4224,6 +4402,8 @@ export function step(g) {
           next = vehicleStep(u, def, [goal], Math.min(speed, 1.2), dt, direction < 0); break;
         }
       }
+      const fuelLimit = speed * dt, proposed = dist(next, before);
+      if ((u.convoy || u.logistics) && proposed > fuelLimit) { const f = fuelLimit / (proposed || 1); next.x = before.x + (next.x-before.x)*f; next.z = before.z + (next.z-before.z)*f; next.moveSpeed *= f; }
       // Never allow a hull to rotate or travel through a cell during this tick.
       let clearMotion = sweptVehicleClear(g, before, next, def, blockOf(def));
       if (clearMotion) {
@@ -4257,7 +4437,10 @@ export function step(g) {
       }
     }
     u.vx = (u.x - before.x) / dt; u.vz = (u.z - before.z) / dt;
-    const moved = dist(u, before), moving = u.path.length > 0 || moved > 0.001;
+    const moved = dist(u, before);
+    consumeDrivingFuel(u, Math.min(dt, moved / Math.max(speed, 0.001)));
+    if (u.convoy) consumeConvoyTravel(g, u, moved);
+    const moving = u.path.length > 0 || moved > 0.001;
     if (!u.path.length) u.drift = false;
     updateGrid(g, u);
     if (def.crushes && moved > 0) { const c = cellOf(g, u.x, u.z); if (c >= 0 && CFG.crush[g.chars[c]]) wreckCell(g, [], c, CFG.crush[g.chars[c]]); }
@@ -4288,6 +4471,7 @@ export function step(g) {
     const progressSpeed = u.motionClearance ? Math.min(speed, 1.2) * (u.motionClearance.reverse ? movementProfile(u.type, def).reverseSpeed : 1) : speed;
     if (u.path.length && moved < progressSpeed * dt * 0.3 && !turningInPlace) { u.stuck += dt; }
     else u.stuck = 0;
+    if (u.logistics?.forced && u.path.length && !u.supplyHold) { u.logistics.stranded=u.stuck>1; u.retreating=!u.logistics.stranded; }
     keepFacing(u);
 
     // A vehicle standing still keeps its front armor toward the danger: the target it is fighting when that can hurt
@@ -4301,13 +4485,13 @@ export function step(g) {
     }
 
     // targeting + firing
-    if (u.retreating) { u.targetId = 0; u.aim = u.rot; continue; }
+    if (!w?.range || !canFire(u) || u.retreating) { u.targetId = 0; u.aim = u.rot; continue; }
     if (u.fireAt >= 0) {
       const at = cellCenter(g, u.fireAt);
       u.aim = Math.atan2(at.z - u.z, at.x - u.x); u.targetId = 0;
-      if (!u.path.length && dist(u, at) <= w.range && u.cooldown <= 0 && w.salvo && u.still >= w.setup) { launchSalvo(g, u, at); u.cooldown = w.interval; }
+      if (!u.path.length && dist(u, at) <= w.range && u.cooldown <= 0 && w.salvo && u.still >= w.setup) { launchSalvo(g, u, at); u.cooldown = w.interval * shortageRate(u); }
       else if (!u.path.length && dist(u, at) <= w.range && u.cooldown <= 0 && !w.salvo && los(g, u, at)) {
-        u.cooldown = w.interval * sm.rate;
+        u.cooldown = w.interval * sm.rate * shortageRate(u);
         fireTerrain(g, u, at);
       }
       continue;
@@ -4330,11 +4514,17 @@ export function step(g) {
 
   // more engineers build faster, with diminishing returns (2 = ~1.65x, 3 = ~2.2x). Finished buildings get
   // repaired instead, for free but slowly (and slower than Sudden Death decay).
-  for (const [id, n] of crews) {
+  for (const [id, workers] of crews) {
     const s = g.units.get(id);
     if (!s || s.hp <= 0) continue;
-    const def = UNITS[s.type], crew = n ** CFG.classic.crew;
-    if (s.built >= 1) { repairBuildingSections(g, s, def.hpPer * Math.min(CFG.classic.repair * crew, g.mode?.suddenDeath ? CFG.classic.decay * 0.6 : Infinity) * dt); continue; }
+    const def = UNITS[s.type], crew = workers.length ** CFG.classic.crew;
+    if (s.built >= 1) {
+      const rate=workers.reduce((n,u)=>n+recoveryRate(u),0)/workers.length;
+      const available=workers.reduce((n,u)=>n+(u.logistics ? u.logistics.provisions*5 : Infinity),0);
+      let repaired=repairBuildingSections(g,s,Math.min(available,def.hpPer * Math.min(CFG.classic.repair * crew * rate,g.mode?.suddenDeath ? CFG.classic.decay*.6:Infinity)*dt));
+      for(const u of workers) {if(!u.logistics)break;const paid=Math.min(repaired,u.logistics.provisions*5);u.logistics.provisions-=paid/5;repaired-=paid;}
+      continue;
+    }
     if (g.mode?.suddenDeath) continue; // construction stops
     const rate = crew / (def.buildTime ?? 1) * dt;
     s.built = Math.min(1, s.built + rate);
@@ -4483,14 +4673,15 @@ export function step(g) {
     if (!home && !(u.hp > 0 && u.hp < full && u.owner !== g.mode?.slot && atAid(u))) { u.reinf = 0; continue; }
     if (def.infantry) {
       const cost = def.cost / def.models * 0.5;
-      if ((u.reinf += dt) >= CFG.reinforceEvery * (home ? 1 : CFG.aid.slow) && p.mp >= cost) { u.reinf = 0; p.mp -= cost; tally(g, u.owner, 'mpSpent', cost); u.hp = Math.min(full, (alive(u) + 1) * def.hpPer); }
+      if ((u.reinf += dt * recoveryRate(u)) >= CFG.reinforceEvery * (home ? 1 : CFG.aid.slow) && p.mp >= cost && supportProvision(g, u, u.owner, 5, supplyHooks(g))) { u.reinf = 0; p.mp -= cost; tally(g, u.owner, 'mpSpent', cost); u.hp = Math.min(full, (alive(u) + 1) * def.hpPer); }
     } else {
-      const hp = Math.min(full - u.hp, 18 * dt), cost = hp * 0.5;
-      if (p.mp >= cost) { u.hp += hp; p.mp -= cost; u.reinf = 1; tally(g, u.owner, 'mpSpent', cost); }
+      const hp = Math.min(full - u.hp, 18 * dt * recoveryRate(u)), cost = hp * 0.5;
+      if (hp > 0 && p.mp >= cost && supportProvision(g, u, u.owner, hp / 5, supplyHooks(g))) { u.hp += hp; p.mp -= cost; u.reinf = 1; tally(g, u.owner, 'mpSpent', cost); }
     }
   }
 
   for (const u of list) if (u.hp <= 0) {
+    convoyDeath(g, u);
     g.units.delete(u.id); if (UNITS[u.type].building) wreckBuilding(g, u);
     // A knocked-out vehicle stays where it stopped (not one that went into the river with its bridge). On open ground,
     // a crater, a road or mud its cell becomes a wreck (Q): vehicles go around, infantry take cover, explosions clear
@@ -4520,7 +4711,7 @@ export function step(g) {
   // capture points: infantry only, uncontested by another team. A point belongs to the player who took it;
   // teammates standing on it keep it theirs.
   for (const p of g.points) {
-    const on = list.filter(u => u.hp > 0 && !g.players[u.owner].out && !u.retreating && !u.riding && UNITS[u.type].infantry && dist(u, p) <= CFG.pointRadius);
+    const on = list.filter(u => u.hp > 0 && !g.players[u.owner].out && !u.retreating && !u.logistics?.forced && !u.riding && UNITS[u.type].infantry && dist(u, p) <= CFG.pointRadius);
     p.onPoint = on.map(u => u.id);
     p.contested = on.some(u => !allied(g, u.owner, on[0].owner));
     if (!on.length || p.contested) continue;
@@ -4562,6 +4753,7 @@ export function step(g) {
     pl.inc = pl.away || pl.out ? 0 : (base + held.reduce((a, p) => a + p.mp, 0) + Math.min(CFG.catchupMax, (lead - teamVp(pl.team)) / CFG.catchupPer)) * g.army.income;
     pl.mp += pl.inc * dt;
   }
+  stepConvoys(g, dt, supplyHooks(g));
   if (g.mode?.kind === 'classic') {
     // Annihilation: no Production Building (a site of one counts) = out, and everything you own goes with you
     if (g.winner === null) g.mode.timeLeft -= dt; // the clock stops once decided
@@ -4805,7 +4997,7 @@ export function snapshotFor(g, slot, shots, cells = [], cache) {
   const p = g.players[slot], r = (v) => Math.round(v * 10) / 10;
   const seen = (id) => seenBy(g, slot, id);
   return {
-    t: 's', tick: g.tick,
+    t: 's', tick: g.tick, logistics: logisticsSnapshot(g, slot),
     movement: [...g.units.values()].filter(u => u.owner === slot && u.moveOutcome).map(u => [u.id, u.moveOutcome, u.moveOutcomeTick ?? g.tick, ...(u.moveResult ?? [])]), winner: g.winner, end: g.winner === null ? undefined : { reason: g.endReason, x: g.endAt.x, z: g.endAt.z }, mp: Math.floor(p.mp), inc: r(p.inc), mun: p.mun === undefined ? undefined : Math.floor(p.mun), fuel: p.fuel === undefined ? undefined : Math.floor(p.fuel), fuelInc: p.fuelInc === undefined ? undefined : r(p.fuelInc),
     nodes: g.mode?.kind === 'world' ? worldNodesFor(g, slot) : cache ? cache.nodes : g.nodes?.map(n => [r(n.x), r(n.z), n.rate, n.fuel ? 1 : 0]), upkeep: p.upkeep === undefined ? undefined : r(p.upkeep), out: cache ? cache.out : g.players.map(q => !!q.out),
     // your own units' orders, for drawing when selected: [id, kind, target x, target z, ...remaining waypoints x, z]

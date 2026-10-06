@@ -241,7 +241,7 @@ function snapshot(s, prev) {
   for (const [id, p] of before) {
     if (after.has(id)) continue;
     const [, type, owner, x, z, , , , , , , , flags, , built] = p;
-    if (owner !== me || !UNITS[type]) continue;
+    if (owner !== me || !UNITS[type] || type === 'truck') continue;
     if (!shotsAt.get(id)?.some(q => q.kill)) {
       if ((built ?? 1) < 1) continue; // a site you cancelled
       const home = hooks.home();

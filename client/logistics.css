@@ -1,0 +1,9 @@
+.logistics-card { padding: 7px 9px; min-width: 240px; flex: 1 0 100%; box-sizing: border-box; border-top: 1px solid var(--line); }
+.logistics-reserves { display: flex; flex-wrap: wrap; gap: 8px 18px; max-height: 150px; overflow: auto; font-size: 13px; }
+.logistics-reserves > div { display: grid; gap: 1px; }
+.logistics-reserves b { color: var(--brass); }
+.logistics-card .ci-h { margin: 6px 0; font-size: 12px; }
+.logistics-card button { padding: 5px 9px; }
+#buy:has(.grp) .logistics-card { position: absolute; bottom: calc(100% + 8px); left: 0; right: 0; background: rgba(19, 23, 22, .94); border: 1px solid var(--line); }
+#buy:has(.grp) .logistics-reserves > div { display: flex; flex-wrap: wrap; gap: 6px 16px; }
+#buy:has(.grp) .logistics-reserves { max-height: 90px; }

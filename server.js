@@ -209,11 +209,11 @@ function trimmed(room, net, msg, cache) {
   return msg;
 }
 const sendSeat = (room, i, shots, cells, cache, extra) => { const p = room.players[i]; if (connected(p)) p.ws.send(JSON.stringify(trimmed(room, p.net ??= { sent: new Map() }, { ...snapshotFor(room.game, i, shots, cells, cache), ...extra }, cache))); };
-function watcherSnapshot(g, shots, cells, cache, extra) {
+export function watcherSnapshot(g, shots, cells, cache, extra) {
   const msg = { ...snapshotFor(g, 0, shots, cells, cache), ...extra };
   // A spectator has no seat. The projected seat supplies terrain and visible units,
   // but its private jobs, orders and authored mission messages belong to that player.
-  for (const key of ['movement', 'queues', 'productionJobs', 'plans', 'orders', 'air', 'mp', 'inc', 'mun', 'fuel', 'fuelInc', 'upkeep', 'sup', 'rally', 'home', 'works', 'covers']) delete msg[key];
+  for (const key of ['movement', 'queues', 'productionJobs', 'plans', 'orders', 'air', 'mp', 'inc', 'mun', 'fuel', 'fuelInc', 'upkeep', 'sup', 'rally', 'home', 'works', 'covers', 'logistics']) delete msg[key];
   if (msg.world) {
     msg.world = { ...msg.world };
     for (const key of ['home', 'owned', 'cap', 'recovery']) delete msg.world[key];
@@ -265,6 +265,11 @@ async function lobby(room) {
   }); });
 }
 
+export function logisticsEnabledFor(mode, map) {
+  if (map.scenario) return map.scenario.logistics === true;
+  return ['conquest', 'classic', 'annihilation', 'world'].includes(mode);
+}
+
 // (re)start a match with the room's settings; everyone gets the new game
 async function startMatch(room) {
   const starting = room.starting = {};
@@ -287,7 +292,7 @@ async function startMatch(room) {
   let game;
   try {
     game = createGame(map, room.players.map(p => p.name), true, room.players.map(p => p.team), room.players.map(p => p.faction), { mode: room.mode, worldSize: room.worldSize ?? 'huge', defenderTeam: room.defenderTeam, army: room.army,
-      weather: room.weather ?? 'map', mapKey: room.mapName, weatherSeed: Math.floor(Math.random() * 2 ** 31) });
+      weather: room.weather ?? 'map', mapKey: room.mapName, weatherSeed: Math.floor(Math.random() * 2 ** 31), logistics: room.logistics !== false && logisticsEnabledFor(room.mode, map) });
   } catch {
     Object.assign(room, previous);
     room.starting = null;

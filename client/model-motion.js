@@ -1,6 +1,6 @@
 import * as THREE from 'three';
 
-const LAND = new Set(['tank', 'medium', 'tiger', 'churchill', 'tankdestroyer', 'armoredcar', 'halftrack', 'flaktrack', 'rocket']);
+const LAND = new Set(['tank', 'medium', 'tiger', 'churchill', 'tankdestroyer', 'armoredcar', 'halftrack', 'flaktrack', 'rocket', 'truck']);
 const SEA = new Set(['lcvp', 'gunboat', 'destroyer']);
 const clamp = (x, limit) => Math.max(-limit, Math.min(limit, x));
 const angle = (a) => Math.atan2(Math.sin(a), Math.cos(a));
