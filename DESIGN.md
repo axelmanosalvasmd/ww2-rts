@@ -221,8 +221,8 @@ only through `command()`.
 - `think(g, slot, opts)` keeps its signature. It builds or accepts a view, then calls `plan(view, ...)`, which has no
   reference to the authoritative game. Orders go through `opts.submit` (default `command(g, slot, cmd)`). Engineer
   node assignments and the squad sent to rebuild a bridge live in private per-seat memory, not on the units.
-- The server refreshes each AI observation on the human snapshot beat (every 2 to 4 ticks). A turn between beats uses
-  the previous view. A seat handed over from a human waits for the next beat and keeps the terrain it had discovered.
+- The server refreshes each AI observation on the human snapshot beat (every 2 to 4 ticks), but only for seats that
+  think within the next 4 ticks (the Horde every beat). A turn between beats uses the previous view. A seat handed over from a human waits for the next beat and keeps the terrain it had discovered.
 - `seenBy(g, slot, id)` in `sim.js` is the one visibility predicate (reveal, allied, visible, and a plane counts only
   while airborne). `snapshotFor()` and the AI both use it.
 - Terrain starts from an immutable copy of the public map (`g.initialTerrain`, taken before Classic buildings or

@@ -5,6 +5,10 @@ AI-vs-AI runs (see DESIGN.md for the balance log). Add new entries under **Unrel
 
 ## Unreleased
 
+- Reduced World Conquest lag from AI players. Every AI rebuilt its full view, copying its whole terrain memory, on
+  every snapshot beat (every 2 to 4 ticks), though a Normal AI thinks only every 40 ticks. Now only AIs that think
+  before the next beat observe, still from the beat the players were last sent. In a 2-player, 2-AI World Conquest
+  probe the AI share of a server tick fell from p95 13 to 44 ms to 4 to 6 ms.
 - Fixed the Engineers' Build card in Classic and World Conquest showing only an empty "Build" tab after a Conquest
   (or other recruit-bar) match in the same page. The recruit bar's tab layout stayed on and hid every building card.
 
