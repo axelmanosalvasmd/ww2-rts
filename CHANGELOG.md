@@ -8,6 +8,8 @@ AI-vs-AI runs (see DESIGN.md for the balance log). Add new entries under **Unrel
 - Fixed the Engineers' Build card in Classic and World Conquest showing only an empty "Build" tab after a Conquest
   (or other recruit-bar) match in the same page. The recruit bar's tab layout stayed on and hid every building card.
 
+### 2026-10-05: Right-side unit-loss notices (`fb51574`)
+
 - Unit losses now appear as larger red notices on the right above the minimap for 12 seconds, with the unit name and a
   shortcut to look at the loss location. Routine tips stay above the minimap and cannot hide these notices.
   Space prioritizes a visible loss; nearby losses still combine, and at most two notices show at once.
