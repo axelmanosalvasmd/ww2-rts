@@ -5,6 +5,8 @@ AI-vs-AI runs (see DESIGN.md for the balance log). Add new entries under **Unrel
 
 ## Unreleased
 
+### 2026-10-05: Physical supply routes and unit reserves (`165b0fe`)
+
 - Armies now depend on physical supply trucks in Conquest, Classic, Annihilation and World Conquest. Deliveries run automatically, with optional direct orders, hold/resume controls and a logistics overlay.
 - Units carry about 90 seconds of ammunition and 120 seconds of provisions. Vehicles burn a 180-second fuel reserve while driving and keep 60 seconds for escape. Reserves below 25% reduce firing or recovery; exhausted provisions trigger a 20-second withdrawal warning. Recovery requires 50% of every applicable reserve, and encircled troops remain stranded until they can escape or receive relief.
 - Build forward Supply Caches for 60 MP in 12 seconds. Captured World regions gain empty relays, rebuilt HQs restore supply, allied relief keeps separate paid stocks, and lost trucks receive free replacements after 30 seconds. Classic and World cargo spends existing Munitions and Fuel without changing income rules.

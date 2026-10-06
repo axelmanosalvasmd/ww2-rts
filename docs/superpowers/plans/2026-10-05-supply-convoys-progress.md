@@ -49,3 +49,5 @@ The user explicitly waived further review/permission prompts and requested compl
 
 - Final required verification: node test.js exited 0 on codex/supply-convoys (session 64569). Reserve 17/17, scheduler 28/28, physical delivery, World, real-server default activation and client fixtures pass. AI fog replay passed 4,489 paired turns and 1,975 orders; the full AI match and all 11 room-lifecycle scenarios passed. All simulation, model, browser-serving and performance regression checks passed. Game and test file fingerprints remained unchanged during the run.
 - Feature changes are present in the shared checkout; its existing index and unrelated changes remain preserved. No GitHub publishing was requested. Keep the feature branch and its native worktree for recovery and review.
+
+- Recorded feature slice as local commit 165b0fe on codex/supply-convoys; its dated changelog entry references that verified implementation commit.
