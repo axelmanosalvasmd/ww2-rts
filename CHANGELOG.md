@@ -5,6 +5,13 @@ AI-vs-AI runs (see DESIGN.md for the balance log). Add new entries under **Unrel
 
 ## Unreleased
 
+
+
+- Fixed the Engineers' Build card in Classic and World Conquest showing only an empty "Build" tab after a Conquest
+  (or other recruit-bar) match in the same page. The recruit bar's tab layout stayed on and hid every building card.
+
+### 2026-10-06: Horde Kaiju boss (`cedf7ba`)
+
 - Horde has a boss. Every tenth Wave a Kaiju walks on with the rest: a 17 m atomic lizard with glowing back
   plates. It walks, swings its tail and turns its head toward what it is about to burn. "THE KAIJU HAS SURFACED"
   rings out when it arrives, it always shows through the fog, and a big red health bar across the top of the screen
@@ -20,10 +27,6 @@ AI-vs-AI runs (see DESIGN.md for the balance log). Add new entries under **Unrel
 - Found, not fixed: Horde runs on Kasserine Pass stall. A single Conscript gets stuck short of the bunker
   (around 161,189 and 163,155), so the Wave never ends. It happens with the Kaiju switched off too (Waves 7, 9 and
   11 cut off at 90 minutes, where the balance log had 13/15/14 with none cut off), so it comes from somewhere else.
-
-
-- Fixed the Engineers' Build card in Classic and World Conquest showing only an empty "Build" tab after a Conquest
-  (or other recruit-bar) match in the same page. The recruit bar's tab layout stayed on and hid every building card.
 
 ### 2026-10-05: Right-side unit-loss notices (`fb51574`)
 
