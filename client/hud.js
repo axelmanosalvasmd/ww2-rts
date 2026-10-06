@@ -456,7 +456,8 @@ export function createHud(ctx) {
     const card = $('buy');
     card.classList.remove('lettered');
     recruiting = false;
-    if (ctx.classic()) { card.innerHTML = ''; card.classList.add('hidden'); return; }
+    // drop the recruit bar's tab layout a previous Conquest match left behind: 'fit' hides every closed group's cards
+    if (ctx.classic()) { card.innerHTML = ''; card.classList.add('hidden'); card.classList.remove('fit', 'picked', 'lettered'); return; }
     card.classList.remove('hidden');
     const types = UNIT_TYPES.filter((t) => canBuild(t, ctx.facOf(ctx.me)) && !UNITS[t].classic && (!UNITS[t].naval || ctx.naval()));
     card.innerHTML = groupsHTML(types, (t) => unitCard(t, `data-unit="${t}"`, `${UNITS[t].cost}<span class="cu"> MP</span>`, '', unitTip(t, ctx.me, `. ${UNITS[t].cost} MP`)));

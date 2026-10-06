@@ -5,6 +5,9 @@ AI-vs-AI runs (see DESIGN.md for the balance log). Add new entries under **Unrel
 
 ## Unreleased
 
+- Fixed the Engineers' Build card in Classic and World Conquest showing only an empty "Build" tab after a Conquest
+  (or other recruit-bar) match in the same page. The recruit bar's tab layout stayed on and hid every building card.
+
 ### 2026-10-05: Windows naval source fingerprints (`d8bda15`)
 
 - Fixed naval asset checks rejecting unchanged model sources on Windows because of line endings. Export and
