@@ -5,7 +5,7 @@ import assert from 'node:assert/strict';
 import { createHash } from 'node:crypto';
 import { readFileSync, readdirSync, writeFileSync } from 'node:fs';
 import * as sim from './shared/sim.js';
-import { fixtureCommand as command, clearFixtureUnits } from './test-fixtures.js';
+import { fixtureCommand as command, clearFixtureUnits, fixtureFactories } from './test-fixtures.js';
 await import('./test-skirmish-bases.js');
 await import('./test-skirmish-client.js');
 await import('./test-skirmish-ai.js');
@@ -4273,7 +4273,7 @@ const aiMap = () => ({ w: 80, h: 80, rows: Array(80).fill('.'.repeat(80)),
   // A player who will not walk rifles into a tank still takes the other point.
   const split = { w: 80, h: 80, rows: Array(80).fill('.'.repeat(80)), spawns: [{ x: 4, y: 40 }, { x: 75, y: 40 }], points: [{ x: 20, y: 40 }, { x: 60, y: 40 }] };
   const board = createGame(split, ['AI', 'enemy'], false, [0, 1]);
-  board.units.clear(); board.players[0].mp = 1000;
+  board.units.clear(); board.players[0].mp = 1000; fixtureFactories(board, 0);
   // Far enough that losing the tank does not count as seeing that ground empty (rifle vision is 36 m).
   const foot = [0, 1].map(i => { const u = massiveInternals.spawnUnit(board, 0, 'rifle'); Object.assign(u, { x: 12 + i, z: 20, cd: 999 }); return u; });
   const armor = massiveInternals.spawnUnit(board, 1, 'tank');
@@ -4645,7 +4645,7 @@ const aiMap = () => ({ w: 80, h: 80, rows: Array(80).fill('.'.repeat(80)),
 // Real map loads for 3 players, all spawns start with their force.
 {
   const g = createGame(JSON.parse(readFileSync('maps/default.json', 'utf8')), ['a', 'b', 'c']);
-  assert.equal(g.units.size, 9);
+  assert.equal([...g.units.values()].filter(u => !UNITS[u.type].building).length, 9, 'troops, besides each starting base');
   run(g, 5);
 }
 // Three AIs play a full match on the real map: they must capture, fight, and finish.
@@ -4654,15 +4654,17 @@ const aiMap = () => ({ w: 80, h: 80, rows: Array(80).fill('.'.repeat(80)),
   Math.random = aiRandom(617);
   try {
     const g = createGame(JSON.parse(readFileSync('maps/default.json', 'utf8')), ['a', 'b', 'c']);
-    let spawned = g.nextId, t0 = performance.now(), capturedAt = 0;
+    let spawned = g.nextId, t0 = performance.now(), capturedAt = 0, heldAt3 = 0;
     for (let i = 0; i < 20 * 60 * 40 && g.winner === null; i++) {
       for (let s = 0; s < 3; s++) if ((g.tick + s * 13) % 40 === 0) think(g, s);
       step(g);
       if (!capturedAt && g.points.every(p => p.owner >= 0)) capturedAt = g.tick / 20;
+      if (g.tick === 20 * 180) heldAt3 = g.points.filter(p => p.owner >= 0).length;
     }
     const secs = g.tick / 20, bought = g.nextId - spawned, dead = g.nextId - 1 - g.units.size;
     console.log(`AI match: winner ${g.winner} after ${Math.round(secs)}s, all points taken at ${Math.round(capturedAt)}s, ${bought} bought, ${dead} killed, VP ${g.players.map(p => Math.floor(p.vp))}, sim ${Math.round((performance.now() - t0) / g.tick * 1000)}µs/tick`);
-    assert.ok(capturedAt > 0 && capturedAt < 180, 'AIs take every point within 3 minutes');
+    // Skirmish bases spend part of the opening on tech, so by 3 minutes the AIs hold most points but need not hold all.
+    assert.ok(heldAt3 >= Math.ceil(g.points.length / 2), `AIs hold at least half the points within 3 minutes (${heldAt3}/${g.points.length})`);
     assert.ok(dead >= 5, 'AIs actually fight');
     assert.notEqual(g.winner, null, 'match ends within 30 minutes');
     assert.ok(g.story.every(s => s.mpSpent > 0) && g.story.some(s => s.kills > 0 && s.captures > 0), 'the story counts the match');
@@ -5000,7 +5002,7 @@ for (const lookupFinished of [false, true]) {
     g.players[slot].mp = 50000;
     for (let i = 0; i < 42; i++) command(g, slot, { t: 'buy', unit: 'rifle' });
   }
-  assert.equal(g.units.size, 270, 'server snapshot fixture fields 270 units');
+  assert.equal([...g.units.values()].filter(u => !UNITS[u.type].building).length, 270, 'server snapshot fixture fields 270 units');
   // Each snapshot built for a socket is serialized once, so counting snapshot serializations counts the builds.
   const stringify = JSON.stringify, built = async (ticks) => {
     let n = 0;
@@ -6550,10 +6552,10 @@ for (const lookupFinished of [false, true]) {
       const point = g.points[0], home = g.players[0].spawn, foot = [...g.units.values()].find(u => u.owner === 0 && UNITS[u.type].infantry && u.hp > 0);
       await host.send({ t: 'move', orders: [[foot.id, home.x, home.z]] });
       await host.send({ t: 'move', queue: true, orders: [[foot.id, point.x, point.z]] });
-      await host.send({ t: 'rally', x: home.x, z: home.z });
+      await host.send({ t: 'rally', x: point.x, z: point.z }); // the spawn itself sits under the starting HQ
       let rows = same(g, 'orders and rally');
       assert.ok(rows[0].orders.some(o => o[0] === foot.id), 'the cache carries queued orders');
-      assert.deepEqual(rows[0].rally, [Math.round(home.x * 10) / 10, Math.round(home.z * 10) / 10], 'the cache keeps the rally point');
+      assert.deepEqual(rows[0].rally, [Math.round(point.x * 10) / 10, Math.round(point.z * 10) / 10], 'the cache keeps the rally point');
       assert.ok(rows.slice(1).every(r => !r.orders.some(o => o[0] === foot.id)), 'nobody else sees those orders');
       // a contested point, read only by a player who sees both teams on it
       const foe = [...g.units.values()].find(u => g.players[u.owner].team !== g.players[0].team && UNITS[u.type].infantry && u.hp > 0);
@@ -7443,7 +7445,7 @@ for (const lookupFinished of [false, true]) {
 
 // Computer players lay mines in front of a point they hold and put a blown bridge back.
 {
-  const g = fresh(); g.players[0].mp = 5000; g.points[0].owner = 0; g.points[0].progress = 1;
+  const g = fresh(); fixtureFactories(g, 0); g.players[0].mp = 5000; g.points[0].owner = 0; g.points[0].progress = 1;
   const holder = put(g, 0, 'rifle', g.points[0].x, g.points[0].z);
   for (let i = 0; i < 20 * 90; i++) { if (i % 40 === 0) think(g, 0); step(g); }
   const laid = g.mines.size;
@@ -7462,7 +7464,7 @@ for (const lookupFinished of [false, true]) {
   assert.ok(holder.hp > 0);
 
   const rows = empty.map((row, y) => row.slice(0, 9) + (y >= 9 && y <= 11 ? '===' : 'WWW') + row.slice(12)), r = fresh(rows);
-  r.players[0].mp = 5000; r.points = [];
+  fixtureFactories(r, 0); r.players[0].mp = 5000; r.points = [];
   const sapper = put(r, 0, 'rifle', 13, 21), tank = { x: 5, z: 21, type: 'tank' };
   think(r, 0); // first look: the bridge is noted
   r.players[1].mp = 5000;

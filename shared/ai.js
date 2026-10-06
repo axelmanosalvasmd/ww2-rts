@@ -485,7 +485,7 @@ function plan(observation, slot, opts, mem, send) {
   };
   // bombs for tanks and for squads holed up in houses
   // an enemy air strike announced near my units: put fighter cover over it (cover arrives in 2s, strikes take 3-6s)
-  const incoming = view.strikes.find(q => q.t > 0 && !allied(view, q.owner, slot) && SUPPORT_PLANE(q.kind) && mine.some(u => d(u, q) < 25));
+  const incoming = view.strikes.find(q => q.t > 0 && !allied(view, q.owner, slot) && SUPPORT_PLANE(q.kind) && all.some(u => d(u, q) < 25)); // builders under the bombs count too
   if (incoming && can('cover')) call('cover', incoming);
   const heavy = enemies.find(e => (e.type === 'tank' || e.type === 'medium' || e.type === 'tiger' || e.type === 'churchill' || e.type === 'flaktrack') && watched(e));
   if (heavy && can('dive')) call('dive', heavy);

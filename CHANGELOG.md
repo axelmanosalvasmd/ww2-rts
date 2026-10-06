@@ -5,6 +5,12 @@ AI-vs-AI runs (see DESIGN.md for the balance log). Add new entries under **Unrel
 
 ## Unreleased
 
+- The full test suite passes again after merging skirmish production bases. Fixed the AI ignoring an enemy air strike
+  on squads busy building: a squad sent to rebuild a base no longer gets bombed without fighter cover. Test setups
+  that wipe the map or count units now allow for the starting HQ and Barracks. The AI-match check now asks for at
+  least half the points within 3 minutes instead of all of them: with bases, AIs hold 6 of 7 at 3 minutes in seeded
+  runs and take all 7 at about 7.5 minutes, since part of the opening goes to tech.
+
 - Fixed the Engineers' Build card in Classic and World Conquest showing only an empty "Build" tab after a Conquest
   (or other recruit-bar) match in the same page. The recruit bar's tab layout stayed on and hid every building card.
 

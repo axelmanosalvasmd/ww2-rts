@@ -1,7 +1,8 @@
 // Physical flight checks use normal attack, fire-at and ability commands after arranging a controlled fixture.
 import assert from 'node:assert/strict';
 import * as sim from './shared/sim.js';
-import { createGame, command, step, snapshotFor, UNITS, TICK } from './shared/sim.js';
+import { createGame, step, snapshotFor, UNITS, TICK } from './shared/sim.js';
+import { fixtureCommand as command } from './test-fixtures.js';
 import { sweepBody, contactResponse, CONTACT_MATERIALS } from './shared/projectiles.js';
 import { createProjectileView } from './client/projectiles.js';
 

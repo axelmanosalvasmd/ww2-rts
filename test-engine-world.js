@@ -2,6 +2,7 @@ import assert from 'node:assert/strict';
 import { createGame, command, step, terrainFor, snapshotFor, damageCells, damageWorldSection, mutateWorldCell, worldMaterial, validateMap, placementCheck, CELL, CFG, UNITS, FORTS, TERRAIN, ROAD, VBLOCK, findPath, TICK } from './shared/sim.js';
 import { DEBRIS_LIMITS } from './shared/debris-motion.js';
 import { migrateWorldMap, mapForClient } from './shared/world-layers.js';
+import { clearFixtureUnits } from './test-fixtures.js';
 
 const map = (n = 64) => ({ name: 'World contract', w: n, h: n, rows: Array(n).fill('.'.repeat(n)), spawns: [{ x: 2, y: 2 }, { x: n - 3, y: n - 3 }], points: [{ x: n >> 1, y: n >> 1 }] });
 const write = (m, x, y, ch) => { m.rows[y] = m.rows[y].slice(0, x) + ch + m.rows[y].slice(x + 1); };
@@ -169,7 +170,7 @@ const settleTicks = Math.ceil(DEBRIS_LIMITS.lifetime / TICK) + 2;
 {
   const m = map();
   for (let y = 30; y < 38; y++) for (let x = 20; x < 36; x++) write(m, x, y, 'B');
-  const g = make(m);
+  const g = make(m); clearFixtureUnits(g); // only the test's own block counts, not the starting bases
   for (const section of g.structuralCells.values()) damageWorldSection(g, section.c, Infinity);
   assert.equal(g.fallingSections.length, DEBRIS_LIMITS.active, 'active falling state has a fixed server limit');
   assert.equal([...g.structuralCells.values()].filter(section => section.state === 'failed').length, 128, 'overflow retains all failures');
