@@ -1124,6 +1124,18 @@ function recoverWorld(g, slot) {
   }
   tally(g, slot, 'mpSpent', cost);
 }
+// deep equality for remembered cell rows (arrays, plain objects, numbers and strings), in place of comparing two
+// JSON.stringify strings for every visible cell on every vision pass. Keys set to undefined count as absent, as in JSON.
+function sameValue(a, b) {
+  if (a === b) return true;
+  if (typeof a !== 'object' || typeof b !== 'object' || !a || !b) return typeof a === 'number' && typeof b === 'number' && Number.isNaN(a) && Number.isNaN(b);
+  if (Array.isArray(a)) { if (!Array.isArray(b) || a.length !== b.length) return false; for (let i = 0; i < a.length; i++) if (!sameValue(a[i], b[i])) return false; return true; }
+  if (Array.isArray(b)) return false;
+  let n = 0;
+  for (const k in a) { if (a[k] === undefined) continue; n++; if (!sameValue(a[k], b[k])) return false; }
+  for (const k in b) if (b[k] !== undefined) n--;
+  return n === 0;
+}
 function worldTerrainMemory(g, team) {
   const f = teamFog(g, team), all = g.world.memory;
   let m = all.get(team); if (!m) all.set(team, m = { cells: new Map(), regions: new Map(), wrecks: new Map(), key: null, version: 0 });
@@ -1133,7 +1145,7 @@ function worldTerrainMemory(g, team) {
     const cells = g.reveal ? g.chars.keys() : f.visibleCells;
     for (const c of cells) {
       const row = seenWorldCell(g, c, team), old = m.cells.get(c);
-      if (!old || JSON.stringify(old) !== JSON.stringify(row)) { m.cells.set(c, row); m.version++; }
+      if (!old || !sameValue(old, row)) { m.cells.set(c, row); m.version++; }
     }
   }
   return m;
@@ -1214,7 +1226,7 @@ function worldPathView(g, slot) {
     const flags = new Uint16Array(N), chars = Array(N).fill('.'), ground = Array(N).fill('.'), objects = Array(N).fill('.'), height = new Int8Array(N), mineLayer = new Uint8Array(N);
     m.pathRows = new Map();
     m.path = { ...g, worldKnown: true, flags, chars, ground, objects, mineLayer, height, materials: new Map(), baseMaterials: new Map(), structures: new Map(), structuralCells: new Map(), cellHp: new Float32Array(N), trenchFront: new Float32Array(N).fill(NaN), wrecks: [], worldNearWalls: new Uint8Array(N),
-      navigationObserved: true, wear: new Float32Array(N), pathStats: pathStatsFor(g), initialTerrain: { chars, height } };
+      navigationObserved: true, wear: new Float32Array(N), pathStats: pathStatsFor(g), initialTerrain: { chars, height }, mines: new Map(), mineSeen: new Map() };
   }
   const view = m.path;
   if (m.pathVersion !== m.version) {
@@ -1222,11 +1234,15 @@ function worldPathView(g, slot) {
     view.navigationChangedFromVersion = view.navigationKnowledgeVersion ?? 0;
     for (const [c, row] of m.cells) {
       if (m.pathRows.get(c) === row) continue;
-      changed.push(c);
-      const oldWall = (view.flags[c] & (MOVE | SIGHT)) === (MOVE | SIGHT);
+      const oldWall = (view.flags[c] & (MOVE | SIGHT)) === (MOVE | SIGHT), oldFlags = view.flags[c], oldHeight = view.height[c];
       view.chars[c] = row[1]; view.ground[c] = row[4]?.ground ?? row[1]; view.objects[c] = row[4]?.object ?? '.'; view.mineLayer[c] = row[1] === 'N' ? 1 : 0; view.flags[c] = TERRAIN[row[1] === 'N' ? physicalWorldCell(view, c) : row[1]] ?? 0; view.height[c] = row[2]; view.wear[c] = (row[3] & 3) / 4;
       projectPathCover(view, c, row);
+      // remembered mines, kept up cell by cell (a full pass over every known cell was too slow per call)
+      if (row[1] === 'N') { view.mines.set(c, row[4]?.mineOwned ? view.mineSlot ?? slot : -1); if (row[4]?.mineOwned) view.mineSeen.delete(c); else view.mineSeen.set(c, 1 << p.team); }
+      else { view.mines.delete(c); view.mineSeen.delete(c); }
       m.pathRows.set(c, row);
+      // only passability and height matter to the route graphs; hit points and wear only change the look and cost
+      if (view.flags[c] !== oldFlags || view.height[c] !== oldHeight) changed.push(c);
       if (oldWall !== ((view.flags[c] & (MOVE | SIGHT)) === (MOVE | SIGHT))) {
         const x = c % W, y = Math.floor(c / W);
         for (let ny = Math.max(0,y-1); ny <= Math.min(g.h-1,y+1); ny++)
@@ -1240,23 +1256,29 @@ function worldPathView(g, slot) {
           if ((view.flags[ny*W+nx] & (MOVE | SIGHT)) === (MOVE | SIGHT)) { wall = 1; break; }
       view.worldNearWalls[c] = wall;
     }
-    view.terrainVersion = m.version; view.obstructionVersion = m.version;
-    view.infantryRegionVersion = view.vehicleRegionVersion = view.navalRegionVersion = m.version;
-    view.navigationKnowledge = p.team; view.navigationKnowledgeVersion = m.version; view.navigationChangedCells = changed;
-    const changes = view.navigationChanges ??= []; changes.push({ from: view.navigationChangedFromVersion, to: m.version, cells: changed });
-    if (changes.length > 32) changes.shift(); m.pathVersion = m.version;
+    m.pathVersion = m.version;
+    // The navigation versions move only when the route graphs must follow (a building section's repair, road wear
+    // and the like left them rebuilding the vehicle views every vision pass while a base went up).
+    if (changed.length || view.navigationKnowledge !== p.team) {
+      view.terrainVersion = m.version; view.obstructionVersion = m.version;
+      view.infantryRegionVersion = view.vehicleRegionVersion = view.navalRegionVersion = m.version;
+      view.navigationKnowledge = p.team; view.navigationKnowledgeVersion = m.version; view.navigationChangedCells = changed;
+      const changes = view.navigationChanges ??= []; changes.push({ from: view.navigationChangedFromVersion, to: m.version, cells: changed });
+      if (changes.length > 32) changes.shift();
+    }
   }
-  // Moving units ask for this view many times a step, allies' units in turn, and the mine maps scan every remembered
-  // cell: keep the live part per asking player, rebuilt once per tick or when the remembered ground or vision moves on.
-  const lives = view.lives ??= new Map(), key = `${g.tick}:${m.version}:${g.visionTick ?? -1}`;
+  // the view is the team's: own mines carry the asking teammate's slot
+  if (view.mineSlot !== slot) { for (const [c, owner] of view.mines) if (owner >= 0) view.mines.set(c, slot); view.mineSlot = slot; }
+  // The live parts once per tick per asking player: moving units ask for this view every step (local traffic), and
+  // allies' units take turns in one step, so a single cached slot was rebuilt on nearly every call in team games.
+  const lives = view.lives ??= new Map();
   let live = lives.get(slot);
-  if (live?.key !== key) lives.set(slot, live = { key,
-    units: new Map([...g.units].filter(([id]) => seenBy(g,slot,id))),
-    wrecks: pathWrecksFor(g, slot),
-    fires: new Map([...g.fires].filter(([c]) => teamFog(g,p.team).vis[c])),
-    mineSeen: new Map([...m.cells].filter(([, row]) => row[1] === 'N' && !row[4]?.mineOwned).map(([c]) => [c, 1 << p.team])),
-    mines: new Map([...m.cells].filter(([, row]) => row[1] === 'N').map(([c, row]) => [c, row[4]?.mineOwned ? slot : -1])) });
-  Object.assign(view, { units: live.units, wrecks: live.wrecks, fires: live.fires, mineSeen: live.mineSeen, mines: live.mines });
+  if (live?.tick !== g.tick) {
+    const vis = teamFog(g,p.team).vis;
+    live = { tick: g.tick, units: new Map([...g.units].filter(([id]) => seenBy(g,slot,id))), wrecks: pathWrecksFor(g, slot), fires: new Map([...g.fires].filter(([c]) => vis[c])) };
+    lives.set(slot, live);
+  }
+  view.units = live.units; view.wrecks = live.wrecks; view.fires = live.fires;
   view.wx = g.wx; view.tick = g.tick; view.reveal = g.reveal;
   return view;
 }
@@ -1445,6 +1467,49 @@ function spawnUnit(g, owner, type, n = g.units.size) {
 }
 // Logistics uses the same remembered navigation and visible threats as player orders.
 const supplyRouteViews = new WeakMap();
+// The danger view a safe supply route plans on: the owner's known ground with the cells near seen enemy guns
+// closed, except within 4 m of the truck itself (so it can drive out of one). One view object per owner, kept from
+// call to call: each refresh and each truck's clearing is one incremental change (navigationChangedCells), so the
+// route graphs follow a few cells. A new view per route rebuilt them over the whole world map every time.
+const dangerViews = new WeakMap();
+function dangerView(g, known, u, state) {
+  let owners = dangerViews.get(g); if (!owners) dangerViews.set(g, owners = new Map());
+  let d = owners.get(u.owner);
+  if (!d || d.known !== known || d.flags.length !== known.flags.length) {
+    d = { known, height: new Int8Array(known.height), base: new Uint16Array(known.flags), flags: new Uint16Array(known.flags), next: new Uint16Array(known.flags.length), cleared: [], state: null, version: 0, changes: [], view: {} };
+    owners.set(u.owner, d);
+  }
+  const candidates = new Set(d.cleared), heightChanged = [];
+  if (d.state !== state) {
+    d.state = state;
+    const next = d.next; next.set(known.flags);
+    for (const t of state.threats) {
+      for (let y = Math.max(0, Math.floor((t.z-t.radius)/CELL)); y < Math.min(g.h,Math.ceil((t.z+t.radius)/CELL)); y++) {
+        for (let x = Math.max(0, Math.floor((t.x-t.radius)/CELL)); x < Math.min(g.w,Math.ceil((t.x+t.radius)/CELL)); x++) {
+          if (Math.hypot((x+.5)*CELL-t.x,(y+.5)*CELL-t.z)<=t.radius) next[y*g.w+x] |= MOVE | VBLOCK;
+        }
+      }
+    }
+    for (let c = 0; c < next.length; c++) {
+      if (next[c] !== d.base[c]) { d.base[c] = next[c]; candidates.add(c); }
+      if (d.height[c] !== known.height[c]) { d.height[c] = known.height[c]; heightChanged.push(c); }
+    }
+  }
+  const cleared = [];
+  for (let y=Math.max(0,Math.floor((u.z-4)/CELL));y<Math.min(g.h,Math.ceil((u.z+4)/CELL));y++) {
+    for (let x=Math.max(0,Math.floor((u.x-4)/CELL));x<Math.min(g.w,Math.ceil((u.x+4)/CELL));x++) {
+      if(Math.hypot((x+.5)*CELL-u.x,(y+.5)*CELL-u.z)<=4) { cleared.push(y*g.w+x); candidates.add(y*g.w+x); }
+    }
+  }
+  const open = new Set(cleared), changed = new Set(heightChanged);
+  for (const c of candidates) { const want = open.has(c) ? known.flags[c] : d.base[c]; if (d.flags[c] !== want) { d.flags[c] = want; changed.add(c); } }
+  d.cleared = cleared;
+  const from = d.version;
+  if (changed.size) { d.version++; d.changes.push({ from, to: d.version, cells: [...changed] }); if (d.changes.length > 32) d.changes.shift(); }
+  const v = d.version;
+  return Object.assign(d.view, known, { flags: d.flags, navigationKnowledge: `danger:${u.owner}`, navigationKnowledgeVersion: v, navigationChangedFromVersion: changed.size ? from : v,
+    navigationChangedCells: changed.size ? [...changed] : [], navigationChanges: d.changes, terrainVersion: v, obstructionVersion: v, infantryRegionVersion: v, vehicleRegionVersion: v, navalRegionVersion: v });
+}
 function supplyRoute(g, u, at, safe = false) {
   u.supplyRouteReason = null;
   if (!safe) return findPath(g, u, at);
@@ -1455,26 +1520,11 @@ function supplyRoute(g, u, at, safe = false) {
   let state = owners.get(u.owner);
   if (!state || state.epoch !== epoch || state.version !== version) {
     const threats = [...g.players[u.owner].visible].map(id => g.units.get(id)).filter(t => t && t.hp > 0 && !allied(g, t.owner, u.owner) && UNITS[t.type].w?.range > 0 && !t.air).map(t => ({x:t.x,z:t.z,radius:UNITS[t.type].w.range+3}));
-    state = { epoch, version, threats, flags: null }; owners.set(u.owner, state);
+    state = { epoch, version, threats }; owners.set(u.owner, state);
   }
   if (!state.threats.length) return findPath(g, u, at);
   if (dist(u, at) > 4 && state.threats.some(t => dist(at, t) <= t.radius)) { u.supplyRouteReason = 'dangerous'; return []; }
-  if (!state.flags) {
-    state.flags = new Uint16Array(known.flags);
-    for (const t of state.threats) {
-      for (let y = Math.max(0, Math.floor((t.z-t.radius)/CELL)); y < Math.min(g.h,Math.ceil((t.z+t.radius)/CELL)); y++) {
-        for (let x = Math.max(0, Math.floor((t.x-t.radius)/CELL)); x < Math.min(g.w,Math.ceil((t.x+t.radius)/CELL)); x++) {
-          if (Math.hypot((x+.5)*CELL-t.x,(y+.5)*CELL-t.z)<=t.radius) state.flags[y*g.w+x] |= MOVE | VBLOCK;
-        }
-      }
-    }
-  }
-  const view = {...known, flags: new Uint16Array(state.flags)};
-  for (let y=Math.max(0,Math.floor((u.z-4)/CELL));y<Math.min(g.h,Math.ceil((u.z+4)/CELL));y++) {
-    for (let x=Math.max(0,Math.floor((u.x-4)/CELL));x<Math.min(g.w,Math.ceil((u.x+4)/CELL));x++) {
-      if(Math.hypot((x+.5)*CELL-u.x,(y+.5)*CELL-u.z)<=4) view.flags[y*g.w+x]=known.flags[y*g.w+x];
-    }
-  }
+  const view = dangerView(g, known, u, state);
   const path = findPath(view,u,at);
   if (path.length && supplyPathConnected(view,u,at,path)) return path;
   u.supplyRouteReason=findPath(g,u,at).length?'dangerous':'unreachable';return [];
@@ -1529,10 +1579,7 @@ function fullConvoyRoute(g,u,at,safe) {
   let view=known;
   if (safe) {
     const state=supplyRouteViews.get(g)?.get(u.owner);
-    if(state?.flags) {
-      view={...known,flags:new Uint16Array(state.flags)};
-      for(let y=Math.max(0,Math.floor((u.z-4)/CELL));y<Math.min(g.h,Math.ceil((u.z+4)/CELL));y++) for(let x=Math.max(0,Math.floor((u.x-4)/CELL));x<Math.min(g.w,Math.ceil((u.x+4)/CELL));x++) if(Math.hypot((x+.5)*CELL-u.x,(y+.5)*CELL-u.z)<=4)view.flags[y*g.w+x]=known.flags[y*g.w+x];
-    }
+    if (state?.threats.length) view = dangerView(g, known, u, state);
   }
   view=vehicleNavigationView(view,UNITS[u.type],blockOf(UNITS[u.type]));
   if (!supplyPathConnected(view,u,at,route)) {u.supplyRouteReason=safe?'dangerous':'unreachable';return [];}
@@ -1547,9 +1594,32 @@ function fullConvoyRoute(g,u,at,safe) {
   u.supplyRouteReason='unreachable';return [];
 }
 
+// Reuse safe routes without repeating world-scale path searches. Check only
+// remembered terrain and visible weapon threats, including every remaining leg.
+function supplyContinueRoute(g, u) {
+  if (!u.path.length || (u.stuck ?? 0) > .5) return false;
+  if (['classic', 'world'].includes(g.mode?.kind) && !(u.convoy.operatingMetres > 1e-6)) return false;
+  const known = g.mode?.kind === 'world' ? worldPathView(g, u.owner) : observedPathView(g, u.owner);
+  const def = UNITS[u.type], threats = [...g.players[u.owner].visible].map(id => g.units.get(id)).filter(t => t && t.hp > 0 && !allied(g, t.owner, u.owner) && UNITS[t.type].w?.range > 0 && !t.air);
+  let from = u;
+  for (const to of u.path) {
+    if (!walkable(known, from, to, blockOf(def), bodyRadius(def))) return false;
+    const dx = to.x - from.x, dz = to.z - from.z, length = dx * dx + dz * dz;
+    for (const threat of threats) {
+      const radius = UNITS[threat.type].w.range + 3;
+      const along = length ? Math.max(0, Math.min(1, ((threat.x - from.x) * dx + (threat.z - from.z) * dz) / length)) : 0;
+      const x = from.x + along * dx - threat.x, z = from.z + along * dz - threat.z;
+      if (x * x + z * z <= radius * radius) return false;
+    }
+    from = to;
+  }
+  return true;
+}
+
 function supplyHooks(g) {
   return {
     route: (u, at, safe) => fullConvoyRoute(g, u, at, safe),
+    continueRoute: u => supplyContinueRoute(g, u),
     handoff: (u, store, radius) => supplyHandoff(g, u, store, radius),
     spawn: (owner, type, source) => {
       const nearby=[...g.units.values()].filter(t=>!t.air&&!t.riding&&t.hp>0&&dist(t,source)<30), n=nearby.filter(t=>t.type==='truck').length;
@@ -1760,7 +1830,8 @@ const stateOf = (g, c) => packState(g.wear[c], g.burnt[c], g.cellHp[c], maxHp(g,
 // the state a map cell starts in (clients use it for cells the server has not mentioned yet)
 export const startState = (ch, c) => packState(startWear(ch, c), 0, 1, 1);
 // tell the clients when a cell's state crosses into another step
-function touch(g, c) { const s = stateOf(g, c); if (s !== g.cellState[c]) { g.cellState[c] = s; logCell(g, c, [c, g.chars[c]]); } }
+// (a look-only change: it does not move terrainVersion, see logCell)
+function touch(g, c) { const s = stateOf(g, c); if (s !== g.cellState[c]) { g.cellState[c] = s; logCell(g, c, [c, g.chars[c]], true); } }
 // how fast a unit moves on one cell (1 = open dry ground)
 function groundMul(g, c, veh) {
   const f = g.flags[c], w = g.wear ? g.wear[c] : 0, wet = g.wx ? g.wx.wet * (g.height && g.height[c] < 0 ? 2 : 1) : 0;
@@ -1977,7 +2048,7 @@ export function damageWorldSection(g, c, dmg, context = {}) {
   section.hp -= hit; if (u) { if (context.debitEntity !== false) u.hp -= hit; if (context.owner >= 0) u.lastHit = context.owner; }
   g.cellHp[c] = section.hp;
   if (u && hit > 0) g.shots.push({ k: 'hurt', t: u.id, fo: context.owner, to: u.owner, x: cellCenter(g, c).x, z: cellCenter(g, c).z, kill: u.hp <= 0, local: context.contactId !== undefined || undefined });
-  if (section.hp > 0) { section.state = g.fires.has(c) ? 'burning' : 'damaged'; touch(g, c); logCell(g, c, [c, g.chars[c]]); return hit; }
+  if (section.hp > 0) { section.state = g.fires.has(c) ? 'burning' : 'damaged'; touch(g, c); logCell(g, c, [c, g.chars[c]], true); return hit; }
   failWorldSection(g, section, list, context.direction);
   const supported = supportedSections(structure);
   for (const other of structure.sections) if (other.state !== 'failed' && !supported.has(other.id)) {
@@ -2011,14 +2082,17 @@ function repairBuildingSections(g, u, amount) {
     if (section.state === 'failed' && (!section.anchor && !section.supports.some(id => supported.has(id)) || occupiedVehicleCell(g, section.c, list) || !'.R'.includes(g.objects[section.c]))) continue;
     const add = Math.min(left, section.maxHp - section.hp); if (!(add > 0)) continue;
     if (section.state === 'failed') { section.state = 'damaged'; section.rubble = []; mutateWorldCell(g, section.c, { object: 'K' }); }
-    section.hp += add; left -= add; repaired += add; section.state = g.fires.has(section.c) ? 'burning' : section.hp >= section.maxHp ? 'intact' : 'damaged'; g.cellHp[section.c] = section.hp; logCell(g, section.c, [section.c, 'K']);
+    section.hp += add; left -= add; repaired += add; section.state = g.fires.has(section.c) ? 'burning' : section.hp >= section.maxHp ? 'intact' : 'damaged'; g.cellHp[section.c] = section.hp; logCell(g, section.c, [section.c, 'K'], true);
   }
   u.hp += repaired;
   if (structure.sections.every(section => section.hp >= section.maxHp)) u.hp = UNITS[u.type].hpPer;
   return repaired;
 }
 
-function logCell(g, c, change) {
+// look: only how the cell looks changed (wear, scorch, a building section's hit points while it stands). Those reach
+// clients and the world memory on the next vision pass anyway, so they leave terrainVersion alone: a bump redoes the
+// whole map's fog and every visible cell's memory, and a building going up repairs its sections every tick.
+function logCell(g, c, change, look = false) {
   const indexes = g.cellLogIndexes ??= new Map();
   let index = indexes.get(c);
   const state = g.cellState ? g.cellState[c] : 0;
@@ -2028,7 +2102,7 @@ function logCell(g, c, change) {
   // Keep each viewer's changes independently of the transient snapshot batch.
   for (const p of g.players) p.terrainPending?.add(index);
   g.watchPending?.add(index); // the spectators' shared terrain memory (server.js)
-  g.terrainVersion = (g.terrainVersion ?? 0) + 1;
+  if (!look) g.terrainVersion = (g.terrainVersion ?? 0) + 1;
   g.newCells.push(latest);
 }
 

@@ -444,6 +444,10 @@ function refreshRoutes(g, hooks) {
       const recipient = target.store ? g.convoys.stores.get(target.store) : g.units.get(target.unit);
       if (recipient) Object.assign(target, { x: recipient.x, z: recipient.z });
     }
+    // already driving there (a World Conquest truck follows worldGoal in legs, so its path may be empty between
+    // them): keep the route. Re-routing every truck each dispatch cost two world-size path searches
+    // apiece (there and home) and stalled the server every 2 s. A target that has moved off gets a new route.
+    if (c.state === resume && (u.path.length || u.worldGoal) && c.destination && distance(c.destination, target) < 4 && hooks.continueRoute?.(u, target) === true) continue;
     if (sendTruck(g, u, target, hooks)) c.state = resume;
     else {
       c.state = resume === 'collecting' ? 'waitingCollect' : resume === 'returning' ? 'waitingReturn' : 'waiting';
