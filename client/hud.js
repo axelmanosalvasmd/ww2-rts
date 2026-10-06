@@ -5,13 +5,13 @@
 // Each panel builds its HTML only when what it shows changes shape (the teams, the selection, the selected building)
 // and otherwise only updates text, widths and disabled states: rebuilding the buttons 10 times a second ate clicks.
 
-import { UNITS, UNIT_TYPES, CFG, SUPPORT, SUPPORT_TYPES, FORTS, lineFort, ENTRENCH, ENTRENCH_TYPES, BUILDABLE, canBuild, winVp, supCost, popCap, popUse, abCost, priceOf, AUTO_FLAG, RIDING_FLAG, CARGO_FLAG } from '/shared/sim.js';
+import { UNITS, UNIT_TYPES, CFG, SUPPORT, SUPPORT_TYPES, FORTS, lineFort, ENTRENCH, ENTRENCH_TYPES, BUILDABLE, buildKinds, isSkirmishBaseMode, canBuild, winVp, supCost, popCap, popUse, abCost, priceOf, AUTO_FLAG, RIDING_FLAG, CARGO_FLAG } from '/shared/sim.js';
 import { symbolSVG, icon } from './symbols.js';
 import { portrait } from './portraits.js';
 import { unitRole } from './unit-roles.js';
 import { SHAPES } from '/shared/formation.js';
 import { SUPPORT_KEYS, FORT_KEYS, FORT_BADGES, BUILD_KEYS, CARD_KEYS, label, badge } from './keys.js';
-import { availability, buyCount, cooldownSeconds } from './availability.js';
+import { availability, buyCount, cooldownSeconds, recruitAction } from './availability.js';
 import { setAvailability, installTooltips } from './feedback.js';
 import { t as tr } from './i18n.js';
 
@@ -88,12 +88,12 @@ export function createHud(ctx) {
   }).observe($('buy'));
   let snapshot = null;
   const tooltips = installTooltips($('hud'));
-  const check = (action) => availability(snapshot, CFG, { ...action, slot: ctx.me, watching: ctx.watching, ids: [...ctx.selected] });
+  const check = (action) => availability(snapshot, CFG, { ...action, slot: ctx.me, teams: ctx.teams, naval: ctx.naval(), watching: ctx.watching, ids: [...ctx.selected] });
   const attempt = (action, run) => { const result = check(action); if (result.ok) run(); else ctx.explain(result.reason); };
   // A card purchase, by click or by letter: the same command and refusal either way. `many` (Shift+letter) sends the
   // command up to five times, as often as the limits allow; the server takes each one like a separate click.
   const buy = (action, many = false) => attempt(action, () => {
-    const n = many ? Math.max(1, buyCount(snapshot, CFG, { ...action, slot: ctx.me }, 5)) : 1;
+    const n = many ? Math.max(1, buyCount(snapshot, CFG, { ...action, slot: ctx.me, teams: ctx.teams, naval: ctx.naval() }, 5)) : 1;
     for (let i = 0; i < n; i++) ctx.send(action);
     ctx.blip('recruit');
   });
@@ -311,7 +311,7 @@ export function createHud(ctx) {
       orderBtn('data-f="together"', 'f_together', '', 'March together: the group moves at the pace of its slowest unit and arrives in one piece') +
       orderBtn('data-f="snap"', 'f_snap', '', 'Snap to trenches: infantry placed within 3 m of a trench step into it');
     // outside Classic the Build menu also puts up a Flak Emplacement (in Classic the Engineers' card has it)
-    if (m === 'build') return (ctx.classic() ? '' : orderBtn('data-a="bld:flakpos"', 'flakpos', '', `${UNITS.flakpos.name}: shoots down planes and air strikes within ${UNITS.flakpos.aa.range} m. Click where; the selected builder squads put it up in ${UNITS.flakpos.buildTime}s, more squads build faster`)) +
+    if (m === 'build') return (ctx.classic() ? '' : buildKinds(false, isSkirmishBaseMode(snapshot)).filter(k => k !== 'shipyard' || ctx.naval()).map(k => orderBtn(`data-a="bld:${k}"`, k, '', `${UNITS[k].name}: ${UNITS[k].cost} MP, ${UNITS[k].buildTime}s. Click where; selected builder squads construct it. Right-click a damaged building to repair it`, k)).join('')) +
       Object.entries(FORTS).map(([k, f]) => orderBtn(`data-a="fort:${k}"`, k, FORT_BADGES[k], `${f.name}${FORT_KEYS[k] ? ` (${FORT_KEYS[k]})` : ''}: ${FORT_TIP[k] ?? ''}. ${lineFort(k) && k !== 'trench' ? 'Click where it starts, then where it ends: one piece, or a continuous line that every selected builder squad works on. Price per piece' : 'Click where; the nearest builder squad puts it across its approach'}`)).join('');
     return ENTRENCH_TYPES.map((k) => orderBtn(`data-a="ent:${k}"`, `e_${k}`, k === 'line' ? badge('entrench:line') : '',
       `${ENTRENCH[k]}${k === 'line' ? ` (${label('entrench:line')})` : ''}: ${ENTRENCH_TIP[k]}. Every selected builder squad digs; each segment is paid as it is started. Shift on the second click queues it. Right-click a planned pattern with other squads to send them to help`)).join('');
@@ -455,7 +455,7 @@ export function createHud(ctx) {
     card.innerHTML = groupsHTML(types, (t) => unitCard(t, `data-unit="${t}"`, `${UNITS[t].cost}<span class="cu"> MP</span>`, '', unitTip(t, ctx.me, `. ${UNITS[t].cost} MP`)));
     // the stylesheet shares the room between the cards (14 since aviation); narrow cards drop the name and keep it in the tooltip
     card.classList.add('fit'); card.style.setProperty('--nc', types.length); card.style.setProperty('--ng', card.querySelectorAll('.grp').length);
-    card.querySelectorAll('[data-unit]').forEach((b) => { b._buy = (many) => buy({ t: 'buy', unit: b.dataset.unit }, many); b.onclick = () => b._buy(false); });
+    card.querySelectorAll('[data-unit]').forEach((b) => { b._buy = (many) => buy(recruitAction(snapshot, ctx.me, b.dataset.unit, [...ctx.selected], ctx.teams), many); b.onclick = () => b._buy(false); });
     lettered();
     const tab = document.createElement('button');
     tab.dataset.recruit = ''; tab.className = 'tab';
@@ -471,9 +471,20 @@ export function createHud(ctx) {
       Object.assign(b.style, { position: 'absolute', right: '8px', bottom: 'calc(100% + 6px)', padding: '4px 8px', font: '13px var(--type)', background: 'var(--strip)' });
       b.onclick = () => ctx.rally(); card.append(b);
     }
+    let info = card.querySelector('[data-facility]');
+    if (!info) { info = document.createElement('div'); info.dataset.facility = ''; Object.assign(info.style, {position:'absolute',left:'8px',bottom:'calc(100% + 6px)',background:'var(--strip)',padding:'4px 8px'}); card.append(info); }
+    const selected = selUnits(), bld = selected.length === 1 && UNITS[selected[0].type].building ? selected[0] : null;
+    const key = bld ? `${bld.id}:${bld.built >= 1}:${bld.owner === ctx.me}` : '';
+    if (info.dataset.key !== key) {
+      info.dataset.key = key;
+      info.innerHTML = bld ? `<span data-facility-text></span>` + (bld.built < 1 && bld.owner === ctx.me ? ' <button data-cancel-site>Cancel (75% back)</button>' : '') : '';
+      info.querySelector('[data-cancel-site]')?.addEventListener('click', () => ctx.send({t:'cancel',id:bld.id}));
+    }
+    info.style.display = bld ? '' : 'none';
+    if (bld) setText(info.querySelector('[data-facility-text]'), `${UNITS[bld.type].name}: ${bld.built < 1 ? Math.round(bld.built*100)+'% built' : 'Ready'} . ${Math.ceil(bld.hp)} HP. ${bld.built < 1 ? 'Right-click with builders to assist' : 'Right-click with builders to repair'}`);
     for (const b of $('buy').querySelectorAll('[data-unit]')) {
       const broke = s.mp < UNITS[b.dataset.unit].cost;
-      setAvailability(b, check({ t: 'buy', unit: b.dataset.unit }));
+      setAvailability(b, check(recruitAction(s, ctx.me, b.dataset.unit, [...ctx.selected], ctx.teams)));
       b.classList.toggle('broke', broke);
     }
   }

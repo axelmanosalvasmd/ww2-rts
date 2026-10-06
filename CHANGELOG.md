@@ -5,6 +5,13 @@ AI-vs-AI runs (see DESIGN.md for the balance log). Add new entries under **Unrel
 
 ## Unreleased
 
+- Conquest, Assault, Annihilation and Horde now start with a finished HQ and Barracks. Recruit instantly from surviving finished facilities, and build Motor Pools, Airfields and coastal Shipyards during the match to unlock their units. Unit prices remain MP-only with no training queues.
+- Rifle and Conscript squads construct, assist and repair production buildings. Destroyed buildings leave rebuildable rubble. Rebuilding an HQ costs 200 MP/40s; the other buildings retain Classic's construction prices and times. HQ loss disables its reinforcement zone until rebuilt.
+- Horde defenders share facilities and prerequisites while keeping individual MP and unit ownership. Existing bunker objectives and wave spawning are unchanged.
+- The build menu, recruit lock reasons, selected-facility spawning, shared facility selection/rallies and construction cancellation work with the new bases. AI builds technology and repairs/rebuilds its facilities.
+- Fixed builders reviving zero-HP buildings before destruction cleanup. Added simulation, client and AI regression coverage. No combat or income rebalance; competitive pacing remains a human-playtest follow-up.
+- Known verification gap: the latest core regression run fails the existing AI fighter-cover assertion (an announced enemy air strike should trigger fighter cover). The full suite is not green; this implementation is committed at the user's request pending regression follow-up.
+
 ### 2026-10-03: Strategic geography (source commit `b351ea1`)
 
 - World Conquest seeds now choose 1-3 main rivers and 0-3 small tributaries. Streams are fordable along their length, join larger rivers, and widen the main channel downstream. Each main river has its own bridges and permanent fords; road approaches preserve shallow streams instead of paving them over.

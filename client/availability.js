@@ -1,4 +1,4 @@
-import { UNITS, FORTS, CFG, TERRAIN, CELL, priceOf, supCost, popCap, popUse, dropPop, abCost, levelOf, teamSees, buildKinds, builderTypes } from '../shared/sim.js';
+import { UNITS, FORTS, CFG, TERRAIN, CELL, priceOf, supCost, popCap, popUse, dropPop, abCost, levelOf, teamSees, buildKinds, builderTypes, isSkirmishBaseMode, productionAccess, productionBuildings } from '../shared/sim.js';
 
 // Server denials deliberately contain no target details.
 export const DENY_SENTENCES = Object.freeze({
@@ -21,9 +21,17 @@ export const cooldownSeconds = (cd) => Math.max(0, Math.ceil(cd));
 const yes = () => ({ ok: true, reason: '' });
 const no = (reason) => ({ ok: false, reason });
 export const snapshotUnits = (s) => (s?.units ?? []).map((v) => ({
-  id: v[0], type: v[1], owner: v[2], x: v[3], z: v[4], cd: v[11], flags: v[12], built: v[14] ?? 1,
+  id: v[0], type: v[1], owner: v[2], x: v[3], z: v[4], hp: v[7], cd: v[11], flags: v[12], built: v[14] ?? 1,
   queue: (s.queues ?? []).find((q) => q[0] === v[0])?.slice(4) ?? [],
 }));
+// Global cards prefer a selected compatible facility, otherwise the server chooses one.
+export function recruitAction(s, slot, unit, ids = [], teams = []) {
+  const action = { t: 'buy', unit };
+  if (!s || !isSkirmishBaseMode(s)) return action;
+  const view = { ...s, units: snapshotUnits(s), players: teams.map(team => ({ team })) };
+  const b = productionBuildings(view, slot, unit).find(b => ids.includes(b.id));
+  return b ? { ...action, from: b.id } : action;
+}
 const resources = (s, mp = 0, fuel = 0, mun = 0) =>
   s.mp < mp ? no(`Needs ${mp} MP`) : !(s.fuel >= fuel) && fuel ? no(`Needs ${fuel} fuel`) :
   !(s.mun >= mun) && mun ? no(`Needs ${mun} munitions`) : yes();
@@ -34,7 +42,9 @@ export function availability(s, cfg = CFG, action = {}) {
   if (action.watching || s.out?.[action.slot]) return no('You are spectating');
   const own = snapshotUnits(s).filter((v) => v.owner === action.slot), queued = own.flatMap((v) => v.queue);
   const selected = own.filter((v) => (action.ids ?? []).includes(v.id));
-  const classic = ['classic', 'world'].includes(s.mode?.kind), sudden = classic && s.mode.suddenDeath;
+  const classic = ['classic', 'world'].includes(s.mode?.kind), sudden = classic && s.mode.suddenDeath, skirmish = isSkirmishBaseMode(s);
+  const baseView = { ...s, units: snapshotUnits(s), players: (action.teams ?? []).map(team => ({ team })) };
+  const facilities = baseView.units.filter(v => productionAccess(baseView, v, action.slot));
   const population = (unit, need = unit ? popUse(unit) : 1) => {
     const pop = popTotal(own, queued), cap = s.world?.cap ?? popCap(s);
     return pop + need > cap ? no(`Army at its limit (${pop}/${cap})`) : yes();
@@ -47,15 +57,15 @@ export function availability(s, cfg = CFG, action = {}) {
     if (!money.ok) return money;
     const pop = population(action.unit); if (!pop.ok) return pop;
     if (own.filter((v) => v.type === action.unit).length + queued.filter((t) => t === action.unit).length >= (def.max ?? Infinity)) return no('Maximum of this unit reached');
-    if (classic) {
+    if (classic || skirmish) {
       if (sudden) return no(DENY_SENTENCES.suddenDeath);
-      const makers = own.filter((v) => v.built >= 1 && UNITS[v.type].makes?.includes(action.unit));
+      const makers = skirmish ? productionBuildings(baseView, action.slot, action.unit) : own.filter((v) => v.built >= 1 && UNITS[v.type].makes?.includes(action.unit));
       if (!makers.length) {
         const type = Object.keys(UNITS).find((t) => UNITS[t].makes?.includes(action.unit));
         return no(`Needs a ${UNITS[type]?.name ?? 'Production Building'}`);
       }
       // a card on a selected building asks that building (`from`); the server refuses a full one rather than using another
-      if (!makers.some((v) => v.queue.length < 5 && (action.from === undefined || v.id === action.from))) return no(DENY_SENTENCES.queueFull);
+      if (!makers.some((v) => (skirmish || v.queue.length < 5) && (action.from === undefined || v.id === action.from))) return no(skirmish ? 'Selected building cannot produce this unit' : DENY_SENTENCES.queueFull);
     }
     return yes();
   }
@@ -67,13 +77,13 @@ export function availability(s, cfg = CFG, action = {}) {
     return action.kind === 'para' ? population(null, dropPop('para')) : yes();
   }
   if (action.t === 'build') {
-    if (!buildKinds(classic).includes(action.kind)) return no('Unavailable in this mode');
+    if (!buildKinds(classic, skirmish).includes(action.kind)) return no('Unavailable in this mode');
     if (sudden) return no(DENY_SENTENCES.suddenDeath);
     const crew = selected.filter((v) => builderTypes(classic).includes(v.type));
     if (!crew.length) return no(DENY_SENTENCES.noBuilders);
     if (crew.every((v) => v.flags & 1)) return no(DENY_SENTENCES.retreating);
     const def = UNITS[action.kind], money = resources(s, def.cost); if (!money.ok) return money;
-    if (def.needs && !own.some((v) => v.type === def.needs && v.built >= 1)) return no(`Needs a ${UNITS[def.needs].name}`);
+    if (def.needs && !facilities.some((v) => v.type === def.needs && v.built >= 1 && v.hp > 0)) return no(`Needs a ${UNITS[def.needs].name}`);
     return yes();
   }
   if (action.t === 'dig') {

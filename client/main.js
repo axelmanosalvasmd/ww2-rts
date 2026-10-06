@@ -11,7 +11,7 @@ import { createFormationPreview } from './formation-preview.js';
 import { facingSpots, slotSize, SHAPES } from '/shared/formation.js';
 import { availability, denySentence, placementState } from './availability.js';
 import { createFeedback } from './feedback.js';
-import { UNITS, UNIT_TYPES, CELL, CFG, SUPPORT, SUPPORT_TYPES, BUILDABLE, builderTypes, levelOf, levelChar, startState, canBuild, winVp, supCost, popCap, abCost, priceOf, FORTS, lineFort, placementCheck, ENTRENCH, entrenchPlan, segmentCost, RIDING_FLAG, TERRAIN, TRENCH } from '/shared/sim.js';
+import { UNITS, UNIT_TYPES, CELL, CFG, SUPPORT, SUPPORT_TYPES, BUILDABLE, builderTypes, isSkirmishBaseMode, productionAccess, levelOf, levelChar, startState, canBuild, winVp, supCost, popCap, abCost, priceOf, FORTS, lineFort, placementCheck, ENTRENCH, entrenchPlan, segmentCost, RIDING_FLAG, TERRAIN, TRENCH } from '/shared/sim.js';
 import { alerts } from './alerts.js';
 import { setupLight, renderFrame } from './light.js';
 import { createAtmosphere } from './atmosphere.js';
@@ -607,7 +607,7 @@ function buildHQ(sp, slot) {
   g.add(zone, ring);
   g.add(insideMap(sandbagRing(R + 0.8), sp.x, sp.z, 0.75)); // sandbags with gaps for the exits (client/structures.js)
   // command tent, crates and the flagpole (client/structures.js); Classic's HQ is a building, so only the pole
-  g.add(hqCamp(f, !classicMode()));
+  g.add(hqCamp(f, !classicMode() && !isSkirmishBaseMode({ mode: { kind: lobbyState?.mode ?? lastSnap?.mode?.kind } })));
   // tall flag you can spot from across the map
   g.add(mesh(GEO.plane, flagMat(f.color), 4.5, 2.8, 1, 2.3, 13, 0));
   const tag = label(`${names[slot] ?? f.name} HQ`, { style: 'hq', color: f.color }); tag.position.y = 17; g.add(tag);
@@ -778,7 +778,7 @@ function applySnapshot(s) {
     let v = units.get(id);
     if (!v) { v = makeUnit(id, type, owner); Object.assign(v, { x, z, rot, aim }); units.set(id, v); }
     Object.assign(v, { owner, tx: x, tz: z, trot: rot, taim: aim, hp, supp, tgt, cover, cd, flags, vet: stars || 0, garr: !!(flags & 32), built: built ?? 1, plan: null, orders: [] });
-    if (owner !== me) { v.rally = null; v.queue = []; }
+    if (!productionAccess({ mode: s.mode, players: teams.map(team => ({ team })) }, v, me)) { v.rally = null; v.queue = []; }
     if (v.body) v.body.scale.y = 0.15 + 0.85 * v.built; // a construction site rises as it's built
     v.stars.forEach((st, i) => (st.visible = i < v.vet));
     const cl = !v.garr && COVER_LOOK[cover];
@@ -933,7 +933,7 @@ function chutes(x, z) {
 
 // client/hud.js draws the panels; it reads the match state and calls back into these actions
 const feedback = createFeedback($('hint'), () => blip('error'));
-const available = (action) => availability(lastSnap, CFG, { ...action, slot: me, watching, ids: [...selected], naval: lastStart?.map?.naval === true });
+const available = (action) => availability(lastSnap, CFG, { ...action, slot: me, teams, watching, ids: [...selected], naval: lastStart?.map?.naval === true });
 const explainUnavailable = (result) => { if (!result.ok) feedback.show(result.reason); return !result.ok; };
 let placementCache = null;
 function placementView() {
@@ -1128,7 +1128,7 @@ function startRally() {
   setAim('rally'); blip(620);
 }
 function rallyAt(g) {
-  const ids = classicMode() ? [...selected].filter(id => { const v = units.get(id); return v?.owner === me && UNITS[v.type].makes?.length; }) : [];
+  const ids = [...selected].filter(id => { const v = units.get(id); return v && productionAccess({ mode: lastSnap?.mode, players: teams.map(team => ({ team })) }, v, me) && UNITS[v.type].makes?.length; });
   sendCmd({ t: 'rally', ...(ids.length ? { ids } : {}), x: g.x, z: g.z });
   marker(g.x, g.z, 0x9dd0ff); blip(620); cancelAim();
 }
@@ -1221,7 +1221,7 @@ function setFormation(patch) {
 }
 const cycleFormation = () => setFormation({ shape: SHAPES[(SHAPES.indexOf(fm.shape) + 1) % SHAPES.length] });
 const orders = createOrders({
-  units, selected, get me() { return me; }, defs: UNITS, diggers: CFG.fortBuilders, formation, together: () => fm.together, send: sendCmd, moveColor: MOVE_COLOR,
+  units, selected, get me() { return me; }, defs: UNITS, diggers: CFG.fortBuilders, builders: () => builderTypes(classicMode()), canUseBuilding: v => !observing() && productionAccess({ mode: lastSnap?.mode, players: teams.map(team => ({ team })) }, v, me), formation, together: () => fm.together, send: sendCmd, moveColor: MOVE_COLOR,
   feedback: (at, color, tone, voice) => { marker(at.x, at.z, color); blip(tone); if (voice) bark(voice); if (at.id === undefined) coverPreview.flash(at.x, at.z); },
 });
 const formationPreview = createFormationPreview({ THREE, hAt });
@@ -1283,7 +1283,7 @@ const centerSelection = (list) => {
   cam.x = list.reduce((sum, v) => sum + v.x, 0) / list.length;
   cam.z = list.reduce((sum, v) => sum + v.z, 0) / list.length;
 };
-const selection = createSelection({ units, selected, groups, owner: () => (observing() ? -1 : me), definitions: UNITS, // a spectator selects nothing, so orders nothing
+const selection = createSelection({ units, selected, groups, owner: () => (observing() ? -1 : me), definitions: UNITS, canUseBuilding: v => productionAccess({ mode: lastSnap?.mode, players: teams.map(team => ({ team })) }, v, me), // a spectator selects nothing, so orders nothing
   screenOf: (v) => screenOf(v), screenPointsOf: (v) => selectionPoints(v, camera, screenOf, innerWidth, innerHeight), viewport: () => ({ width: innerWidth, height: innerHeight }), center: centerSelection });
 const actions = {
   stop: () => { sendCmd({ t: 'stop', ids: [...selected] }); blip(330); },

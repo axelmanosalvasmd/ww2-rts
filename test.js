@@ -3,7 +3,11 @@ import assert from 'node:assert/strict';
 import { createHash } from 'node:crypto';
 import { readFileSync, readdirSync, writeFileSync } from 'node:fs';
 import * as sim from './shared/sim.js';
-import { createGame, step, command, los, findPath, validateMap, snapshotFor, snapshotCache, inTrench, vet, spawnSlots, popOf, popCap, CFG, CELL, SUPPORT, UNITS, teamSees, levelOf } from './shared/sim.js';
+import { fixtureCommand as command, clearFixtureUnits } from './test-fixtures.js';
+await import('./test-skirmish-bases.js');
+await import('./test-skirmish-client.js');
+await import('./test-skirmish-ai.js');
+import { createGame, step, los, findPath, validateMap, snapshotFor, snapshotCache, inTrench, vet, spawnSlots, popOf, popCap, CFG, CELL, SUPPORT, UNITS, teamSees, levelOf } from './shared/sim.js';
 import { SpatialGrid, updateGrid } from './shared/grid.js';
 import { think, thinkEvery, AI_LEVEL_NAMES } from './shared/ai.js';
 import { viewFor } from './shared/ai-view.js';
@@ -16,7 +20,7 @@ await import('./test-tutorial.js');
 // The large-world checks use real clients and a fresh authoritative server.
 {
   const { execFileSync } = await import('node:child_process');
-  for (const file of ['test-world-waterways.js', 'test-world-multiple-rivers.js', 'test-world-generation.js', 'test-world-territories.js', 'test-world-conquest.js', 'test-world-teams.js', 'test-world-acceptance.js', 'test-world-observation.js', 'test-world-movement.js', 'test-world-river.js']) {
+  for (const file of process.env.CORE_ONLY ? [] : ['test-world-waterways.js', 'test-world-multiple-rivers.js', 'test-world-generation.js', 'test-world-territories.js', 'test-world-conquest.js', 'test-world-teams.js', 'test-world-acceptance.js', 'test-world-observation.js', 'test-world-movement.js', 'test-world-river.js']) {
     execFileSync(process.execPath, [file], { cwd: import.meta.dirname, stdio: 'inherit', timeout: 180000 });
   }
 }
@@ -168,10 +172,10 @@ await import('./test-tutorial.js');
 const blank = (rows) => ({ w: rows[0].length, h: rows.length, rows, spawns: [{ x: 1, y: 1 }, { x: 18, y: 1 }, { x: 1, y: 18 }], points: [{ x: 10, y: 10 }] });
 const empty = Array(20).fill('.'.repeat(20));
 const run = (g, secs) => { for (let i = 0; i < secs * 20; i++) step(g); };
-const fresh = (rows = empty, n = 2) => { const g = createGame(blank(rows), ['a', 'b', 'c'].slice(0, n), false); g.units.clear(); g.players.forEach(p => (p.spawn = { x: -1000, z: -1000 })); return g; };
+const fresh = (rows = empty, n = 2) => { const g = createGame(blank(rows), ['a', 'b', 'c'].slice(0, n), false); clearFixtureUnits(g); g.players.forEach(p => (p.spawn = { x: -1000, z: -1000 })); return g; };
 const UNITS_COST = (t) => ({ rifle: 100, mg: 150, at: 200, tank: 300, rocket: 250, ranger: 200, tiger: 560, conscript: 80 })[t];
 // put: tests set hp by hand, so a placed unit keeps still instead of auto-retreating (it starts on in a real match)
-const put = (g, owner, type, x, z) => { command(g, owner, { t: 'buy', unit: type }); const u = [...g.units.values()].at(-1); u.x = x; u.z = z; u.autoRetreat = false; return u; };
+const put = (g, owner, type, x, z) => { command(g, owner, { t: 'buy', unit: type }); const u = [...g.units.values()].at(-1); u.x = x; u.z = z; u.rot = 0; u.aim = 0; u.autoRetreat = false; return u; };
 {
   const g = fresh(); g.players[0].mp = 1000; command(g, 0, { t: 'buy', unit: 'rifle' });
   assert.ok([...g.units.values()].at(-1).autoRetreat, 'a bought squad starts with auto-retreat on');
@@ -351,6 +355,7 @@ const put = (g, owner, type, x, z) => { command(g, owner, { t: 'buy', unit: type
   const g = fresh(); g.players[0].mp = 1000;
   g.players[0].spawn = { x: 20, z: 20 };
   const r = put(g, 0, 'rifle', 21, 21); r.hp = 40;
+  const base = { ...r, id:g.nextId++, type:'hq', hp:UNITS.hq.hpPer, built:1, queue:[], cells:[], x:15,z:20 }; g.units.set(base.id,base);
   const mp = g.players[0].mp;
   run(g, 5);
   assert.equal(r.hp, 80, 'two models restored in 5s');
@@ -596,7 +601,7 @@ const put = (g, owner, type, x, z) => { command(g, owner, { t: 'buy', unit: type
 
 // Elevation: a 2-level ridge (5 m) across the middle of an empty map.
 const ridge = (lvl, x0 = 9, x1 = 10) => Array.from({ length: 20 }, () => Array.from({ length: 20 }, (_, x) => (x >= x0 && x <= x1 ? lvl : 0)).join(''));
-const hilly = (heights) => { const g = createGame({ ...blank(empty), heights }, ['a', 'b'], false); g.units.clear(); g.players.forEach(p => (p.spawn = { x: -1000, z: -1000 })); return g; };
+const hilly = (heights) => { const g = createGame({ ...blank(empty), heights }, ['a', 'b'], false); clearFixtureUnits(g); g.players.forEach(p => (p.spawn = { x: -1000, z: -1000 })); return g; };
 {
   const g = hilly(ridge(2));
   assert.equal(los(g, { x: 5, z: 20 }, { x: 35, z: 20 }), false, 'a ridge blocks sight between the valleys');
@@ -747,7 +752,7 @@ const hilly = (heights) => { const g = createGame({ ...blank(empty), heights }, 
   rows[8] = '.'.repeat(5) + 'W'.repeat(10) + '.'.repeat(5);
   const map = { name: 't', ...blank(rows), buildings: [{ x: 0, y: 1, kind: 'church' }, { x: 10, y: 7, kind: 'stone bridge' }] };
   assert.equal(validateMap(map), null);
-  const g = createGame(map, ['a', 'b'], false); g.units.clear();
+  const g = createGame(map, ['a', 'b'], false); clearFixtureUnits(g);
   assert.equal(g.house[20], 3, 'the named type wins over the size');
   assert.equal(g.cellHp[20], CFG.houses[3].hp);
   const u = put(g, 0, 'rifle', 1, 3); u.garrison = 20;
@@ -769,7 +774,7 @@ const hilly = (heights) => { const g = createGame({ ...blank(empty), heights }, 
   assert.equal(validateMap(map), null);
   assert.ok(validateMap({ ...map, triggers: [{ at: 5 }] }), 'a trigger does something');
   assert.ok(validateMap({ ...map, triggers: [{ at: 5, blow: [9, 7, 30, 7] }] }), 'the box stays on the map');
-  const g = createGame(map, ['a', 'b'], false, [0, 1], [0, 1], { weather: false }); g.units.clear();
+  const g = createGame(map, ['a', 'b'], false, [0, 1], [0, 1], { weather: false }); clearFixtureUnits(g);
   const u = put(g, 0, 'rifle', 19, 15);
   let said = [];
   for (let i = 0; i < 50; i++) { step(g); said.push(...snapshotFor(g, 1, g.shots).shots.filter(s => s.k === 'say').map(s => s.text)); g.shots = []; }
@@ -785,7 +790,7 @@ const hilly = (heights) => { const g = createGame({ ...blank(empty), heights }, 
   assert.equal(validateMap(map), null);
   assert.ok(validateMap({ ...map, points: [{ ...pts[0], needs: 1 }, pts[1]] }), 'points that need each other are refused');
   assert.ok(validateMap({ ...map, points: [{ ...pts[0], kind: 'castle' }, pts[1]] }), 'only known kinds');
-  const g = createGame(map, ['a', 'b'], false, [0, 1], [0, 1], { weather: false, supply: false }); g.units.clear();
+  const g = createGame(map, ['a', 'b'], false, [0, 1], [0, 1], { weather: false, supply: false }); clearFixtureUnits(g);
   g.players.forEach(p => (p.spawn = { x: -1000, z: -1000 }));
   // locked: a squad on point 2 gets nowhere until its side holds point 1
   const r = put(g, 0, 'rifle', g.points[1].x, g.points[1].z);
@@ -948,7 +953,7 @@ const hilly = (heights) => { const g = createGame({ ...blank(empty), heights }, 
 
 // Faction units: only your faction can build them; the Tiger is one at a time.
 {
-  const g = createGame({ ...blank(empty) }, ['a', 'b', 'c'], false); g.units.clear();
+  const g = createGame({ ...blank(empty) }, ['a', 'b', 'c'], false); clearFixtureUnits(g);
   g.players.forEach(p => (p.mp = 5000));
   command(g, 0, { t: 'buy', unit: 'tiger' }); command(g, 0, { t: 'buy', unit: 'conscript' }); command(g, 0, { t: 'buy', unit: 'ranger' });
   command(g, 1, { t: 'buy', unit: 'tiger' }); command(g, 1, { t: 'buy', unit: 'tiger' });
@@ -961,7 +966,7 @@ const hilly = (heights) => { const g = createGame({ ...blank(empty), heights }, 
 {
   // UK: Commandos and one Churchill, nobody else gets them; its artillery barrage fires half again as many shells,
   // and the Churchill's front shrugs off 40%
-  const g = createGame({ ...blank(empty) }, ['a', 'b', 'c'], false, [0, 1, 2], [3, 0, 1]); g.units.clear();
+  const g = createGame({ ...blank(empty) }, ['a', 'b', 'c'], false, [0, 1, 2], [3, 0, 1]); clearFixtureUnits(g);
   g.players.forEach(p => { p.mp = 5000; p.spawn = { x: -1000, z: -1000 }; });
   command(g, 0, { t: 'buy', unit: 'churchill' }); command(g, 0, { t: 'buy', unit: 'churchill' }); command(g, 0, { t: 'buy', unit: 'commando' }); command(g, 0, { t: 'buy', unit: 'ranger' });
   command(g, 1, { t: 'buy', unit: 'churchill' }); command(g, 1, { t: 'buy', unit: 'commando' });
@@ -993,7 +998,7 @@ const hilly = (heights) => { const g = createGame({ ...blank(empty), heights }, 
 {
   // Rangers' satchel charge demolishes a house; Ura! shrugs off suppression and sprints
   const rows = [...empty]; rows[10] = '.'.repeat(9) + 'BB' + '.'.repeat(9);
-  const g = createGame(blank(rows), ['a', 'b', 'c'], false); g.units.clear(); g.players.forEach(p => { p.mp = 5000; p.spawn = { x: -1000, z: -1000 }; });
+  const g = createGame(blank(rows), ['a', 'b', 'c'], false); clearFixtureUnits(g); g.players.forEach(p => { p.mp = 5000; p.spawn = { x: -1000, z: -1000 }; });
   command(g, 0, { t: 'buy', unit: 'ranger' }); const rg = [...g.units.values()].at(-1); rg.x = 19; rg.z = 30;
   command(g, 0, { t: 'ability', ids: [rg.id], x: 19, z: 21 });
   run(g, 8);
@@ -1009,11 +1014,11 @@ const hilly = (heights) => { const g = createGame({ ...blank(empty), heights }, 
 // Teams: 2v2. Allies share vision, never shoot each other, hold each other's points, and win together.
 {
   const six = { ...blank(Array(40).fill('.'.repeat(40))), spawns: [0, 1, 2, 3, 4, 5].map(k => ({ x: 20 + Math.round(Math.cos(k) * 15), y: 20 + Math.round(Math.sin(k) * 15) })), points: [{ x: 20, y: 20 }] };
-  const g = createGame(six, ['a', 'b', 'c', 'd'], false, [0, 1, 0, 1], [0, 1, 1, 2]); g.units.clear();
+  const g = createGame(six, ['a', 'b', 'c', 'd'], false, [0, 1, 0, 1], [0, 1, 1, 2]); clearFixtureUnits(g);
   g.players.forEach(p => { p.mp = 5000; p.spawn = { x: -1000, z: -1000 }; });
   assert.equal(g.players[2].faction, 1, 'factions per player');
   command(g, 2, { t: 'buy', unit: 'tiger' }); assert.equal([...g.units.values()].at(-1)?.type, 'tiger', 'faction comes from the player, not the slot');
-  g.units.clear();
+  clearFixtureUnits(g);
   const a = put(g, 0, 'rifle', 40, 40), b = put(g, 2, 'rifle', 44, 40), foe = put(g, 1, 'rifle', 40, 70);
   run(g, 0.2);
   assert.ok(g.players[2].visible.has(foe.id), 'ally sees what I see');
@@ -1069,7 +1074,7 @@ const hilly = (heights) => { const g = createGame({ ...blank(empty), heights }, 
 // Massive move orders reach the whole army, including units beyond the old 50-unit command limit.
 {
   const g = createGame(blank(empty), ['a', 'b'], false, [0, 1], [0, 1], { army: 'massive' });
-  g.units.clear(); g.players[0].mp = 100000;
+  clearFixtureUnits(g); g.players[0].mp = 100000;
   for (let i = 0; i < popCap(g); i++) put(g, 0, 'rifle', 5, 5);
   const units = [...g.units.values()];
   command(g, 0, { t: 'amove', orders: units.map(u => [u.id, 30, 30]) });
@@ -1080,7 +1085,7 @@ const hilly = (heights) => { const g = createGame({ ...blank(empty), heights }, 
 // Massive commands apply to every selected ID, including armies inherited above the population cap.
 {
   const g = createGame(blank(empty), ['a', 'b'], false, [0, 1], [0, 1], { army: 'massive' });
-  g.units.clear(); g.players.forEach(p => { p.mp = 100000; });
+  clearFixtureUnits(g); g.players.forEach(p => { p.mp = 100000; });
   for (let slot = 0; slot < 2; slot++) for (let i = 0; i < popCap(g); i++) put(g, slot, 'rifle', 5, 5);
   const units = [...g.units.values()];
   for (const u of units) { u.owner = 0; u.amove = { x: 30, z: 30 }; }
@@ -1405,7 +1410,7 @@ const hilly = (heights) => { const g = createGame({ ...blank(empty), heights }, 
 {
   const big = Array(40).fill('.'.repeat(40)), trenches = (g) => g.chars.filter(ch => ch === 'T').length;
   const order = { t: 'entrench', pattern: 'line', x: 20, z: 40, x2: 60, z2: 40 };
-  const g = createGame(blank(big), ['a', 'b', 'c'], false, [0, 0, 1]); g.units.clear();
+  const g = createGame(blank(big), ['a', 'b', 'c'], false, [0, 0, 1]); clearFixtureUnits(g);
   g.players.forEach(p => { p.spawn = { x: -1000, z: -1000 }; p.mp = 10000; });
   const first = put(g, 0, 'rifle', 40, 50), helper = put(g, 0, 'rifle', 44, 50), ally = put(g, 1, 'rifle', 36, 50), foe = put(g, 2, 'rifle', 40, 70);
   for (const u of g.units.values()) u.holdFire = true; // nobody shoots: this is about digging
@@ -1542,6 +1547,8 @@ const hilly = (heights) => { const g = createGame({ ...blank(empty), heights }, 
   const t = [...g.units.values()].find(u => u.owner === 0 && u.type === 'rifle');
   g.players[0].mp = 5000; command(g, 0, { t: 'buy', unit: 'tank' });
   const tank = [...g.units.values()].at(-1); tank.x = b.x + 20; tank.z = b.z; tank.targetId = b.id; tank.retarget = 99; tank.cooldown = 0;
+  // Production footprints now occupy the old firing position. Use a clear firing lane.
+  for (let a=0; a<Math.PI*2; a+=Math.PI/8) { const at={x:b.x+Math.cos(a)*20,z:b.z+Math.sin(a)*20}; if (los(g,at,b)) { Object.assign(tank,at); break; } }
   const orig = Math.random; Math.random = () => 0;
   const h0 = b.hp; step(g); const shell = h0 - b.hp;
   Math.random = orig;
@@ -1591,7 +1598,7 @@ const hilly = (heights) => { const g = createGame({ ...blank(empty), heights }, 
     const g = createGame(map, ['a', 'b', 'd'], true, [0, 0, 1], [0, 1, 2], { mode: 'assault', defenderTeam: 1 });
     const lv = (p) => g.height[Math.floor(p.spawn.z / CELL) * g.w + Math.floor(p.spawn.x / CELL)];
     assert.deepEqual(g.players.map(lv), [0, 0, 4], 'attackers below, defender on top');
-    assert.ok(findPath(g, g.players[0].spawn, g.players[2].spawn).length, 'a way up');
+    assert.ok(findPath(g, [...g.units.values()].find(u => u.owner === 0 && u.type === 'rifle'), g.players[2].spawn).length, 'a way up from the HQ doorstep');
   }
   assert.equal(validateMap({ ...map, defend: [0, 1, 2, 3] }), 'defend must list some (not all) spawn numbers');
 }
@@ -2695,7 +2702,7 @@ const behindHedge = p => p.x >= 40 - 2.2 && p.x < 42 && p.z > 6 && p.z < 54;
 for (const [name, edit, heights] of [['river', r => { for (let x = 0; x < 39; x++) r[20][x] = 'W'; }], ['cliff', () => {}, true]]) {
   const map = blank(field(edit));
   if (heights) map.heights = Array.from({ length: 30 }, (_, y) => (y >= 20 ? '2' : '0').repeat(40));
-  const g = createGame(map, ['a', 'b'], false); g.units.clear(); g.players.forEach(p => (p.spawn = { x: -1000, z: -1000 }, p.mp = 5000));
+  const g = createGame(map, ['a', 'b'], false); clearFixtureUnits(g); g.players.forEach(p => (p.spawn = { x: -1000, z: -1000 }, p.mp = 5000));
   const squads = Array.from({ length: 9 }, (_, i) => put(g, 0, 'rifle', 5.3, 10.3 + i * 3));
   command(g, 0, { t: 'move', orders: squads.map(u => [u.id, 60.3, 37.3]) });
   assert.ok(squads.every(u => u.path.length && u.path.at(-1).z < 40), `${name}: every squad gets a spot on the near side`);
@@ -3683,6 +3690,7 @@ for (const f of readdirSync('maps')) {
   const map = JSON.parse(readFileSync('maps/' + f, 'utf8'));
   assert.equal(validateMap(map), null, f);
   const g = createGame(map, ['a', 'b'], false), W = (p) => ({ x: (p.x + 0.5) * CELL, z: (p.y + 0.5) * CELL });
+  clearFixtureUnits(g); // Validate the authored terrain, not paths beginning inside a new HQ footprint.
   // naval maps are islands: the sea is crossed by boat, so a spawn only has to reach a point on its own island
   if (map.naval) { for (const s of map.spawns) assert.ok(map.points.some(p => findPath(g, W(s), W(p)).length), `${f}: spawn ${s.x},${s.y} can reach a point`); continue; }
   for (const s of map.spawns) for (const p of [...map.points, ...map.spawns]) {
@@ -3820,7 +3828,7 @@ const aiMap = () => ({ w: 80, h: 80, rows: Array(80).fill('.'.repeat(80)),
 
 // Supply reconnection remains immediate at every level, including Easy's opening grace period.
 {
-  const g = createGame(aiMap(), ['AI', 'enemy'], false, [0, 1]); g.units.clear(); g.players[0].mp = 0;
+  const g = createGame(aiMap(), ['AI', 'enemy'], false, [0, 1]); clearFixtureUnits(g); g.players[0].mp = 0;
   const squad = [0, 1].map(() => massiveInternals.spawnUnit(g, 0, 'rifle'));
   squad.forEach((u, i) => Object.assign(u, { x: 50.5, z: 50.5 + i, cd: 999 }));
   const view = viewFor(g, 0, {}); Object.assign(view.points[0], { owner: 0, cut: true });
@@ -3832,7 +3840,7 @@ const aiMap = () => ({ w: 80, h: 80, rows: Array(80).fill('.'.repeat(80)),
 
 // Hard keeps onward orders when switching focus targets and stops chasing a retreating squad.
 {
-  const g = createGame(aiMap(), ['AI', 'enemy'], false, [0, 1]); g.units.clear(); g.players[0].mp = 0;
+  const g = createGame(aiMap(), ['AI', 'enemy'], false, [0, 1]); clearFixtureUnits(g); g.players[0].mp = 0;
   const squad = [0, 1].map(i => massiveInternals.spawnUnit(g, 0, 'rifle'));
   const wounded = massiveInternals.spawnUnit(g, 1, 'rifle'), current = massiveInternals.spawnUnit(g, 1, 'rifle');
   Object.assign(wounded, { x: 56.5, z: 50.5, hp: 1 }); Object.assign(current, { x: 56.5, z: 51.5 });
@@ -4038,7 +4046,7 @@ const aiMap = () => ({ w: 80, h: 80, rows: Array(80).fill('.'.repeat(80)),
 
 // A fight is watched before squads are told to fall back. The order is a decision, not a switch flipped at match start.
 {
-  const g = createGame(aiMap(), ['AI', 'enemy'], false, [0, 1]); g.units.clear(); g.players[0].mp = 0;
+  const g = createGame(aiMap(), ['AI', 'enemy'], false, [0, 1]); clearFixtureUnits(g); g.players[0].mp = 0;
   const squad = massiveInternals.spawnUnit(g, 0, 'rifle'), foe = massiveInternals.spawnUnit(g, 1, 'rifle');
   Object.assign(squad, { x: 80, z: 80, autoRetreat: false }); Object.assign(foe, { x: 88, z: 80 }); // switched off, as a player can
   g.players[0].visible.add(foe.id);
@@ -4051,13 +4059,14 @@ const aiMap = () => ({ w: 80, h: 80, rows: Array(80).fill('.'.repeat(80)),
 
 // Losses stay in the commander's head after the killer leaves sight, and a point that ate squads is avoided.
 {
-  const g = createGame(aiMap(), ['AI', 'enemy'], false, [0, 1]); g.units.clear(); g.players[0].mp = 0;
+  const g = createGame(aiMap(), ['AI', 'enemy'], false, [0, 1]); clearFixtureUnits(g); g.players[0].mp = 0;
   const rifle = massiveInternals.spawnUnit(g, 0, 'rifle'), tank = massiveInternals.spawnUnit(g, 1, 'tank');
   Object.assign(rifle, { x: 40, z: 40 }); Object.assign(tank, { x: 48, z: 40 });
   g.players[0].visible.add(tank.id);
   const memory = {};
   aiCommands(g, 0, memory, 11);
   g.units.delete(rifle.id); g.players[0].visible.delete(tank.id); g.players[0].mp = 1000;
+  const factory=massiveInternals.spawnUnit(g,0,'motorpool'); factory.built=1; // Counter-purchase test assumes vehicles are unlocked.
   const learned = aiCommands(g, 0, memory, 11).commands.filter(c => c.t === 'buy').map(c => c.unit);
   assert.ok(memory.mind.respect.tank >= 1, 'a squad lost beside a tank is remembered as a tank');
   assert.ok(learned.includes('at') && !learned.includes('rifle'), 'the next buy is an AT gun even though the tank is no longer in sight');
@@ -4085,7 +4094,8 @@ const aiMap = () => ({ w: 80, h: 80, rows: Array(80).fill('.'.repeat(80)),
   const onto = (commands, ids, at, r = 28) => commands.some(c => (c.t === 'amove' || c.t === 'move') && c.orders?.some(([id, x, z]) => ids.includes(id) && Math.hypot(x - at.x, z - at.z) <= r));
   const field = () => {
     const g = createGame(aiMap(), ['AI', 'enemy'], false, [0, 1]);
-    g.units.clear(); g.players[0].mp = 1000;
+    clearFixtureUnits(g); g.players[0].mp = 1000;
+    for(const type of ['hq','barracks','motorpool','airfield']) { const b=massiveInternals.spawnUnit(g,0,type); b.built=1; } // Isolate tactical decisions from tech construction.
     const rifles = [0, 1].map(i => { const u = massiveInternals.spawnUnit(g, 0, 'rifle'); Object.assign(u, { x: 8 + i * 2, z: 8, cd: 999 }); return u; });
     const tank = massiveInternals.spawnUnit(g, 1, 'tank');
     Object.assign(tank, { x: g.points[0].x, z: g.points[0].z });
@@ -5782,7 +5792,7 @@ for (const lookupFinished of [false, true]) {
 // Shared team vision reveals units, but waiting orders and recruit rallies stay personal.
 {
   const g = createGame(blank(Array(60).fill('.'.repeat(60))), ['a', 'b', 'c'], false, [0, 0, 1]);
-  g.units.clear(); g.players.forEach(p => { p.mp = 5000; p.spawn = { x: -1000, z: -1000 }; });
+  clearFixtureUnits(g); g.players.forEach(p => { p.mp = 5000; p.spawn = { x: -1000, z: -1000 }; });
   const own = put(g, 0, 'rifle', 5, 5), ally = put(g, 1, 'rifle', 11, 5), enemy = put(g, 2, 'rifle', 19, 5);
   for (const u of [own, ally, enemy]) {
     u.cooldown = 100;
@@ -6010,7 +6020,7 @@ for (const lookupFinished of [false, true]) {
 {
   const map = JSON.parse(readFileSync('maps/default.json', 'utf8'));
   const g = createGame(map, ['blue', 'red', 'observer'], false, [0, 1, 2], [0, 1, 2]);
-  g.units.clear();
+  clearFixtureUnits(g);
   g.players.forEach(p => { p.mp = 1000; p.spawn = { x: -1000, z: -1000 }; });
   const point = g.points[0];
   const infantry = (owner, x, z) => {
@@ -6492,7 +6502,7 @@ for (const lookupFinished of [false, true]) {
 // A blast that lowers a cliff makes a previously unreachable region walkable.
 {
   const map = blank(empty); map.heights = empty.map(() => '0'.repeat(10) + '2' + '0'.repeat(9));
-  const g = createGame(map, ['a', 'b'], false); g.units.clear(); g.players[0].mp = 1000;
+  const g = createGame(map, ['a', 'b'], false); clearFixtureUnits(g); g.players[0].mp = 1000;
   const from = { x: 5, z: 21 }, to = { x: 35, z: 21 };
   assert.deepEqual(findPath(g, from, to), [], 'two-level cliff separates the map');
   command(g, 0, { t: 'support', kind: 'dive', x: 21, z: 21 });
