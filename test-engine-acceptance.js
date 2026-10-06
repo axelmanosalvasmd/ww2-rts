@@ -67,6 +67,10 @@ async function start(code, map = blankMap(), mode = 'classic', teams = [0, 0, 1]
   await seats[0].send({ t: 'map', name });
   await seats[0].send({ t: 'mode', v: mode });
   await seats[0].send({ t: 'weather', v: 'clear' });
+  await until(() => {
+    const lobby = seats[0].latest('lobby');
+    return lobby?.mapName === name && lobby.mode === mode;
+  }, 'the requested map and mode finish loading before Start');
   await seats[0].send({ t: 'start' });
   for (const seat of seats) await seat.wait('start');
   const room = server.rooms.get(code), g = room.game;
@@ -316,7 +320,9 @@ try {
     assert.ok(['mixed', 'infantry'].includes(warning), 'Wave 1 announces only a category with affordable unlocked units');
     for (const key of ['reserve', 'budget', 'profileSeed', 'roster']) assert.equal(host.latest('s').mode[key], undefined, 'a broad warning exposes no private roster or budget');
     const watcher = await connect('horde', 'hordewatch', true); await watcher.wait('start');
-    await host.send({ t: 'nextwave' }); await tick(20);
+    await host.send({ t: 'nextwave' });
+    await until(() => g.mode.timeLeft === 0, 'the server receives the early-wave request before stepping');
+    await tick(20);
     assert.equal(host.latest('s').mode.profile, warning, 'the active category agrees with the warning');
     assert.equal(host.latest('s').mode.nextProfile, undefined, 'active Wave has no next-Wave announcement');
     const delivered = watcher.latest('s').units.filter(unit => unit[2] === g.mode.slot && !sim.UNITS[unit[1]].air);

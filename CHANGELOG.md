@@ -5,6 +5,23 @@ AI-vs-AI runs (see DESIGN.md for the balance log). Add new entries under **Unrel
 
 ## Unreleased
 
+- Horde has a boss. Every tenth Wave a Kaiju walks on with the rest: a 17 m atomic lizard with glowing back
+  plates. It walks, swings its tail and turns its head toward what it is about to burn. "THE KAIJU HAS SURFACED"
+  rings out when it arrives, it always shows through the fog, and a big red health bar across the top of the screen
+  tracks it until it dies. Its breath is a beam 34 m long that hits every enemy and every cell in its line once, sets
+  the ground on fire and caves in trenches. It tramples trenches and sandbags, takes double damage from behind like a
+  tank, and has 6000 hp per defender. Killing it pays the usual 20% bounty (300 MP). Wave 20 brings two, Wave 30
+  three. Nobody can buy one. The commit also fixes ordinary shells ignoring its health per defender and breath samples
+  damaging the same terrain cell repeatedly. Balance survival runs need refreshing after these corrections.
+  Left for later: a Kaiju can't cross tank traps or
+  rubble (it waits like any vehicle with no route); the Great Ape and the Seraph.
+  With several Kaiju, the health bar currently tracks survivors, so its percentage can rise when one dies.
+  Keeping the original wave health total on that bar remains for later.
+- Found, not fixed: Horde runs on Kasserine Pass stall. A single Conscript gets stuck short of the bunker
+  (around 161,189 and 163,155), so the Wave never ends. It happens with the Kaiju switched off too (Waves 7, 9 and
+  11 cut off at 90 minutes, where the balance log had 13/15/14 with none cut off), so it comes from somewhere else.
+
+
 - Fixed the Engineers' Build card in Classic and World Conquest showing only an empty "Build" tab after a Conquest
   (or other recruit-bar) match in the same page. The recruit bar's tab layout stayed on and hid every building card.
 

@@ -75,7 +75,7 @@ const isAir = (type) => !!UNITS[type]?.air;
 const worldMode = () => !!lastStart?.map?.world || lobbyState?.mode === 'world';
 const classicMode = () => ['classic', 'world'].includes(lobbyState?.mode) || !!lastStart?.map?.world;
 const isVeh = (type) => !UNITS[type].infantry;
-const barY = (type) => (isAir(type) ? AIR_ALT + 2.5 : type === 'bunker' || type === 'hq' || type === 'barracks' || type === 'motorpool' || type === 'shipyard' ? 7.5 : type === 'destroyer' ? 24 : type === 'gunboat' ? 5 : type === 'depot' ? 4.5 : type === 'tiger' || type === 'churchill' || type === 'medium' ? 4.2 : isVeh(type) ? 3.4 : 2.4);
+const barY = (type) => (isAir(type) ? AIR_ALT + 2.5 : type === 'bunker' || type === 'hq' || type === 'barracks' || type === 'motorpool' || type === 'shipyard' ? 7.5 : type === 'destroyer' || type === 'kaiju' ? 24 : type === 'gunboat' ? 5 : type === 'depot' ? 4.5 : type === 'tiger' || type === 'churchill' || type === 'medium' ? 4.2 : isVeh(type) ? 3.4 : 2.4);
 const regionTeamColor = (team) => css(team < 0 ? 0xaaaaaa : COLORS[teams.indexOf(team)] ?? 0xaaaaaa);
 const css = (c) => '#' + c.toString(16).padStart(6, '0');
 const esc = (s) => String(s).replace(/[&<>"']/g, (c) => `&#${c.charCodeAt(0)};`);

@@ -434,6 +434,18 @@ the result is the Wave the bunker fell on. Terms are in CONTEXT.md, knobs in `CF
   range. A horde unit with no route to the bunker (vehicles behind a closed ring of tank traps) waits where it is
   until the players kill it. No regression test reproduces the waypoint jam in isolation; `tools/horde.mjs` reports
   runs cut off at 90 minutes (none in the 68 runs above).
+- Boss (2026-10-06): every `CFG.horde.boss` (10) Waves, one Kaiju per ten Waves so far walks on at the gates with the
+  Wave. It is the first deliberate exception to "no stat buffs": a horde-only unit (`UNITS.kaiju`, faction -1 so
+  nobody can buy it), 6000 hp taking 1/defenders damage like the bunker (so 6000 hp per defender), speed 3, crushes
+  like a tank, double damage from behind. Its weapon is a beam (`w.beam`, `breathe()`): every enemy within 2.5 m of
+  the line from its mouth out to 34 m is hit once by `hurt()` (40 infantry, 140 vehicle, 250 on structures), and the
+  cells along the line take terrain damage (fires, caved trenches). One breath every 6 s. It always shows through
+  the fog. `modeRow` sends `boss: [hp, max]` (all Kaiju together) for the HUD's boss bar.
+  Its maximum currently counts surviving bosses, so a kill can raise the displayed percentage; retaining the initial
+  wave maximum remains deferred.
+  Balance survival runs need refreshing after correcting projectile scaling and overlapping terrain hits.
+  Deferred: tank traps and rubble still stop it; more bosses (an ape that throws tanks, an angel with a shield only
+  heavy guns get through).
 - Deferred: difficulty levels, a hand-built horde map, paid repair, a Horde that takes points.
 
 ## Command & readability (slice after destruction)

@@ -111,6 +111,8 @@ const GUNS = {
   tankdestroyer: { ...SMALL, snd: 'tankgun', n: 1, spd: 165, w: 0.2, tr: FX.tracerHot, trOdds: 1, flash: 1.9, heavy: 3, smoke: 1, blast: 1.2 },
   // ponytail: the flame is drawn as a slow, fat, hot tracer with a big flash until it gets its own stream effect
   flamer: { ...SMALL, snd: 'flak', n: 1, burst: 3, gap: 0.06, spd: 40, w: 0.5, tr: FX.tracerHot, trOdds: 1, flash: 1.2 },
+  // the Kaiju's breath: a long, fat, hot stream out of its mouth (the explosions along the beam are 'shell' shots)
+  kaiju: { ...SMALL, snd: 'tankgun', n: 1, burst: 8, gap: 0.05, spd: 60, w: 1.2, tr: FX.tracerHot, trOdds: 1, flash: 3, heavy: 4, smoke: 1, blast: 2 },
   halftrack: { ...SMALL, snd: 'mg', n: 1, burst: 3, gap: 0.08, spd: 210, w: 0.085, tr: FX.tracer, trOdds: 1, flash: 0.45 },
   gunboat: { ...SMALL, snd: 'tankgun', n: 1, burst: 2, gap: 0.12, spd: 170, w: 0.12, tr: FX.tracerHot, trOdds: 1, flash: 0.8, heavy: 1.5, smoke: 0.5 },
   lcvp: { ...SMALL, snd: 'mg', n: 1, burst: 3, gap: 0.08, spd: 210, w: 0.085, tr: FX.tracer, trOdds: 1, flash: 0.45 },

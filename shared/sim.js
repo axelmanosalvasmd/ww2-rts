@@ -32,8 +32,9 @@ export const CFG = {
   // x defending players x the army size's income. field: the most horde units on the map per defender (fieldMax in
   // all); the rest of the wave waits in reserve. heal: bunker hp share restored per cleared wave. reveal: with this few
   // horde units left they show through the fog. support: MP of off-map support per wave from supportWave; planes from
-  // airWave. unlock: [unit, first wave, weight in the mix]
-  horde: { budget: 300, growth: 1.25, field: 60, fieldMax: 240, break: 45, heal: 0.1, reveal: 3, supportWave: 6, support: 150, airWave: 10,
+  // airWave. boss: every this many waves a Kaiju per ten waves joins the wave.
+  // unlock: [unit, first wave, weight in the mix]
+  horde: { boss: 10, budget: 300, growth: 1.25, field: 60, fieldMax: 240, break: 45, heal: 0.1, reveal: 3, supportWave: 6, support: 150, airWave: 10,
     unlock: [['rifle', 1, 4], ['conscript', 1, 4], ['mg', 3, 2], ['mortar', 3, 1], ['armoredcar', 5, 1], ['tank', 5, 2], ['at', 5, 1], ['flamer', 6, 1], ['medium', 8, 2], ['tankdestroyer', 8, 1], ['rocket', 8, 1], ['tiger', 12, 1]] },
   // flat income does most of the work; points add a little and trailing players catch up
   mpBase: 4, catchupMax: 6, catchupPer: 60,
@@ -294,6 +295,13 @@ UNITS.mg.aa = { range: 30, dps: 5, setup: true }; // an MG can fire at low plane
 // Assault mode's objective: an immobile concrete bunker with an MG slit. Direct fire does 25%, explosives full damage.
 UNITS.bunker = { name: 'Command Bunker', faction: -1, cost: 0, models: 1, hpPer: 3000, speed: 0, radius: 3, vision: 40, infantry: false, structure: true,
   w: { range: 36, interval: 0.4, inf: 3, veh: 0.5, accInf: 0.5, accVeh: 0.4, supp: 8 },
+  ab: { id: 'none', name: '', cd: 1e9 } };
+// Horde boss: the Kaiju, a giant atomic lizard that walks on with every tenth wave. Nobody can buy it (faction -1).
+// Its breath is a beam (w.beam: its half-width in metres) down the whole range: every enemy and every cell in the line
+// is hit once, and it sets the ground alight. Takes 1/defenders damage like the horde bunker, so its bar reads the
+// same at any team size. Front, flank and rear like a tank: the back of it takes double.
+UNITS.kaiju = { name: 'Kaiju', faction: -1, boss: true, cost: 1500, models: 1, hpPer: 6000, speed: 3, radius: 3.5, vision: 50, infantry: false, crushes: true,
+  w: { range: 34, interval: 6, inf: 40, veh: 140, accInf: 1, accVeh: 1, supp: 70, moveFire: 1, beam: 2.5, terrain: 250, antiGarrison: 1.5 },
   ab: { id: 'none', name: '', cd: 1e9 } };
 // ---------- Classic mode ----------
 // Engineers build the base. A weak rifle squad; only the HQ trains them, only in Classic.
@@ -818,6 +826,14 @@ function stepHorde(g, dt) {
     m.budget = m.totalBudget = Math.min(Number.MAX_SAFE_INTEGER, H.budget * H.growth ** (m.wave - 1) * m.defenders * g.army.income);
     // this wave's off-map support (the AI keeps 100 MP back) and planes; planes are not part of "wave dead"
     boss.mp = m.wave >= H.supportWave ? 100 + H.support * (m.wave - H.supportWave + 1) * m.defenders * g.army.income : 0;
+    // boss waves: a Kaiju per H.boss waves so far walks on at a gate (they count toward "wave dead" like the rest)
+    if (m.wave % H.boss === 0) for (let i = 0; i < m.wave / H.boss; i++) {
+      const gate = m.gates[i % m.gates.length], u = spawnUnit(g, m.slot, 'kaiju');
+      Object.assign(u, cellCenter(g, nearestFree(g, gate.x, gate.z, blockOf(UNITS.kaiju))));
+      updateGrid(g, u);
+      command(g, m.slot, { t: 'amove', orders: [[u.id, bunker.x, bunker.z]] });
+      g.shots.push({ k: 'say', text: 'THE KAIJU HAS SURFACED', ...gate, pub: true });
+    }
     if (m.wave >= H.airWave) for (let i = 0, n = Math.min(8, (1 + Math.floor((m.wave - H.airWave) / 3)) * Math.ceil(m.defenders / 2)); i < n; i++) spawnUnit(g, m.slot, i % 3 === 2 ? 'fighter' : 'attacker');
   }
   const pool = hordePool(m.wave, m.profile);
@@ -827,8 +843,12 @@ function stepHorde(g, dt) {
     if (!type) { m.budget = 0; break; }
     m.reserve.push(type); m.budget -= UNITS[type].cost;
   }
-  let field = 0;
-  for (const u of g.units.values()) if (u.owner === m.slot && !u.air && u.hp > 0) field++;
+  let field = 0, bossHp = 0, bossMax = 0;
+  for (const u of g.units.values()) if (u.owner === m.slot && !u.air && u.hp > 0) {
+    field++;
+    if (UNITS[u.type].boss) { bossHp += u.hp; bossMax += UNITS[u.type].hpPer; }
+  }
+  m.boss = bossMax ? [Math.ceil(bossHp), bossMax] : null; // the HUD's boss bar
   // reserves walk on at the gates, one per gate twice a second, while there is room on the field
   if (g.tick % 10 === 0) for (const gate of m.gates) {
     if (!m.reserve.length || field >= Math.min(H.fieldMax, H.field * m.defenders)) break;
@@ -844,8 +864,9 @@ function stepHorde(g, dt) {
   bunker.hp = Math.min(UNITS.bunker.hpPer, bunker.hp + UNITS.bunker.hpPer * H.heal);
   for (const u of [...g.units.values()]) if (u.owner === m.slot) g.units.delete(u.id);
 }
-// the shared horde bunker has 3000 hp per defender: it takes that much less damage instead, so its hp bar stays 0-100%
-const bunkerMul = (g, t) => (t.type === 'bunker' && g.mode?.kind === 'horde' ? 1 / g.mode.defenders : 1);
+// the shared horde bunker has 3000 hp per defender: it takes that much less damage instead, so its hp bar stays 0-100%.
+// The Kaiju scales the same way.
+const bunkerMul = (g, t) => ((t.type === 'bunker' || t.type === 'kaiju') && g.mode?.kind === 'horde' ? 1 / g.mode.defenders : 1);
 // a command bunker for player p, with a trench line and sandbag walls on the side that faces the map center
 function fortify(g, p) {
   // a trench line, then sandbag walls, with gaps to move through
@@ -3109,6 +3130,7 @@ function launchSalvo(g, u, at, n = UNITS[u.type].w.rockets) {
 }
 function fire(g, u, t, moving) {
   if (UNITS[u.type].w.salvo) { launchSalvo(g, u, t); u.cooldown = UNITS[u.type].w.interval; return; }
+  if (UNITS[u.type].w.beam) { breathe(g, u, t); u.cooldown = UNITS[u.type].w.interval; u.shotAt = g.tick; return; }
   const w = UNITS[u.type].w, def = UNITS[t.type], inf = def.infantry, sm = suppMul(u);
   const cover = w.flame ? 1 : Math.min(coverMul(g, t, u), inf ? 1 - (1 - CFG.coverMul) * coverBehind(g, t, u) : 1);
   const hg = Math.min(1.45, Math.max(0.7, 1 + CFG.highGroundAcc * (levelAt(g, u.x, u.z) - levelAt(g, t.x, t.z))));
@@ -3150,7 +3172,7 @@ function flightDamage(g, p, t, at, direction) {
   dmg *= 1 - CFG.vetArmor * vet(t);
   if (def.building) dmg = (w.veh >= 20 ? w.veh : w.inf * CFG.classic.smallArms) * (p.damageScale ?? 1) * p.energy;
   else if (def.structure) dmg *= CFG.assault.directMul * bunkerMul(g, t);
-  else if (!inf) dmg *= armorMul(t, { x: at.x - direction.x, z: at.z - direction.z });
+  else if (!inf) dmg *= armorMul(t, { x: at.x - direction.x, z: at.z - direction.z }) * bunkerMul(g, t);
   const before = t.hp;
   t.hp -= dmg;
   if (dmg > 0) { t.lastHit = p.owner; t.deathImpulse = { dir: Math.atan2(direction.z, direction.x), impulse: Math.max(0.25, Math.min(4, dmg / 100)) }; }
@@ -3272,6 +3294,22 @@ function stepFlights(g, prior) {
   }
 }
 
+// the Kaiju's breath: a beam from its mouth through the target out to full range. Each enemy within w.beam of the line
+// is hit once (hurt() at full strength); the cells along it take terrain damage and catch fire.
+function breathe(g, u, t) {
+  const w = UNITS[u.type].w, d = dist(u, t) || 1, dx = (t.x - u.x) / d, dz = (t.z - u.z) / d, team = g.players[u.owner].team;
+  const end = { x: u.x + dx * w.range, z: u.z + dz * w.range }, list = [...g.units.values()];
+  for (const v of list) {
+    if (v.hp <= 0 || v.air || v.riding || g.players[v.owner].team === team) continue;
+    const along = (v.x - u.x) * dx + (v.z - u.z) * dz;
+    if (along > 0 && along <= w.range && Math.abs((v.z - u.z) * dx - (v.x - u.x) * dz) <= w.beam + UNITS[v.type].radius) hurt(g, v, w, 1, u.owner);
+  }
+  const damagedCells = new Set();
+  for (let s = 4; s <= w.range; s += CELL) damageCells(g, list, { x: u.x + dx * s, z: u.z + dz * s }, w.beam, w.terrain, CFG.scar.tank, { damagedCells, owner: u.owner });
+  g.shots.push({ f: u.id, t: t.id, fo: u.owner, to: t.owner, x: end.x, z: end.z, hit: true, k: u.type, pub: true });
+  for (let s = 8; s <= w.range; s += 8) g.shots.push({ k: 'shell', x: u.x + dx * s, z: u.z + dz * s, pub: true });
+}
+
 // a vehicle that drove over dry ground in the last second trails dust
 const dusty = (g, u) => g.tick - (u.dust ?? -1e9) < 20;
 function updateVision(g) {
@@ -3331,7 +3369,11 @@ function updateVision(g) {
       if (seen || recon.some(s => inStrip(s, t, SUPPORT.recon.len, SUPPORT.recon.width))) vis.add(t.id);
     }
     // Horde: the last few of a wave show through the fog, so nobody hunts a straggler blind
-    if (g.mode?.kind === 'horde' && p.team === g.mode.defenderTeam && g.mode.active && !g.mode.budget && g.mode.left <= CFG.horde.reveal) for (const t of list) if (t.owner === g.mode.slot && !t.air) vis.add(t.id);
+    // horde stragglers show through the fog, and a Kaiju always does (it is 17 m tall)
+    if (g.mode?.kind === 'horde' && p.team === g.mode.defenderTeam && g.mode.active) {
+      const few = !g.mode.budget && g.mode.left <= CFG.horde.reveal;
+      for (const t of list) if (t.owner === g.mode.slot && !t.air && (few || UNITS[t.type].boss)) vis.add(t.id);
+    }
     byTeam.set(p.team, p.visible = vis);
     // Ghosts: every enemy building this team has seen stays remembered where it was, until the team sees the spot
     // again without it (destroyed or cancelled)
@@ -3638,6 +3680,9 @@ export function damageCells(g, list, at, radius, dmg, scar = 0, context = {}) {
     if (x < 0 || y < 0 || x >= g.w || y >= g.h) continue;
     const c = y * g.w + x, d = Math.hypot((x + 0.5) * CELL - at.x, (y + 0.5) * CELL - at.z);
     if (d > radius + CELL / 2) continue;
+    // A beam samples overlapping circles, but damages each cell only once per breath.
+    if (context.damagedCells?.has(c)) continue;
+    context.damagedCells?.add(c);
     const hit = dmg * (1 - Math.min(1, d / (radius + CELL)) * 0.5), ch = physicalWorldCell(g, c), ground = g.ground?.[c] ?? ch;
     if (g.mineLayer?.[c] && hit > 0) mutateWorldCell(g, c, { mine: false });
     // a shelled road breaks up until it is one more crater; a crater that is hit again gets deeper
@@ -4586,7 +4631,7 @@ function unitRow(g, u) {
 function ordersRow(g, u) { return [u.id, u.orders.length, ...u.orders.flatMap(o => queuedPlan(g, u.owner, o).map(rounded))]; }
 function modeRow(g) {
   return g.mode && { kind: g.mode.kind, defenderTeam: g.mode.defenderTeam, attackerTeam: g.mode.attackerTeam, timeLeft: g.mode.timeLeft === undefined ? undefined : Math.max(0, Math.ceil(g.mode.timeLeft)), suddenDeath: !!g.mode.suddenDeath, total: g.mode.total, bunkers: g.mode.bunkers,
-    profile: g.mode.profile, nextProfile: g.mode.active ? undefined : g.mode.nextProfile, wave: g.mode.wave, left: g.mode.left, active: g.mode.active, slot: g.mode.slot, goal: g.mode.goal, step: g.mode.step, steps: g.mode.steps };
+    profile: g.mode.profile, nextProfile: g.mode.active ? undefined : g.mode.nextProfile, wave: g.mode.wave, left: g.mode.left, active: g.mode.active, boss: g.mode.boss, slot: g.mode.slot, goal: g.mode.goal, step: g.mode.step, steps: g.mode.steps };
 }
 function playerRow(row, slot, seen) {
   const result = row.slice();

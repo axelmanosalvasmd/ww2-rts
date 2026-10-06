@@ -154,6 +154,11 @@
   .sc-lead { flex: none; width: var(--lead, 150px); display: grid; align-content: center; justify-items: center; text-align: center; }
   .sc-mode { font-size: 13px; line-height: 1.2; color: var(--dim); white-space: nowrap; }
   .sc-clock { font-size: 26px; line-height: 1.05; color: var(--brass); }
+  /* Horde boss bar (hud.js): a Kaiju's hp across the top while one is on the map */
+  #boss { width: min(640px, calc(100vw - 32px)); padding: 6px 12px 8px; background: var(--panel-solid); text-align: center; }
+  #boss .boss-name { font-size: 15px; font-weight: 700; letter-spacing: 0.2em; color: #e8c060; }
+  #boss .boss-bar { height: 18px; margin-top: 4px; border: 1px solid #000; background: #2a1010; }
+  #boss .boss-bar > div { height: 100%; background: linear-gradient(#e04a3a, #8e1c14); transition: width 0.3s; }
   .sc-next { margin-top: 4px; padding: 2px 10px; font-size: 13px; } /* Horde: send the next wave early */
   .sc-team { flex: none; width: clamp(174px, calc((100vw - 668px - var(--lead, 0px)) / var(--n, 2)), 240px); }
   .sc-p { display: flex; align-items: center; gap: 6px; font-size: 15px; font-weight: 600; line-height: 22px; }
@@ -393,7 +398,7 @@
     <button id="controlsBtn" title="Controls and mouse help (F1)" aria-label="Controls, F1">? <kbd>F1</kbd></button>
   </div>
   <div id="menu" class="panel hidden"><button id="pauseBtn">Pause match</button><button id="restartBtn">Restart match</button><button id="endBtn">End match (back to lobby)</button><div id="offlineSeats"></div><button id="leaveBtn">Leave game</button><button id="edgeBtn">Edge scroll: On</button><button id="captureBtn" title="Keep the cursor inside the game while you play, so pushing past the screen edge always scrolls. Esc lets go">Capture mouse: In fullscreen</button><button id="panBtn">Pan speed: Normal</button><button id="statsBtn" title="Frame rate, ping, loss and other numbers over the game (F2 shows or hides)">Stats overlay: Off</button><label class="vol" title="Effects, voices and alerts. M mutes">Volume<input id="volume" type="range" min="0" max="100" step="1" aria-label="Volume"></label></div>
-  <div id="top"><div id="scores" class="panel"></div><div id="status" class="panel"></div></div>
+  <div id="top"><div id="scores" class="panel"></div><div id="boss" class="panel hidden"><div class="boss-name">KAIJU</div><div class="boss-bar"><div></div></div></div><div id="status" class="panel"></div></div>
   <div id="econ" class="panel">
     <div class="res">
       <span title="Manpower: buys units, fortifications and support"><svg class="ico ri" viewBox="0 0 100 100" aria-hidden="true"><path fill-rule="evenodd" fill="currentColor" d="M16 62L16.3 57.3L17.2 52.7L18.6 48.2L20.6 44L23 40.1L26 36.5L29.3 33.4L33 30.8L37 28.7L41.2 27.2L45.6 26.3L50 26L54.4 26.3L58.8 27.2L63 28.7L67 30.8L70.7 33.4L74 36.5L77 40.1L79.4 44L81.4 48.2L82.8 52.7L83.7 57.3L84 62L88 64L91 67L84 68.5L60 66.5L32 68L21 77L10 76L13 68Z"/></svg><b class="num" id="mp">0</b>MP</span>

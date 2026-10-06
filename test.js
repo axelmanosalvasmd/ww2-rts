@@ -40,7 +40,8 @@ const settledRubble = (g, cells, message) => {
     'test-engine-controls.js', 'test-engine-world.js', 'test-engine-movement.js', 'test-movement-lab.js', 'test-engine-projectiles.js', 'test-engine-scenarios.js', 'test-engine-ai.js', 'test-engine-acceptance.js', 'test-engine-presentation.mjs',
     'test-engine-spectators.js', 'test-engine-scenario-start.js', 'test-engine-breaches.mjs', 'test-engine-authoring.js', 'test-engine-vehicle-pose.mjs', 'test-engine-ai-privacy.js', 'test-engine-localization.mjs',
     'test-engine-debris.js', 'test-engine-traffic-privacy.js', 'test-engine-horde-queue.js']) {
-    execFileSync(process.execPath, [file], { cwd: import.meta.dirname, stdio: 'inherit', timeout: 180000 });
+    // Loaded machines may need a longer process deadline; every child still runs all of its assertions.
+    execFileSync(process.execPath, [file], { cwd: import.meta.dirname, stdio: 'inherit', timeout: Number(process.env.WW2_TEST_CHILD_TIMEOUT_MS) || 180000 });
   }
 }
 
@@ -3184,7 +3185,7 @@ for (const type of ['rifle', 'tank']) {
 const simCopy = (source) => import('data:text/javascript;base64,' + Buffer.from(source.replace(/from '\.\/([\w-]+\.js)'/g, (_, file) => `from '${new URL(`./shared/${file}`, import.meta.url)}'`)).toString('base64'));
 // Fixed Massive fixture for exact comparisons and repeatable subsystem timings.
 const massiveInternals = await simCopy(readFileSync('shared/sim.js', 'utf8')
-  + '\nexport { updateVision, nearCover, behindCover, aimPoint, flagsAt, dist, spawnUnit, placeBuilding, wreckBuilding, setCell, logCell, pickTarget };');
+  + '\nexport { updateVision, nearCover, behindCover, aimPoint, flagsAt, dist, spawnUnit, placeBuilding, wreckBuilding, setCell, logCell, pickTarget, breathe };');
 // Salvo target clusters use visible squads only, so hidden neighbors cannot change automatic target choice.
 {
   const g = fresh(field()); g.players[0].mp = g.players[1].mp = 5000;
@@ -6201,7 +6202,7 @@ for (const lookupFinished of [false, true]) {
     } else {
       let draws = 0;
       root.traverse((o) => { if (o.isMesh) { draws++; assert.ok(o.castShadow, `${type}: vehicles and structures cast shadows`); } });
-      assert.ok(draws >= 1 && draws <= (type === 'destroyer' ? 5 : 3), `${type}: ${draws} draws`); // a destroyer's four gun mounts each turn on their own
+      assert.ok(draws >= 1 && draws <= (type === 'destroyer' ? 5 : type === 'kaiju' ? 8 : 3), `${type}: ${draws} draws`); // a destroyer's four gun mounts each turn on their own; a Kaiju's legs, tail and head move, its glow is a second material
     }
   }
 
@@ -6495,12 +6496,17 @@ for (const lookupFinished of [false, true]) {
       // the map loads asynchronously: Start is checked against the current map's seats, so wait until it has switched
       await host.wait('lobby', m => m.mapName === 'king-of-the-hill' && m.mode === mode && m.army === 'massive');
       await host.send({ t: 'start' }); await host.wait('start');
-      const g = room.game;
+      const g = room.game, receivedBefore = h.snapshots(host).length, expectedTicks = [];
       for (let tick = 0; tick < 1800 && g.winner === null; tick++) {
+        const scheduled = (g.tick + 1) % room.snapEvery === 0;
         await h.tick();
+        if (scheduled || g.winner !== null) expectedTicks.push(g.tick);
         if (tick >= 1600 && tick % 2) same(g, mode);
       }
-      assert.ok(h.snapshots(host).length > 500, `${mode}: the host gets the cached snapshots`);
+      // The server adapts snapshot cadence under load. Every scheduled snapshot must still arrive exactly once.
+      assert.ok(expectedTicks.length > 0, `${mode}: the room schedules cached snapshots`);
+      await h.waitFor(() => h.snapshots(host).length >= receivedBefore + expectedTicks.length, `${mode}: the scheduled snapshots arrive`);
+      assert.deepEqual(h.snapshots(host).slice(receivedBefore).map(s => s.tick), expectedTicks, `${mode}: the host gets every cached snapshot exactly once`);
       if (mode === 'classic') assert.ok([...g.units.values()].some(u => UNITS[u.type].building), 'Classic snapshots include building rows');
       // The idle Classic host can be defeated during this battle. Its allied observations still exercise the cache.
       if (mode === 'conquest') assert.equal(command(g, 0, { t: 'buy', unit: 'rifle' }), undefined, 'the cache order fixture recruits a live host squad through its ordinary command');
@@ -7036,6 +7042,87 @@ for (const lookupFinished of [false, true]) {
   const { defend, ...plain } = map;
   assert.equal(createGame(plain, ['a'], false, [0], [0], { mode: 'horde' }).mode, undefined, 'Horde needs a map with defender spawns');
   assert.equal(createGame(map, ['a', 'b', 'c', 'd', 'e', 'f'], false, undefined, undefined, { mode: 'horde' }).players.length, 6, 'Horde needs a free seat for the horde');
+}
+
+// Horde boss: a Kaiju walks on with wave 10, can't be bought, always shows, and its breath burns a line.
+{
+  const map = { name: 'Kaiju fixture', w: 60, h: 60, rows: Array(60).fill('.'.repeat(60)), spawns: [{ x: 30, y: 5 }, { x: 10, y: 54 }, { x: 50, y: 54 }], defend: [0], points: [{ x: 30, y: 30 }] };
+  const g = createGame(map, ['a', 'b'], false, [0, 1], [0, 1], { mode: 'horde' }), m = g.mode;
+  assert.ok([0, 1, 2, 3].every(f => !sim.canBuild('kaiju', f)), 'nobody can buy the Kaiju');
+  for (const [wave, expected] of [[9, 0], [20, 2], [30, 3]]) {
+    const later = createGame(map, ['a', 'b'], false, [0, 1], [0, 1], { mode: 'horde' });
+    later.mode.wave = wave - 1; later.mode.timeLeft = 0; step(later);
+    const bosses = [...later.units.values()].filter(u => u.type === 'kaiju');
+    assert.equal(bosses.length, expected, `wave ${wave} brings ${expected} Kaiju`);
+    assert.ok(bosses.every(u => u.amove), 'later bosses attack-move on the bunker');
+    assert.deepEqual(snapshotFor(later, 0, []).mode.boss, expected ? [expected * UNITS.kaiju.hpPer, expected * UNITS.kaiju.hpPer] : null, 'later boss bars aggregate every living Kaiju');
+  }
+  m.wave = 9; m.timeLeft = 0; step(g);
+  const kaiju = [...g.units.values()].filter(u => u.type === 'kaiju');
+  assert.ok(m.wave === 10 && kaiju.length === 1 && kaiju[0].amove, 'wave 10 brings one Kaiju, attack-moving on the bunker');
+  const k = kaiju[0], snap = snapshotFor(g, 0, []);
+  assert.deepEqual(snap.mode.boss, [UNITS.kaiju.hpPer, UNITS.kaiju.hpPer], 'the boss bar starts full');
+  for (let i = 0; i < 10; i++) step(g);
+  assert.ok(g.players[0].visible.has(k.id), 'the Kaiju shows through the fog');
+  // the breath: everything of the enemy's in the line is hit, beside it and its own side are not
+  for (const u of [...g.units.values()]) if (u.owner === m.slot && u !== k) g.units.delete(u.id);
+  m.reserve = []; m.budget = 0;
+  Object.assign(k, { x: 60, z: 60, path: [], amove: null, cooldown: 0, rot: 0 });
+  const free = [...g.units.values()].filter(v => v.owner !== m.slot && v.type === 'rifle');
+  const put = (x, z) => Object.assign(free.pop(), { x, z, path: [], holdPos: true });
+  const near = put(80, 60), far = put(90, 60), aside = put(80, 90);
+  const hp = [near, far, aside].map(u => u.hp);
+  for (let i = 0; i < 60 && near.hp === hp[0]; i++) { Object.assign(k, { x: 60, z: 60, path: [] }); step(g); }
+  assert.ok(near.hp < hp[0] && far.hp < hp[1], 'the beam hits the target and the squad behind it');
+  assert.equal(aside.hp, hp[2], 'the beam misses a squad off the line');
+  k.hp = UNITS.kaiju.hpPer / 2; step(g);
+  assert.deepEqual(snapshotFor(g, 0, []).mode.boss, [Math.ceil(k.hp), UNITS.kaiju.hpPer], 'the boss bar follows its hp');
+  k.hp = 0; k.lastHit = 0;
+  const before = g.players[0].mp;
+  step(g); step(g);
+  assert.equal(snapshotFor(g, 0, []).mode.boss, null, 'the boss bar disappears when the Kaiju dies');
+  assert.ok(g.players[0].mp - before >= 300, 'killing the Kaiju pays a 300 MP bounty');
+}
+
+// Kaiju health scales for ordinary shells and still takes double damage from behind.
+{
+  const map = { w: 60, h: 60, rows: Array(60).fill('.'.repeat(60)), spawns: [{ x: 30, y: 5 }, { x: 10, y: 54 }, { x: 50, y: 54 }, { x: 30, y: 54 }], defend: [0], points: [] };
+  const random = Math.random;
+  try {
+    Math.random = () => 0;
+  for (const defenders of [1, 3]) for (const rear of [false, true]) {
+    const g = createGame(map, Array(defenders).fill('Defender'), false, undefined, undefined, { mode: 'horde' });
+    g.mode.wave = 9; g.mode.timeLeft = 0; step(g);
+    const k = [...g.units.values()].find(u => u.type === 'kaiju');
+    g.players[0].mp = 9999; command(g, 0, { t: 'buy', unit: 'tank' });
+    const tank = [...g.units.values()].find(u => u.owner === 0 && u.type === 'tank');
+    for (const u of [...g.units.values()]) if (u !== k && u !== tank && u.type !== 'bunker') g.units.delete(u.id);
+    g.mode.budget = 0; g.mode.reserve = [];
+    Object.assign(k, { x: 60, z: 60, rot: rear ? Math.PI : 0, xp: 0, path: [], orders: [], amove: null, holdPos: true, cooldown: 1e9 });
+    Object.assign(tank, { x: 80, z: 60, rot: Math.PI, xp: 0, path: [], orders: [], amove: null, holdPos: true, cooldown: 0 });
+    const hp = k.hp;
+    for (let i = 0; i < 100 && tank.shotAt === undefined; i++) step(g);
+    assert.notEqual(tank.shotAt, undefined, 'the defender launches a tank shell at the Kaiju');
+    tank.cooldown = 1e9;
+    for (let i = 0; i < 200 && k.hp === hp; i++) step(g);
+    assert.equal(hp - k.hp, UNITS.tank.w.veh * (rear ? 2 : 1) / defenders, 'a tank shell respects health per defender and rear armor');
+  }
+  } finally { Math.random = random; }
+}
+
+// One Kaiju breath damages each trench cell once despite overlapping terrain samples.
+{
+  const map = { w: 60, h: 60, rows: Array(60).fill('.'.repeat(60)), spawns: [{ x: 30, y: 5 }, { x: 10, y: 54 }], defend: [0], points: [] };
+  const g = createGame(map, ['Defender'], false, [0], [0], { mode: 'horde' });
+  const k = massiveInternals.spawnUnit(g, g.mode.slot, 'kaiju');
+  Object.assign(k, { x: 61, z: 61 });
+  const c = 30 * g.w + 40;
+  massiveInternals.setCell(g, c, 'T');
+  const target = [...g.units.values()].find(u => u.owner === 0 && u.type === 'rifle');
+  Object.assign(target, { x: 91, z: 61 });
+  massiveInternals.breathe(g, k, target);
+  assert.equal(g.chars[c], 'T', 'one breath does not collapse a pristine 400 HP trench');
+  assert.ok(g.wear[c] > 0 && g.wear[c] <= UNITS.kaiju.w.terrain / CFG.trench.hp, 'overlapping samples damage each trench cell only once');
 }
 
 // Horde start and restart refuse a freshly edited map without defender spawns.

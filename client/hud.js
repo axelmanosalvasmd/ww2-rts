@@ -588,12 +588,22 @@ export function createHud(ctx) {
     });
   }
 
+  // Horde boss bar: the Kaiju's hp (all of them, on a later boss wave) while any is on the map
+  function drawBoss(s) {
+    const b = s.mode?.boss, el = $('boss');
+    show(el, !!b);
+    if (!b) return;
+    setText(el.firstChild, `KAIJU  ${Math.ceil(b[0] / b[1] * 100)}%`);
+    el.lastChild.firstChild.style.width = `${b[0] / b[1] * 100}%`;
+  }
+
   function update(s) {
     snapshot = s;
     const me = ctx.me, all = [...ctx.units.values()];
     const pop = all.reduce((a, v) => a + (v.owner !== me ? 0 : UNITS[v.type].structure ? (v.queue ?? []).reduce((n, t) => n + popUse(t), 0) : popUse(v.type)), 0);
     const cap = s.world?.cap ?? popCap(s), sel = selUnits();
     drawScores(s);
+    drawBoss(s);
     drawEcon(s, pop, cap);
     if (['classic', 'world'].includes(s.mode?.kind)) drawClassicCard(s, pop, cap, sel); else drawRecruit(s, pop, cap);
     drawSelection(sel);
