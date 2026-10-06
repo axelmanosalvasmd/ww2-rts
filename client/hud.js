@@ -14,6 +14,7 @@ import { SUPPORT_KEYS, FORT_KEYS, FORT_BADGES, BUILD_KEYS, CARD_KEYS, label, bad
 import { availability, buyCount, cooldownSeconds, recruitAction } from './availability.js';
 import { setAvailability, installTooltips } from './feedback.js';
 import { t as tr } from './i18n.js';
+import { reserveLabels, truckLabels, storeLabels, storeForUnit, logisticsIndicator } from './logistics.js';
 
 const $ = (id) => document.getElementById(id);
 const esc = (s) => String(s).replace(/[&<>"']/g, (c) => `&#${c.charCodeAt(0)};`);
@@ -39,7 +40,7 @@ const ENTRENCH_TIP = { line: 'One straight trench from the first click to the se
 const STANCE = { holdFire: [2048, 'Hold fire', 'shoot only when given an attack order (snipers and guns stay hidden)'],
   holdPos: [4096, 'Hold position', 'never move without an order, not even to cover'],
   autoRetreat: [8192, 'Auto-retreat', `run for home when below ${Math.round(CFG.autoRetreat * 100)}% strength`] };
-const BUILD_ROLE = { depot: 'On a resource node: +1.5 MP/s', barracks: 'Trains MGs and elite infantry', motorpool: 'Trains AT guns, tanks, rockets',
+const BUILD_ROLE = { supplycache: 'Stores delivered supplies', depot: 'On a resource node: +1.5 MP/s', barracks: 'Trains MGs and elite infantry', motorpool: 'Trains AT guns, tanks, rockets',
   airfield: 'Trains planes; their base', flakpos: 'Shoots down planes over your base', shipyard: 'On the coast: trains landing craft' };
 const AIR_STATE = ['Ready', 'Flying out', 'On station', 'Heading home', 'Rearming'];
 const AIMED = new Set(['grenade', 'barrage', 'satchel']); // abilities that need a spot clicked
@@ -80,6 +81,13 @@ export { icon };
 // ctx: state getters (me, teams, names, units, selected, PRIORITY) and helpers/actions from main.js:
 // look, facOf, color, classic, send, blip, retreat, stop, amove, rally, dig, build, ability, support, fType, builders, owns, canPlace, select
 export function createHud(ctx) {
+  const logisticsControls = document.createElement('span');
+  logisticsControls.style.display = 'flex';
+  logisticsControls.innerHTML = '<button data-logistics-overlay aria-label="Logistics overlay" title="Show known supply stores and selected truck routes">' + icon('supplycache') + '</button>' +
+    '<button data-logistics-selection aria-label="Logistics selection" title="Select supply trucks with a drag box">' + icon('truck') + '</button>';
+  $('util').append(logisticsControls);
+  logisticsControls.querySelector('[data-logistics-overlay]').onclick = () => ctx.toggleLogisticsOverlay();
+  logisticsControls.querySelector('[data-logistics-selection]').onclick = () => ctx.toggleLogisticsSelection();
   // the placement hint sits just above the Command Card, whose height changes (the Classic build card is taller
   // than the recruit row), so --card-h follows the card's real height
   if (typeof ResizeObserver === 'function') new ResizeObserver(() => {
@@ -246,6 +254,8 @@ export function createHud(ctx) {
   let selKey = null, selRows = [];
   const tagsOf = (v) => {
     const t = [];
+    const supply = logisticsIndicator(ctx.logistics().units.get(v.id));
+    if (supply) t.push(['pin', supply]);
     if (v.flags & 256) t.push(['cov', 'Hidden']);
     if (v.flags & RIDING_FLAG) t.push(['cov', 'Riding']);
     if (v.flags & CARGO_FLAG) t.push(['', 'Carrying a squad']);
@@ -317,13 +327,26 @@ export function createHud(ctx) {
       orderBtn('data-f="together"', 'f_together', '', 'March together: the group moves at the pace of its slowest unit and arrives in one piece') +
       orderBtn('data-f="snap"', 'f_snap', '', 'Snap to trenches: infantry placed within 3 m of a trench step into it');
     // outside Classic the Build menu also puts up a Flak Emplacement (in Classic the Engineers' card has it)
-    if (m === 'build') return (ctx.classic() ? '' : buildKinds(false, isSkirmishBaseMode(snapshot)).filter(k => k !== 'shipyard' || ctx.naval()).map(k => orderBtn(`data-a="bld:${k}"`, k, '', `${UNITS[k].name}: ${UNITS[k].cost} MP, ${UNITS[k].buildTime}s. Click where; selected builder squads construct it. Right-click a damaged building to repair it`, k)).join('')) +
+    if (m === 'build') return (ctx.logistics().enabled && UNITS.supplycache ? orderBtn('data-a="bld:supplycache"', 'supplycache', '', 'Supply Cache: stores delivered supplies. 60 MP, 12 s') : '') +
+      (ctx.classic() ? '' : buildKinds(false, isSkirmishBaseMode(snapshot)).filter(k => k !== 'supplycache' && (k !== 'shipyard' || ctx.naval())).map(k => orderBtn(`data-a="bld:${k}"`, k, '', `${UNITS[k].name}: ${UNITS[k].cost} MP, ${UNITS[k].buildTime}s. Click where; selected builder squads construct it. Right-click a damaged building to repair it`, k)).join('')) +
       Object.entries(FORTS).map(([k, f]) => orderBtn(`data-a="fort:${k}"`, k, FORT_BADGES[k], `${f.name}${FORT_KEYS[k] ? ` (${FORT_KEYS[k]})` : ''}: ${FORT_TIP[k] ?? ''}. ${lineFort(k) && k !== 'trench' ? 'Click where it starts, then where it ends: one piece, or a continuous line that every selected builder squad works on. Price per piece' : 'Click where; the nearest builder squad puts it across its approach'}`)).join('');
     return ENTRENCH_TYPES.map((k) => orderBtn(`data-a="ent:${k}"`, `e_${k}`, k === 'line' ? badge('entrench:line') : '',
       `${ENTRENCH[k]}${k === 'line' ? ` (${label('entrench:line')})` : ''}: ${ENTRENCH_TIP[k]}. Every selected builder squad digs; each segment is paid as it is started. Shift on the second click queues it. Right-click a planned pattern with other squads to send them to help`)).join('');
   }
   function drawOrders(s, sel) {
     const el = $('abil'), bld = sel.length > 0 && sel.every((v) => UNITS[v.type].building);
+    if (sel.length && sel.every(v => v.type === 'truck')) {
+      if (ordKey !== 'trucks') {
+        ordKey = 'trucks';
+        el.innerHTML = '<div class="hd">Orders</div><div class="grid">' +
+          orderBtn('data-truck-stop', 'stop', label('stop'), 'Stop selected units') +
+          orderBtn('data-truck-resume', 'truck', '', 'Resume deliveries') + '</div>';
+        el.querySelector('[data-truck-stop]').onclick = () => ctx.stop();
+        el.querySelector('[data-truck-resume]').onclick = () => ctx.send({ t: 'logisticsResume', ids: selUnits().filter(v => v.type === 'truck' && v.owner === ctx.me).map(v => v.id) });
+        setText(el.querySelector('[data-truck-resume] .val'), 'Resume deliveries');
+      }
+      return;
+    }
     // Fort buttons whenever a squad that can build them is selected, including Engineers.
     const types = ctx.PRIORITY.filter((t) => sel.some((v) => v.type === t)), dig = sel.some((v) => CFG.fortBuilders.includes(v.type));
     const inf = sel.some((v) => UNITS[v.type].infantry), carry = sel.some((v) => UNITS[v.type].carries), shell = sel.some((v) => UNITS[v.type].w?.salvo);
@@ -459,7 +482,7 @@ export function createHud(ctx) {
     // drop the recruit bar's tab layout a previous Conquest match left behind: 'fit' hides every closed group's cards
     if (ctx.classic()) { card.innerHTML = ''; card.classList.add('hidden'); card.classList.remove('fit', 'picked', 'lettered'); return; }
     card.classList.remove('hidden');
-    const types = UNIT_TYPES.filter((t) => canBuild(t, ctx.facOf(ctx.me)) && !UNITS[t].classic && (!UNITS[t].naval || ctx.naval()));
+    const types = UNIT_TYPES.filter((t) => t !== 'truck' && t !== 'supplycache' && canBuild(t, ctx.facOf(ctx.me)) && !UNITS[t].classic && (!UNITS[t].naval || ctx.naval()));
     card.innerHTML = groupsHTML(types, (t) => unitCard(t, `data-unit="${t}"`, `${UNITS[t].cost}<span class="cu"> MP</span>`, '', unitTip(t, ctx.me, `. ${UNITS[t].cost} MP`)));
     // Each group is a tab: a click shows its cards and hides the rest, so only one type's cards fill the screen.
     // The stylesheet shares the room between the widest group's cards; narrow cards drop the name for the tooltip.
@@ -505,7 +528,7 @@ export function createHud(ctx) {
     const recovery = s.world?.recovery?.available && !bld && !eng;
     const missingHQ = ![...ctx.units.values()].some(v => v.owner === ctx.me && v.type === 'hq');
     const recoveryCost = missingHQ ? s.world?.recovery?.hq : s.world?.recovery?.engineer;
-    const key = bld ? `b${bld.id}:${bld.built >= 1}` : eng ? 'e' : recovery ? `recover:${missingHQ}:${recoveryCost}` : '';
+    const key = bld ? `b${bld.id}:${bld.built >= 1}` : eng ? `e:${ctx.logistics().enabled}` : recovery ? `recover:${missingHQ}:${recoveryCost}` : '';
     if (key !== cardKey) {
       cardKey = key;
       card.classList.toggle('hidden', !key);
@@ -517,7 +540,7 @@ export function createHud(ctx) {
           const pr = priceOf(s, t), fuel = pr.fuel ? `${pr.fuel} Fuel, ` : '';
           return unitCard(t, `data-train="${t}"`, `${pr.mp} MP`, `${fuel}${UNITS[t].train}s`, unitTip(t, ctx.me, `. ${pr.mp} MP${pr.fuel ? ` + ${pr.fuel} Fuel` : ''}, trains in ${UNITS[t].train}s`));
         });
-      else if (eng) card.innerHTML = '<div class="grp"><div class="hd">Build</div><div class="cards">' + BUILDABLE.map((k) =>
+      else if (eng) card.innerHTML = '<div class="grp"><div class="hd">Build</div><div class="cards">' + BUILDABLE.filter(k => k !== 'supplycache' || ctx.logistics().enabled).map((k) =>
         `<button class="uc wide" data-build="${k}" title="${esc(`${UNITS[k].name}${BUILD_KEYS[k] ? ` (${BUILD_KEYS[k]})` : ''}: ${BUILD_ROLE[k] ?? ''}. ${UNITS[k].cost} MP, ${UNITS[k].buildTime}s`)}">` +
         `<span class="nm">${esc(UNITS[k].name)} <kbd>${BUILD_KEYS[k] ?? ''}</kbd></span>${cardSymbol(k)}<span class="cost">${UNITS[k].cost} MP, ${UNITS[k].buildTime}s</span>` +
         `<span class="sub" data-note></span></button>`).join('') + '</div></div>';
@@ -616,12 +639,50 @@ export function createHud(ctx) {
     drawScores(s);
     drawBoss(s);
     drawEcon(s, pop, cap);
-    if (['classic', 'world'].includes(s.mode?.kind)) drawClassicCard(s, pop, cap, sel); else drawRecruit(s, pop, cap);
+    if (!sel.length || !sel.every(v => v.type === 'truck')) {
+      if (['classic', 'world'].includes(s.mode?.kind)) drawClassicCard(s, pop, cap, sel); else drawRecruit(s, pop, cap);
+    }
+    drawLogistics(sel);
     drawSelection(sel);
     drawOrders(s, sel);
     drawAir(s);
     quietBadges();
     tooltips.update();
+  }
+
+  let truckCard = false;
+  function drawLogistics(sel) {
+    const data = ctx.logistics(), card = $('buy');
+    show(logisticsControls, data.enabled && !ctx.watching);
+    logisticsControls.querySelector('[data-logistics-overlay]').setAttribute('aria-pressed', String(ctx.logisticsOverlay()));
+    logisticsControls.querySelector('[data-logistics-selection]').setAttribute('aria-pressed', String(ctx.logisticsSelection()));
+    const trucks = sel.length && sel.every(v => v.type === 'truck');
+    if (trucks && data.enabled) {
+      if (!truckCard) {
+        truckCard = true; card.innerHTML = ''; cardKey = null;
+        card.classList.remove('hidden', 'lettered', 'fit'); recruiting = false;
+      }
+    } else if (truckCard) {
+      truckCard = false;
+      if (!ctx.classic()) { buildCard(); drawRecruit(snapshot); }
+      else { cardKey = null; drawClassicCard(snapshot, 0, 0, sel); }
+    }
+    let detail = card.querySelector('[data-logistics-detail]');
+    const entries = sel.map(v => ({ v, lines: v.type === 'truck' ? truckLabels(data.trucks.get(v.id)) :
+      data.units.has(v.id) ? reserveLabels(data.units.get(v.id)) : storeLabels(storeForUnit(data,v)) })).filter(entry => entry.lines.length);
+    if (!entries.length) { detail?.remove(); if (ctx.classic() && !cardKey) card.classList.add('hidden'); return; }
+    if (!detail) { detail = document.createElement('div'); detail.dataset.logisticsDetail = ''; detail.className = 'logistics-card'; card.append(detail); }
+    card.classList.remove('hidden');
+    const shape = entries.map(({ v, lines }) => `${v.id}:${lines.length}`).join(',') + `|${trucks}`;
+    if (detail.dataset.shape !== shape) {
+      detail.dataset.shape = shape;
+      detail.innerHTML = `<div class="hd">Logistics</div><div class="logistics-reserves">${entries.map(({ v, lines }) =>
+        `<div><b>${esc(tr(name(v.type, v.owner)))} #${v.id}</b>${lines.map(() => '<span data-logistics-value></span>').join('')}</div>`).join('')}</div>` +
+        (trucks ? '<div class="ci-h">Right-click an allied unit or Supply Cache to deliver carried cargo</div><button data-logistics-resume>Resume deliveries</button>' : '');
+      detail.querySelector('[data-logistics-resume]')?.addEventListener('click', () => ctx.send({ t: 'logisticsResume', ids: selUnits().filter(v => v.type === 'truck' && v.owner === ctx.me).map(v => v.id) }));
+    }
+    const values = detail.querySelectorAll('[data-logistics-value]');
+    entries.flatMap(entry => entry.lines).forEach((line, i) => setText(values[i], line));
   }
 
   return { buildSupport, buildCard, update, pressCard, setRecruit, recruitBack, recruiting: () => recruiting,

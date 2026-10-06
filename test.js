@@ -19,6 +19,8 @@ import { createRelief, TRENCH_DEPTH } from './client/relief.js';
 import { createAutocast } from './client/autocast.js';
 import { normalizeFace, slotSize, facingSpots } from './shared/formation.js';
 import { createOrders } from './client/orders.js';
+await import('./test-supply-convoys.mjs');
+await import('./test-logistics-client.mjs');
 await import('./test-tutorial.js');
 await import('./test-infantry-authored.mjs');
 await import('./test-terrain-relief.mjs');
@@ -39,7 +41,7 @@ const settledRubble = (g, cells, message) => {
 // The large-world checks use real clients and a fresh authoritative server.
 {
   const { execFileSync } = await import('node:child_process');
-  for (const file of process.env.CORE_ONLY ? [] : ['test-world-waterways.js', 'test-world-multiple-rivers.js', 'test-world-generation.js', 'test-world-territories.js',
+  for (const file of process.env.CORE_ONLY ? [] : ['test-logistics.mjs', 'test-convoy-scheduler.mjs', 'test-world-supply.mjs', 'test-logistics-server.mjs', 'test-world-waterways.js', 'test-world-multiple-rivers.js', 'test-world-generation.js', 'test-world-territories.js',
     'test-world-conquest.js', 'test-world-teams.js', 'test-world-acceptance.js', 'test-world-observation.js', 'test-world-movement.js', 'test-world-river.js',
     'test-engine-controls.js', 'test-engine-world.js', 'test-engine-movement.js', 'test-movement-lab.js', 'test-engine-projectiles.js', 'test-engine-scenarios.js', 'test-engine-ai.js', 'test-engine-acceptance.js', 'test-engine-presentation.mjs',
     'test-engine-spectators.js', 'test-engine-scenario-start.js', 'test-engine-breaches.mjs', 'test-engine-authoring.js', 'test-engine-vehicle-pose.mjs', 'test-engine-ai-privacy.js', 'test-engine-localization.mjs',
@@ -4818,7 +4820,8 @@ async function serverHarness() {
     const messages = [], errors = [];
     const client = {
       code, token, ws, messages, log: messages, errors, closed: false, serverSide,
-      async send(message) { await new Promise((resolve, reject) => ws.send(JSON.stringify(message), error => error ? reject(error) : resolve())); await settleServer(); },
+      // Isolate older population/economy contracts. Enabled rooms have dedicated logistics tests.
+      async send(message) { if(message.t==='start'&&module.rooms.has(code))module.rooms.get(code).logistics=false; await new Promise((resolve, reject) => ws.send(JSON.stringify(message), error => error ? reject(error) : resolve())); await settleServer(); },
       async late(message) { (await serverSide).emit('message', Buffer.from(JSON.stringify(message)), false); await settleServer(); },
       lobby: () => messages.filter(message => message.t === 'lobby').at(-1),
       async close() { if (ws.readyState !== 3) ws.close(); await waitFor(() => client.closed, 'client closes'); await settleServer(); },
@@ -6367,7 +6370,7 @@ for (const lookupFinished of [false, true]) {
     buildModel(squad, root, { ...look, color }, fac, UNITS[type]);
     const man = squad.models[index], src = man.userData.hi[0].geometry, aim = src.userData.prone;
     assert.ok(aim && src.userData.fallen, `${type} ${index}: the aiming prone stays on the man, and the fallen build is separate`);
-    assert.equal(man.userData.hi[0].morphTargetInfluences.length, 23, `${type} ${index}: the fallen pose is not another morph`);
+    assert.equal(man.userData.hi[0].morphTargetInfluences.length, (src.userData.muzzles?.length ?? 24) - 1, `${type} ${index}: the fallen pose is not another morph`);
     const pool = createBodies(), field = new THREE.Group();
     pool.add(field, 2, 0.2, 3, man, 0.4);
     const mesh = field.children.find((o) => o.isInstancedMesh);

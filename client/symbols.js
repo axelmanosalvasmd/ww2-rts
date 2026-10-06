@@ -294,6 +294,12 @@ const DEFS = {
   hq: ['HQ', 'building', 'Headquarters: a command tent with a flag on a pole',
     poly([8, 68], [38, 40], [68, 68], [64, 68], [64, 84], [44, 84], [38, 68], [32, 84], [12, 84], [12, 68]) +
     poly([74, 14], [78, 14], [78, 84], [74, 84]) + poly([78, 15], [86, 14], [94, 16], [94, 30], [86, 28], [78, 29])],
+  truck: ['Supply Truck', 'logistics', 'Supply truck: an unarmed cargo lorry',
+    poly([8, 43], [60, 43], [60, 72], [8, 72]) + poly([64, 48], [82, 48], [94, 60], [94, 72], [64, 72]) +
+    poly([67, 51], [80, 51], [88, 60], [67, 60]) + circle(24, 78, 8) + circle(51, 78, 8) + circle(80, 78, 8)],
+  supplycache: ['Supply Cache', 'logistics', 'Supply cache: cargo crates under a canopy',
+    poly([6, 42], [50, 22], [94, 42]) + poly([12, 45], [17, 45], [17, 86], [12, 86]) +
+    poly([83, 45], [88, 45], [88, 86], [83, 86]) + crate(23, 62, 22) + crate(50, 62, 22) + crate(37, 37, 22)],
   depot: ['Supply Depot', 'building', 'Supply depot: stacked supply crates and a fuel drum',
     crate(8, 60, 24) + crate(35, 60, 24) + crate(21.5, 33, 24) +
     poly([66, 46], [88, 46], [90, 48.5], [90, 81.5], [88, 84], [66, 84], [64, 81.5], [64, 48.5]) +
