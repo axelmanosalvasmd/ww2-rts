@@ -1,5 +1,6 @@
 import assert from 'node:assert/strict';
-import { createGame, step, command, snapshotFor, UNITS, TICK, placementCheck } from './shared/sim.js';
+import { createGame, step, snapshotFor, UNITS, TICK, placementCheck } from './shared/sim.js';
+import { fixtureCommand as command } from './test-fixtures.js';
 
 import { placementState, denySentence } from './client/availability.js';
 
@@ -33,6 +34,7 @@ const troops = (g, owner = 0) => [...g.units.values()].filter(u => u.owner === o
   assert.ok(travelled, 'supplies travel on actual moving trucks');
   const truck = trucks.find(t => g.units.has(t.id));
   assert.equal(command(g, 0, { t: 'stop', ids: [truck.id] }), undefined);
+  advance(g, 1); // a moving truck brakes before it stands
   const at = { x: truck.x, z: truck.z };
   advance(g, 3);
   assert.ok(Math.hypot(truck.x - at.x, truck.z - at.z) < 0.5, 'explicit convoy hold stays held');
@@ -173,4 +175,13 @@ const troops = (g, owner = 0) => [...g.units.values()].filter(u => u.owner === o
   assert.ok(Math.hypot(u.x-before.x,u.z-before.z)<.05,'stranded defense cannot chase an out-of-range target');
   assert.equal(u.path.length,0);
 }
-console.log('PASS physical deliveries, privacy, hold/resume, combat ammunition, actual driving fuel and blocked withdrawals');
+{
+  // allies share supply sources, but each player's new trucks come from that player's own HQ
+  const g = game('conquest', [0, 0]);
+  advance(g, 6);
+  for (const owner of [0, 1]) {
+    const trucks = [...g.units.values()].filter(u => u.owner === owner && u.type === 'truck'), own = g.players[owner].spawn, ally = g.players[1 - owner].spawn;
+    assert.ok(trucks.length && trucks.every(t => Math.hypot(t.x - own.x, t.z - own.z) < Math.hypot(t.x - ally.x, t.z - ally.z)), `player ${owner} trucks start at their own HQ`);
+  }
+}
+console.log('PASS physical deliveries, privacy, hold/resume, combat ammunition, actual driving fuel, blocked withdrawals and own-HQ trucks');

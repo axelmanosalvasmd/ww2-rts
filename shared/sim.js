@@ -1246,11 +1246,17 @@ function worldPathView(g, slot) {
     const changes = view.navigationChanges ??= []; changes.push({ from: view.navigationChangedFromVersion, to: m.version, cells: changed });
     if (changes.length > 32) changes.shift(); m.pathVersion = m.version;
   }
-  view.units = new Map([...g.units].filter(([id]) => seenBy(g,slot,id)));
-  view.wrecks = pathWrecksFor(g, slot);
-  view.fires = new Map([...g.fires].filter(([c]) => teamFog(g,p.team).vis[c]));
-  view.mineSeen = new Map([...m.cells].filter(([, row]) => row[1] === 'N' && !row[4]?.mineOwned).map(([c]) => [c, 1 << p.team]));
-  view.mines = new Map([...m.cells].filter(([, row]) => row[1] === 'N').map(([c, row]) => [c, row[4]?.mineOwned ? slot : -1]));
+  // Moving units ask for this view many times a step, allies' units in turn, and the mine maps scan every remembered
+  // cell: keep the live part per asking player, rebuilt once per tick or when the remembered ground or vision moves on.
+  const lives = view.lives ??= new Map(), key = `${g.tick}:${m.version}:${g.visionTick ?? -1}`;
+  let live = lives.get(slot);
+  if (live?.key !== key) lives.set(slot, live = { key,
+    units: new Map([...g.units].filter(([id]) => seenBy(g,slot,id))),
+    wrecks: pathWrecksFor(g, slot),
+    fires: new Map([...g.fires].filter(([c]) => teamFog(g,p.team).vis[c])),
+    mineSeen: new Map([...m.cells].filter(([, row]) => row[1] === 'N' && !row[4]?.mineOwned).map(([c]) => [c, 1 << p.team])),
+    mines: new Map([...m.cells].filter(([, row]) => row[1] === 'N').map(([c, row]) => [c, row[4]?.mineOwned ? slot : -1])) });
+  Object.assign(view, { units: live.units, wrecks: live.wrecks, fires: live.fires, mineSeen: live.mineSeen, mines: live.mines });
   view.wx = g.wx; view.tick = g.tick; view.reveal = g.reveal;
   return view;
 }

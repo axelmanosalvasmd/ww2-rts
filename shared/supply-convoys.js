@@ -12,7 +12,7 @@ const round = n => Math.round(n * 100) / 100;
 
 export function setupConvoys(g) {
   if (!g.logisticsEnabled) return;
-  g.convoys = { stores: new Map(), nextSpawn: new Map(), losses: new Map(), events: [], alerts: new Map(), nextEvent: 1, nextSchedule: 0 };
+  g.convoys = { stores: new Map(), nextSpawn: new Map(), losses: new Map(), events: [], alerts: new Map(), nextEvent: 1, nextSchedule: 0, refreshQueue: [], scheduleQueue: [], scheduled: new Set(), routed: 0 };
 }
 
 function alert(g, owner, type, message, at, count = 1) {
@@ -51,8 +51,9 @@ function storeSpace(store) {
   return Object.fromEntries(keys.map(k => [k, Math.max(0, store.capacity[k] - used[k])]));
 }
 
+// Own sources first, so callers taking the first one (new trucks, a home to return to) use this player's HQ, not an ally's.
 function sources(g, owner) {
-  return [...g.convoys.stores.values()].filter(s => s.active && s.source && friendly(g, s.owner, owner));
+  return [...g.convoys.stores.values()].filter(s => s.active && s.source && friendly(g, s.owner, owner)).sort((a, b) => (b.owner === owner) - (a.owner === owner));
 }
 
 function syncStores(g, hooks) {
@@ -65,7 +66,8 @@ function syncStores(g, hooks) {
     Object.assign(store, { owner, x: at.x, z: at.z, source, entity, active: true });
     return store;
   };
-  if (construction(g)) {
+  // Skirmish bases put an HQ on the old home position, so any match with HQs supplies from them.
+  if (construction(g) || [...g.units.values()].some(u => u.type === 'hq')) {
     for (const u of g.units.values()) if (u.type === 'hq' && u.hp > 0 && u.built >= 1 && !g.players[u.owner]?.out) ensure(`source:${u.id}`, u.owner, u, true, u.id);
   } else {
     for (const p of g.players) if (!p.out && !p.away) ensure(`source:${p.slot}`, p.slot, p.spawn, true, null);
@@ -213,8 +215,18 @@ export function consumeConvoyTravel(g, u, actualMetres) {
 }
 
 function sendTruck(g, u, target, hooks, manual = false) {
-  const c = u.convoy, at = endpoint(u, target), path = hooks.route(u, at, !manual);
-  if (!path.length && distance(u, at) > L.truckRadius) { c.routeFailure = hooks.routeReason?.(u) ?? u.supplyRouteReason ?? 'unreachable'; return false; }
+  const c = u.convoy, at = endpoint(u, target), key = `${Math.round(at.x / 8)},${Math.round(at.z / 8)}`;
+  // A failed route can search the whole world, so automatic retries to the same place back off from 2 s to 32 s
+  // (they come from refreshRoutes and the waiting retry, each every 2 s). The last failure reason stays set.
+  if (!manual && c.retry?.key === key && g.tick < c.retry.at) return false;
+  const path = hooks.route(u, at, !manual); g.convoys.routed++;
+  if (!path.length && distance(u, at) > L.truckRadius) {
+    c.routeFailure = hooks.routeReason?.(u) ?? u.supplyRouteReason ?? 'unreachable';
+    const wait = c.retry?.key === key ? Math.min(32, c.retry.wait * 2) : 2;
+    c.retry = { key, wait, at: g.tick + wait * 20 };
+    return false;
+  }
+  c.retry = null;
   if (!fundRoute(g, u, path, hooks)) { c.routeFailure = 'currency'; return false; }
   c.routeFailure = null;
   u.path = path; u.worldGoal = { ...at }; u.repath = 2; u.retreating = false; u.attackId = 0; u.targetId = 0;
@@ -361,44 +373,59 @@ function fleet(g, hooks) {
   }
 }
 
+// The cycle queues every player. A player's pass stops when this tick's route plans are used up and goes on next
+// tick; each idle truck is tried once per cycle.
 function schedule(g, hooks) {
-  for (const p of g.players) {
-    if (p.out || p.away) continue;
-    const idle = [...g.units.values()].filter(u => u.owner === p.slot && u.type === 'truck' && u.hp > 0 && u.convoy.state === 'idle' && !u.convoy.manual && !u.convoy.hold);
-    const targets = targetsFor(g, p.slot);
-    for (const u of idle) {
-      let blocked = false, noStock = false;
-      for (let i = 0; i < targets.length; i++) {
-        const target = targets[i];
-        let assigned = false;
-        const origins = originsFor(g, p.slot, target);
-        noStock ||= !origins.length;
-        for (const origin of origins) if (assignJob(g, u, target, origin, hooks)) { assigned = true; targets.splice(i, 1); break; }
-        blocked ||= origins.length > 0 && !assigned;
-        if (assigned) break;
-      }
-      if (u.convoy.state === 'idle' && targets.length) {
-        if (blocked) routeAlert(g, u, targets[0]);
-        else if (noStock) alert(g, p.slot, 'stock', 'No available supply stock or source for delivery', targets[0]);
-      }
-    }
-    const own = [...g.units.values()].filter(u => u.owner === p.slot && u.hp > 0 && u.logistics);
-    const critical = own.filter(u => u.logistics.provisions < 30 || u.logistics.ammoMax && u.logistics.ammo / u.logistics.ammoMax < .25);
-    if (critical.length) alert(g, p.slot, 'low', `${critical.length} unit${critical.length === 1 ? '' : 's'} running low on supplies`, critical[0], critical.length);
-    const forced = own.filter(u => u.logistics.forced), stranded = own.filter(u => u.logistics.stranded);
-    if (forced.length) alert(g, p.slot, 'withdrawal', `${forced.length} unit${forced.length === 1 ? '' : 's'} must withdraw for supplies`, forced[0], forced.length);
-    if (stranded.length) alert(g, p.slot, 'stranded', `${stranded.length} unit${stranded.length === 1 ? '' : 's'} cannot complete supply withdrawal`, stranded[0], stranded.length);
-    const incoming = new Set();
-    for (const t of g.units.values()) if (t.owner === p.slot && t.hp > 0 && t.convoy && ['delivering', 'unloading'].includes(t.convoy.state) && quantity(t.convoy.cargo)) for (const id of t.convoy.target?.members ?? []) incoming.add(id);
-    const transit = critical.filter(u => incoming.has(u.id));
-    if (transit.length) alert(g, p.slot, 'transit', `Supplies are in transit to ${transit.length} unit${transit.length === 1 ? '' : 's'}`, transit[0], transit.length);
+  const s = g.convoys;
+  while (s.scheduleQueue.length) {
+    const p = g.players[s.scheduleQueue[0]];
+    if (p && !p.out && !p.away && !schedulePlayer(g, p, hooks)) return;
+    s.scheduleQueue.shift();
   }
 }
+function schedulePlayer(g, p, hooks) {
+  const s = g.convoys;
+  const idle = [...g.units.values()].filter(u => u.owner === p.slot && u.type === 'truck' && u.hp > 0 && u.convoy.state === 'idle' && !u.convoy.manual && !u.convoy.hold && !s.scheduled.has(u.id));
+  const targets = targetsFor(g, p.slot);
+  for (const u of idle) {
+    if (s.routed >= ROUTES_PER_TICK) return false;
+    s.scheduled.add(u.id);
+    let blocked = false, noStock = false;
+    for (let i = 0; i < targets.length; i++) {
+      const target = targets[i];
+      let assigned = false;
+      const origins = originsFor(g, p.slot, target);
+      noStock ||= !origins.length;
+      for (const origin of origins) if (assignJob(g, u, target, origin, hooks)) { assigned = true; targets.splice(i, 1); break; }
+      blocked ||= origins.length > 0 && !assigned;
+      if (assigned) break;
+    }
+    if (u.convoy.state === 'idle' && targets.length) {
+      if (blocked) routeAlert(g, u, targets[0]);
+      else if (noStock) alert(g, p.slot, 'stock', 'No available supply stock or source for delivery', targets[0]);
+    }
+  }
+  const own = [...g.units.values()].filter(u => u.owner === p.slot && u.hp > 0 && u.logistics);
+  const critical = own.filter(u => u.logistics.provisions < 30 || u.logistics.ammoMax && u.logistics.ammo / u.logistics.ammoMax < .25);
+  if (critical.length) alert(g, p.slot, 'low', `${critical.length} unit${critical.length === 1 ? '' : 's'} running low on supplies`, critical[0], critical.length);
+  const forced = own.filter(u => u.logistics.forced), stranded = own.filter(u => u.logistics.stranded);
+  if (forced.length) alert(g, p.slot, 'withdrawal', `${forced.length} unit${forced.length === 1 ? '' : 's'} must withdraw for supplies`, forced[0], forced.length);
+  if (stranded.length) alert(g, p.slot, 'stranded', `${stranded.length} unit${stranded.length === 1 ? '' : 's'} cannot complete supply withdrawal`, stranded[0], stranded.length);
+  const incoming = new Set();
+  for (const t of g.units.values()) if (t.owner === p.slot && t.hp > 0 && t.convoy && ['delivering', 'unloading'].includes(t.convoy.state) && quantity(t.convoy.cargo)) for (const id of t.convoy.target?.members ?? []) incoming.add(id);
+  const transit = critical.filter(u => incoming.has(u.id));
+  if (transit.length) alert(g, p.slot, 'transit', `Supplies are in transit to ${transit.length} unit${transit.length === 1 ? '' : 's'}`, transit[0], transit.length);
+  return true;
+}
 
+// A world route plan costs about 4 ms (up to 50): rechecking every truck on the cycle tick put 10 to 40 of them in one
+// tick. The cycle queues the trucks instead, and they are served a few route plans per tick, in order.
+const ROUTES_PER_TICK = 3;
 function refreshRoutes(g, hooks) {
-  for (const u of g.units.values()) {
-    const c = u.convoy;
-    if (u.type !== 'truck' || u.hp <= 0 || !c || c.manual || c.hold) continue;
+  const s = g.convoys;
+  while (s.refreshQueue.length && s.routed < ROUTES_PER_TICK) {
+    const u = g.units.get(s.refreshQueue.shift()), c = u?.convoy;
+    if (u?.type !== 'truck' || u.hp <= 0 || !c || c.manual || c.hold) continue;
     const resume = c.state === 'waitingCollect' ? 'collecting' : c.state === 'waiting' ? 'delivering' : c.state === 'waitingReturn' ? 'returning' : c.state;
     if (!['collecting', 'delivering', 'returning'].includes(resume)) continue;
     let target = resume === 'delivering' ? c.target : g.convoys.stores.get(c.origin);
@@ -428,8 +455,15 @@ function refreshRoutes(g, hooks) {
 
 export function stepConvoys(g, dt, hooks) {
   if (!g.convoys || g.winner !== null) return;
-  if (g.tick >= g.convoys.nextSchedule) { syncStores(g, hooks); refreshRoutes(g, hooks); fleet(g, hooks); schedule(g, hooks); g.convoys.nextSchedule = g.tick + Math.round(L.dispatchSeconds * 20); }
-  else fleet(g, hooks);
+  const s = g.convoys; s.routed = 0;
+  if (g.tick >= s.nextSchedule) {
+    syncStores(g, hooks);
+    // an unfinished pass carries on first (with many trucks it can outlast a cycle), so no truck or player starves
+    if (!s.refreshQueue.length) s.refreshQueue = [...g.units.values()].filter(u => u.type === 'truck' && u.convoy).map(u => u.id);
+    if (!s.scheduleQueue.length) { s.scheduleQueue = g.players.map(p => p.slot); s.scheduled = new Set(); }
+    s.nextSchedule = g.tick + Math.round(L.dispatchSeconds * 20);
+  }
+  refreshRoutes(g, hooks); fleet(g, hooks); schedule(g, hooks);
   localService(g, dt, hooks);
   for (const u of g.units.values()) {
     if (u.type !== 'truck' || u.hp <= 0 || u.convoy.hold) continue;

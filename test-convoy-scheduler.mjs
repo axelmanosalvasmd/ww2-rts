@@ -394,3 +394,16 @@ test('queued long movement funds the full current goal beyond its active navigat
   near(t.convoy.operatingMetres,complete);
   }
 });
+
+test('a cycle with many trucks to reroute spreads their route plans over ticks', () => {
+  const f = fixture(), recipient = f.troop();
+  f.step(0);
+  const fleet = Array.from({ length: 8 }, () => f.hooks.spawn(0, 'truck', { x: 30, z: 0 }));
+  for (const t of fleet) t.convoy = { state: 'delivering', cargo: { ammo: 0, provisions: 1, fuel: 0 }, target: { id: `unit:${recipient.id}`, unit: recipient.id, x: 60, z: 0 }, origin: null, timer: 0, manual: false, hold: false, route: [], destination: { x: 60, z: 0 }, operatingMetres: 1e6 };
+  const routed = []; f.hooks.route = (u, at) => { routed.push([f.g.tick, u.id]); return [{ x: at.x, z: at.z }]; };
+  f.g.tick = 40;
+  for (let n = 0; n < 4; n++) { f.step(0); f.g.tick++; }
+  const perTick = Map.groupBy(routed, ([tick]) => tick);
+  assert.ok([...perTick.values()].every(calls => calls.length <= 3), 'at most three route plans per tick');
+  for (const t of fleet) assert.ok(routed.some(([, id]) => id === t.id), 'every due truck is rerouted within the cycle');
+});
