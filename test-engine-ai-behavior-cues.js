@@ -254,12 +254,19 @@ if (process.argv.includes('--diagnostic-worker')) {
       if (accepted.length) break;
       step(f.game);
     }
-    const pans = inputs.filter(input => input.kind === 'camera-pan');
-    assert.ok(pans.length >= 2 && new Set(pans.map(input => input.input.code)).size >= 2,
-      'the native commander pays both orthogonal held pans before looking at the idle squad');
+    const cameraInputs = inputs.filter(input => input.kind.startsWith('camera-'));
+    assert.ok(cameraInputs.length && cameraInputs.every(input => input.motorTicks > 0
+      && input.tick === input.inputStartedTick + input.motorTicks),
+    'the native commander pays each actual camera gesture before looking at the idle squad');
+    const pans = cameraInputs.filter(input => input.kind === 'camera-pan');
+    if (pans.length) assert.ok(pans.length >= 2 && new Set(pans.map(input => input.input.code)).size >= 2,
+      'a diagonal pan retains both ordinary orthogonal held keys');
+    else assert.ok(cameraInputs.length === 1 && cameraInputs[0].kind === 'camera-minimap'
+      && cameraInputs[0].input.button === 0 && cameraInputs[0].pointer,
+    'a cheaper minimap trip retains its actual paid pointer and left click');
     const selection = inputs.find(input => input.kind.startsWith('select-'));
-    assert.ok(selection && selection.tick > pans[1].tick,
-      'the idle actor is physically selected only after the second camera leg finishes');
+    assert.ok(selection && selection.tick > cameraInputs.at(-1).tick,
+      'the idle actor is physically selected only after the real camera arrival');
     assert.ok(accepted.some(entry => entry.command.orders?.some(row => row[0] === f.own.id)),
       'the native idle visit finishes with an ordinary accepted command for its actual squad');
   }

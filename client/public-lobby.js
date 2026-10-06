@@ -1,5 +1,6 @@
 // The directory does not open a game socket or load Three.js until a player joins.
 const $ = id => document.getElementById(id);
+const entry = new URLSearchParams(location.search);
 const modes = { conquest: 'Conquest', assault: 'Assault', annihilation: 'Annihilation', classic: 'Classic', world: 'World Conquest', horde: 'Horde' };
 // Old /#code links, including alternate seats, retain their exact meaning.
 if (location.hash) location.replace('/play' + location.search + location.hash);
@@ -14,6 +15,7 @@ else {
     const name = $('nickname').value.trim().slice(0, 16) || 'Soldier';
     try { localStorage.setItem('ww2-name', name); } catch {}
     const query = new URLSearchParams({ name });
+    for (const key of ['aiOverlay', 'humanInput']) if (entry.get(key) === '1') query.set(key, '1');
     if (listing) { query.set('public', String(listing.public)); query.set('title', listing.title); }
     if (listing?.tutorial) query.set('tutorial', '1');
     location.assign('/play?' + query + '#' + room);

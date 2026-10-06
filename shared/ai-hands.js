@@ -109,7 +109,8 @@ function emit(hands, action, command) {
   if (Array.isArray(hands.log)) hands.log.push(entry); else if (typeof hands.log === 'function') hands.log(entry);
   hands.inputTicks.push(hands.tick);
   if (isPoint(action.at)) {
-    hands.clicks.push({ x: action.at.x, z: action.at.z, tick: hands.tick, kind: action.kind });
+    const marker = action.kind === 'select-box' && isPoint(hands.cursor) ? hands.cursor : action.at;
+    hands.clicks.push({ x: marker.x, z: marker.z, tick: hands.tick, kind: action.kind });
     hands.clicks = hands.clicks.filter(click => hands.tick - click.tick < 40).slice(-8);
   }
   const interrupted = hands.interruptAfterInput || hands.active?.interruptAfterCommand && action.fire;
@@ -121,10 +122,26 @@ function emit(hands, action, command) {
   return interrupted;
 }
 
+function inputCapacity(skill, history, tick, reserved = 0) {
+  return history.filter(at => tick - at < 1200).length + reserved < skill.apm[1]
+    && history.filter(at => tick - at < 200).length + reserved < Math.floor(skill.peak / 6);
+}
+
 function affordableInput(hands, tick) {
   hands.inputTicks = hands.inputTicks.filter(at => tick - at < 1200);
-  return hands.inputTicks.length < hands.skill.apm[1]
-    && hands.inputTicks.filter(at => tick - at < 200).length < Math.floor(hands.skill.peak / 6);
+  return inputCapacity(hands.skill, hands.inputTicks, tick);
+}
+
+// Project only recorded input expiries. This never reserves or spends a real slot.
+function availableInputTick(skill, history, tick, reserved = 0) {
+  while (!inputCapacity(skill, history, tick, reserved)) {
+    const minute = history.filter(at => tick - at < 1200);
+    const peak = minute.filter(at => tick - at < 200);
+    const minuteExpiry = minute.length + reserved >= skill.apm[1] ? Math.min(...minute) + 1200 : tick;
+    const peakExpiry = peak.length + reserved >= Math.floor(skill.peak / 6) ? Math.min(...peak) + 200 : tick;
+    tick = Math.max(minuteExpiry, peakExpiry);
+  }
+  return tick;
 }
 
 // The client drops dead members from recalled groups. Empty numbers can be bound again.
@@ -327,6 +344,41 @@ function boxUnits(box, hands, view) {
   });
 }
 
+function selectionCompletion(hands, durations) {
+  const inputs = [...hands.inputTicks];
+  let tick = hands.tick;
+  for (const duration of durations) {
+    tick += duration;
+    while (true) {
+      const minute = inputs.filter(at => tick - at < 1200), peak = minute.filter(at => tick - at < 200);
+      const blockedMinute = minute.length >= hands.skill.apm[1];
+      const blockedPeak = peak.length >= Math.floor(hands.skill.peak / 6);
+      if (!blockedMinute && !blockedPeak) break;
+      tick = Math.max(tick, blockedMinute ? Math.min(...minute) + 1200 : 0,
+        blockedPeak ? Math.min(...peak) + 200 : 0);
+    }
+    inputs.push(tick);
+  }
+  return tick;
+}
+
+function boxSelectionFaster(box, units, hands, view) {
+  const corner = { x: box.x0, y: box.y0 }, end = { x: box.x1, y: box.y1 };
+  const boxTicks = ticks(fittsMovement(hands.skill, hands.pointer, corner, 32).seconds
+    + fittsMovement(hands.skill, corner, end, 32).seconds + .16);
+  let pointer = hands.pointer;
+  const clicks = [];
+  for (const unit of units) {
+    const at = screenPoint(unit, hands.camera, view);
+    // A box can distinguish a group whose overlapping markers cannot be clicked individually.
+    if (selectionHit(hands, view, at)?.id !== unit.id) return true;
+    const width = UNITS[unit.type]?.building ? 120 : UNITS[unit.type]?.infantry ? 64 : 90;
+    clicks.push(ticks(fittsMovement(hands.skill, pointer, at, width).seconds));
+    pointer = at;
+  }
+  return selectionCompletion(hands, [boxTicks]) <= selectionCompletion(hands, clicks);
+}
+
 function enqueueOne(hands, cmd, view, context, at) {
   if (hands.queue.length >= 24) return false;
   pruneGroups(hands, view);
@@ -477,6 +529,36 @@ export function fittsMovement(skill, from, to, width) {
     seconds: skill.pointer[0] + skill.pointer[1] * Math.log2(1 + d / w) };
 }
 
+// Compare the ordinary gestures without drawing their eventual timing or endpoint noise.
+// The key estimate is the median of skewedDelay; both routes still pay their native motors.
+export function cameraTravelCost(hands, at, view) {
+  const pan = actionsFor({ ...hands, cancelTargeting: false },
+    { camera: true, mode: 'pan', at, context: {} }, view);
+  const keyTicks = ticks(hands.skill.key[0] + .3 * (hands.skill.key[1] - hands.skill.key[0]));
+  const panMotorTicks = keyTicks + (pan.length === 2
+    ? Math.max(pan[0].panHold, keyTicks + pan[1].panHold) : pan[0].panHold);
+  const endpoint = projectPointer(at, hands.camera, view, { minimap: true });
+  const minimapMotorTicks = ticks(fittsMovement(hands.skill, hands.pointer, endpoint, 10 * 228 / 240).seconds);
+  const tick = hands.tick;
+  let start = tick, history = hands.inputTicks;
+  if (hands.cancelTargeting) {
+    start = availableInputTick(hands.skill, history, tick + keyTicks);
+    history = [...history, start];
+  }
+  let panEnd = availableInputTick(hands.skill, history, start + panMotorTicks);
+  if (pan.length === 2) {
+    const firstStart = availableInputTick(hands.skill, history, start);
+    const firstDown = firstStart + keyTicks, firstUp = firstDown + pan[0].panHold;
+    let secondStart = availableInputTick(hands.skill, history, firstDown, 1);
+    if (secondStart >= firstUp) secondStart = availableInputTick(hands.skill,
+      [...history, firstUp], firstUp);
+    panEnd = Math.max(firstUp, secondStart + keyTicks + pan[1].panHold);
+  }
+  const minimapEnd = availableInputTick(hands.skill, history, start + minimapMotorTicks);
+  return { panTicks: panEnd - tick, minimapTicks: minimapEnd - tick,
+    panMotorTicks, minimapMotorTicks, panInputs: pan.length };
+}
+
 function noisyPointer(hands, intended, width) {
   const index = Math.log2(1 + pixelDistance(hands.pointer, intended) / Math.max(1, width));
   // Endpoint noise is a provisional pixel distribution, not an error rate established by Fitts' law.
@@ -592,7 +674,8 @@ function actionsFor(hands, job, view) {
           input: { button: 0, shift: true }, unitTarget: true, noise: true });
       } else {
         const box = job.ids.length > 1 ? selectionBox(job.units, hands, view) : null;
-        if (box && sameIds(boxUnits(box, hands, view).map(u => u.id), job.ids)) add('select-box', centroid(job.units), { ids: job.ids, box, input: { button: 0 } });
+        if (box && sameIds(boxUnits(box, hands, view).map(u => u.id), job.ids)
+          && boxSelectionFaster(box, job.units, hands, view)) add('select-box', centroid(job.units), { ids: job.ids, box, input: { button: 0 } });
         else for (let i = 0; i < job.units.length; i++) {
           add(i ? 'select-add-click' : 'select-click', job.units[i], { ids: job.ids.slice(0, i + 1), clickedId: job.units[i].id,
             input: { button: 0, shift: i > 0 }, unitTarget: true, noise: true });
@@ -904,20 +987,20 @@ function advanceDiagonalPan(hands, active, tick, view) {
     // Keep the session until every already pressed key has completed its release.
     emit(hands, held.action);
   }
+  const nextIndex = active.panKeys.at(-1).index + 1;
   if (hands.interruptAfterInput) {
-    const pending = active.panKeys.find(held => held.index > 0 && !held.released && tick < held.down);
+    const pending = active.panKeys.slice(1).find(held => !held.released && tick < held.down);
     if (pending) { pending.released = true; pending.canceledAt = tick; active.actions.splice(pending.index, 1); }
-  } else if (active.panKeys.length < active.actions.length && tick >= active.panKeys[0].down) {
+  } else if (nextIndex < active.actions.length && tick >= active.panKeys[0].down) {
     const reserved = active.panKeys.filter(held => !held.released).length;
     hands.inputTicks = hands.inputTicks.filter(at => tick - at < 1200);
-    if (hands.inputTicks.length + reserved < hands.skill.apm[1]
-      && hands.inputTicks.filter(at => tick - at < 200).length + reserved < Math.floor(hands.skill.peak / 6)) {
-      active.index = active.panKeys.length;
+    if (inputCapacity(hands.skill, hands.inputTicks, tick, reserved)) {
+      active.index = nextIndex;
       scheduleAction(hands, active, tick);
       return;
     }
   }
-  if (active.panKeys.every(held => held.released) && (hands.interruptAfterInput || active.panKeys.length === active.actions.length)) {
+  if (active.panKeys.every(held => held.released) && (hands.interruptAfterInput || nextIndex >= active.actions.length)) {
     hands.active = null; hands.interruptAfterInput = false; hands.ready = !hands.queue.length;
   }
 }
@@ -968,7 +1051,7 @@ export function interruptHands(hands, tick, view = hands.lastView, context) {
   if (active && view && requestPanRelease(hands, active, tick, view, context) && !hands.active) return true;
   if (active?.panKeys && !active.reacting) {
     // Stop a secondary key preparation before its press. Already pressed directions keep their real release.
-    const pending = active.panKeys.find(held => held.index > 0 && !held.released && tick < held.down);
+    const pending = active.panKeys.slice(1).find(held => !held.released && tick < held.down);
     if (pending) {
       pending.released = true; pending.canceledAt = tick;
       active.actions.splice(pending.index, 1);
@@ -1041,6 +1124,40 @@ function commandFor(hands, job, view) {
   return cmd;
 }
 
+function activateQueuedJob(hands, tick, view, newNonCameraOnly = false) {
+  let job, actions;
+  while (hands.queue.length && !actions?.length) {
+    const next = hands.queue[0];
+    if (newNonCameraOnly && (next.camera || next.queuedTick !== tick)) return false;
+    job = hands.queue.shift(); actions = actionsFor(hands, job, view);
+  }
+  if (!actions?.length) return false;
+  hands.concern = job.context.concern ?? hands.concern;
+  const active = hands.active = { job, actions, index: 0 };
+  collectTargetSamples(hands, active, view);
+  const opening = !hands.openingDone && actions.some(action => action.fire);
+  const duration = opening ? prepareOpening(hands, active) : (prepareAction(hands, active), actions[0].duration);
+  const reaction = Math.max(actions[0].camera ? 0 : minimumResponseTick(job.context) - tick - actions[0].duration,
+    opening && !job.context.event && !causalLinks(job.context).length ? Math.max(0, hands.openingDeadline - tick - duration)
+      : Math.max(opening ? hands.openingDeadline - tick - duration : 0,
+        reactionDelay(hands, job.context, tick, actions[0].duration, !actions[0].camera)));
+  if (reaction > 0 || actions[0].panAxis && !affordableInput(hands, tick))
+    Object.assign(active, { due: tick + reaction, reacting: true });
+  else scheduleAction(hands, active, tick);
+  return true;
+}
+
+// A completed choice can begin its motor in this tick. This only activates a new non-camera job;
+// input completion and authoritative dispatch remain in the next ordinary hands advance.
+export function startQueuedInput(hands, tick, view) {
+  if (tick !== hands.tick || view !== hands.lastView || hands.active || tick < hands.openingUntil
+    || !hands.queue.length || hands.queue[0].camera || hands.queue[0].queuedTick !== tick
+    || view.players[hands.slot]?.out || view.winner != null) return false;
+  const started = activateQueuedJob(hands, tick, view, true);
+  hands.ready = !hands.active && !hands.queue.length;
+  return started;
+}
+
 export function advanceHands(hands, tick, view, submit) {
   if (tick < hands.tick) throw new Error('AI input clock cannot run backwards');
   hands.tick = tick;
@@ -1057,23 +1174,7 @@ export function advanceHands(hands, tick, view, submit) {
   }
   if (tick < hands.openingUntil) return null;
   if (!hands.active) {
-    let job, actions;
-    while (hands.queue.length && !actions?.length) {
-      job = hands.queue.shift(); actions = actionsFor(hands, job, view);
-    }
-    if (!actions?.length) return null;
-    hands.concern = job.context.concern ?? hands.concern;
-    const active = hands.active = { job, actions, index: 0 };
-    collectTargetSamples(hands, active, view);
-    const opening = !hands.openingDone && actions.some(action => action.fire);
-    const duration = opening ? prepareOpening(hands, active) : (prepareAction(hands, active), actions[0].duration);
-    const reaction = Math.max(actions[0].camera ? 0 : minimumResponseTick(job.context) - tick - actions[0].duration,
-      opening && !job.context.event && !causalLinks(job.context).length ? Math.max(0, hands.openingDeadline - tick - duration)
-        : Math.max(opening ? hands.openingDeadline - tick - duration : 0,
-          reactionDelay(hands, job.context, tick, actions[0].duration, !actions[0].camera)));
-    if (reaction > 0 || actions[0].panAxis && !affordableInput(hands, tick))
-      Object.assign(active, { due: tick + reaction, reacting: true });
-    else scheduleAction(hands, active, tick);
+    activateQueuedJob(hands, tick, view);
     return null;
   }
   const active = hands.active, action = active.actions[active.index];
@@ -1187,6 +1288,10 @@ export function advanceHands(hands, tick, view, submit) {
   }
   active.index++;
   if (active.index >= active.actions.length) hands.active = null;
+  else if (active.actions[active.index].panAxis && !affordableInput(hands, tick)) {
+    prepareAction(hands, active);
+    Object.assign(active, { due: tick, reacting: true });
+  }
   else scheduleAction(hands, active, tick);
   hands.ready = !hands.active && !hands.queue.length;
   return cmd;
@@ -1197,7 +1302,7 @@ export function diagnostics(hands, tick = hands.tick) {
   return { slot: hands.slot, camera: { x: hands.camera.x, z: hands.camera.z,
     w: Math.max(...footprint.map(p => p.x)) - Math.min(...footprint.map(p => p.x)),
     h: Math.max(...footprint.map(p => p.z)) - Math.min(...footprint.map(p => p.z)), corners: footprint },
-    cursor: { ...hands.cursor, pixelX: hands.pointer.x, pixelY: hands.pointer.y, mode: hands.pointer.mode },
+    cursor: { ...hands.cursor, observedTick: hands.tick, pixelX: hands.pointer.x, pixelY: hands.pointer.y, mode: hands.pointer.mode },
     clicks: hands.clicks.filter(click => tick - click.tick < 40).map(click => ({ ...click })),
     selected: hands.selected.length, concern: hands.concern };
 }

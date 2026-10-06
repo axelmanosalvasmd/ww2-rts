@@ -10,7 +10,7 @@ const options = () => ({ scenario: $('scenario').value, level: $('level').value,
 for (const scene of AI_LAB_SCENARIOS) $('scenario').add(new Option(scene.id, scene.id));
 for (const type of sim.UNIT_TYPES.filter(type => !sim.UNITS[type].structure && sim.canBuild(type, 0))) $('type').add(new Option(type, type));
 function pause() { if (timer) clearInterval(timer); timer = null; $('play').textContent = 'Run'; }
-function guarded(fn) { try { return fn(); } catch (error) { pause(); $('status').textContent = error.message; console.error(error); } }
+function guarded(fn) { try { return fn(); } catch (error) { pause(); if (report) for (const key of ['scenario', 'level', 'seed']) $(key).value = report.options[key]; $('status').textContent = error.message; console.error(error); } }
 function syncEditor() {
   $('scene').value = JSON.stringify(draft, null, 2); const prior = $('unit').value; $('unit').replaceChildren();
   draft.units.forEach((unit, index) => $('unit').add(new Option(`#${lab.authorView().units[index]?.id}: owner ${unit.owner} ${unit.type}`, index)));
@@ -19,10 +19,22 @@ function syncEditor() {
   $('cameraX').value = draft.camera.x; $('cameraZ').value = draft.camera.z; $('yaw').value = draft.camera.yaw;
 }
 function selectUnit() { $('cueUnit').value = lab.authorView().units[Number($('unit').value)]?.id ?? ''; const unit = draft.units[Number($('unit').value)]; if (!unit) return; for (const key of ['owner', 'type', 'x', 'z', 'hp', 'cooldown']) $(key).value = unit[key] ?? (key === 'hp' ? sim.UNITS[unit.type].models * sim.UNITS[unit.type].hpPer : 0); for (const key of ['holdPos', 'holdFire', 'autoRetreat']) $(key).checked = !!unit[key]; }
-function reset(authored = draft) { authored = { ...defaultScene(options()), ...authored }; const next = createAIcase(engine, options(), authored); pause(); lab = next; draft = structuredClone(authored); syncEditor(); report = lab.record(); $('history').value = 0; render(); $('status').textContent = 'Paused at tick 0. Authored edits reset all prior inputs and orders.'; }
+function reset(authored = draft) {
+  authored = { ...defaultScene(options()), ...authored }; const next = createAIcase(engine, options(), authored);
+  const previous = { lab, draft, report, max: $('history').max, tick: $('history').value, unit: $('unit').value };
+  pause();
+  try {
+    lab = next; draft = structuredClone(authored); syncEditor(); report = lab.record(); $('history').max = 0; $('history').value = 0; render();
+    $('status').textContent = 'Paused at tick 0. Authored edits reset all prior inputs and orders.';
+  } catch (error) {
+    ({ lab, draft, report } = previous); $('history').max = previous.max; $('history').value = previous.tick; $('unit').value = previous.unit;
+    if (lab) { syncEditor(); render(); }
+    throw error;
+  }
+}
 function advance(ticks) { report = lab.advance(ticks); $('history').max = Math.max(0, report.frames.length - 1); $('history').value = $('history').max; render(); $('status').textContent = `Tick ${lab.tick} (${(lab.tick * sim.TICK).toFixed(2)} simulated seconds). ${report.inputs.length} completed inputs, ${report.commands.length} native orders. Session limit: 600 simulated seconds.`; if (lab.tick >= 12000) pause(); }
 function render() {
-  const frame = report.frames[Number($('history').value)], author = $('author').checked && Number($('history').value) === report.frames.length - 1;
+  const frame = report.frames[Number($('history').value)], author = $('author').checked && (!report.frames.length || Number($('history').value) === report.frames.length - 1);
   const canvas = $('map'), ctx = canvas.getContext('2d'), scale = 720 / 192; ctx.clearRect(0, 0, 720, 720);
   const dots = frame?.minimap ?? []; ctx.fillStyle = '#95a6ab'; for (const dot of dots) { ctx.beginPath(); ctx.arc(dot.x * scale, dot.z * scale, 3, 0, Math.PI * 2); ctx.fill(); }
   const camera = frame?.camera ?? draft.camera, corners = frame?.corners ?? perception.cameraFootprint({ ...camera, distance: 60 });

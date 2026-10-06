@@ -34,7 +34,8 @@ function runCase(level, {enemy='medium',cooldown=0,unseen=false,held=false,naval
 
 for(const level of ['normal','hard']){
  for(const enemy of ['medium','tiger','tank']){
-  const f=runCase(level,{enemy}),accepted=f.log.commands.filter(c=>c.accepted&&c.command.t==='ability'&&c.command.ids.includes(7));
+  // Use a real remaining AP cooldown beyond setup so enqueue has a fresh ready weapon proof.
+  const f=runCase(level,{enemy,cooldown:sim.UNITS.at.w.setup+2*sim.TICK}),accepted=f.log.commands.filter(c=>c.accepted&&c.command.t==='ability'&&c.command.ids.includes(7));
   assert.equal(accepted.length,1,`${level} ${enemy}: native AP loaded once`);
   const ability=f.log.inputs.find(i=>i.kind==='ability-key'),selection=f.log.inputs.find(i=>i.kind==='select-click');
   assert.ok(selection.tick<ability.tick&&ability.tick===accepted[0].tick,'the actual actor is selected before its paid ability key');
@@ -42,7 +43,8 @@ for(const level of ['normal','hard']){
   assert.ok(actor.cdKnown&&actor.cd<=0&&actor.hpSource==='selected-hud','AP follows actual fresh HUD readiness');
   if(enemy!=='tank')assert.ok(f.effects.some(e=>e.ap&&e.intended===9&&e.apMultiplier===1.5),'native fire creates an AP projectile for the observed armor');
   assert.ok(f.effects.some(e=>e.target===9&&e.tick>ability.tick&&e.hp<sim.UNITS[enemy].hpPer),'the actual armor takes native damage');
-  assert.equal(f.score.acceptedCommand.answered,1,'actual v3 detector credits useful AP');assert.ok(f.score.acceptedCommand.survival.medianSeconds>0,'credit is paid and positive-time');
+  assert.equal(f.score.acceptedCommand.answered,1,'actual v3 detector credits useful AP');
+  assert.ok(f.score.rows.some(row=>row.answer?.acceptedCommandTick===accepted[0].tick),'the detector credit belongs to the actual paid AP receipt');assert.ok(f.score.acceptedCommand.survival.medianSeconds>0,'credit is paid and positive-time');
  }
  const supported=runCase(level,{support:true});assert.ok(supported.log.commands.some(c=>c.accepted&&c.command.t==='support'&&['dive','bombing'].includes(c.command.kind)),'native damaging support remains available alongside AP');assert.ok(supported.log.commands.some(c=>c.accepted&&c.command.t==='ability'),'the ready AP actor still gets its paid command');
  for(const options of [{enemy:'rifle'},{cooldown:30},{unseen:true},{held:true}]){

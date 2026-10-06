@@ -146,7 +146,10 @@ for (const unavailable of ['stale', 'offscreen', 'dead', 'removed', 'yaw', 'dist
 }
 
 function partial(api, level, kind = 'move', namedMissing = false, ownCount = 2) {
-  const f = fixture(api, level, 2, ownCount), [missing, selected] = f.own, view = f.deliver();
+  const f = fixture(api, level, 2, ownCount), [missing, selected] = f.own;
+  // One remaining peak slot makes a complete box cheaper than two clicks. Old inputs expire before the order.
+  f.hands.inputTicks = Array(Math.floor(f.hands.skill.peak / 6) - 1).fill(40);
+  const view = f.deliver();
   const cmd = ['move', 'amove'].includes(kind) ? { t: kind, orders: f.own.map((unit, i) => [unit.id, 123 + i, 105]) }
     : kind === 'attack' ? { t: kind, ids: f.own.map(unit => unit.id), target: f.enemy.id }
     : ['dig', 'entrench'].includes(kind) ? { t: kind, ids: [missing.id, selected.id], x: 120, z: 104, kind: 'trench', pattern: 'line', x2: 124, z2: 104 }

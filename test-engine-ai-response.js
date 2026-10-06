@@ -23,6 +23,8 @@ function fixture(points = []) {
 
 function responseScene(kind, mode = 'accept', seed = 27) {
   const f = fixture(), ids = f.own.slice(0, 2).map(unit => unit.id);
+  // Coincident intended markers need a box because an individual click cannot distinguish them.
+  if (mode === 'wrong-actor') Object.assign(f.own[1], { x: f.own[0].x, z: f.own[0].z });
   const frames = [], measurements = { measureRaw: originalOracle, onMeasurements: payload => frames.push(structuredClone(payload)) };
   if (mode === 'late-event') Object.assign(f.own[2], { x: 78, z: 82 });
   let view, proposed = false, context, altered = false, damageEvents;
@@ -37,8 +39,9 @@ function responseScene(kind, mode = 'accept', seed = 27) {
         assert.ok(Object.isFrozen(job.context.responseEvents), 'the queued response descriptors are fixed before motor execution');
       }
     }
-    if (mode === 'wrong-actor' && context && !altered && tick % 2 === 0 && action?.kind === 'select-box' && tick < active.due) {
-      // Another real squad occupies the box while its intended recipient moves during the gesture.
+    if (mode === 'wrong-actor' && context && !altered && tick % 2 === 0
+      && ['select-box', 'select-click'].includes(action?.kind) && tick < active.due) {
+      // Another real squad occupies the selection target while its intended recipient moves.
       Object.assign(f.own[0], { x: 100, z: 100 }); Object.assign(f.own[2], { x: 75, z: 80 }); altered = true;
     }
     if (mode === 'late-event' && context && !altered && tick % 2 === 0 && active && tick < active.due) {
@@ -120,7 +123,7 @@ for (const kind of ['retreat', 'support']) {
 
 {
   const f = responseScene('retreat', 'wrong-actor');
-  assert.ok(f.altered && f.inputs.some(input => input.kind === 'select-box' && input.ids?.includes(f.own[2].id)),
+  assert.ok(f.altered && f.inputs.some(input => input.kind.startsWith('select-') && input.ids?.includes(f.own[2].id)),
     'the real selection gesture hits the replacement actor');
   assert.equal(f.results.length, 0, 'a selection that hits the wrong squad cannot dispatch the intended retreat');
   assert.ok(f.damageEvents.every(event => !f.memory.human.answeredEvents?.has(event.id)),
@@ -241,7 +244,9 @@ for (const approach of ['normal', 'pending-emergency', 'expired-concern']) {
   remote.hp *= .8;
   // A previously chosen visit is near its deadline when the hands become free to begin its camera trip.
   state.startedTick = 0;
-  state.hands = createHands({ slot: 0, seed: 27, level: 'normal', camera: state.camera, startedTick: 0 });
+  // An authored slow pointer keeps this a held-pan fixture so its release and interruption controls remain exercised.
+  state.hands = createHands({ slot: 0, seed: 27, level: 'normal', camera: state.camera, startedTick: 0,
+    calibration: { pointer: [.3, .3] } });
   state.concern = { id: 'production', kind: 'production', x: 41, z: 81, since: 0, until: 74 };
   state.attention = { visits: new Map(), since: 0, until: oldDeadline,
     current: { id: targetId, kind: 'idle', unitId: remote.id, x: remote.x, z: remote.z, urgency: 35 } };

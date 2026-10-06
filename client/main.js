@@ -139,7 +139,11 @@ $('name').value = entry.get('name')?.slice(0, 16) || tryStore(() => localStorage
 $('link').value = roomLink(location.origin);
 $('roomCode').value = room;
 // Room box: type a code to join (or make) that room; New room makes a private one
-const goRoom = (code) => { code = code.trim().toLowerCase(); if (!/^[a-z0-9]{3,12}$/.test(code)) { $('roomCode').value = room; return; } location.assign('/play#' + code + (seat ? '&seat=' + seat : '')); };
+const roomQuery = new URLSearchParams();
+for (const key of ['aiOverlay', 'humanInput']) if (entry.get(key) === '1') roomQuery.set(key, '1');
+const roomSearch = roomQuery.toString() ? '?' + roomQuery : '';
+document.querySelector('#overlay a[href="/"]').href = '/' + roomSearch;
+const goRoom = (code) => { code = code.trim().toLowerCase(); if (!/^[a-z0-9]{3,12}$/.test(code)) { $('roomCode').value = room; return; } location.assign('/play' + roomSearch + '#' + code + (seat ? '&seat=' + seat : '')); };
 $('joinRoom').onclick = () => goRoom($('roomCode').value);
 $('roomCode').addEventListener('keydown', (e) => e.key === 'Enter' && goRoom($('roomCode').value));
 $('newRoom').onclick = () => goRoom(Math.random().toString(36).slice(2, 7));

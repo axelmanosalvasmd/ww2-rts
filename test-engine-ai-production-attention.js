@@ -18,18 +18,25 @@ try{
  await writeFile(path,text.replace(guarded,'productionDeferred(perception, slot, state.production)'));
  const [current,original]=await Promise.all([load(root),load(temporary)]);
  assert.deepEqual(current.hands.HUMAN_SKILLS,original.hands.HUMAN_SKILLS,'No reaction/motor/APM profile changed.');
+ // Hit on the first delivered beat after the control's paid home camera arrival.
+ const hurtTick=104;
  const scene={units:Array.from({length:4},(_,i)=>({owner:0,type:'rifle',x:76+i%3*5,z:77+Math.floor(i/3)*4,holdFire:true,autoRetreat:false,cooldown:60})),
-  points:[{x:81,z:79,owner:0}],camera:{x:80,z:79,yaw:0},resources:[{mp:20,fuel:0,mun:200},{mp:0}],cues:[{kind:'hit',tick:160,unitId:8,damage:65}]};
+  points:[{x:81,z:79,owner:0}],camera:{x:80,z:79,yaw:0},resources:[{mp:20,fuel:0,mun:200},{mp:0}],cues:[{kind:'hit',tick:hurtTick,unitId:8,damage:65}]};
  scene.units.push({owner:1,type:'mg',x:103,z:79,holdFire:true,autoRetreat:false});
  const run=(engine,authored)=>createAIcase(engine,{scenario:'guard',level:'hard',seed:42,seconds:15},authored).advance(300);
  const before=run(original,scene),after=run(current,scene);
- const visit=row=>row.inputs.filter(i=>i.kind.startsWith('camera')&&i.concern==='production'&&i.tick<160);
+ const visit=row=>row.inputs.filter(i=>i.kind.startsWith('camera')&&i.concern==='production'&&i.tick<hurtTick);
  assert.ok(visit(before).length,'Control reproduces the pointless initial home camera visit.');
  assert.equal(visit(after).length,0,'Publicly unaffordable recruitment does not pull the camera away.');
- const retreat=row=>row.commands.find(c=>c.accepted&&c.command.t==='retreat'&&c.command.ids.includes(8)&&c.tick>=160);
+ const cueFrame=row=>row.frames.find(frame=>frame.tick===hurtTick);
+ const homeInput=visit(before).at(-1),beforeCue=cueFrame(before),afterCue=cueFrame(after);
+ assert.ok(homeInput.inputStartedTick+homeInput.motorTicks<=homeInput.tick&&homeInput.tick<hurtTick,'Control pays the home camera gesture before the authored hit.');
+ assert.ok(beforeCue&&!beforeCue.units.some(unit=>unit.id===8)&&afterCue?.units.some(unit=>unit.id===8),'Hit interrupts the home visit while the guarded camera watches the victim.');
+ assert.ok(before.inputs.some(input=>input.kind==='camera-alert'&&input.event?.source==='alert'&&before.events.some(event=>event.id===input.event.id&&event.source==='alert'&&event.tick===hurtTick)&&input.tick>hurtTick),'Control pays a real public alert camera return after the hit.');
+ const retreat=row=>row.commands.find(c=>c.accepted&&c.command.t==='retreat'&&c.command.ids.includes(8)&&c.tick>=hurtTick);
  assert.ok(retreat(before)&&retreat(after),'Both traces retain real useful withdrawal.');
  assert.ok(retreat(after).tick<retreat(before).tick,'Avoiding the pointless trip improves actual native withdrawal.');
- assert.ok(after.events.some(e=>e.kind==='screen-damage'&&e.tick===160&&e.unitId===8),'Late hurt stays in the actual screen.');
+ assert.ok(after.events.some(e=>e.kind==='screen-damage'&&e.tick===hurtTick&&e.unitId===8),'Late hurt stays in the actual screen.');
  for(const record of [before,after])for(const command of record.commands){
   const input=record.inputs.find(i=>i.tick===command.tick&&JSON.stringify(i.command)===JSON.stringify(command.command));
   assert.ok(input&&Number.isSafeInteger(input.inputStartedTick)&&input.motorTicks>=1);

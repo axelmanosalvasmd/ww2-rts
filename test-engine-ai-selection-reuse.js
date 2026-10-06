@@ -15,7 +15,8 @@ const reuseStart = source.indexOf('      const missing = job.units.filter(unit =
 const reuseEnd = source.indexOf('    }\n  }\n  if (job.inspect)', reuseStart);
 assert.ok(reuseStart >= 0 && reuseEnd > reuseStart, 'the source control identifies only the new selection route');
 const oldSelectionRoute = String.raw`      const box = job.ids.length > 1 ? selectionBox(job.units, hands, view) : null;
-      if (box && sameIds(boxUnits(box, hands, view).map(u => u.id), job.ids)) add('select-box', centroid(job.units), { ids: job.ids, box, input: { button: 0 } });
+      if (box && sameIds(boxUnits(box, hands, view).map(u => u.id), job.ids)
+        && boxSelectionFaster(box, job.units, hands, view)) add('select-box', centroid(job.units), { ids: job.ids, box, input: { button: 0 } });
       else for (let i = 0; i < job.units.length; i++) {
         add(i ? 'select-add-click' : 'select-click', job.units[i], { ids: job.ids.slice(0, i + 1), clickedId: job.units[i].id,
           input: { button: 0, shift: i > 0 }, unitTarget: true, noise: true });
@@ -57,7 +58,7 @@ function scene(api,selection){
 }
 const rows=[];for(const selection of ['subset','outside','exact']){
  const b=scene(before,selection),a=scene(after,selection);assert.deepEqual(a.prior,b.prior,'native prior selection timeline identical');assert.deepEqual(a.receipt.cmd,b.receipt.cmd,'same actual native group command');
- if(selection==='subset'){assert.equal(b.selectionInputs[0]?.kind,'select-box');assert.equal(a.selectionInputs[0]?.kind,'select-add-click');assert.equal(a.selectionInputs[0]?.input.shift,true);assert.equal(a.selectionInputs[0].input.button,0,'adding a companion pays an actual left click');assert.equal(a.selectionInputs.length,1);assert.equal(b.selectionInputs.length,1,'selection reuse saves motor work without extra inputs');assert.deepEqual(new Set(a.selectionInputs[0].ids),new Set(a.receipt.cmd.ids),'the paid click retains exactly both native recipients');assert.ok(a.firstLatency<b.firstLatency);assert.ok(a.acceptedLatency<b.acceptedLatency);}
+ if(selection==='subset'){assert.deepEqual(b.selectionInputs.map(input=>input.kind),['select-click','select-add-click']);assert.equal(a.selectionInputs[0]?.kind,'select-add-click');assert.equal(a.selectionInputs[0]?.input.shift,true);assert.equal(a.selectionInputs[0].input.button,0,'adding a companion pays an actual left click');assert.equal(a.selectionInputs.length,1);assert.equal(b.selectionInputs.length,2,'selection reuse saves a real repeated selection click');assert.deepEqual(new Set(a.selectionInputs[0].ids),new Set(a.receipt.cmd.ids),'the paid click retains exactly both native recipients');assert.ok(a.firstLatency>=.3&&b.firstLatency>=.3,'both real first selections retain the Hard reaction budget');assert.ok(a.acceptedLatency<b.acceptedLatency);}
  else {assert.deepEqual(a,b,'unrelated/exact actual selection retains complete native timeline');}
  rows.push({selection,before:b,after:a});
 }

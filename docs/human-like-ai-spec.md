@@ -4,11 +4,10 @@ Started 2026-10-04 for a GPT-6.1 Sol goal thread. Tick a box only after you have
 next to it (command and output, number, `file:line`, screenshot path). If an item turns out to be wrong for this game,
 do not silently skip it: strike it through and write why.
 
-Release scope changed on 2026-10-05. Julio requested filing and babysitting the core PR, then explicitly answered
-"Move the remaining targets to a follow-up issue." The original reaction/APM/opening, balance and performance
-targets are retained in [follow-up #48](https://github.com/axelmanosalvasmd/ww2-rts/issues/48). Their numerical
-acceptance boxes below are struck through with that reason, not ticked as passed. Core correctness, fairness,
-the full test suite, independent review, evidence and a verified PR merge remain required.
+Julio initially moved the numerical targets to [issue #48](https://github.com/axelmanosalvasmd/ww2-rts/issues/48)
+on 2026-10-05. His later request to finish both PR #49 and issue #48 restores those targets as required gates.
+The original limits, complete populations and failed historical evidence remain unchanged. Core correctness,
+fairness, the full test suite, independent review, inspected proof and a verified merge also remain required.
 
 ## Why
 
@@ -340,7 +339,7 @@ more than one command per tick. Difficulty changes skill (speed, attention, judg
       `node tools/ai-humanity.mjs --fit logs/human-input --out docs/local-ai-calibration.json`.
       This verifies fitting support, not real-person calibration; local human recordings remain future work.
 
-## Verification gates (core gates must pass; numerical gates deferred by Julio)
+## Verification gates (all required for PR #49 and issue #48)
 
 - [ ] `node test.js` passes, plus every `test-engine-ai*.js`, `test-world-observation.js` and any test that calls
       `think()`. List what you ran with the results. If an existing test encodes superhuman timing (for example it
@@ -420,9 +419,9 @@ more than one command per tick. Difficulty changes skill (speed, attention, judg
       `test-engine-ai-perception.js`: opening, dispatch locality, real selection, one-command-per-tick, rolling
       caps, 0.2-second causal floor, seeded timelines and takeover pause. Its 120-second human fixtures report
       first commands 4.5/3.4/2.75 s. Average APM and population reaction medians remain open campaign gates.
-- [ ] ~~`tools/ai-humanity.mjs` numbers fall inside the table for each difficulty~~ over at least 20 seeds per difficulty
+- [ ] `tools/ai-humanity.mjs` numbers fall inside the table for each difficulty over at least 20 seeds per difficulty
       on Conquest and 10 each on Classic and World Conquest. The numbers go into DESIGN.md.
-      Deferred by Julio's explicit 2026-10-05 scope decision to
+      Required by Julio's later request to complete both PR #49 and
       [#48](https://github.com/axelmanosalvasmd/ww2-rts/issues/48). Original timing limits, complete populations,
       missed responses and all failed historical evidence remain unchanged. No numerical pass is claimed.
       Historical V14 evidence: all eight identifiable original required-screen medians fail; World Easy is not evaluable.
@@ -468,10 +467,10 @@ more than one command per tick. Difficulty changes skill (speed, attention, judg
       and censors remain recorded. Peak caps, first-order bands, floor and locality pass. Public-alert-v1
       numeric medians fit their bands but unsupported causal inputs leave coverage unknown.
       DESIGN.md records the exact counts and unchanged limits; the round 8 source still needs acceptance.
-- [ ] ~~Opening variety: over 20 seeds per faction, at least 3 distinct openings and none in more than half the
-      matches.~~
-      Deferred with the remaining numerical targets by Julio on 2026-10-05 to
-      [#48](https://github.com/axelmanosalvasmd/ww2-rts/issues/48), retaining the original twenty-seed requirement.
+- [ ] Opening variety: over 20 seeds per faction, at least 3 distinct openings and none in more than half the
+      matches.
+      Required for PR #49 and [#48](https://github.com/axelmanosalvasmd/ww2-rts/issues/48),
+      retaining the original twenty-seed requirement and separate auxiliary opening population.
       Historical evidence only: the earlier Conquest campaign, 20 seeds per difficulty, checkpoint `223d17f`: USA 7/4/5/4,
       Germany 9/3/5/3, USSR 9/5/3/3 across infantry, anti-tank, mortar and machine-gun first accepted purchases.
       Each has four meaningful families and maximum 45%; pointer jitter and route coordinates are excluded.
@@ -482,12 +481,12 @@ more than one command per tick. Difficulty changes skill (speed, attention, judg
       Historical V15 Conquest passes all nine faction/difficulty groups: 5-12 accepted-family sequences, maximum
       concentration 20-45%, with every original seed retained. Later camera and runtime corrections still need
       final-source verification. `docs/evidence/human-like-ai-v15/root-summary.json` retains exact per-group counts.
-- [ ] ~~Balance with `tools/ai-balance.mjs`, same seeds before and after (Conquest 60, Classic 30, as in DESIGN.md):~~
+- [ ] Balance with `tools/ai-balance.mjs`, same seeds before and after (Conquest 60, Classic 30, as in DESIGN.md):
       each faction wins 25 to 42%, matches still finish, and any change in median length is explained. Head to head
       against the old commander (kept reachable only for this measurement, for example a frozen copy under `tools/`):
       new Hard beats old Easy at least 70% of the time; report new Hard against old Normal and old Hard. Tune the AI,
       not unit stats.
-      Deferred by Julio's explicit 2026-10-05 decision to
+      Required for PR #49 and
       [#48](https://github.com/axelmanosalvasmd/ww2-rts/issues/48). All seeds, faction limits and head-to-head
       requirements remain unchanged. The failed faction shares below are retained, not accepted.
       Historical V15 finishes all 150 matches without timeout. Conquest faction shares are 30.0/41.7/28.3%,
@@ -503,9 +502,9 @@ more than one command per tick. Difficulty changes skill (speed, attention, judg
       25% floor; Classic 11/8/7 over 26 decisive results fails USA's exact 42% ceiling. Hard beats old
       Easy/Normal/Hard 15/20, 16/20 and 14/20. Root verifies all original rows, seeds, durations, logs and 59
       physical archive members in `docs/evidence/human-like-ai-v21-balance/`. Current-source balance remains open.
-- [ ] ~~Performance: `tools/bench-engine.mjs` AI phase p95 and maximum no worse than master by more than 10% or 2 ms,~~
+- [ ] Performance: `tools/bench-engine.mjs` AI phase p95 and maximum no worse than master by more than 10% or 2 ms,
       whichever is larger, and no new ticks over the 40 ms budget.
-      Deferred by Julio's explicit 2026-10-05 decision to
+      Required for PR #49 and
       [#48](https://github.com/axelmanosalvasmd/ww2-rts/issues/48). Original limits and every failed fixed row remain.
       V15 fails: exact p95 9.501/10.876 ms passes, counts p95 9.142/11.749 ms exceeds the 2 ms allowance,
       and raw timed ticks above 40 ms rise from four to five. All four fixed rows remain in

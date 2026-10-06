@@ -512,7 +512,9 @@ export function plan(observation, slot, opts, mem, send) {
     ? (selectedProducer.queue ?? []).filter(type => type === 'engineer').length : 0;
   let engineerShortage = Math.max(0, engineerTarget - count('engineer') - knownQueuedEngineers);
   if (classic && engineerShortage > 0) buy = 'engineer';
-  if (opts.human && !seenTanks && !sit?.counter) buy = openingBuy(mem.human, view, slot, buy, trains);
+  const ordinaryBuy = buy;
+  const openingVisit = opts.human && !seenTanks && !sit?.counter;
+  if (openingVisit) buy = openingBuy(mem.human, view, slot, ordinaryBuy, trains);
   const saveFirstPreference = opts.human && saveOpeningPreference(mem.human, view, slot, buy, trains, { armySize,
     tacticalCounter: seenTanks || enemyPlanes || seenGarrison || seenDugIn || learnedBuy || sit?.counter
       || sit?.kind === 'defense' || seenInf >= 6 && armySize >= 5 });
@@ -531,9 +533,11 @@ export function plan(observation, slot, opts, mem, send) {
   const freshPurchaseFrame = !opts.human || opts.decisionOnly || !Number.isFinite(mem.human.lastAcceptedBuyTick)
     || observation.tick > mem.human.lastAcceptedBuyTick;
   if (production && !freshPurchaseFrame) production.reason = 'awaiting-buy-receipt-frame';
+  // Forecast this visit's purchases without advancing the accepted receipt count.
+  const openingBatch = openingVisit ? { persona: mem.human.persona, buys: mem.human.buys ?? 0 } : null;
   if (!horde && economyVisit && opts.concern?.panel !== 'air' && freshPurchaseFrame) for (let k = 0; k < purchaseLimit; k++) {
     // Keep a useful army in the field rather than waiting forever for a prestige purchase.
-    let candidate = buy;
+    let candidate = openingBatch ? openingBuy(openingBatch, view, slot, ordinaryBuy, trains) : buy;
     if (opts.human && armySize < 6 && !affords(candidate) && !saveFirstPreference) {
       const fallback = canBuild('conscript', me.faction) && trains('conscript') ? 'conscript' : 'rifle';
       if (trains(fallback) && affords(fallback)) candidate = fallback;
@@ -560,6 +564,7 @@ export function plan(observation, slot, opts, mem, send) {
       production.reason = result === undefined ? 'proposed' : result;
     }
     if (result !== undefined) break;
+    if (openingBatch) openingBatch.buys++;
     if (opts.human && classic && candidate === 'engineer') engineerShortage--;
     knownPopulation += popUse(candidate);
   }

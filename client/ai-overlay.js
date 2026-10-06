@@ -16,6 +16,7 @@ export function spectatorHands(rows, { spectator = false, world = false } = {}) 
       cursor: cursor && { ...cursor, fromX: finite(c.fromX) ? c.fromX : c.x, fromZ: finite(c.fromZ) ? c.fromZ : c.z,
         toX: finite(c.toX) ? c.toX : c.x, toZ: finite(c.toZ) ? c.toZ : c.z,
         startTick: finite(c.startTick) ? c.startTick : 0, endTick: finite(c.endTick) ? c.endTick : 0,
+        ...(finite(c.observedTick) && { observedTick: c.observedTick }),
         mode: ['screen', 'minimap', 'ui'].includes(c.mode) ? c.mode : 'screen' },
       clicks: (Array.isArray(row.clicks) ? row.clicks : []).slice(-16).flatMap(click => {
         const at = point(click); return at && finite(click.tick) ? [{ ...at, tick: click.tick, kind: kinds.has(click.kind) ? click.kind : 'click' }] : [];
@@ -26,6 +27,8 @@ export function spectatorHands(rows, { spectator = false, world = false } = {}) 
 
 export function ghostCursor(cursor, tick) {
   if (!cursor || cursor.mode === 'ui') return null;
+  // Native samples already include both drag stages and the current camera projection.
+  if (finite(cursor.observedTick)) return { x: cursor.x, z: cursor.z };
   const duration = cursor.endTick - cursor.startTick;
   // A keyboard camera jump keeps the screen pointer still and changes its ground projection.
   if (duration <= 0 || tick >= cursor.endTick) return { x: cursor.x, z: cursor.z };

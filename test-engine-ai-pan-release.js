@@ -27,7 +27,8 @@ export function nativeEmergency(engine = { sim, perception, hands, view, ai }, r
     memory = opts.memory;
     if (recorded && !capture) capture = createPublicAlertCapture({ slot: 0, log, memory });
     const inputLog = opts.inputLog;
-    const result = engine.ai.think(game,slot,{ ...opts,
+    // An authored slow pointer keeps this fixture on a real held route, including both key releases.
+    const result = engine.ai.think(game,slot,{ ...opts, calibration: { pointer: [.3, .3] },
       ...(capture ? { perceptionMeasurements: capture.wrapMeasurements(), inputLog: input => {
         inputLog(input); log.inputs.push(structuredClone(input)); capture.input(log.inputs.at(-1),log.inputs.length-1);
       } } : {}) });
@@ -37,12 +38,13 @@ export function nativeEmergency(engine = { sim, perception, hands, view, ai }, r
     const state = memory?.human, active = state?.hands?.active, action = active?.actions[active.index];
     const actor = game.units.get(state?.hands?.selected[0]);
     if (!cue && actor && state.hands.selected.length === 1 && active && !active.reacting && action.mode === 'pan'
+      && active.panKeys?.filter(key=>game.tick>=key.down && game.tick<key.up).length === 2
       && game.tick >= active.start + action.panPrep && game.tick < active.due
       && engine.perception.onScreen(actor,state.camera)) {
       actor.hp *= .45; game.shots.push({ k: 'hurt', t: actor.id, to: 0, fo: 1, x: actor.x, z: actor.z, kill: false });
       cue = { tick: game.tick, actorId: actor.id, actualSelection: [...state.hands.selected], camera: { ...state.camera },
         active: { start: active.start, due: active.due, prep: action.panPrep, hold: action.panHold },
-        note: 'Authored hit at first actual held pan while the actual selected actor remains on screen.' };
+        note: 'Authored hit at first actual pair of held pan keys while the actual selected actor remains on screen.' };
     }
     return engine.view.viewFor(game,slot,cache);
   } } };
@@ -75,10 +77,10 @@ assert.equal(measured.capture.alertMeasurements.interrupts.length,2);
 assert.ok(measured.capture.alertMeasurements.interrupts.every(row=>row.actualDeliveredCause.id===event.id));
 assert.deepEqual(hands.HUMAN_SKILLS.hard.reaction,[.3,.45]);
 if (process.env.AI_RELEASE_PROOF) await writeFile(process.env.AI_RELEASE_PROOF,JSON.stringify({diagnosticOnly:true,plain,measured},null,2));
-console.log(`Native default commander: selected victim ${event.unitId}, damage ${event.tick}, real releases ${release.map(r=>r.tick).join('/')}, accepted retreat ${retreat.tick}. Capture on/off native parity passed.`);
+console.log(`Native commander with authored slow pointer: selected victim ${event.unitId}, damage ${event.tick}, real releases ${release.map(r=>r.tick).join('/')}, accepted retreat ${retreat.tick}. Capture on/off native parity passed.`);
 
 // Native gesture controls author only an actual HP cue, then exercise the physical API directly.
-function gestureCase(control, cardinal = false) {
+function gestureCase(control, cardinal = false, cancelPrefix = false) {
   const saved = Math.random; let n = 42, game;
   Math.random = () => ((n = (Math.imul(n,1664525)+1013904223)>>>0)/4294967296);
   try { game = sim.createGame({ w:96,h:96,rows:Array(96).fill('.'.repeat(96)),spawns:[{x:20,y:20},{x:85,y:85}],points:[] },['AI','enemy'],false,[0,1],[0,1],{weather:false}); } finally { Math.random=saved; }
@@ -89,14 +91,16 @@ function gestureCase(control, cardinal = false) {
   const state={camera:{x:100,z:100,yaw:0,distance:60}}, inputs=[];
   const h=hands.createHands({slot:0,seed:27,level:'hard',camera:state.camera,startedTick:1000,log:inputs});
   h.openingUntil=1000; h.openingDone=true; state.hands=h;
+  h.cancelTargeting=cancelPrefix;
   const target={x:190,z:cardinal?100:160};
-  hands.queueCamera(h,target,{concern:'original authored camera purpose'},'pan');
+  hands.queueCamera(h,target,{concern:'original authored camera purpose',...(cancelPrefix?{reactionStartTick:990}: {})},'pan');
   if(control==='budget')h.inputTicks=Array(120).fill(1000);
   const cam={x:100,z:100,y:0,yaw:0,dist:60},keys=new Set(),button=()=>({setAttribute(){}}),gestures=new Map();
   rig.init({cam,keys,camera:new PerspectiveCamera(42,1920/1080,1,2200),pitch:.95,
     bounds:()=>({w:96*sim.CELL,h:96*sim.CELL}),hAt:()=>0,units:new Map(),tryStore:f=>f(),edgeButton:button(),panButton:button(),band:()=>({top:0,bottom:1080})});
   let cause, interrupted, observed;
-  const cueTick=control==='preparation'?1001:control==='secondary-preparation'?1003:control==='after-release'?1040:1006;
+  const cueTick=(control==='preparation'?1001:control==='secondary-preparation'?1003:control==='after-release'?1040:1006)
+    +(cancelPrefix?2:0);
   const frames=[];
   for(let tick=1000;tick<=1060;tick++) {
     game.tick=tick;
@@ -127,11 +131,14 @@ function gestureCase(control, cardinal = false) {
     frames.push({tick,camera:{...h.camera},completed:inputs.length});sim.step(game);
   }
   const shortened=inputs.filter(i=>i.panRelease);
+  const cameraInputs=inputs.filter(i=>i.kind.startsWith('camera-'));
+  assert.equal(inputs.length,cameraInputs.length+(cancelPrefix?1:0),
+    'the gesture emits only its real camera keys and, when requested, one paid Escape');
   if(['preparation','budget'].includes(control)) {
-    assert.equal(interrupted,true);assert.equal(inputs.length,0);assert.deepEqual(h.camera,{x:100,z:100,yaw:0,distance:60});
+    assert.equal(interrupted,true);assert.equal(cameraInputs.length,0);assert.deepEqual(h.camera,{x:100,z:100,yaw:0,distance:60});
   } else if(['wrong-cause','after-release'].includes(control)) {
     assert.equal(shortened.length,0,'wrong or late causes cannot forge an earlier shortened pan');
-    assert.equal(inputs.length,cardinal?1:2);
+    assert.equal(cameraInputs.length,cardinal?1:2);
   } else {
     assert.equal(shortened.length,control==='secondary-preparation'||cardinal?1:2);
     for(const input of shortened) {
@@ -142,12 +149,19 @@ function gestureCase(control, cardinal = false) {
     }
     if(control==='secondary-preparation')assert.equal(h.camera.z,100,'an unpressed second key never moves the camera');
   }
-  assert.ok(inputs.length<=2);assert.ok(h.inputTicks.length<=120);
+  assert.ok(cameraInputs.length<=2);assert.ok(h.inputTicks.length<=120);
+  if(cancelPrefix) {
+    assert.equal(inputs[0].input.code,'Escape','the native cancel prefix is paid before any held camera key');
+    assert.equal(inputs[0].tick,inputs[0].inputStartedTick+inputs[0].motorTicks);
+    assert.equal(new Set(cameraInputs.map(input=>input.input.code)).size,cameraInputs.length,
+      'interruption after the paid cancel prefix never repeats a native held direction');
+  }
   for(let i=1;i<frames.length;i++)assert.ok(Math.abs(frames[i].camera.x-frames[i-1].camera.x)<=3.3+1e-8
     && Math.abs(frames[i].camera.z-frames[i-1].camera.z)<=3.3+1e-8,'every executed hold uses actual client component speed');
-  return {control,cardinal,cause,inputs,frames};
+  return {control,cardinal,cause,inputs,frames,...(cancelPrefix?{cancelPrefix}: {})};
 }
 const physicalControls=['held','preparation','secondary-preparation','wrong-cause','after-release','new-cause','budget'].map(c=>gestureCase(c));
 physicalControls.push(gestureCase('held',true));
-if(process.env.AI_RELEASE_CONTROLS)await writeFile(process.env.AI_RELEASE_CONTROLS,JSON.stringify({diagnosticOnly:true,physicalControls},null,2));
+const cancelPrefixControls=['held','preparation','secondary-preparation','wrong-cause','new-cause'].map(c=>gestureCase(c,false,true));
+if(process.env.AI_RELEASE_CONTROLS)await writeFile(process.env.AI_RELEASE_CONTROLS,JSON.stringify({diagnosticOnly:true,physicalControls,cancelPrefixControls},null,2));
 console.log('Native cardinal/concurrent early-keyup, unpressed preparations, released keys, wrong/new causes and exhausted-budget controls passed.');

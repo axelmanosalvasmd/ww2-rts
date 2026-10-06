@@ -38,7 +38,8 @@ function copyData(value, seen) {
     const descriptor = Object.getOwnPropertyDescriptor(value, key);
     // Do not invoke a getter before discovering another unsupported value and restarting the graph.
     if (!descriptor || !Object.hasOwn(descriptor, 'value')) throw unsupportedCopy;
-    const item = copyData(descriptor.value, seen);
+    const source = descriptor.value, type = typeof source;
+    const item = source !== null && (type === 'object' || type === 'function' || type === 'symbol') ? copyData(source, seen) : source;
     if (key === '__proto__') Object.defineProperty(result, key, { value: item, writable: true, enumerable: true, configurable: true });
     else result[key] = item;
   }
@@ -50,51 +51,54 @@ export function detachedCopy(value) {
   try { return copyData(value, new Map()); }
   catch { return structuredClone(value); }
 }
-// The root was just built by object spread here and has not been exposed. Nested
-// values still use descriptor checks and the original-root native fallback.
-function copyFreshRoot(value) {
-  try {
-    const result = {}, seen = new Map([[value, result]]);
-    for (const key of Object.keys(value)) {
-      const item = copyData(value[key], seen);
-      if (key === '__proto__') Object.defineProperty(result, key, { value: item, writable: true, enumerable: true, configurable: true });
-      else result[key] = item;
-    }
-    return result;
-  } catch { return structuredClone(value); }
-}
-function copyFreshData(value, seen) {
+function copyPairData(value, seen, freshRoot = false) {
   if (value === null) return value;
   const type = typeof value;
   if (type === 'function' || type === 'symbol') throw unsupportedCopy;
   if (type !== 'object') return value;
   if (seen.has(value)) return seen.get(value);
-  const prototype = Object.getPrototypeOf(value); let result;
+  const prototype = Object.getPrototypeOf(value); let pair;
   if (prototype === Map.prototype) {
-    result = new Map(); seen.set(value, result);
-    for (const [key, item] of Map.prototype.entries.call(value)) result.set(copyFreshData(key, seen), copyFreshData(item, seen));
-    return result;
+    pair = [new Map(), new Map()]; seen.set(value, pair);
+    for (const [key, item] of Map.prototype.entries.call(value)) {
+      const keys = copyPairData(key, seen), items = copyPairData(item, seen);
+      for (let i = 0; i < 2; i++) pair[i].set(key !== null && typeof key === 'object' ? keys[i] : keys, item !== null && typeof item === 'object' ? items[i] : items);
+    }
+    return pair;
   }
   if (prototype === Set.prototype) {
-    result = new Set(); seen.set(value, result);
-    for (const item of Set.prototype.values.call(value)) result.add(copyFreshData(item, seen));
-    return result;
+    pair = [new Set(), new Set()]; seen.set(value, pair);
+    for (const item of Set.prototype.values.call(value)) {
+      const items = copyPairData(item, seen);
+      for (let i = 0; i < 2; i++) pair[i].add(item !== null && typeof item === 'object' ? items[i] : items);
+    }
+    return pair;
   }
-  if (Array.isArray(value) && prototype === Array.prototype) result = new Array(value.length);
-  else if (prototype === Object.prototype || prototype === null) result = {};
+  if (Array.isArray(value) && prototype === Array.prototype) pair = [new Array(value.length), new Array(value.length)];
+  else if (prototype === Object.prototype || prototype === null) pair = [{}, {}];
   else throw unsupportedCopy;
-  seen.set(value, result);
+  seen.set(value, pair);
   for (const key of Object.keys(value)) {
-    const item = copyFreshData(value[key], seen);
-    if (key === '__proto__') Object.defineProperty(result, key, { value: item, writable: true, enumerable: true, configurable: true });
-    else result[key] = item;
+    const descriptor = freshRoot ? null : Object.getOwnPropertyDescriptor(value, key);
+    if (!freshRoot && (!descriptor || !Object.hasOwn(descriptor, 'value'))) throw unsupportedCopy;
+    const source = freshRoot ? value[key] : descriptor.value, type = typeof source, object = source !== null && type === 'object';
+    const copied = object || type === 'function' || type === 'symbol' ? copyPairData(source, seen) : source;
+    for (let i = 0; i < 2; i++) {
+      const item = object ? copied[i] : copied;
+      if (key === '__proto__') Object.defineProperty(pair[i], key, { value: item, writable: true, enumerable: true, configurable: true });
+      else pair[i][key] = item;
+    }
   }
-  return result;
+  return pair;
 }
-// Only an immediate second copy of this function's newly detached, unexposed graph uses this helper.
-function copyFresh(value) {
-  try { return copyFreshData(value, new Map()); }
-  catch { return structuredClone(value); }
+// The spread root is fresh. Traverse its nested graph once for two independent copies.
+// Unknown types and accessors keep the original-root native fallback and its alias rules.
+function copyFreshPair(value) {
+  try { return copyPairData(value, new Map(), true); }
+  catch {
+    const first = structuredClone(value);
+    return [first, structuredClone(first)];
+  }
 }
 const clone = detachedCopy;
 // The client also frames the spawn within its measured HUD band. This shared pose anchors at the spawn.
@@ -272,17 +276,19 @@ function perceiveScene(observation, slot, state = {}, eventTick = observation.ti
     }
   };
   for (const delivered of observation.units.values()) {
-    const def = UNITS[delivered.type], full = (def.models ?? 1) * def.hpPer;
+    const def = UNITS[delivered.type];
+    // Off-camera rows provide only their dot and own inventory identity.
+    dots.push({ ...(delivered.owner === slot && { id: delivered.id }), owner: delivered.owner,
+      x: delivered.x, z: delivered.z, vehicle: !def.infantry });
+    if (delivered.owner === slot && !state.inventory.has(delivered.id)) state.inventory.set(delivered.id,
+      { id: delivered.id, owner: delivered.owner, type: delivered.type });
+    // Parked planes have a HUD button, but their model and health bars are hidden by the client.
+    if ((def.air && delivered.flags & 512) || !onScreen(delivered, state.camera, observation)) continue;
+    const full = (def.models ?? 1) * def.hpPer;
     const exactHUD = delivered.owner === slot && selectedIds.has(delivered.id) && selectedCounts.get(delivered.type) === 1;
     const u = { ...delivered, hp: exactHUD ? Math.ceil(delivered.hp) : observedHealth(delivered.hp, full),
       supp: observedSuppression(delivered.supp), hpBasis: exactHUD ? 'selected-hud' : 'world-bar',
       suppSource: 'world-bar', suppressionBand: delivered.supp >= 90 ? 'pinned' : delivered.supp >= 50 ? 'suppressed' : 'normal', healthBand: delivered.hp / full > .5 ? 'healthy' : delivered.hp / full > .25 ? 'hurt' : 'critical' };
-    // These are exactly the two dot sizes drawn by client/main.js drawMinimap, not unit symbols.
-    const dot = { ...(u.owner === slot && { id: u.id }), owner: u.owner, x: u.x, z: u.z, vehicle: !UNITS[u.type].infantry };
-    dots.push(dot);
-    if (u.owner === slot && !state.inventory.has(u.id)) state.inventory.set(u.id, { id: u.id, owner: u.owner, type: u.type });
-    // Parked planes have a HUD button, but their model and health bars are hidden by the client.
-    if ((UNITS[u.type].air && u.flags & 512) || !onScreen(u, state.camera, observation)) continue;
     const previous = previousScreen.get(u.id);
     const lastScreenTick = screenSeenAt.get(u.id) ?? state.screenMemory.get(u.id)?.lastScreenTick;
     if (observation.players[u.owner]?.team !== me.team && (!previous || previous.team === me.team)
@@ -308,8 +314,9 @@ function perceiveScene(observation, slot, state = {}, eventTick = observation.ti
     const firstStillAt = stationary && Math.hypot(stationary.x - u.x, stationary.z - u.z) <= 0.1 + 1e-9 ? stationary.since : now;
     state.screenStill.set(u.id, { x: u.x, z: u.z, since: firstStillAt });
     screenSeenAt.set(u.id, eventTick);
-    const seen = { ...copyFreshRoot(u), firstStillAt, lastSeen: now, lastScreenTick: eventTick, screenSeen: true, confidence: 1 };
-    screen.set(u.id, seen); screenIds.add(u.id); state.screenMemory.set(u.id, copyFresh(seen));
+    const [shown, stored] = copyFreshPair(u), metadata = { firstStillAt, lastSeen: now, lastScreenTick: eventTick, screenSeen: true, confidence: 1 };
+    const seen = { ...shown, ...metadata }, remembered = { ...stored, ...metadata };
+    screen.set(u.id, seen); screenIds.add(u.id); state.screenMemory.set(u.id, remembered);
   }
   for (const id of state.screenStill.keys()) if (!screenIds.has(id)) state.screenStill.delete(id);
   // Keep debounce clocks through empty-ground memory invalidation, without retaining hidden unit details.

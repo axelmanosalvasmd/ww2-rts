@@ -15,6 +15,13 @@ const fixture = () => ({ tick: 0, w: 200, h: 200, winner: null, flags: Array(400
   ]) });
 // These isolated input fixtures accept their recorded commands. Simulation-backed rejection proofs live in the group reuse test.
 const acceptedTo = commands => cmd => { commands.push(cmd); };
+const placeCheapBox = (view, hands) => {
+  Object.assign(view.units.get(1), { x: 112, z: 88 });
+  Object.assign(view.units.get(2), { x: 88, z: 88 });
+  const at = projectPointer(view.units.get(2), hands.camera, view, { elevation: 1 });
+  Object.assign(hands.pointer, { x: at.x - 2, y: at.y - 2,
+    fromX: at.x - 2, fromY: at.y - 2, toX: at.x - 2, toY: at.y - 2 });
+};
 const run = (hands, view, until, send = () => {}) => {
   for (let tick = hands.tick; tick <= until; tick++) {
     view.tick = tick; advanceHands(hands, tick, view, send);
@@ -71,6 +78,7 @@ for (const level of ['easy', 'normal', 'hard']) {
   const view = fixture(), log = [], sent = [], hands = createHands({ slot: 0, seed: 10, level: 'hard', camera: { x: 100, z: 100 }, log });
   assert.equal(enqueueDecision(hands, { t: 'move', orders: [[3, 115, 110]] }, view), false, 'remote unit cannot be selected by an arbitrary id');
   assert.equal(enqueueDecision(hands, { t: 'attack', ids: [1], target: 3 }, view), false, 'targeted click needs a target on screen');
+  placeCheapBox(view, hands);
   assert.ok(enqueueDecision(hands, { t: 'amove', orders: [[1, 350, 340], [2, 352, 341]] }, view, { concern: 'expansion', operation: 'capture', eventTick: 0 }));
   run(hands, view, 240, acceptedTo(sent));
   assert.equal(sent.length, 1, 'nearby computed destinations become one formation command');
@@ -686,7 +694,7 @@ for (const level of ['easy', 'normal', 'hard']) {
 for (const held of [false, true]) {
   const view = fixture(), log = [], sent = [], hands = createHands({ slot: 0, seed: 3, level: 'hard', camera: { x: 100, z: 100 }, log });
   hands.openingUntil = 0; hands.openingDone = true; hands.selected = [3];
-  Object.assign(hands.pointer, { x: 0, y: 0, fromX: 0, fromY: 0, toX: 0, toY: 0 });
+  placeCheapBox(view, hands);
   enqueueDecision(hands, { t: 'move', orders: [[1, 120, 120], [2, 122, 120]] }, view);
   advanceHands(hands, 0, view, () => {});
   const active = hands.active, action = active.actions[0]; assert.equal(action.kind, 'select-box');

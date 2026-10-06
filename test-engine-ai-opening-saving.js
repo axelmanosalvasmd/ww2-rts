@@ -66,8 +66,10 @@ for(const family of ['support','defensive'])for(const level of ['easy','normal',
  assert.ok(!commands.some(c=>c.tick<=first.tick&&c.command.t==='buy'&&!c.accepted),'saving attempts no dummy or refused first purchase');
  native.push({family,level,firstAcceptedBuy:first,usefulAcceptedMovesWhileWaiting:waiting.length,actualMovedUnitsWhileWaiting,startingForceAtFirstBuy,inputs:inputs.length,laterRejectedPurchases:commands.filter(c=>c.tick>first.tick&&c.command.t==='buy'&&!c.accepted),commands,physicalInputs:inputs});
 }
-// The planner computes its selected opening once per visit; retain this existing behavior in the treatment.
+// A funded visit forecasts a varied family without claiming any accepted purchase receipt.
 const dup=scene('support'),duplicateCommands=[];dup.view.players[0].mp=500;
 plan(dup.view,0,{human:true,level:'hard',concern:{kind:'production',id:'production'}},{human:dup.human,rng:createRng(1,0)},c=>(duplicateCommands.push(c),undefined));
-const authored=duplicateCommands.filter(c=>c.t==='buy');assert.equal(authored.length,2);assert.ok(authored.every(c=>c.unit==='mortar'),'later loop iterations retain the selected preference until accepted progress');
+const authored=duplicateCommands.filter(c=>c.t==='buy');assert.deepEqual(authored.map(c=>c.unit),['mortar','mg','rifle']);
+assert.ok(authored.reduce((sum,c)=>sum+priceOf(dup.view,c.unit).mp,0)<=500,'the forecast stays within the ordinary 500 MP budget');
+assert.equal(dup.human.buys,0,'forecasting does not advance accepted opening progress');
 console.log('AI opening preference saving passed ('+checks.length+' guard/planner checks, '+deliveredCounterControls.length+' delivered counter controls, '+native.length+' native simulations).');

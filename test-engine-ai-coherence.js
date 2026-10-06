@@ -85,9 +85,14 @@ for (const phase of ['approach', 'held']) {
   for (let i = 0; i < 5; i++) assert.equal(command(f.g, 0, { t: 'buy', unit: 'rifle' }), undefined);
   const own = [...f.g.units.values()], front = own.slice(0, 5), home = own[5];
   front.forEach((u, i) => Object.assign(u, { x: 100 + i * 4, z: 140, holdFire: true, auto: false }));
+  if (phase === 'held') {
+    // The prior selection leaves the pointer beside the box's first corner, making the drag cheaper.
+    [[117, 128], [93, 128], [90, 142], [118, 142], [91, 126]]
+      .forEach(([x, z], i) => Object.assign(front[i], { x, z }));
+  }
   Object.assign(home, { x: 50, z: 80, holdFire: true, auto: false });
   f.g.players[0].mp = 0;
-  f.memory.human = { camera: { x: 105, z: 140 }, startedTick: 0,
+  f.memory.human = { camera: { x: 105, z: 140, ...(phase === 'held' && { yaw: 0 }) }, startedTick: 0,
     concern: { id: 'front', kind: 'expansion', x: 105, z: 140, since: 0, until: 100000 } };
   const state = f.memory.human;
   state.hands = createHands({ slot: 0, seed: 27, level: 'normal', camera: state.camera });

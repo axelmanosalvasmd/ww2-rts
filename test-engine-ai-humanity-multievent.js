@@ -134,7 +134,9 @@ const check = (inputs, commands = [], population = events) => reactionMetrics({ 
     advanceHands(hands, tick, view, cmd => { const result = command(game, 0, cmd); commands.push({ tick, command: cmd, accepted: result === undefined,
       locations: [{ x: game.units.get(cmd.target).x, z: game.units.get(cmd.target).z }], sourceLocations: own.map(u => ({ x: u.x, z: u.z })) }); return result; });
   }
-  assert.ok(inputs.some(i => i.kind === 'select-box'), 'real hands selects the group with one physical box gesture');
+  assert.deepEqual(inputs.filter(input => input.kind.startsWith('select-')).map(input => input.kind),
+    ['select-click', 'select-add-click'], 'the cheaper paid click sequence acquires the complete group');
+  assert.deepEqual(new Set(hands.selected), new Set(own.map(unit => unit.id)));
   assert.ok(inputs.length > 0);
   for (const row of inputs) {
     assert.deepEqual(row.responseEvents, population, 'hands natively emits detached creation descriptors from the queued job');

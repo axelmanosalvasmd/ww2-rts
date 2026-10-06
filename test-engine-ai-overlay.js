@@ -58,6 +58,10 @@ try {
     const diagnostic = watcher.latest('s').aiHands;
     assert.ok(diagnostic?.some(row => row.slot === 2), 'full-map spectator receives the AI camera');
     for (const row of diagnostic) for (const key of ['ids', 'selectedIds', 'orders', 'command', 'persona', 'mp']) assert.equal(Object.hasOwn(row, key), false, `spectator receives no ${key}`);
+    for (const row of diagnostic) {
+      assert.ok(Number.isInteger(row.cursor?.observedTick) && row.cursor.observedTick <= room.game.tick, 'native cursor sample has its public tick');
+      for (const key of ['pixelX', 'pixelY', 'unitIds', 'executor']) assert.equal(Object.hasOwn(row.cursor, key), false, `cursor receives no ${key}`);
+    }
     for (const client of clients) assert.equal(client.messages.some(msg => msg.t === 'humanInput' || Object.hasOwn(msg, 'cursor') || JSON.stringify(msg).includes('private-metadata')), false, 'human telemetry is never relayed');
     await server.humanRecorder.flush();
     const files = await readdir(dir);
