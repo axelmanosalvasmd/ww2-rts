@@ -5,23 +5,6 @@ AI-vs-AI runs (see DESIGN.md for the balance log). Add new entries under **Unrel
 
 ## Unreleased
 
-- Native AP and withdrawal checks now exercise actual weapon readiness and the cost of leaving a fight, while keeping their command and timing assertions. Unfinished: idle-guard and human-slip fixtures still fail, and final reaction, activity, balance and performance acceptance remains open.
-
-- Commanders compare camera key holds with a minimap click using the pointer's current position and remaining input budget. Cancelling a targeting action before a diagonal pan now presses each direction once and reaches the intended view.
-
-- Commanders begin a newly chosen local input without an extra tick of queue delay. Selection still pays its full motor time, misses and normal reaction delay; camera trips keep their existing timing.
-
-- Hard commanders leave an empty objective visit after noticing that their available, watched assault squads already have a different advance planned. Moving, boarded and busy squads keep the existing wait, and the next decision still pays its normal delay and inputs.
-
-- Alert measurement distinguishes proved camera misses and targeting cancellations from missing proof. Every unanswered alert keeps its original censor, and the prior scores and timing limits remain available.
-- AI sandbox resets clear the recorded slider, and Author debug shows actual units before the first tick. Rejected settings or editor failures retain the actual running case, trace, history and editor. Room and directory navigation preserve explicit AI overlay and human recording opt-ins.
-- Spectator AI cursors follow the actual paid drag pointer through both stages. Private screen pixels stay outside spectator messages.
-- Commanders choose the faster legal selection gesture and pay for each click or drag. A combat camera returns to defenders lost from the frame during a pan before selecting and commanding them.
-- Funded opening batches advance through their seeded unit choices. A refused purchase cancels only the rest of that purchase batch, preserving unrelated work and retry timing.
-- Screen and remembered sightings share one copy traversal while retaining independent records, fog boundaries and gameplay behavior. Final performance measurements remain required.
-
-- Commanders remember a selected squad's visible shelter destination, so a completed move does not waste repeated clicks. Changed orders and renewed movement still receive real inputs. Faction balance still requires the original full campaign.
-
 - Recruit panel (Conquest, Assault, Annihilation, Horde): unit cards now show each unit's flat silhouette symbol
   instead of a small 3D render, so the types are easy to tell apart. The groups (Infantry, Support weapons,
   Vehicles, Aircraft, Naval) are now a row of tabs: click one to show only its units, click it again to close it.
@@ -63,6 +46,25 @@ AI-vs-AI runs (see DESIGN.md for the balance log). Add new entries under **Unrel
 - A ready AP shot against a visible medium or other eligible vehicle reopens deferred combat attention. The native Hard scene accepts AP at tick 120 instead of 149, keeping three physical inputs and two commands.
 - Historical V21 balance completes all 150 matches with no timeout: Conquest wins 41.67/36.67/21.67%, Classic decisive wins 42.31/30.77/26.92%, and Hard beats old Easy 75%. The faction limits still fail and remain recorded.
 - A squad's newly observed retreat risk can interrupt its older escape click before the click is pressed. Existing selection, reaction time and key costs remain paid; the fixed native Normal scene now retreats after 0.55 seconds.
+
+### 2026-10-06: Commander input and debug checkpoint (`0a0c570`)
+
+- Native AP and withdrawal checks now exercise actual weapon readiness and the cost of leaving a fight, while keeping their command and timing assertions. Unfinished: idle-guard and human-slip fixtures still fail, and final reaction, activity, balance and performance acceptance remains open.
+
+- Commanders compare camera key holds with a minimap click using the pointer's current position and remaining input budget. Cancelling a targeting action before a diagonal pan now presses each direction once and reaches the intended view.
+
+- Commanders begin a newly chosen local input without an extra tick of queue delay. Selection still pays its full motor time, misses and normal reaction delay; camera trips keep their existing timing.
+
+- Hard commanders leave an empty objective visit after noticing that their available, watched assault squads already have a different advance planned. Moving, boarded and busy squads keep the existing wait, and the next decision still pays its normal delay and inputs.
+
+- Alert measurement distinguishes proved camera misses and targeting cancellations from missing proof. Every unanswered alert keeps its original censor, and the prior scores and timing limits remain available.
+- AI sandbox resets clear the recorded slider, and Author debug shows actual units before the first tick. Rejected settings or editor failures retain the actual running case, trace, history and editor. Room and directory navigation preserve explicit AI overlay and human recording opt-ins.
+- Spectator AI cursors follow the actual paid drag pointer through both stages. Private screen pixels stay outside spectator messages.
+- Commanders choose the faster legal selection gesture and pay for each click or drag. A combat camera returns to defenders lost from the frame during a pan before selecting and commanding them.
+- Funded opening batches advance through their seeded unit choices. A refused purchase cancels only the rest of that purchase batch, preserving unrelated work and retry timing.
+- Screen and remembered sightings share one copy traversal while retaining independent records, fog boundaries and gameplay behavior. Final performance measurements remain required.
+
+- Commanders remember a selected squad's visible shelter destination, so a completed move does not waste repeated clicks. Changed orders and renewed movement still receive real inputs. Faction balance still requires the original full campaign.
 
 ### 2026-10-05: Human attention, inputs and native lab (`bbff3fa`)
 
