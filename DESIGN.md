@@ -45,11 +45,17 @@ Unarmed supply trucks have 120 HP, 7.5 m/s speed, 12 m sight, zero population an
 The automatic fleet is `min(24, max(2, 2 + ceil(eligibleTroops / (4 * army.pop))))`, with one spawn per second.
 Destroyed trucks lose cargo and become replaceable after 30 seconds. Empty surplus trucks retire safely
 at a source. Loading takes four seconds; deliveries unload incrementally over eight seconds. Automatic
-routes use remembered terrain and currently visible threats, rechecking every two seconds. Unknown
-ambushes remain possible. Direct movement and queued waypoints suspend dispatch; explicit Stop holds
+routes use remembered terrain and currently visible threats, rechecking every two seconds; a route that
+failed to the same place waits 2 s, then 4, 8, 16 and 32 s before the next search. Each cycle queues the trucks to
+recheck and the players to dispatch, served at most 3 truck dispatches per tick; an unfinished pass carries over. Moving
+routes can be reused after checking every remaining leg against remembered obstacles and visible weapon
+ranges; stalled vehicles or exhausted operating fuel retry dispatch. Danger navigation updates include
+newly remembered heights but ignore cosmetic ground wear. Unknown ambushes remain possible. Direct movement and queued waypoints suspend dispatch; explicit Stop holds
 until Resume deliveries or another order. Explicit relief can enter known danger and supply an ally.
 
-Sources are completed HQs in construction modes and the existing home positions elsewhere. Forward
+Sources are completed HQs in construction modes and in any match with HQs (skirmish bases put one on the old home
+position), and the existing home positions elsewhere. Allies share sources, but a
+player's new trucks start at that player's own source. Forward
 Supply Caches cost 60 MP, take 12 seconds and have 400 HP on a 2x2 footprint. Held depot Points,
 hospitals and halted halftracks carry finite supplies. World regions receive one physical relay, empty
 when newly captured; neutralization clears stock and suspends ownership until recapture. HQ recovery

@@ -5,6 +5,32 @@ AI-vs-AI runs (see DESIGN.md for the balance log). Add new entries under **Unrel
 
 ## Unreleased
 
+- Supply trucks are now on master: the physical supply slice (`165b0fe`, see its entry below) merged with skirmish
+  bases. Any match with an HQ now supplies from it (bases put an HQ on the old home position, where trucks used to
+  load, and without this they never delivered), and the hold check waits a second because trucks now brake before
+  they stand.
+- Fixed allied supply trucks appearing at your HQ instead of their own. New trucks took the first friendly HQ in the
+  list, which was always the first ally's.
+- Fixed supply trucks lagging World Conquest, which with the merge alone ran at p95 up to 145 ms with one 77 s stall
+  in a 2-player, 2-AI probe. Now: p95 22 to 45 ms and at most 114 ms over 4 minutes, against 20 to 32 ms and 144 ms
+  on master without trucks. Causes and fixes:
+  - A truck that found no route retried a whole-world search every 2 s, from two places. A failed route to the same
+    place now waits 2, 4, 8, 16, then 32 s.
+  - Every 2 s all trucks were assigned and rechecked in the same tick, each planning its trip there and back (about
+    4 ms, up to 50), so up to 40 route plans landed in one tick. Trucks are now queued, at most 3 dispatches per
+    tick; an unfinished pass carries over.
+  - Trucks re-planned trips that still worked; they now keep a route whose every leg is still clear and safe.
+  - A safe route near seen enemies built a new danger map, and with it a whole-world route graph, for every truck;
+    now one danger map per side, updated cell by cell.
+  - The remembered-ground view rebuilt its seen units, wrecks, fires and mines (a pass over every remembered cell)
+    on every call, several per unit per tick. It now keeps them per player per tick and tracks mines cell by cell.
+  - Remembered cells were compared through JSON strings, route graphs rebuilt for look-only changes, and a building
+    going up (repairing its sections every tick) counted as a terrain change, redoing the whole map's fog and
+    memory. Hit points, wear and scorch are now look-only.
+  The speedups come from another session's finished work; its Horde, sandbox, dig-bar and bridge-crossing changes
+  are not part of this.
+  Left for later: one long trip is still planned whole in one tick (up to about 50 ms).
+
 - The full test suite passes again after merging skirmish production bases. Fixed the AI ignoring an enemy air strike
   on squads busy building: a squad sent to rebuild a base no longer gets bombed without fighter cover. Test setups
   that wipe the map or count units now allow for the starting HQ and Barracks. The AI-match check now asks for at
