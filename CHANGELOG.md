@@ -5,11 +5,17 @@ AI-vs-AI runs (see DESIGN.md for the balance log). Add new entries under **Unrel
 
 ## Unreleased
 
-
-
 - Fixed the Engineers' Build card in Classic and World Conquest showing only an empty "Build" tab after a Conquest
   (or other recruit-bar) match in the same page. The recruit bar's tab layout stayed on and hid every building card.
 
+- Only the Light Tank and the Armored Car lay smoke now. The heavier tanks get their own abilities instead:
+  - Medium Tank, HE Shell: fires a high-explosive round at a spot up to 38 m away (blast 5 m, kills about two men of
+    a squad and pins the rest, cracks cover). 40 s cooldown. Autocast aims it at infantry in cover, trenches or houses.
+  - Tiger, 88 mm AP Round: the next shot always hits and does double damage to a vehicle. 40 s cooldown.
+  - Churchill, Petard: the AVRE's demolition charge, fired at a spot up to 20 m away. Wrecks houses, trenches and
+    the squads in them (about three men of a squad). 45 s cooldown.
+  The shells fly flat from the turret instead of being lobbed like a grenade. The AI now loads AP rounds against any
+  vehicle, not only Light Tanks.
 ### 2026-10-06: Horde Kaiju boss (`cedf7ba`)
 
 - Horde has a boss. Every tenth Wave a Kaiju walks on with the rest: a 17 m atomic lizard with glowing back

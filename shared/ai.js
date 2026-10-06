@@ -601,7 +601,7 @@ function plan(observation, slot, opts, mem, send) {
         const t = enemiesNear(u, def.ab.range + 4).find(e => watched(e) && UNITS[e.type].infantry && d(u, e) <= def.ab.range + 4 && (e.type !== 'rifle' || inCover(view, e)));
         if (t) cast({ t: 'ability', ids: [u.id], x: t.x, z: t.z });
       } else if (def.ab.id === 'suppress' && target && watched(target)) cast({ t: 'ability', ids: [u.id] });
-      else if (def.ab.id === 'ap' && target?.type === 'tank' && watched(target)) cast({ t: 'ability', ids: [u.id] });
+      else if (def.ab.id === 'ap' && target && !UNITS[target.type].infantry && !UNITS[target.type].structure && watched(target)) cast({ t: 'ability', ids: [u.id] });
       else if (def.ab.id === 'smoke' && frac < 0.5 && !home) cast({ t: 'ability', ids: [u.id] });
       else if (def.ab.id === 'satchel') {
         // demolish a house the enemy is holding, or plant it on a tank

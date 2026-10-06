@@ -3800,6 +3800,26 @@ for (const f of readdirSync('maps')) {
   assert.equal([...fg.units.values()].filter(u => u.type === 'flakpos').length, before + 1);
 }
 
+// Only the light vehicles lay smoke. The Medium Tank fires an HE shell at a spot, the Tiger loads an 88 mm AP round,
+// the Churchill fires its petard.
+{
+  assert.deepEqual(Object.keys(UNITS).filter(t => UNITS[t].ab.id === 'smoke' && !UNITS[t].infantry).sort(), ['armoredcar', 'tank'], 'smoke: the Light Tank and the Armored Car');
+  assert.deepEqual(['medium', 'tiger', 'churchill'].map(t => UNITS[t].ab.id), ['grenade', 'ap', 'satchel']);
+  const map = JSON.parse(readFileSync('maps/default.json', 'utf8'));
+  for (const [type, reach] of [['medium', 30], ['churchill', 18]]) {
+    const g = createGame(map, ['a', 'b'], false, [0, 1], [3, 0]);
+    g.players[0].mp = 2000;
+    assert.equal(command(g, 0, { t: 'buy', unit: type }), undefined);
+    const tank = [...g.units.values()].find(u => u.type === type), foe = [...g.units.values()].find(u => u.owner === 1 && u.type === 'rifle');
+    for (const u of g.units.values()) if (u !== tank && u !== foe) { u.x = 5; u.z = 5 + u.id; } // everyone else out of the way
+    Object.assign(tank, { x: 80, z: 80, path: [], holdFire: true }); Object.assign(foe, { x: 80 + reach, z: 80, path: [], holdFire: true }); // only the ability fires
+    const hp = foe.hp;
+    assert.equal(command(g, 0, { t: 'ability', ids: [tank.id], x: foe.x, z: foe.z }), undefined);
+    run(g, 2);
+    assert.ok(tank.cd > 0 && foe.hp < hp, `${UNITS[type].ab.name} hits a squad ${reach} m out (${Math.round(hp - foe.hp)} damage)`);
+  }
+}
+
 // A defeated Annihilation team cannot act while two other teams keep fighting.
 {
   const map = JSON.parse(readFileSync('maps/default.json', 'utf8'));

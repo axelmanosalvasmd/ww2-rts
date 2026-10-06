@@ -1076,7 +1076,9 @@ export function createEffects({ scene, camera, cam, hAt, units, airAlt = 20, map
       if (k === 'hurt') continue;
       if (k === 'throw') {
         if (!from) continue;
-        const satchel = from.type === 'ranger', gy = hAt(from.x, from.z), T = satchel ? 0.8 : 1.1, G = 25, ty = hAt(sh.x, sh.z) + 0.2;
+        // a tank's HE shell or petard flies flat and fast from the turret; a squad's grenade or satchel is lobbed
+        const gun = !UNITS[from.type]?.infantry, satchel = from.type === 'ranger' || from.type === 'churchill', gy = hAt(from.x, from.z) + (gun ? 1 : 0);
+        const T = gun ? 0.3 : satchel ? 0.8 : 1.1, G = gun ? 0 : 25, ty = hAt(sh.x, sh.z) + 0.2;
         Object.assign(throws[throwI++ % throws.length], { x: sh.x, z: sh.z, satchel, t: clock });
         const o = emit(FX.nade, from.x, gy + 1.5, from.z, (sh.x - from.x) / T, (ty - gy - 1.5 + 0.5 * G * T * T) / T, (sh.z - from.z) / T, satchel ? 0.2 : 0.12, T);
         if (o >= 0) S[o + 22] = G;

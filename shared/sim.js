@@ -218,7 +218,8 @@ UNITS.armoredcar = { name: 'Armored Car', cost: 220, models: 1, hpPer: 170, spee
 // Medium tank (Sherman / Panzer IV / T-34): the mainline tank, between the light tank and the Tiger.
 UNITS.medium = { name: 'Medium Tank', cost: 380, models: 1, hpPer: 600, speed: 5.5, radius: 2.7, vision: 40, infantry: false, crushes: true,
   w: { range: 38, interval: 3.5, inf: 35, veh: 80, accInf: 0.6, accVeh: 0.75, supp: 25, moveFire: 0.8, shellTerrain: 110 },
-  ab: { id: 'smoke', name: 'Smoke', cd: 45, dur: 14, radius: 9 } };
+  // only the Light Tank (and the Armored Car) lay smoke; the heavier tanks get a shell or a charge of their own
+  ab: { id: 'grenade', name: 'HE Shell', cd: 40, range: 38, fuse: 0.3, radius: 5, inf: 40, veh: 10, supp: 70, terrain: 110 } };
 // Halftrack: carries one infantry squad (carries), and infantry beside it reinforce while it stands still. A light
 // MG, thin armor.
 UNITS.halftrack = { name: 'Halftrack', cost: 180, models: 1, hpPer: 220, speed: 7.5, radius: 2.2, vision: 36, infantry: false, carries: true,
@@ -277,7 +278,7 @@ UNITS.ranger = { name: 'Ranger Squad', faction: 0, cost: 200, models: 6, hpPer: 
 // Germany Tiger: heavy tank, one at a time. Thick front armor: flank it.
 UNITS.tiger = { name: 'Tiger', faction: 1, max: 1, cost: 560, models: 1, hpPer: 900, speed: 4, radius: 3, vision: 42, infantry: false, crushes: true, frontArmor: 0.7,
   w: { range: 42, interval: 4, inf: 40, veh: 110, accInf: 0.55, accVeh: 0.8, supp: 30, moveFire: 0.6, shellTerrain: 140 },
-  ab: { id: 'smoke', name: 'Smoke', cd: 45, dur: 14, radius: 9 } };
+  ab: { id: 'ap', name: '88 mm AP Round', cd: 40, mult: 2 } };
 // USSR Conscripts: cheap human waves. Ura! = sprint and shrug off suppression.
 UNITS.conscript = { name: 'Conscripts', faction: 2, cost: 80, pop: 0.75, models: 7, hpPer: 14, speed: 4.6, radius: 1.8, vision: 34, infantry: true, garrisons: true,
   w: { range: 24, interval: 1.8, inf: 2.2, veh: 1.1, accInf: 0.55, accVeh: 0.5, supp: 3, perModel: true, moveFire: 0.5 },
@@ -285,7 +286,8 @@ UNITS.conscript = { name: 'Conscripts', faction: 2, cost: 80, pop: 0.75, models:
 // UK Churchill: a slow infantry tank, the thickest front on the map and a modest 75mm gun. One at a time.
 UNITS.churchill = { name: 'Churchill', faction: 3, max: 1, cost: 480, models: 1, hpPer: 1050, speed: 3.2, radius: 2.9, vision: 40, infantry: false, crushes: true, frontArmor: 0.6,
   w: { range: 36, interval: 3.5, inf: 35, veh: 70, accInf: 0.6, accVeh: 0.75, supp: 25, moveFire: 0.7, shellTerrain: 110 },
-  ab: { id: 'smoke', name: 'Smoke', cd: 45, dur: 14, radius: 9 } };
+  // AVRE spigot mortar: satchel rules with a longer reach and a quick flight
+  ab: { id: 'satchel', name: 'Petard', cd: 45, range: 20, fuse: 0.6, radius: 5, inf: 60, veh: 120, supp: 70, terrain: 600 } };
 // UK Commandos: a small raiding squad with Stens, camouflaged while still (like the sniper), satchel charges.
 UNITS.commando = { name: 'Commandos', faction: 3, cost: 190, models: 5, hpPer: 22, speed: 5, radius: 1.5, vision: 38, infantry: true, garrisons: true, camo: true,
   w: { range: 20, interval: 1.2, inf: 4, veh: 2, accInf: 0.75, accVeh: 0.6, supp: 6, perModel: true, moveFire: 0.8 },

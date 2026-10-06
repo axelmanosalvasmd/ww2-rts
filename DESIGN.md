@@ -134,7 +134,8 @@ Historical M3 Max performance above is for the previous generator and is not a v
 - Economy is mostly flat (4 MP/s base). Trailing players get up to +6 MP/s catch-up (1 per 60 VP behind the leader;
   was +4 per 80 until the new units made games one-sided).
 - Retreat (R): sprint home at 1.5x speed, take 25% damage, don't fire. Near spawn, squads refill a soldier every 2s for half its cost; tanks repair for MP.
-- One ability per unit (F): rifle grenade (thrown at a clicked spot, friendly fire, ignores cover), MG suppressive fire, AT gun AP round, tank smoke (blocks LOS).
+- One ability per unit (F): rifle grenade (thrown at a clicked spot, friendly fire, ignores cover), MG suppressive fire, AT gun AP round, light tank and armored car smoke (blocks LOS); the heavier tanks have their own
+  (2026-10-02): Medium Tank HE Shell (grenade rules, 38 m), Tiger 88 mm AP Round (x2), Churchill Petard (satchel rules, 20 m).
 - Off-map support for manpower, announced to everyone before it lands: recon flight (60 MP, reveals 40 m for 15s),
   artillery barrage (150 MP, 10 shells, 5s warning), strafing run (200 MP, plane flies out from your HQ along the line),
   smoke barrage (50 MP, 5 clouds over 12 m for 20s).
@@ -493,7 +494,8 @@ the result is the Wave the bunker fell on. Terms are in CONTEXT.md, knobs in `CF
   - Grenade: the nearest enemy infantry in cover, in a trench or in a house within 18 m (never from inside a house).
   - Suppressive fire: the MG is set up (not moving) and an enemy squad in range and sight is advancing towards it.
   - AP round: the AT gun is shooting at a vehicle.
-  - Tank smoke: the tank is below half health and took an anti-tank hit in the last 3 s.
+  - Tank smoke (Light Tank, Armored Car): below half health and took an anti-tank hit in the last 3 s. The Medium's HE
+    Shell autocasts like a grenade, the Tiger's AP round like the AT gun's, the Churchill's Petard like a satchel.
   - Rocket or mortar barrage: a spot with 3+ visible enemies in one blast area, or anyone dug in (house, trench,
     bunker); the most crowded or dug-in spot wins.
   - Satchel: the house or bunker the Ranger squad was ordered to attack, once within 20 m. An attack order stops the
