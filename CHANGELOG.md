@@ -5,6 +5,8 @@ AI-vs-AI runs (see DESIGN.md for the balance log). Add new entries under **Unrel
 
 ## Unreleased
 
+### 2026-10-07: Audit fixes and digging animation (`5e5dffd`)
+
 - Fixed server crashes caused by Supply orders aimed at unfinished or newly completed caches, and by malformed movement orders. Unfinished caches now refuse deliveries safely; completed caches can accept them immediately.
 - Supplied troops can reinforce and repair at forward production buildings using their carried provisions when no nearby supply store is available.
 - Convoys keep their limit of three route searches per tick when looking for new jobs and retain increasing retry delays for blocked routes.
