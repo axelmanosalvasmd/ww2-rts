@@ -11,6 +11,7 @@
 // owner's color is small: a tactical number plate on each side of the turret and a stripe across its roof.
 // Axes as in the other unit models: +x forward, +y up, +z the tank's right side.
 import * as THREE from 'three';
+import { tagTrack } from './track-data.js';
 import * as G from './geom.js';
 
 const TAU = Math.PI * 2;
@@ -128,10 +129,10 @@ function wheel(R, w, paint, { rubber = 0.05, holes = 0, S = 24, hub = 0.32, ring
   parts.push({ geo: spin([[R * hub * 1.3, w * 0.39], [R * hub, w * 0.46], [R * hub * 0.85, w * 0.61], [R * hub * 0.62, w * 0.64], [0, w * 0.64]], [tone(paint, 0.8), paint, tone(paint, 1.1), paint], 16) });
   const fastener = spin([[R * 0.027, 0], [R * 0.027, 0.014], [0, 0.014]], STEEL, 6);
   for (let k = 0; k < 6; k++) { const a = k * TAU / 6; parts.push(at(fastener, 0xffffff, R * hub * Math.cos(a), R * hub * Math.sin(a), w * 0.48)); }
-  return G.merge(parts);
+  return G.tagWheel(G.merge(parts), R);
 }
 // a small return roller facing +z: rubber tread, a flat painted face
-const roller = (r, w, paint) => spin([[r, -w / 2], [r, w / 2], [0, w / 2 + 0.02]], [RUBBER, paint], 6, { mats: ['rubber', null] });
+const roller = (r, w, paint) => G.tagWheel(spin([[r, -w / 2], [r, w / 2], [0, w / 2 + 0.02]], [RUBBER, paint], 6, { mats: ['rubber', null] }), r);
 
 // A drive sprocket facing +z: a toothed plate (teeth points) and a hub cap.
 function sprocket(R, teeth, w, paint) {
@@ -143,7 +144,7 @@ function sprocket(R, teeth, w, paint) {
     const [x0, y0] = rim[k], [x1, y1] = rim[(k + 1) % n];
     m.face([[x0, y0, -w / 2], [x1, y1, -w / 2], [x1, y1, w / 2], [x0, y0, w / 2]], [(x0 + x1) / 2, (y0 + y1) / 2, 0], lit);
   }
-  return G.merge([{ geo: m.geo() }, { geo: spin([[R * 0.36, w / 2], [R * 0.3, w / 2 + 0.07], [0, w / 2 + 0.08]], hub, 8) }]);
+  return G.tagWheel(G.merge([{ geo: m.geo() }, { geo: spin([[R * 0.36, w / 2], [R * 0.3, w / 2 + 0.07], [0, w / 2 + 0.08]], hub, 8) }]), R);
 }
 
 // The track belt's inner line around its wheels. circles [{x, y, r, top}] go round the loop counter-clockwise seen
@@ -201,7 +202,7 @@ function trackBelt(line, z, width, thick, pitch, { both = false, inset = 0.035, 
   };
   const out = [], inn = [], mid = [];
   for (let k = 0; k < n; k++) out.push(pt(k * step, thick)), inn.push(pt(k * step, -inset)), mid.push(pt((k + 0.3) * step, thick));
-  const m = mesh(), zo = z + width / 2, zi = z - width / 2;
+  const m = mesh(), extra = mesh(), zo = z + width / 2, zi = z - width / 2;
   for (let k = 0; k < n; k++) {
     const k1 = (k + 1) % n, p = out[k], g = mid[k], q = out[k1], a = inn[k], b = inn[k1], c = TRACK[k % 2];
     m.face([[p[0], p[1], zi], [g[0], g[1], zi], [g[0], g[1], zo], [p[0], p[1], zo]], [p[2] + g[2], p[3] + g[3], 0], GROUSER);
@@ -209,13 +210,14 @@ function trackBelt(line, z, width, thick, pitch, { both = false, inset = 0.035, 
     m.quad(m.v(a[0], a[1], zo, 0, 0, 1, EDGE[0]), m.v(b[0], b[1], zo, 0, 0, 1, EDGE[1]), m.v(q[0], q[1], zo, 0, 0, 1, EDGE[1]), m.v(p[0], p[1], zo, 0, 0, 1, EDGE[0]));
     if (both) m.face([[a[0], a[1], zi], [b[0], b[1], zi], [q[0], q[1], zi], [p[0], p[1], zi]], [0, 0, -1], tone(c, 0.8));
     const rise = spuds && k % 2 ? spuds : cleats;
-    if (rise && p[3] > -0.8) {
+    if (rise) {
+      const detail = p[3] > -0.8 ? m : extra;
       const u = pt((k + 0.2) * step, thick), w = pt((k + 0.8) * step, thick), U = pt((k + 0.2) * step, thick + rise), W = pt((k + 0.8) * step, thick + rise);
       const za = z - width * 0.32, zb = z + width * 0.32, dx = w[0] - u[0], dy = w[1] - u[1];
-      m.face([[U[0], U[1], za], [W[0], W[1], za], [W[0], W[1], zb], [U[0], U[1], zb]], [u[2] + w[2], u[3] + w[3], 0], GROUSER);
-      m.face([[u[0], u[1], za], [U[0], U[1], za], [U[0], U[1], zb], [u[0], u[1], zb]], [-dx, -dy, 0], c);
-      m.face([[w[0], w[1], za], [W[0], W[1], za], [W[0], W[1], zb], [w[0], w[1], zb]], [dx, dy, 0], c);
-      m.face([[u[0], u[1], zb], [w[0], w[1], zb], [W[0], W[1], zb], [U[0], U[1], zb]], [0, 0, 1], EDGE[0]);
+      detail.face([[U[0], U[1], za], [W[0], W[1], za], [W[0], W[1], zb], [U[0], U[1], zb]], [u[2] + w[2], u[3] + w[3], 0], GROUSER);
+      detail.face([[u[0], u[1], za], [U[0], U[1], za], [U[0], U[1], zb], [u[0], u[1], zb]], [-dx, -dy, 0], c);
+      detail.face([[w[0], w[1], za], [W[0], W[1], za], [W[0], W[1], zb], [w[0], w[1], zb]], [dx, dy, 0], c);
+      detail.face([[u[0], u[1], zb], [w[0], w[1], zb], [W[0], W[1], zb], [U[0], U[1], zb]], [0, 0, 1], EDGE[0]);
     }
   }
   // without the link-by-link inner edge, close it with one coarse strip (every other link), so the belt does not
@@ -225,7 +227,8 @@ function trackBelt(line, z, width, thick, pitch, { both = false, inset = 0.035, 
     for (let k = 0; k < n; k += 2) { const p = inn[k], q = pt(k * step, thick * 0.9); ids.push([m.v(p[0], p[1], zi, 0, 0, -1, dark), m.v(q[0], q[1], zi, 0, 0, -1, dark)]); }
     for (let i = 0; i < ids.length; i++) { const [a, b] = ids[i], [d, e] = ids[(i + 1) % ids.length]; m.quad(a, d, e, b); }
   }
-  return G.tag(m.geo(), 'track-steel'); // the links take the track steel texture (client/model-textures.js)
+  const original = G.tag(m.geo(), 'track-steel');
+  return tagTrack(G.merge([original, G.tag(extra.geo(), 'track-steel')]), line, z, original);
 }
 
 // A turret body lofted upward through horizontal slices: {h, x, l, w, p} superellipses (l long in x, w wide in z,
@@ -921,7 +924,7 @@ function stugHull(P, owner) {
   // engine deck: two hatches, the slatted intakes, spare road wheels; the muffler and a jerrycan on the back
   for (const z of [-0.45, 0.45]) items.push(box(0.8, 0.04, 0.6, jit(lite, z, 2), -1.2, 1.6, z));
   for (const s of [-1, 1]) items.push({ geo: grille(-2.2, -1.75, s * 0.84 - 0.16, s * 0.84 + 0.16, 1.585, 6, tone(P, 0.42), tone(P, 0.78)) });
-  const spare = wheel(0.27, 0.12, P, { rubber: 0.06, hub: 0.34, S: 10 });
+  const spare = wheel(0.27, 0.12, P, { rubber: 0.06, hub: 0.34, S: 10 }).deleteAttribute('wheelPivot');
   for (const z of [-0.3, 0.3]) items.push(at(spare, 0xffffff, -2.0, 1.64, z, -Math.PI / 2));
   items.push({ geo: spin([[0, -0.4], [0.15, -0.4], [0.15, 0.4], [0, 0.4]], RUST, 8), color: 0xffffff, matrix: G.xf(-2.58, 0.95, 0), mat: 'track-steel' });
   items.push(box(0.12, 0.34, 0.24, jit(P, 9, 2), -2.48, 1.3, 0.7));

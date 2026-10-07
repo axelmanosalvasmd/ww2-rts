@@ -13,7 +13,8 @@
 // the hull sides, the red and green arm-of-service square on the nose and the tail. The owner's color is a small
 // cue only: the squadron sign (a square, B squadron) on the turret sides and a recognition panel on the turret bin.
 import * as THREE from 'three';
-import { merge, mirrorZ, loft, lathe, chamferBox, star, place, ao, xf, tag, matId, UNSET } from './geom.js';
+import { tagTrack } from './track-data.js';
+import { merge, mirrorZ, loft, lathe, chamferBox, star, place, ao, xf, tag, tagWheel, scaleWheelPivots, matId, UNSET } from './geom.js';
 
 const TAU = Math.PI * 2;
 const BOX = new THREE.BoxGeometry(1, 1, 1);
@@ -124,19 +125,19 @@ function bands(list, seg) {
 // the hull. simple: the inner disc of a pair, which shows only through the gap (one flat face, dark at the rim).
 function christieWheel(R, w, paint, { seg = 32, rubber = true, spokes = 0, simple = false } = {}) {
   const h = w / 2, tm = rubber ? 'rubber' : null, tire = rubber ? RUBBER : dim(paint, 0.85), Rr = R * (rubber ? 0.84 : 0.9);
-  if (simple) return bands([
+  if (simple) return tagWheel(bands([
     [[R, -h], [R, h * 0.6], tire, null, null, tm],
     [[R, h * 0.6], [Rr, h], tire, null, null, tm],
     [[Rr, h], [0, h * 1.2], dim(paint, 0.5), null, paint],
-  ], seg);
-  return bands([
+  ], seg), R);
+  return tagWheel(bands([
     [[R, -h], [R, h * 0.5], tire, null, null, tm], [[R, h * 0.5], [Rr, h], tire, null, null, tm],
     [[Rr, h], [Rr * 0.93, h * 1.12], dim(paint, 1.12)],
     [[Rr * 0.93, h * 1.12], [R * 0.35, h * 0.62], paint, spokes ? dim(paint, 0.22) : null, dim(paint, 0.75)],
     [[R * 0.35, h * 0.62], [R * 0.26, h * 1.35], dim(paint, 0.85)],
     [[R * 0.26, h * 1.35], [R * 0.21, h * 1.55], dim(paint, 1.05)],
     [[R * 0.21, h * 1.55], [0, h * 1.55], dim(paint, 0.9)],
-  ], spokes ? Math.max(seg, spokes * 4) : seg);
+  ], spokes ? Math.max(seg, spokes * 4) : seg), R);
 }
 
 // A drive sprocket, axle along z, outer face toward +z: a toothed plate with worn-steel tooth edges and a hub.
@@ -158,7 +159,7 @@ function sprocketWheel(R, w, teeth, paint) {
     F.poly(pts, [0, 0, 1], dim(paint, 0.25));
   }
   const hub = dim(paint, 0.7);
-  return merge([F.geometry(), bands([[[R * 0.36, h], [R * 0.3, h * 2.2], hub], [[R * 0.3, h * 2.2], [0, h * 2.3], dim(hub, 0.9)]], 6)]);
+  return tagWheel(merge([F.geometry(), bands([[[R * 0.36, h], [R * 0.3, h * 2.2], hub], [[R * 0.3, h * 2.2], [0, h * 2.3], dim(hub, 0.9)]], 6)]), R);
 }
 
 // The track around a set of wheels, lying in xy (axles along z) between z - width/2 and z + width/2 (see
@@ -189,7 +190,7 @@ function trackBelt(circles, z, width, { thick = 0.12, pitch = 0.17, sag = 0, xs 
     const p = loop[a], q = loop[(a + 1) % loop.length], t = (s - len[a]) / Math.max(1e-9, len[a + 1] - len[a]);
     return [p[0] + (q[0] - p[0]) * t, p[1] + (q[1] - p[1]) * t];
   };
-  const F = flat('track-steel'), z0 = z - width / 2, z1 = z + width / 2, h = thick / 2, lit = col(color), dark = dim(color, 0.84), rim = col(edge), rim2 = dim(edge, 0.84), deep = col(back);
+  const F = flat('track-steel'), extra = flat('track-steel'), z0 = z - width / 2, z1 = z + width / 2, h = thick / 2, lit = col(color), dark = dim(color, 0.84), rim = col(edge), rim2 = dim(edge, 0.84), deep = col(back);
   for (let k = 0; k < n; k++) {
     const A = at(k * step + step * 0.03), B = at((k + 1) * step - step * 0.03), A0 = at(k * step), B0 = at((k + 1) * step), l = Math.hypot(B[0] - A[0], B[1] - A[1]);
     const nx = (B[1] - A[1]) / l, ny = (A[0] - B[0]) / l; // outward
@@ -198,23 +199,25 @@ function trackBelt(circles, z, width, { thick = 0.12, pitch = 0.17, sag = 0, xs 
     F.poly([[Ai[0], Ai[1], z0], [Bi[0], Bi[1], z0], [Bi[0], Bi[1], z1], [Ai[0], Ai[1], z1]], [-nx, -ny, 0], deep);
     // A solid transverse cleat has a worn crown and four vertical edges.
     // Cleats on the exposed run leave the original ground contact unchanged.
-    if (ny > -0.85) {
+    {
+      const detail = ny > -0.85 ? F : extra;
       const rise = 0.038, za = z0 + 0.025, zb = z1 - 0.025;
       const point = (t, r, zz) => [Ao[0] + (Bo[0] - Ao[0]) * t + nx * r, Ao[1] + (Bo[1] - Ao[1]) * t + ny * r, zz];
       const a = point(0.34, 0, za), b = point(0.66, 0, za), c = point(0.66, 0, zb), d = point(0.34, 0, zb);
       const ca = point(0.34, rise, za), cb = point(0.66, rise, za), cc = point(0.66, rise, zb), cd = point(0.34, rise, zb);
       const tx = (cb[0] - ca[0]) / l, ty = (cb[1] - ca[1]) / l;
-      F.poly([ca, cb, cc, cd], [nx, ny, 0], rim);
-      F.poly([a, ca, cd, d], [-tx, -ty, 0], dark);
-      F.poly([b, cb, cc, c], [tx, ty, 0], dark);
-      F.poly([a, b, cb, ca], [0, 0, -1], rim2);
-      F.poly([d, c, cc, cd], [0, 0, 1], rim2);
+      detail.poly([ca, cb, cc, cd], [nx, ny, 0], rim);
+      detail.poly([a, ca, cd, d], [-tx, -ty, 0], dark);
+      detail.poly([b, cb, cc, c], [tx, ty, 0], dark);
+      detail.poly([a, b, cb, ca], [0, 0, -1], rim2);
+      detail.poly([d, c, cc, cd], [0, 0, 1], rim2);
     }
     F.poly([[Ai[0], Ai[1], z0], [Bi[0], Bi[1], z0], [Bo[0], Bo[1], z0], [Ao[0], Ao[1], z0]], [0, 0, -1], deep);
     const r = k % 2 ? rim : rim2;
     F.poly([[Ai[0], Ai[1], z1], [Bi[0], Bi[1], z1], [Bo[0], Bo[1], z1], [Ao[0], Ao[1], z1]], [0, 0, 1], [deep, deep, r, r]);
   }
-  return F.geometry();
+  const original = F.geometry();
+  return tagTrack(merge([original, extra.geometry()]), loop, z, original);
 }
 
 // a gun tube along +x from x = 0: breech sleeve, taper, a muzzle swell; the bore is a dark dot. Painted, gunmetal.
@@ -340,7 +343,7 @@ function cromwellBuild(f) {
   G.add(idl, 0xffffff, xf(IDLER[0], IDLER[1], TZ + 0.1)).add(christieWheel(IDLER[2], 0.13, dim(paint, 0.7), { rubber: false, seg: 24, simple: true }), 0xffffff, xf(IDLER[0], IDLER[1], TZ - 0.1));
   G.box(paint, 0.34, 0.1, 0.08, IDLER[0] - 0.18, IDLER[1] + 0.06, SIDE + 0.06, 0, 0, -0.3);
   G.add(sprocketWheel(SPROCKET[2], 0.08, 9, paint), 0xffffff, xf(SPROCKET[0], SPROCKET[1], TZ + 0.13));
-  G.add(bands([[[SPROCKET[2] * 0.9, 0], [0, 0], dim(paint, 0.6)]], 8), 0xffffff, xf(SPROCKET[0], SPROCKET[1], TZ - 0.13)); // the inner ring, seen only through the gap
+  G.add(tagWheel(bands([[[SPROCKET[2] * 0.9, 0], [0, 0], dim(paint, 0.6)]], 8), SPROCKET[2]), 0xffffff, xf(SPROCKET[0], SPROCKET[1], TZ - 0.13)); // the inner ring, seen only through the gap
   G.cyl(dim(paint, 0.8), 0.24, 0.16, SPROCKET[0], SPROCKET[1], SIDE + 0.08, Math.PI / 2, 0, 0, 10); // final drive housing
   G.add(trackBelt([[SPROCKET[0], SPROCKET[1], SPROCKET[2]], ...WHEELS.map((x) => [x, WY, RW]), [IDLER[0], IDLER[1], IDLER[2]]], TZ, 0.38, { thick: TT, pitch: 0.17, sag: 0.035, xs: WHEELS }));
   // the track guard over the track: flat from the tail to the front, bent down over the idler; its outer lip;
@@ -519,7 +522,7 @@ export function cromwell(f) {
   if (!out) {
     const m = cromwellBuild(f), height = 1.15;
     out = {
-      hull: shade(m.hull.geometry(), 0, height).scale(S, S, S),
+      hull: scaleWheelPivots(shade(m.hull.geometry(), 0, height).scale(S, S, S), S),
       turret: shade(m.turret.geometry(), RING[1], height).scale(S, S, S),
       ring: RING.map((v) => v * S), tip: [GUN.x + 0.1 + GUN.L, GUN.y, 0].map((v) => v * S),
     };

@@ -1,6 +1,7 @@
 import assert from 'node:assert/strict';
 import { debrisBody, stepDebris, DEBRIS_LIMITS, wreckMass } from './shared/debris-motion.js';
-import { createGame, command, step, damageWorldSection, snapshotFor, UNITS, CELL, TICK } from './shared/sim.js';
+import { createGame, step, damageWorldSection, snapshotFor, UNITS, CELL, TICK } from './shared/sim.js';
+import { fixtureCommand as command } from './test-fixtures.js';
 import { createDebrisView } from './client/debris.js';
 const env = { ground: () => 0, material: () => ({ rebound: 0.15, absorption: 0.7 }) };
 {

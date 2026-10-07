@@ -1,8 +1,8 @@
 // Alerts: short notices to your side that something needs attention (DESIGN.md, CONTEXT.md "Alert").
 // Worked out here from two snapshots in a row, using only what the server already sends you (your own and
 // allied units, shots that touch your side, public points and strikes), so nothing under fog leaks.
-// Each alert is one line in a short list above the minimap (newest on top, gone after ~6 s), a ping on the
-// minimap at the spot and a sound. Space jumps to the newest one; clicking a line does the same.
+// Routine alerts sit above the minimap for ~6 s. Prominent unit losses stay above them on the right.
+// Each has a minimap ping and sound. Space prioritizes a visible loss; clicking a notice visits its spot.
 import { UNITS, SUPPORT } from '/shared/sim.js';
 import { audio } from './audio.js';
 import { insideKnownRegion } from '/shared/world-territories.js';
@@ -12,6 +12,7 @@ import { createAlertHistory } from './alert-history.js';
 const LIFE = 6;             // seconds a line stays up
 const FADE = 0.6;           // last part of that it spends fading out
 const MAX_LINES = 4;
+const MAX_LOSSES = 2;
 const ATTACK_EVERY = 20;    // "under attack" at most once per this many seconds per area
 const AREA = 30;            // metres: what counts as the same area (and what groups hits or losses into one line)
 const MERGE = 2;            // seconds: a loss this soon after another nearby one joins its line
@@ -26,12 +27,12 @@ const NOT_AIR = new Set(['artillery', 'smoke', 'cover']);
 // minimap ping color per kind: signal red for danger, brass for a point won, the HUD's text color for the rest
 const RED = '#d4574a', BRASS = '#d6b25e', CHALK = '#e2dfd3';
 const COLOR = { attack: RED, base: RED, unitLost: RED, pointLost: RED, air: RED, pointWon: BRASS, ready: CHALK, ping: CHALK, event: BRASS };
-const LIVES = { event: 15, base: 10 }; // a map's scripted message stays up long enough to read, a base alert to notice
+const LIVES = { event: 15, base: 10, unitLost: 12 };
 
 const now = () => performance.now() / 1000;
 const near = (a, b, r) => Math.hypot(a.x - b.x, a.z - b.z) <= r;
 
-let hooks = null, box = null, historyBox = null, historyList = null;
+let hooks = null, box = null, lossBox = null, historyBox = null, historyList = null;
 const history = createAlertHistory(100);
 let matchTime = 0;
 let lines = [];        // newest first: { kind, text, x, z, born, el, n }
@@ -49,6 +50,9 @@ function init(h) {
     const mm = document.getElementById('minimap');
     (mm?.parentNode ?? document.body).insertBefore(box, mm ?? null);
   }
+  lossBox = document.createElement('div'); lossBox.id = 'lossAlerts';
+  lossBox.setAttribute('aria-live', 'assertive');
+  box.prepend(lossBox);
   historyBox = document.createElement('details'); historyBox.className = 'alert-history';
   const summary = document.createElement('summary'); summary.textContent = tr('Alert history'); summary.title = tr('Open or close Alert history (Alt+H)');
   const nav = document.createElement('div'); nav.className = 'alert-history-nav';
@@ -57,7 +61,7 @@ function init(h) {
   }
   historyList = document.createElement('div'); historyList.className = 'alert-history-list'; historyList.setAttribute('aria-label', tr('Alert history'));
   historyBox.append(summary, nav, historyList); box.append(historyBox); renderHistory();
-  box.addEventListener('mousedown', (e) => {
+  for (const container of [box, lossBox]) container.addEventListener('mousedown', (e) => {
     const el = e.target.closest?.('.alert'), a = el && lines.find(l => l.el === el);
     if (!a) return;
     e.stopPropagation(); e.preventDefault();
@@ -121,15 +125,26 @@ function sound(kind) {
 function push(kind, text, x, z, n = 1) {
   const el = document.createElement('div');
   el.className = 'alert k-' + kind;
-  text = tr(text); el.textContent = text;
+  text = tr(text);
+  if (kind === 'unitLost') {
+    const heading = document.createElement('span'); heading.className = 'loss-heading'; heading.textContent = tr('Unit lost');
+    const detail = document.createElement('span'); detail.className = 'loss-detail'; detail.textContent = text;
+    const hint = document.createElement('span'); hint.className = 'loss-hint'; hint.textContent = tr('Space or click: look there');
+    el.append(heading, detail, hint);
+  } else el.textContent = text;
   el.title = tr('Space or click: look there');
   el.tabIndex = 0; el.setAttribute('role', 'button');
   el.onkeydown = e => { if (e.code === 'Enter' || e.code === 'Space') { e.preventDefault(); e.stopPropagation(); if (x != null) hooks?.jump(x, z); } };
   history.add({ kind, text, x, z, time: Math.max(matchTime, hooks?.matchTime?.() ?? 0) }); renderHistory();
   const a = { kind, text, x, z, born: now(), el, n };
   lines.unshift(a);
-  box?.prepend(el);
-  while (lines.length > MAX_LINES) lines.pop().el.remove();
+  const loss = kind === 'unitLost';
+  if (loss) lossBox?.prepend(el);
+  else if (box) box.insertBefore(el, lossBox?.nextSibling ?? null);
+  const visible = lines.filter(a => (a.kind === 'unitLost') === loss), limit = loss ? MAX_LOSSES : MAX_LINES;
+  while (visible.length > limit) {
+    const old = visible.pop(); lines.splice(lines.indexOf(old), 1); old.el.remove();
+  }
   place();
   if (kind !== 'ping') sound(kind);
   return a;
@@ -300,8 +315,8 @@ function drawPings(c, S) {
   c.restore();
 }
 
-// the newest alert still showing, for Space
-const newest = () => { const a = lines.find(l => l.x != null); return a ? { x: a.x, z: a.z } : null; };
+// Space gives a visible loss priority over routine tips, then visits the newest located alert.
+const newest = () => { const a = lines.find(l => l.kind === 'unitLost' && l.x != null) ?? lines.find(l => l.x != null); return a ? { x: a.x, z: a.z } : null; };
 const pinging = () => lines.length > 0;
 
 // `lines` (the texts showing, newest first) is for poking at it from devtools via window.__game.alerts

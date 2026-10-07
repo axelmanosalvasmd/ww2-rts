@@ -14,6 +14,7 @@ const fallback = { acceleration: 4, reverseAcceleration: 2.5, braking: 7, revers
 export const isGroundVehicle = def => !!def && !def.infantry && !def.structure && !def.air && !def.naval;
 export const movementProfile = (type, def) => isGroundVehicle(def) ? VEHICLE_PROFILES[type] ?? fallback : null;
 export const bodyRadius = def => (def?.radius ?? 1) * 0.8;
+const navigationRadius = def => Math.hypot(bodyRadius(def), def.radius * 0.48);
 export const angleDelta = (from, to) => Math.atan2(Math.sin(to - from), Math.cos(to - from));
 export const turnAngle = (from, to, amount) => { const a = from + Math.max(-amount, Math.min(amount, angleDelta(from, to))); return Math.atan2(Math.sin(a), Math.cos(a)); };
 
@@ -36,17 +37,39 @@ export function vehiclePositionClear(g, at, def, block, cell = 2) {
   return true;
 }
 export function sweptVehicleClear(g, from, to, def, block, cell = 2) {
+  if (!segmentCliffClear(g, from, to, cell)) return false;
   const d = Math.hypot(to.x - from.x, to.z - from.z), turn = angleDelta(from.rot ?? 0, to.rot ?? from.rot ?? 0);
   const count = Math.max(1, Math.ceil(d / 0.25), Math.ceil(Math.abs(turn) / 0.05));
-  let previousHeight = g.height?.[Math.floor(from.z / cell) * g.w + Math.floor(from.x / cell)] ?? 0;
   for (let i = 1; i <= count; i++) {
     const k = i / count, at = { x: from.x + (to.x - from.x) * k, z: from.z + (to.z - from.z) * k, rot: (from.rot ?? 0) + turn * k };
     if (!vehiclePositionClear(g, at, def, block, cell)) return false;
-    const height = g.height?.[Math.floor(at.z / cell) * g.w + Math.floor(at.x / cell)] ?? 0;
-    if (Math.abs(height - previousHeight) > 1) return false;
-    previousHeight = height;
   }
   return true;
+}
+
+// Visit every crossed cell. Spaced samples can miss a cliff beside a ramp corner.
+export function segmentCliffClear(g, from, to, cell = 2) {
+  if (!g.height) return true;
+  let x = Math.floor(from.x / cell), y = Math.floor(from.z / cell);
+  const ex = Math.floor(to.x / cell), ey = Math.floor(to.z / cell), dx = to.x - from.x, dz = to.z - from.z;
+  const sx = Math.sign(dx), sy = Math.sign(dz), stepX = dx ? cell / Math.abs(dx) : Infinity, stepY = dz ? cell / Math.abs(dz) : Infinity;
+  let tx = dx ? (sx > 0 ? (x + 1) * cell - from.x : from.x - x * cell) / Math.abs(dx) : Infinity;
+  let ty = dz ? (sy > 0 ? (y + 1) * cell - from.z : from.z - y * cell) / Math.abs(dz) : Infinity;
+  if (x < 0 || y < 0 || x >= g.w || y >= g.h) return false;
+  let height = g.height[y * g.w + x];
+  for (let n = g.w + g.h; n > 0 && (x !== ex || y !== ey); n--) {
+    if (x !== ex && y !== ey && Math.abs(tx - ty) < 1e-12) {
+      const nx = x + sx, ny = y + sy;
+      if (nx < 0 || ny < 0 || nx >= g.w || ny >= g.h) return false;
+      if ([g.height[y * g.w + nx], g.height[ny * g.w + x], g.height[ny * g.w + nx]].some(next => Math.abs(next - height) > 1)) return false;
+      x = nx; y = ny; tx += stepX; ty += stepY;
+    } else if (y === ey || (x !== ex && tx < ty)) { x += sx; tx += stepX; } else { y += sy; ty += stepY; }
+    if (x < 0 || y < 0 || x >= g.w || y >= g.h) return false;
+    const next = g.height[y * g.w + x];
+    if (Math.abs(next - height) > 1) return false;
+    height = next;
+  }
+  return x === ex && y === ey;
 }
 
 // Return a candidate transform. Contacts may reduce it, but cannot increase its speed.
@@ -66,10 +89,13 @@ export function vehicleStep(u, def, path, topSpeed, dt, reverse = false) {
   const hullGoal = reverse ? bearing + Math.PI : bearing;
   const error = Math.abs(angleDelta(u.rot, hullGoal)), rot = wp ? turnAngle(u.rot, hullGoal, profile.hullTurn * dt) : u.rot;
   const alignment = Math.max(0, Math.cos(error));
-  let desired = wp ? Math.min(topSpeed * (reverse ? profile.reverseSpeed : 1), Math.sqrt(2 * profile.braking * remaining)) * alignment : 0;
+  // Leave one discrete step of braking room instead of chasing a point just passed.
+  const brakeStep = profile.braking * dt / 2;
+  const arrivalSpeed = Math.sqrt(2 * profile.braking * remaining + brakeStep * brakeStep) - brakeStep;
+  let desired = wp ? Math.min(topSpeed * (reverse ? profile.reverseSpeed : 1), arrivalSpeed) * alignment : 0;
   if (error > (profile.tracked ? 0.16 : 0.45)) desired = 0;
   if (reverse) desired = -desired;
-  const increasing = Math.sign(desired) === Math.sign(speed) && Math.abs(desired) > Math.abs(speed);
+  const increasing = desired !== 0 && (!speed || Math.sign(desired) === Math.sign(speed)) && Math.abs(desired) > Math.abs(speed);
   const rate = increasing ? (reverse ? profile.reverseAcceleration : profile.acceleration) : profile.braking;
   let nextSpeed = speed + Math.max(-rate * dt, Math.min(rate * dt, desired - speed));
   if (Math.abs(nextSpeed) < 1e-6) nextSpeed = 0;
@@ -80,15 +106,30 @@ export function vehicleStep(u, def, path, topSpeed, dt, reverse = false) {
 }
 
 const footprintViews = new WeakMap();
+// An exact click needs the same turning room as the cell center used by navigation.
+// The source flags belong to the observed terrain view, including on large maps.
+export function vehicleDestinationClear(g, at, def, block, cell = 2) {
+  const radius = navigationRadius(def), flags = g.vehicleSourceFlags ?? g.flags;
+  if (at.x < radius || at.z < radius || at.x + radius >= g.w * cell || at.z + radius >= g.h * cell) return false;
+  for (let y = Math.floor((at.z - radius) / cell); y <= Math.floor((at.z + radius) / cell); y++) {
+    for (let x = Math.floor((at.x - radius) / cell); x <= Math.floor((at.x + radius) / cell); x++) {
+      if (!(flags[y * g.w + x] & block)) continue;
+      const dx = Math.max(x * cell - at.x, 0, at.x - (x + 1) * cell);
+      const dz = Math.max(y * cell - at.z, 0, at.z - (y + 1) * cell);
+      if (Math.hypot(dx, dz) < radius - 1e-6) return false;
+    }
+  }
+  return true;
+}
 // Conservative clearance leaves enough room to rotate the rectangular hull at a waypoint.
 export function vehicleNavigationView(g, def, block, cell = 2) {
-  const radius = Math.hypot(bodyRadius(def), def.radius * 0.48), reach = Math.ceil(radius / cell) + 1;
+  const radius = navigationRadius(def), reach = Math.ceil(radius / cell) + 1;
   let classes = footprintViews.get(g); if (!classes) footprintViews.set(g, classes = new Map());
   const key = `${block}:${radius}`, version = `${g.vehicleRegionVersion ?? 0}:${g.obstructionVersion ?? 0}:${g.navigationKnowledgeVersion ?? 0}`;
   let state = classes.get(key);
   if (state?.version === version && state.sourceFlags === g.flags) {
     // Terrain reuse must still refresh the currently observed moving obstacles and public weather.
-    Object.assign(state.view, { units: g.units, fires: g.fires, wx: g.wx, weather: g.weather, tick: g.tick, reveal: g.reveal });
+    Object.assign(state.view, { units: g.units, fires: g.fires, wx: g.wx, weather: g.weather, tick: g.tick, reveal: g.reveal, vehicleSourceFlags: g.flags });
     return state.view;
   }
   const previous = state?.view.navigationKnowledgeVersion ?? 0, current = g.navigationKnowledgeVersion ?? g.vehicleRegionVersion ?? 0;
@@ -126,7 +167,7 @@ export function vehicleNavigationView(g, def, block, cell = 2) {
     flags[c] = g.flags[c] | (blocked ? block : 0);
   }
   const history = view.navigationChanges;
-  Object.assign(view, g, { flags, vehicleFootprintKnown: true, navigationChangedFromVersion: previous, navigationChangedCells: changed,
+  Object.assign(view, g, { flags, vehicleSourceFlags: g.flags, vehicleFootprintKnown: true, navigationChangedFromVersion: previous, navigationChangedCells: changed,
     navigationKnowledgeVersion: current, navigationChanges: history });
   if (incremental && current !== previous) { history.push({ from: previous, to: current, cells: changed }); if (history.length > 32) history.shift(); }
   state.version = version; state.sourceFlags = g.flags;

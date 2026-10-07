@@ -1,7 +1,7 @@
-export function createSelection({ units, selected, groups, owner, definitions, screenOf, viewport, center, screenPointsOf = v => [screenOf(v)] }) {
+export function createSelection({ units, selected, groups, owner, definitions, screenOf, viewport, center, canUseBuilding = () => false, screenPointsOf = v => [screenOf(v)] }) {
   const cursors = { army: -1, engineers: -1 };
   let lastGroup = null, lastRecall = -Infinity;
-  const own = (v) => v && v.owner === owner() && (v.hp === undefined || v.hp > 0);
+  const own = (v) => v && (v.owner === owner() || (owner() >= 0 && definitions[v.type]?.building && canUseBuilding(v))) && (v.hp === undefined || v.hp > 0);
   const rows = () => [...selected].map(id => units.get(id)).filter(own);
   const replace = (list) => { selected.clear(); for (const v of list) selected.add(v.id); return list; };
   const armyUnit = (v) => own(v) && definitions[v.type] && !definitions[v.type].structure;

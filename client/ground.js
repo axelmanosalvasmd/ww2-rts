@@ -526,7 +526,7 @@ function overlays(S, c, cx0, cy0, cx1, cy1) {
     c.strokeStyle = '#2b2218'; c.lineWidth = P * 0.5; c.stroke();
     c.strokeStyle = 'rgba(128, 102, 66, 0.5)'; c.lineWidth = Math.max(1, P * 0.07); c.stroke(); // duckboards
   }
-  // contours: marching squares over the cell-center levels, one line per half level, clamped past the map edge
+  // Keep contour ink near true cliffs. Ordinary ramps use their geometry and slope shading.
   const lv = (x, y) => lev[Math.min(h - 1, Math.max(0, y)) * w + Math.min(w - 1, Math.max(0, x))];
   c.beginPath();
   let any = false;
@@ -534,6 +534,7 @@ function overlays(S, c, cx0, cy0, cx1, cy1) {
     const a = lv(x, y), b = lv(x + 1, y), cc = lv(x + 1, y + 1), d = lv(x, y + 1);
     const lo = Math.min(a, b, cc, d), hi = Math.max(a, b, cc, d);
     if (lo === hi) continue;
+    if (Math.max(Math.abs(a - b), Math.abs(b - cc), Math.abs(cc - d), Math.abs(d - a)) < 2) continue;
     const ox = (x + 0.5) * P, oy = (y + 0.5) * P;
     for (let t = lo + 0.5; t < hi; t++) {
       // crossing points on the top, right, bottom and left edges of the square

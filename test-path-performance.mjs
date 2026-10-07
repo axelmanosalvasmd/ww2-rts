@@ -1,6 +1,7 @@
 import assert from 'node:assert/strict';
 import { createHash } from 'node:crypto';
 import { createGame, findPath, command, CELL, blockOf, UNITS, MOVE, SIGHT } from './shared/sim.js';
+import { clearFixtureUnits } from './test-fixtures.js';
 import { vehiclePositionClear } from './shared/vehicle-motion.js';
 
 // Existing route hashes were captured at 66a3734240d98d32d4c5ecd471bd7a1bbbc63336.
@@ -35,6 +36,7 @@ function mapWith(fill = '.') {
 
 function newGame(map) {
   const g = createGame(map, ['Blue', 'Red'], false, [0, 1], [0, 1], { weather: false, supply: false });
+  clearFixtureUnits(g, u => UNITS[u.type].building); // the route oracles predate starting bases
   // These cost/cache fixtures supply complete known state. Room tests verify recipient authority.
   g.navigationObserved = true;
   g.worldNearWalls = new Uint8Array(g.w * g.h);

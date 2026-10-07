@@ -15,7 +15,7 @@ import { createFormationPreview } from './formation-preview.js';
 import { facingSpots, slotSize, SHAPES } from '/shared/formation.js';
 import { availability, denySentence, placementState } from './availability.js';
 import { createFeedback } from './feedback.js';
-import { UNITS, UNIT_TYPES, CELL, CFG, SUPPORT, SUPPORT_TYPES, BUILDABLE, builderTypes, levelOf, levelChar, startState, canBuild, winVp, supCost, popCap, abCost, priceOf, FORTS, lineFort, placementCheck, ENTRENCH, entrenchPlan, segmentCost, RIDING_FLAG, TERRAIN, TRENCH } from '/shared/sim.js';
+import { UNITS, UNIT_TYPES, CELL, CFG, SUPPORT, SUPPORT_TYPES, BUILDABLE, builderTypes, isSkirmishBaseMode, productionAccess, levelOf, levelChar, startState, canBuild, winVp, supCost, popCap, abCost, priceOf, FORTS, lineFort, placementCheck, ENTRENCH, entrenchPlan, segmentCost, RIDING_FLAG, TERRAIN, TRENCH } from '/shared/sim.js';
 import { alerts } from './alerts.js';
 import { setupLight, renderFrame } from './light.js';
 import { createAtmosphere } from './atmosphere.js';
@@ -43,6 +43,7 @@ import { epilogue } from './epilogue.js';
 import { createObjectives } from './objectives.js';
 import { endgame } from './endgame.js';
 import { buildModel, animate, createBodies, setSurfaces, setBuildings, crowd, drawSoldiers, animationInterest, vehicleBody, updateBuildingBreach, releaseBuildingBreach } from './unit-models.js';
+import { releaseWheels, wheelMaterial } from './wheel-motion.js';
 import { loadModelTextures } from './model-textures.js';
 import { perf, renderScale } from './perf.js';
 import { createStats } from './stats.js';
@@ -74,7 +75,7 @@ const isAir = (type) => !!UNITS[type]?.air;
 const worldMode = () => !!lastStart?.map?.world || lobbyState?.mode === 'world';
 const classicMode = () => ['classic', 'world'].includes(lobbyState?.mode) || !!lastStart?.map?.world;
 const isVeh = (type) => !UNITS[type].infantry;
-const barY = (type) => (isAir(type) ? AIR_ALT + 2.5 : type === 'bunker' || type === 'hq' || type === 'barracks' || type === 'motorpool' || type === 'shipyard' ? 7.5 : type === 'destroyer' ? 24 : type === 'gunboat' ? 5 : type === 'depot' ? 4.5 : type === 'tiger' || type === 'churchill' || type === 'medium' ? 4.2 : isVeh(type) ? 3.4 : 2.4);
+const barY = (type) => (isAir(type) ? AIR_ALT + 2.5 : type === 'bunker' || type === 'hq' || type === 'barracks' || type === 'motorpool' || type === 'shipyard' ? 7.5 : type === 'destroyer' || type === 'kaiju' ? 24 : type === 'gunboat' ? 5 : type === 'depot' ? 4.5 : type === 'tiger' || type === 'churchill' || type === 'medium' ? 4.2 : isVeh(type) ? 3.4 : 2.4);
 const regionTeamColor = (team) => css(team < 0 ? 0xaaaaaa : COLORS[teams.indexOf(team)] ?? 0xaaaaaa);
 const css = (c) => '#' + c.toString(16).padStart(6, '0');
 const esc = (s) => String(s).replace(/[&<>"']/g, (c) => `&#${c.charCodeAt(0)};`);
@@ -416,6 +417,7 @@ addEventListener('resize', resize); resize();
 
 const matCache = new Map();
 const mat = (color) => matCache.get(color) || matCache.set(color, new THREE.MeshLambertMaterial({ color })).get(color);
+const wreckMaterial = wheelMaterial(new THREE.MeshLambertMaterial({ color: 0x1d1b18 }));
 const GEO = {
   box: new THREE.BoxGeometry(1, 1, 1), cyl: new THREE.CylinderGeometry(1, 1, 1, 12),
   body: new THREE.CapsuleGeometry(0.3, 0.8, 4, 8), helmet: new THREE.SphereGeometry(0.27, 10, 6, 0, Math.PI * 2, 0, Math.PI / 2),
@@ -632,7 +634,7 @@ function buildHQ(sp, slot) {
   g.add(zone, ring);
   g.add(insideMap(sandbagRing(R + 0.8), sp.x, sp.z, 0.75)); // sandbags with gaps for the exits (client/structures.js)
   // command tent, crates and the flagpole (client/structures.js); Classic's HQ is a building, so only the pole
-  g.add(hqCamp(f, !classicMode()));
+  g.add(hqCamp(f, !classicMode() && !isSkirmishBaseMode({ mode: { kind: lobbyState?.mode ?? lastSnap?.mode?.kind } })));
   // tall flag you can spot from across the map
   g.add(mesh(GEO.plane, flagMat(f.color), 4.5, 2.8, 1, 2.3, 13, 0));
   const tag = label(`${names[slot] ?? f.name} HQ`, { style: 'hq', color: f.color }); tag.position.y = 17; g.add(tag);
@@ -730,6 +732,7 @@ function seatTrench(v) {
 const hulks = new Map(); // wreck id -> its model
 function removeUnit(v) {
   releaseBuildingBreach(v);
+  releaseWheels(v);
   world.remove(v.bars);
   for (const m of [v.barBg, v.hpBar, v.suppBar, ...v.stars, v.shield]) m.material.dispose(); // the badge's material is shared
   if (isAir(v.type)) {
@@ -804,7 +807,7 @@ function applySnapshot(s) {
     let v = units.get(id);
     if (!v) { v = makeUnit(id, type, owner); Object.assign(v, { x, z, rot, aim }); units.set(id, v); }
     Object.assign(v, { owner, tx: x, tz: z, trot: rot, taim: aim, hp, supp, tgt, cover, cd, flags, vet: stars || 0, moveSpeed: moveSpeed ?? 0, vx: vx ?? 0, vz: vz ?? 0, travelDir: travelDir ?? rot, garr: !!(flags & 32), built: built ?? 1, plan: null, orders: [] });
-    if (owner !== me) { v.rally = null; v.queue = []; v.productionJobs = []; }
+    if (!productionAccess({ mode: s.mode, players: teams.map(team => ({ team })) }, v, me)) { v.rally = null; v.queue = []; v.productionJobs = []; }
     if (v.body) v.body.scale.y = 0.15 + 0.85 * v.built; // a construction site rises as it's built
     v.stars.forEach((st, i) => (st.visible = i < v.vet));
     const cl = !v.garr && COVER_LOOK[cover];
@@ -856,12 +859,12 @@ function applySnapshot(s) {
   for (const v of [...units.values()]) if (!seen.has(v.id)) removeUnit(v);
   // burnt-out vehicles stay on the field as cover until the sim clears the oldest away
   const left = new Set((s.wrecks ?? []).map(w => w[0]));
-  for (const [id, root] of hulks) if (!left.has(id)) { world.remove(root); hulks.delete(id); }
+  for (const [id, root] of hulks) if (!left.has(id)) { releaseWheels({ root }); world.remove(root); hulks.delete(id); }
   for (const [id, type, owner, x, z, rot] of s.wrecks ?? []) {
     let root = hulks.get(id);
     if (!root) {
       const v = makeUnit(id, type, owner); world.remove(v.bars); root = v.root; hulks.set(id, root);
-      root.traverse(o => { if (o.isMesh) { o.material = o.material.isMeshBasicMaterial ? o.material : mat(0x1d1b18); } });
+      root.traverse(o => { if (o.isMesh) { o.material = o.material.isMeshBasicMaterial ? o.material : wreckMaterial; } });
       root.children.slice(0, 2).forEach(o => (o.visible = false)); // no owner ring, no selection ring
       root.rotation.y = -rot;
     }
@@ -964,7 +967,7 @@ function chutes(x, z) {
 
 // client/hud.js draws the panels; it reads the match state and calls back into these actions
 const feedback = createFeedback($('hint'), () => blip('error'));
-const available = (action) => availability(lastSnap, CFG, { ...action, slot: me, watching, ids: [...selected], naval: lastStart?.map?.naval === true });
+const available = (action) => availability(lastSnap, CFG, { ...action, slot: me, teams, watching, ids: [...selected], naval: lastStart?.map?.naval === true });
 const explainUnavailable = (result) => { if (!result.ok) feedback.show(result.reason); return !result.ok; };
 let placementCache = null;
 function placementView() {
@@ -1108,7 +1111,7 @@ function applyGhosts(list) {
     if (gv.body) gv.body.scale.y = 0.15 + 0.85 * built;
     updateBuildingBreach(gv, terrain.structuralSections, terrain.w, CELL);
   }
-  for (const [id, gv] of ghosts) if (!keep.has(id)) { releaseBuildingBreach(gv); world.remove(gv.root, gv.bars); ghosts.delete(id); }
+  for (const [id, gv] of ghosts) if (!keep.has(id)) { releaseBuildingBreach(gv); releaseWheels(gv); world.remove(gv.root, gv.bars); ghosts.delete(id); }
 }
 function nodeMark(x, z, rate, fuel) {
   const g = new THREE.Group();
@@ -1161,7 +1164,7 @@ function startRally() {
   setAim('rally'); blip(620);
 }
 function rallyAt(g) {
-  const ids = classicMode() ? [...selected].filter(id => { const v = units.get(id); return v?.owner === me && UNITS[v.type].makes?.length; }) : [];
+  const ids = [...selected].filter(id => { const v = units.get(id); return v && productionAccess({ mode: lastSnap?.mode, players: teams.map(team => ({ team })) }, v, me) && UNITS[v.type].makes?.length; });
   sendCmd({ t: 'rally', ...(ids.length ? { ids } : {}), x: g.x, z: g.z });
   marker(g.x, g.z, 0x9dd0ff); blip(620); cancelAim();
 }
@@ -1254,7 +1257,7 @@ function setFormation(patch) {
 }
 const cycleFormation = () => setFormation({ shape: SHAPES[(SHAPES.indexOf(fm.shape) + 1) % SHAPES.length] });
 const orders = createOrders({
-  units, selected, get me() { return me; }, defs: UNITS, diggers: CFG.fortBuilders, formation, together: () => fm.together, send: sendCmd, moveColor: MOVE_COLOR,
+  units, selected, get me() { return me; }, defs: UNITS, diggers: CFG.fortBuilders, builders: () => builderTypes(classicMode()), canUseBuilding: v => !observing() && productionAccess({ mode: lastSnap?.mode, players: teams.map(team => ({ team })) }, v, me), formation, together: () => fm.together, send: sendCmd, moveColor: MOVE_COLOR,
   feedback: (at, color, tone, voice) => { marker(at.x, at.z, color); blip(tone); if (voice) bark(voice); if (at.id === undefined) coverPreview.flash(at.x, at.z); },
 });
 const formationPreview = createFormationPreview({ THREE, hAt });
@@ -1316,7 +1319,7 @@ const centerSelection = (list) => {
   cam.x = list.reduce((sum, v) => sum + v.x, 0) / list.length;
   cam.z = list.reduce((sum, v) => sum + v.z, 0) / list.length;
 };
-const selection = createSelection({ units, selected, groups, owner: () => (observing() ? -1 : me), definitions: UNITS, // a spectator selects nothing, so orders nothing
+const selection = createSelection({ units, selected, groups, owner: () => (observing() ? -1 : me), definitions: UNITS, canUseBuilding: v => productionAccess({ mode: lastSnap?.mode, players: teams.map(team => ({ team })) }, v, me), // a spectator selects nothing, so orders nothing
   screenOf: (v) => screenOf(v), screenPointsOf: (v) => selectionPoints(v, camera, screenOf, innerWidth, innerHeight), viewport: () => ({ width: innerWidth, height: innerHeight }), center: centerSelection });
 function transferGroup(number) {
   if (observing()) return;
@@ -1426,7 +1429,7 @@ function pick(mx, my, test, r) {
   }
   return best;
 }
-const groundAt = (mx, my) => marchGround(camera, hAt, mx, my, innerWidth, innerHeight, MW || 160, MH || 160);
+const groundAt = (mx, my) => marchGround(camera, hAt, mx, my, innerWidth, innerHeight, MW || 160, MH || 160, relief?.mesh);
 
 renderer.domElement.addEventListener('mousedown', (e) => {
   if (EDIT) return;

@@ -12,7 +12,8 @@ const payloadPath = resolve(path);
 const payload = (await import(pathToFileURL(payloadPath))).default;
 const reports = [];
 for (const [path, expected] of Object.entries(payload.source.files)) {
-  const actual = createHash('sha256').update(await readFile(path)).digest('hex');
+  const source = (await readFile(path, 'utf8')).replaceAll('\r\n', '\n');
+  const actual = createHash('sha256').update(source).digest('hex');
   if (actual !== expected) throw new Error(`Stale authored payload: ${path}`);
 }
 for (const key of Object.keys(payload.models)) {

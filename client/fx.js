@@ -111,6 +111,8 @@ const GUNS = {
   tankdestroyer: { ...SMALL, snd: 'tankgun', n: 1, spd: 165, w: 0.2, tr: FX.tracerHot, trOdds: 1, flash: 1.9, heavy: 3, smoke: 1, blast: 1.2 },
   // ponytail: the flame is drawn as a slow, fat, hot tracer with a big flash until it gets its own stream effect
   flamer: { ...SMALL, snd: 'flak', n: 1, burst: 3, gap: 0.06, spd: 40, w: 0.5, tr: FX.tracerHot, trOdds: 1, flash: 1.2 },
+  // the Kaiju's breath: a long, fat, hot stream out of its mouth (the explosions along the beam are 'shell' shots)
+  kaiju: { ...SMALL, snd: 'tankgun', n: 1, burst: 8, gap: 0.05, spd: 60, w: 1.2, tr: FX.tracerHot, trOdds: 1, flash: 3, heavy: 4, smoke: 1, blast: 2 },
   halftrack: { ...SMALL, snd: 'mg', n: 1, burst: 3, gap: 0.08, spd: 210, w: 0.085, tr: FX.tracer, trOdds: 1, flash: 0.45 },
   gunboat: { ...SMALL, snd: 'tankgun', n: 1, burst: 2, gap: 0.12, spd: 170, w: 0.12, tr: FX.tracerHot, trOdds: 1, flash: 0.8, heavy: 1.5, smoke: 0.5 },
   lcvp: { ...SMALL, snd: 'mg', n: 1, burst: 3, gap: 0.08, spd: 210, w: 0.085, tr: FX.tracer, trOdds: 1, flash: 0.45 },
@@ -1074,7 +1076,9 @@ export function createEffects({ scene, camera, cam, hAt, units, airAlt = 20, map
       if (k === 'hurt') continue;
       if (k === 'throw') {
         if (!from) continue;
-        const satchel = from.type === 'ranger', gy = hAt(from.x, from.z), T = satchel ? 0.8 : 1.1, G = 25, ty = hAt(sh.x, sh.z) + 0.2;
+        // a tank's HE shell or petard flies flat and fast from the turret; a squad's grenade or satchel is lobbed
+        const gun = !UNITS[from.type]?.infantry, satchel = from.type === 'ranger' || from.type === 'churchill', gy = hAt(from.x, from.z) + (gun ? 1 : 0);
+        const T = gun ? 0.3 : satchel ? 0.8 : 1.1, G = gun ? 0 : 25, ty = hAt(sh.x, sh.z) + 0.2;
         Object.assign(throws[throwI++ % throws.length], { x: sh.x, z: sh.z, satchel, t: clock });
         const o = emit(FX.nade, from.x, gy + 1.5, from.z, (sh.x - from.x) / T, (ty - gy - 1.5 + 0.5 * G * T * T) / T, (sh.z - from.z) / T, satchel ? 0.2 : 0.12, T);
         if (o >= 0) S[o + 22] = G;

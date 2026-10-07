@@ -5,13 +5,13 @@
 // Each panel builds its HTML only when what it shows changes shape (the teams, the selection, the selected building)
 // and otherwise only updates text, widths and disabled states: rebuilding the buttons 10 times a second ate clicks.
 
-import { UNITS, UNIT_TYPES, CFG, SUPPORT, SUPPORT_TYPES, FORTS, lineFort, ENTRENCH, ENTRENCH_TYPES, BUILDABLE, canBuild, winVp, supCost, popCap, popUse, abCost, priceOf, AUTO_FLAG, RIDING_FLAG, CARGO_FLAG } from '/shared/sim.js';
+import { UNITS, UNIT_TYPES, CFG, SUPPORT, SUPPORT_TYPES, FORTS, lineFort, ENTRENCH, ENTRENCH_TYPES, BUILDABLE, buildKinds, isSkirmishBaseMode, canBuild, winVp, supCost, popCap, popUse, abCost, priceOf, AUTO_FLAG, RIDING_FLAG, CARGO_FLAG } from '/shared/sim.js';
 import { symbolSVG, icon } from './symbols.js';
 import { portrait } from './portraits.js';
 import { unitRole } from './unit-roles.js';
 import { SHAPES } from '/shared/formation.js';
 import { SUPPORT_KEYS, FORT_KEYS, FORT_BADGES, BUILD_KEYS, CARD_KEYS, label, badge } from './keys.js';
-import { availability, buyCount, cooldownSeconds } from './availability.js';
+import { availability, buyCount, cooldownSeconds, recruitAction } from './availability.js';
 import { setAvailability, installTooltips } from './feedback.js';
 import { t as tr } from './i18n.js';
 
@@ -88,12 +88,12 @@ export function createHud(ctx) {
   }).observe($('buy'));
   let snapshot = null;
   const tooltips = installTooltips($('hud'));
-  const check = (action) => availability(snapshot, CFG, { ...action, slot: ctx.me, watching: ctx.watching, ids: [...ctx.selected] });
+  const check = (action) => availability(snapshot, CFG, { ...action, slot: ctx.me, teams: ctx.teams, naval: ctx.naval(), watching: ctx.watching, ids: [...ctx.selected] });
   const attempt = (action, run) => { const result = check(action); if (result.ok) run(); else ctx.explain(result.reason); };
   // A card purchase, by click or by letter: the same command and refusal either way. `many` (Shift+letter) sends the
   // command up to five times, as often as the limits allow; the server takes each one like a separate click.
   const buy = (action, many = false) => attempt(action, () => {
-    const n = many ? Math.max(1, buyCount(snapshot, CFG, { ...action, slot: ctx.me }, 5)) : 1;
+    const n = many ? Math.max(1, buyCount(snapshot, CFG, { ...action, slot: ctx.me, teams: ctx.teams, naval: ctx.naval() }, 5)) : 1;
     for (let i = 0; i < n; i++) ctx.send(action);
     ctx.blip('recruit');
   });
@@ -104,13 +104,15 @@ export function createHud(ctx) {
     const n = name(t, slot), base = UNITS[t].name, r = unitRole(t, base), role = r !== base ? r : '';
     return `${n}${n !== base ? ` (${base})` : ''}${role ? `: ${role}` : ''}${extra}`;
   };
-  // a Command Card card: name, portrait of the unit (client/portraits.js), cost (and a second line in Classic)
+  // a Command Card card: name, the unit's silhouette (client/symbols.js), cost (and a second line in Classic).
+  // A flat symbol tells the types apart at a glance; the small 3D renders all looked alike.
+  const cardSymbol = (t) => `<span class="pt">${symbolSVG(t)}</span>`;
   // (its card letter, if any, is added once the card is laid out: lettered())
   const unitCard = (t, attr, cost, sub, tip) => `<button class="uc" ${attr} title="${esc(tip)}" aria-label="${esc(name(t))}">` +
-    `<span class="nm">${soft(name(t))}</span>${portrait(t, ctx.me)}<span class="cost">${cost}</span>${sub ? `<span class="sub">${sub}</span>` : ''}</button>`;
+    `<span class="nm">${soft(name(t))}</span>${cardSymbol(t)}<span class="cost">${cost}</span>${sub ? `<span class="sub">${sub}</span>` : ''}</button>`;
   const groupsHTML = (types, card) => GROUPS.map((_, g) => {
     const ts = types.filter((t) => groupOf(t) === g).sort((a, b) => rank(a) - rank(b));
-    return ts.length ? `<div class="grp"><div class="hd">${icon(GROUP_ICONS[g])}${GROUPS[g]}</div><div class="cards">${ts.map(card).join('')}</div></div>` : '';
+    return ts.length ? `<div class="grp"><button class="hd" aria-expanded="false">${icon(GROUP_ICONS[g])}${GROUPS[g]}</button><div class="cards">${ts.map(card).join('')}</div></div>` : '';
   }).join('');
   // an order or support button: icon, hotkey badge, cost or cooldown underneath
   const orderBtn = (data, ico, key, tip, sym) => `<button class="ob" ${data} title="${esc(tip)}" aria-label="${esc(tip.split(/[:(]/)[0].trim())}">` +
@@ -315,7 +317,7 @@ export function createHud(ctx) {
       orderBtn('data-f="together"', 'f_together', '', 'March together: the group moves at the pace of its slowest unit and arrives in one piece') +
       orderBtn('data-f="snap"', 'f_snap', '', 'Snap to trenches: infantry placed within 3 m of a trench step into it');
     // outside Classic the Build menu also puts up a Flak Emplacement (in Classic the Engineers' card has it)
-    if (m === 'build') return (ctx.classic() ? '' : orderBtn('data-a="bld:flakpos"', 'flakpos', '', `${UNITS.flakpos.name}: shoots down planes and air strikes within ${UNITS.flakpos.aa.range} m. Click where; the selected builder squads put it up in ${UNITS.flakpos.buildTime}s, more squads build faster`)) +
+    if (m === 'build') return (ctx.classic() ? '' : buildKinds(false, isSkirmishBaseMode(snapshot)).filter(k => k !== 'shipyard' || ctx.naval()).map(k => orderBtn(`data-a="bld:${k}"`, k, '', `${UNITS[k].name}: ${UNITS[k].cost} MP, ${UNITS[k].buildTime}s. Click where; selected builder squads construct it. Right-click a damaged building to repair it`, k)).join('')) +
       Object.entries(FORTS).map(([k, f]) => orderBtn(`data-a="fort:${k}"`, k, FORT_BADGES[k], `${f.name}${FORT_KEYS[k] ? ` (${FORT_KEYS[k]})` : ''}: ${FORT_TIP[k] ?? ''}. ${lineFort(k) && k !== 'trench' ? 'Click where it starts, then where it ends: one piece, or a continuous line that every selected builder squad works on. Price per piece' : 'Click where; the nearest builder squad puts it across its approach'}`)).join('');
     return ENTRENCH_TYPES.map((k) => orderBtn(`data-a="ent:${k}"`, `e_${k}`, k === 'line' ? badge('entrench:line') : '',
       `${ENTRENCH[k]}${k === 'line' ? ` (${label('entrench:line')})` : ''}: ${ENTRENCH_TIP[k]}. Every selected builder squad digs; each segment is paid as it is started. Shift on the second click queues it. Right-click a planned pattern with other squads to send them to help`)).join('');
@@ -412,7 +414,7 @@ export function createHud(ctx) {
     const card = $('buy');
     card.querySelectorAll('.key').forEach((k) => k.remove());
     slots().forEach((b, i) => { if (CARD_KEYS[i]) (b.querySelector(':scope > .hd') ?? b).insertAdjacentHTML('beforeend', `<kbd class="key">${CARD_KEYS[i]}</kbd>`); });
-    card.querySelectorAll('.grp').forEach((g, i) => g.classList.toggle('open', i === grp));
+    card.querySelectorAll('.grp').forEach((g, i) => { g.classList.toggle('open', i === grp); g.querySelector('.hd')?.setAttribute('aria-expanded', String(i === grp)); });
     card.classList.toggle('picked', grp >= 0);
   }
   function pressCard(n, many) {
@@ -454,13 +456,17 @@ export function createHud(ctx) {
     const card = $('buy');
     card.classList.remove('lettered');
     recruiting = false;
-    if (ctx.classic()) { card.innerHTML = ''; card.classList.add('hidden'); return; }
+    // drop the recruit bar's tab layout a previous Conquest match left behind: 'fit' hides every closed group's cards
+    if (ctx.classic()) { card.innerHTML = ''; card.classList.add('hidden'); card.classList.remove('fit', 'picked', 'lettered'); return; }
     card.classList.remove('hidden');
     const types = UNIT_TYPES.filter((t) => canBuild(t, ctx.facOf(ctx.me)) && !UNITS[t].classic && (!UNITS[t].naval || ctx.naval()));
     card.innerHTML = groupsHTML(types, (t) => unitCard(t, `data-unit="${t}"`, `${UNITS[t].cost}<span class="cu"> MP</span>`, '', unitTip(t, ctx.me, `. ${UNITS[t].cost} MP`)));
-    // the stylesheet shares the room between the cards (14 since aviation); narrow cards drop the name and keep it in the tooltip
-    card.classList.add('fit'); card.style.setProperty('--nc', types.length); card.style.setProperty('--ng', card.querySelectorAll('.grp').length);
-    card.querySelectorAll('[data-unit]').forEach((b) => { b._buy = (many) => buy({ t: 'buy', unit: b.dataset.unit }, many); b.onclick = () => b._buy(false); });
+    // Each group is a tab: a click shows its cards and hides the rest, so only one type's cards fill the screen.
+    // The stylesheet shares the room between the widest group's cards; narrow cards drop the name for the tooltip.
+    const sizes = GROUPS.map((_, g) => types.filter((t) => groupOf(t) === g).length).filter(Boolean);
+    card.classList.add('fit'); card.style.setProperty('--nc', Math.max(...sizes, 1)); card.style.setProperty('--ng', sizes.length);
+    card.querySelectorAll('.grp').forEach((g, i) => { g.querySelector('.hd').onclick = (e) => { grp = grp === i ? -1 : i; lettered(); quietBadges(); e.currentTarget.blur(); }; });
+    card.querySelectorAll('[data-unit]').forEach((b) => { b._buy = (many) => buy(recruitAction(snapshot, ctx.me, b.dataset.unit, [...ctx.selected], ctx.teams), many); b.onclick = () => b._buy(false); });
     lettered();
     const tab = document.createElement('button');
     tab.dataset.recruit = ''; tab.className = 'tab';
@@ -476,9 +482,20 @@ export function createHud(ctx) {
       Object.assign(b.style, { position: 'absolute', right: '8px', bottom: 'calc(100% + 6px)', padding: '4px 8px', font: '13px var(--type)', background: 'var(--strip)' });
       b.onclick = () => ctx.rally(); card.append(b);
     }
+    let info = card.querySelector('[data-facility]');
+    if (!info) { info = document.createElement('div'); info.dataset.facility = ''; Object.assign(info.style, {position:'absolute',left:'8px',bottom:'calc(100% + 6px)',background:'var(--strip)',padding:'4px 8px'}); card.append(info); }
+    const selected = selUnits(), bld = selected.length === 1 && UNITS[selected[0].type].building ? selected[0] : null;
+    const key = bld ? `${bld.id}:${bld.built >= 1}:${bld.owner === ctx.me}` : '';
+    if (info.dataset.key !== key) {
+      info.dataset.key = key;
+      info.innerHTML = bld ? `<span data-facility-text></span>` + (bld.built < 1 && bld.owner === ctx.me ? ' <button data-cancel-site>Cancel (75% back)</button>' : '') : '';
+      info.querySelector('[data-cancel-site]')?.addEventListener('click', () => ctx.send({t:'cancel',id:bld.id}));
+    }
+    info.style.display = bld ? '' : 'none';
+    if (bld) setText(info.querySelector('[data-facility-text]'), `${UNITS[bld.type].name}: ${bld.built < 1 ? Math.round(bld.built*100)+'% built' : 'Ready'} . ${Math.ceil(bld.hp)} HP. ${bld.built < 1 ? 'Right-click with builders to assist' : 'Right-click with builders to repair'}`);
     for (const b of $('buy').querySelectorAll('[data-unit]')) {
       const broke = s.mp < UNITS[b.dataset.unit].cost;
-      setAvailability(b, check({ t: 'buy', unit: b.dataset.unit }));
+      setAvailability(b, check(recruitAction(s, ctx.me, b.dataset.unit, [...ctx.selected], ctx.teams)));
       b.classList.toggle('broke', broke);
     }
   }
@@ -502,7 +519,7 @@ export function createHud(ctx) {
         });
       else if (eng) card.innerHTML = '<div class="grp"><div class="hd">Build</div><div class="cards">' + BUILDABLE.map((k) =>
         `<button class="uc wide" data-build="${k}" title="${esc(`${UNITS[k].name}${BUILD_KEYS[k] ? ` (${BUILD_KEYS[k]})` : ''}: ${BUILD_ROLE[k] ?? ''}. ${UNITS[k].cost} MP, ${UNITS[k].buildTime}s`)}">` +
-        `<span class="nm">${esc(UNITS[k].name)} <kbd>${BUILD_KEYS[k] ?? ''}</kbd></span>${portrait(k, ctx.me)}<span class="cost">${UNITS[k].cost} MP, ${UNITS[k].buildTime}s</span>` +
+        `<span class="nm">${esc(UNITS[k].name)} <kbd>${BUILD_KEYS[k] ?? ''}</kbd></span>${cardSymbol(k)}<span class="cost">${UNITS[k].cost} MP, ${UNITS[k].buildTime}s</span>` +
         `<span class="sub" data-note></span></button>`).join('') + '</div></div>';
       else if (recovery) card.innerHTML = `<button class="uc wide" data-recover><span class="nm">Restore ${missingHQ ? 'HQ' : 'Engineer'}</span><span class="cost">${recoveryCost} MP</span><span class="sub">Deploys in friendly territory</span></button>`;
       else card.innerHTML = '';
@@ -582,12 +599,22 @@ export function createHud(ctx) {
     });
   }
 
+  // Horde boss bar: the Kaiju's hp (all of them, on a later boss wave) while any is on the map
+  function drawBoss(s) {
+    const b = s.mode?.boss, el = $('boss');
+    show(el, !!b);
+    if (!b) return;
+    setText(el.firstChild, `KAIJU  ${Math.ceil(b[0] / b[1] * 100)}%`);
+    el.lastChild.firstChild.style.width = `${b[0] / b[1] * 100}%`;
+  }
+
   function update(s) {
     snapshot = s;
     const me = ctx.me, all = [...ctx.units.values()];
     const pop = all.reduce((a, v) => a + (v.owner !== me ? 0 : UNITS[v.type].structure ? (v.queue ?? []).reduce((n, t) => n + popUse(t), 0) : popUse(v.type)), 0);
     const cap = s.world?.cap ?? popCap(s), sel = selUnits();
     drawScores(s);
+    drawBoss(s);
     drawEcon(s, pop, cap);
     if (['classic', 'world'].includes(s.mode?.kind)) drawClassicCard(s, pop, cap, sel); else drawRecruit(s, pop, cap);
     drawSelection(sel);

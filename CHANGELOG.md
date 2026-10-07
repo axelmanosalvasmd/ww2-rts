@@ -5,6 +5,158 @@ AI-vs-AI runs (see DESIGN.md for the balance log). Add new entries under **Unrel
 
 ## Unreleased
 
+- The full test suite passes again after merging skirmish production bases. Fixed the AI ignoring an enemy air strike
+  on squads busy building: a squad sent to rebuild a base no longer gets bombed without fighter cover. Test setups
+  that wipe the map or count units now allow for the starting HQ and Barracks. The AI-match check now asks for at
+  least half the points within 3 minutes instead of all of them: with bases, AIs hold 6 of 7 at 3 minutes in seeded
+  runs and take all 7 at about 7.5 minutes, since part of the opening goes to tech.
+
+- Fixed the Engineers' Build card in Classic and World Conquest showing only an empty "Build" tab after a Conquest
+  (or other recruit-bar) match in the same page. The recruit bar's tab layout stayed on and hid every building card.
+
+- Integrated skirmish production bases (`232f3a9`) with the newer engine and recruit tabs. Preserved paid Classic queue identities/refunds, section-based building repairs, observed-terrain navigation, vehicle motion fields and shared Horde facility rallies. Updated the isolated Hot Gates vehicle fixture to supply its production prerequisite, and made combat-fixture cleanup remove layered terrain and structural collision data for starting bases. Focused skirmish, production-refund, Horde queue, AI privacy and Hot Gates navigation checks pass; merged core tests still stop at the previously documented fighter-cover assertion.
+- Conquest, Assault, Annihilation and Horde now start with a finished HQ and Barracks. Recruit instantly from surviving finished facilities, and build Motor Pools, Airfields and coastal Shipyards during the match to unlock their units. Unit prices remain MP-only with no training queues.
+- Rifle and Conscript squads construct, assist and repair production buildings. Destroyed buildings leave rebuildable rubble. Rebuilding an HQ costs 200 MP/40s; the other buildings retain Classic's construction prices and times. HQ loss disables its reinforcement zone until rebuilt.
+- Horde defenders share facilities and prerequisites while keeping individual MP and unit ownership. Existing bunker objectives and wave spawning are unchanged.
+- The build menu, recruit lock reasons, selected-facility spawning, shared facility selection/rallies and construction cancellation work with the new bases. AI builds technology and repairs/rebuilds its facilities.
+- Fixed builders reviving zero-HP buildings before destruction cleanup. Added simulation, client and AI regression coverage. No combat or income rebalance; competitive pacing remains a human-playtest follow-up.
+- Known verification gap: the latest core regression run fails the existing AI fighter-cover assertion (an announced enemy air strike should trigger fighter cover). The full suite is not green; this implementation is committed at the user's request pending regression follow-up.
+
+### 2026-10-06: World Conquest AI observation lag fix (`40c23fd`)
+
+- Reduced World Conquest lag from AI players. Every AI rebuilt its full view, copying its whole terrain memory, on
+  every snapshot beat (every 2 to 4 ticks), though a Normal AI thinks only every 40 ticks. Now only AIs that think
+  before the next beat observe, still from the beat the players were last sent. In a 2-player, 2-AI World Conquest
+  probe the AI share of a server tick fell from p95 13 to 44 ms to 4 to 6 ms.
+
+### 2026-10-06: Tank abilities and Annihilation lag fix (`6ec1a2b`, `3d22e08`)
+
+- Fixed multi-second ping for everyone (host included) in Annihilation and other non-World matches as a match went
+  on. The server tick (budget 50 ms) climbed to 47 ms median by minute 6 with only 80 units, so snapshots queued up.
+  Cause: the remembered-terrain path view was rebuilt from scratch on every call, and unit traffic and route checks
+  call it per unit several times a tick. It is now built once per tick (or when terrain or vision
+  changes). Headless 4-AI Annihilation on the default map, with the in-progress logistics and movement work loaded:
+  step 50 to 83 ms per tick at minute 5, now 12 to 22 ms.
+
+- Only the Light Tank and the Armored Car lay smoke now. The heavier tanks get their own abilities instead:
+  - Medium Tank, HE Shell: fires a high-explosive round at a spot up to 38 m away (blast 5 m, kills about two men of
+    a squad and pins the rest, cracks cover). 40 s cooldown. Autocast aims it at infantry in cover, trenches or houses.
+  - Tiger, 88 mm AP Round: the next shot always hits and does double damage to a vehicle. 40 s cooldown.
+  - Churchill, Petard: the AVRE's demolition charge, fired at a spot up to 20 m away. Wrecks houses, trenches and
+    the squads in them (about three men of a squad). 45 s cooldown.
+  The shells fly flat from the turret instead of being lobbed like a grenade. The AI now loads AP rounds against any
+  vehicle, not only Light Tanks.
+
+### 2026-10-06: Horde Kaiju boss (`cedf7ba`)
+
+- Horde has a boss. Every tenth Wave a Kaiju walks on with the rest: a 17 m atomic lizard with glowing back
+  plates. It walks, swings its tail and turns its head toward what it is about to burn. "THE KAIJU HAS SURFACED"
+  rings out when it arrives, it always shows through the fog, and a big red health bar across the top of the screen
+  tracks it until it dies. Its breath is a beam 34 m long that hits every enemy and every cell in its line once, sets
+  the ground on fire and caves in trenches. It tramples trenches and sandbags, takes double damage from behind like a
+  tank, and has 6000 hp per defender. Killing it pays the usual 20% bounty (300 MP). Wave 20 brings two, Wave 30
+  three. Nobody can buy one. The commit also fixes ordinary shells ignoring its health per defender and breath samples
+  damaging the same terrain cell repeatedly. Balance survival runs need refreshing after these corrections.
+  Left for later: a Kaiju can't cross tank traps or
+  rubble (it waits like any vehicle with no route); the Great Ape and the Seraph.
+  With several Kaiju, the health bar currently tracks survivors, so its percentage can rise when one dies.
+  Keeping the original wave health total on that bar remains for later.
+- Found, not fixed: Horde runs on Kasserine Pass stall. A single Conscript gets stuck short of the bunker
+  (around 161,189 and 163,155), so the Wave never ends. It happens with the Kaiju switched off too (Waves 7, 9 and
+  11 cut off at 90 minutes, where the balance log had 13/15/14 with none cut off), so it comes from somewhere else.
+
+### 2026-10-05: Right-side unit-loss notices (`fb51574`)
+
+- Unit losses now appear as larger red notices on the right above the minimap for 12 seconds, with the unit name and a
+  shortcut to look at the loss location. Routine tips stay above the minimap and cannot hide these notices.
+  Space prioritizes a visible loss; nearby losses still combine, and at most two notices show at once.
+  Projectile acceptance checks also wait for compressed commands to arrive before advancing the simulation,
+  preventing intermittent validation failures on busy machines.
+  The full-match AI smoke test uses a fixed seed while retaining its capture, combat and victory checks.
+
+### 2026-10-05: Windows naval source fingerprints (`d8bda15`)
+
+- Fixed naval asset checks rejecting unchanged model sources on Windows because of line endings. Export and
+  validation now use the same source fingerprints on Windows and Unix; real source edits still invalidate models.
+
+### 2026-10-05: Detailed rock cliffs, Thermopylae fixes and recruit tabs (`063c1dc`)
+
+- Recruit panel (Conquest, Assault, Annihilation, Horde): unit cards now show each unit's flat silhouette symbol
+  instead of a small 3D render, so the types are easy to tell apart. The groups (Infantry, Support weapons,
+  Vehicles, Aircraft, Naval) are now a row of tabs: click one to show only its units, click it again to close it.
+  Keyboard recruiting works as before (a letter opens a group, a second buys) and opens the same tab.
+  Classic building cards also use the symbols; the selection list keeps its 3D portraits.
+
+- Rebuilt cliff walls with detailed rock models on every map except the huge generated ones. Faces are now stacked, fractured limestone slabs
+  that step back as they rise, with occasional full-height buttresses, grassy ledges, boulders on the crest and
+  scree at the foot. Diagonal cliff runs no longer show a cell-by-cell staircase: notches fill with rock piles
+  and convex teeth are wrapped in rock columns. Rocks are visual only and never bury mountain-road cells.
+  Cost: Hot Gates terrain goes from about 63k to 250k triangles on High (116k on Low), and a crater rebuild
+  takes about 30 ms longer there. Found and left for later: the cliff crest still steps on 45 degree runs when
+  seen from far away, because the plateau outline itself is unchanged.
+
+- Integrated the Thermopylae fixes with the updated vehicle and terrain systems. Moved 20 rubble cells off the
+  mountain road and onto the cliff shoulders so vehicles have room to pass. Ground picking and visible contact
+  now follow the reshaped cliff triangles, while neighbouring plateau centres keep their original heights.
+  Mixed tank and Churchill traffic can still jam during overtaking on the narrow road; that remains for a later fix.
+  Fixed Windows file paths in the movement and localization regression runners so their checks run on Windows too.
+  Cliff-adjacent terrain centres stay at their simulation height even beside shell scars. Camera and map checks
+  now follow the ragged cliff backing and track decorative rock costs separately from the ground-mesh budget.
+
+- Reworked the Thermopylae cliff visuals again: softened the square stair-step corners, removed the repeating
+  wall panels and pale stripes, and added broad weathered rock faces, larger outcrops and scattered fallen stones.
+  The revised cliffs use fewer triangles than the first version and keep the same vehicle movement rules.
+  Terrain checks found two existing folded ground triangles on Hot Gates. One remains for a later ground-mesh fix.
+
+- Fixed vehicles getting stranded on Thermopylae (The Hot Gates) in Horde: arriving units stay on ground connected
+  to their gate, including the narrow mountain road, and crowds cannot shove vehicles onto rubble or tank traps.
+  Cliff walls now have ragged rims, fractured stone faces and rocks at their feet, with softer stone shading.
+  Fixed cliff faces disappearing when viewed from some directions. Convoys are checked through both mountain-road
+  corners in both directions. Existing matches need a restart to replace units already stranded on cliff tops.
+
+### 2026-10-04: Tank wheel and track animation (`5c0fb8e`)
+
+- Tank road wheels, idlers, sprockets, return rollers and visible track belts now move with actual vehicle travel,
+  reverse when backing up and move at different speeds on each side while steering. They stop with the tank
+  and follow the hull on hills. Covers native light, medium, heavy and tank destroyer models for all four factions,
+  plus tracked mobile flak and Calliope variants. Spare wheels stay fixed; wheeled and halftrack models are outside
+  this change. The terrain workshop now offers forward, reverse, stopped and close side inspection.
+
+### 2026-10-04: Natural terrain slopes (`7d67670`)
+
+- Hills blend adjoining ramps instead of flattening into a shelf at each height level. Removed repeated dark
+  contour and elevation bands from ordinary slopes, while keeping real cliff walls and their rock detail.
+  Fixed cliff faces disappearing from their lower side when the next cell was higher.
+  Grounding and game picking use the same relief surface, including narrow crests and cliff faces.
+  Minimap viewport corners keep their projection when the camera looks beyond the map. Cell heights,
+  movement and tank alignment keep their existing rules. Added rounded-hill, ramp-beside-cliff and full
+  generated-map workshop scenes.
+  Broad authored plateaus remain, and this does not change terrain balance or navigation.
+  Existing crater-rim edge displacement can still differ from contact sampling and remains for later.
+
+### 2026-10-04: Vehicle slopes and terrain workshop (`479b1f6`)
+
+- Tanks and other ground vehicles pitch uphill and downhill and lean across slopes instead of staying almost
+  level. Their native track or tire footprint supports the hull on ramps, crests and trench crossings, while
+  turrets keep turning and selection rings stay level. Fixed the order of terrain tilt and suspension motion,
+  and tracks cutting through narrow ridges between support points.
+- Added a 3D terrain workshop with the game's vehicle models and terrain mesh, five repeatable scenes,
+  frame stepping, distance scrubbing, faction and vehicle choices, and a level-hull comparison.
+  The fixtures exercise presentation; use the movement lab to test navigation and orders.
+
+### 2026-10-04: Movement recovery and disruption lab (`6a74b65`)
+
+- Vehicles brake before their final waypoint instead of overshooting and turning a full circle to return.
+  Their first movement step now respects each vehicle's forward and reverse acceleration.
+- Fixed tanks getting stuck beside walls or repeating short forward and reverse moves to make turning room.
+  Clicks too close to a wall resolve to an open position with room for the hull. Short reverse orders survive
+  rerouting, and opposing heavy vehicles keep enough separation to clear their lane.
+- Fixed infantry and tanks stopping at a cliff corner instead of following the nearby ramp. Route smoothing
+  and vehicle collision now check every crossed height cell.
+- Added a repeatable movement lab with 24 scenarios for all nine ground vehicle types, rifle squads and
+  support guns. It supports live Stop, Retreat, replacement orders and tank traps, plus seeded command-line
+  runs and comparison against another simulation revision. The 1,056-case heading matrix passes locally.
+
 ### 2026-10-03: World snapshot checks (`8dce8f7`)
 
 - Added a delayed-receiver World regression that keeps the original 700-tick construction deadline and all

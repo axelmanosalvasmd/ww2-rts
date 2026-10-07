@@ -1,6 +1,7 @@
 // Focused operation and Horde contracts: node test-engine-ai.js.
 import assert from 'node:assert/strict';
-import { createGame, command, step, snapshotFor, CFG, CELL, UNITS, MOVE, COVER, hordeWave, hordeProfile, HORDE_PROFILES } from './shared/sim.js';
+import { createGame, step, snapshotFor, CFG, CELL, UNITS, MOVE, COVER, hordeWave, hordeProfile, HORDE_PROFILES } from './shared/sim.js';
+import { fixtureCommand as command } from './test-fixtures.js';
 import { beginMind, planAssault, operationPosition, ASSAULT_TUNING } from './shared/ai-mind.js';
 import { viewFor } from './shared/ai-view.js';
 import { think, resetAI } from './shared/ai.js';

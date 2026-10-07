@@ -18,6 +18,8 @@ import { soldier, AIM_SHIFT } from './models/infantry.js';
 import { infantryMaterial, loadInfantryTextures } from './infantry-material.js';
 import { moveSquad, gaitWeights } from './squad-motion.js';
 import { moveModel } from './model-motion.js';
+import { wheelMaterial, wheelMesh, moveWheels } from './wheel-motion.js';
+import { mergeTracks, applyTracks } from './models/track-data.js';
 import { isArmorMedium, buildArmorMedium } from './models/armor-medium.js';
 import { lightHeavy } from './models/armor-lightheavy.js';
 import { churchill } from './models/churchill.js';
@@ -46,7 +48,7 @@ const DARK = 0x2a2a24;
 export const PAINT = modelMaterial(new THREE.MeshStandardMaterial({ vertexColors: true, roughness: 0.85, metalness: 0 }), { mat: 'armor-paint', grime: true });
 export const INFANTRY_PAINT = infantryMaterial(modelMaterial(new THREE.MeshStandardMaterial({ vertexColors: true, roughness: 0.9, metalness: 0 }), { mat: 'wool', grime: true }));
 // Painted steel, exposed tracks, tires and canvas share one draw while keeping separate surface responses.
-export const VEHICLE_PAINT = modelMaterial(new THREE.MeshStandardMaterial({ vertexColors: true, roughness: 0.68, metalness: 0 }), { mat: 'armor-paint', grime: true });
+export const VEHICLE_PAINT = wheelMaterial(modelMaterial(new THREE.MeshStandardMaterial({ vertexColors: true, roughness: 0.68, metalness: 0 }), { mat: 'armor-paint', grime: true }));
 const colors = new Map();
 const colorOf = (hex) => colors.get(hex) || colors.set(hex, new THREE.Color(hex)).get(hex);
 const cloths = new Map();
@@ -103,7 +105,8 @@ export function mergeParts(parts, withColor, look = 'vehicle', lift = 0) {
   const pos = new Float32Array(nv * 3), nor = new Float32Array(nv * 3), col = withColor ? new Float32Array(nv * 3) : null, uvs = uv ? new Float32Array(nv * 2) : null;
   const mat = withColor ? new Float32Array(nv) : null, L = LOOKS[look] ?? LOOKS.vehicle;
   const atlas = parts.some(p => p.geo.attributes.modelUV) ? new Float32Array(nv * 3) : null;
-  const idx = nv > 65535 ? new Uint32Array(ni) : new Uint16Array(ni), nm = new THREE.Matrix3(), t = new THREE.Vector3();
+  const wheels = parts.some(p => p.geo.attributes.wheelPivot) ? new Float32Array(nv * 4) : null;
+  const idx = nv > 65535 ? new Uint32Array(ni) : new Uint16Array(ni), nm = new THREE.Matrix3(), t = new THREE.Vector3(), wheelPoint = new THREE.Vector3();
   let vo = 0, io = 0;
   for (const p of parts) {
     const P = p.geo.attributes.position, N = p.geo.attributes.normal, U = p.geo.attributes.uv, I = p.geo.index;
@@ -111,6 +114,7 @@ export function mergeParts(parts, withColor, look = 'vehicle', lift = 0) {
     const G = col ? p.geo.attributes.color : null, M = p.geo.attributes.matId, A = p.geo.attributes.modelUV;
     const fill = mat ? (p.mat != null ? matId(p.mat) : !G && darkSteel(p.color) ? GUNMETAL : matId(L.mat)) : 0;
     nm.getNormalMatrix(p.matrix);
+    const W = p.geo.attributes.wheelPivot, wheelScale = Math.hypot(...p.matrix.elements.slice(0, 3));
     for (let i = 0; i < P.count; i++) {
       t.fromBufferAttribute(P, i).applyMatrix4(p.matrix).toArray(pos, (vo + i) * 3);
       const y = t.y;
@@ -118,6 +122,10 @@ export function mergeParts(parts, withColor, look = 'vehicle', lift = 0) {
       if (col) p.color.toArray(col, (vo + i) * 3);
       if (G) { const o = (vo + i) * 3; col[o] *= G.getX(i); col[o + 1] *= G.getY(i); col[o + 2] *= G.getZ(i); }
       if (atlas && A) { atlas[(vo + i) * 3] = A.getX(i); atlas[(vo + i) * 3 + 1] = A.getY(i); atlas[(vo + i) * 3 + 2] = A.getZ(i); }
+      if (wheels && W && W.getW(i) > 0) {
+        wheelPoint.set(W.getX(i), W.getY(i), W.getZ(i)).applyMatrix4(p.matrix).toArray(wheels, (vo + i) * 4);
+        wheels[(vo + i) * 4 + 3] = W.getW(i) * wheelScale;
+      }
       if (uvs) { uvs[(vo + i) * 2] = U.getX(i); uvs[(vo + i) * 2 + 1] = U.getY(i); }
       if (mat) {
         const own = M ? baseMat(M.getX(i)) : UNSET;
@@ -138,6 +146,8 @@ export function mergeParts(parts, withColor, look = 'vehicle', lift = 0) {
   if (mat) g.setAttribute('matId', new THREE.BufferAttribute(mat, 1));
   if (uvs) g.setAttribute('uv', new THREE.BufferAttribute(uvs, 2));
   if (atlas) g.setAttribute('modelUV', new THREE.BufferAttribute(atlas, 3));
+  if (wheels) g.setAttribute('wheelPivot', new THREE.BufferAttribute(wheels, 4));
+  applyTracks(g, mergeTracks(parts));
   g.setIndex(new THREE.BufferAttribute(idx, 1));
   g.computeBoundingSphere();
   return g;
@@ -177,13 +187,112 @@ function bakeMeshes(group, key, shadow, poses = null, look = 'vehicle') {
     if (poses) poseMorphs(list[0].geometry, poses.poses, poses.gait, poses.muzzle, poses.fallen);
     baked.set(key, list);
   }
-  return list.map(({ material, geometry }) => { const m = new THREE.Mesh(geometry, material); m.castShadow = shadow; m.userData.baked = material; return m; });
+  return list.map(({ material, geometry }) => { const m = wheelMesh(geometry, material); m.castShadow = shadow; m.userData.baked = material; return m; });
 }
 // bake in place: the group keeps its transform and gets the baked meshes as its only children
 function bake(group, key, shadow, look = 'vehicle') {
   const meshes = bakeMeshes(group, key, shadow, null, look);
   group.clear(); group.add(...meshes);
   return group;
+}
+
+// ---------- the Kaiju (Horde boss) ----------
+// A giant atomic lizard, 17 m tall and 22 m nose to tail: charcoal hide (the rough cast-armor texture), a pale banded belly, three
+// rows of bone plates down its back with a glow inside them, a head that turns to its target (v.turret, so the breath
+// comes out of its mouth), and legs and a tail that move (stride() below). Every part is a scaled sphere, cone or
+// cylinder, baked to one mesh per moving group.
+const SPH = new THREE.SphereGeometry(1, 16, 12), CONE = new THREE.ConeGeometry(1, 1, 10);
+const HIDE = 0x3b3f38, HIDE_DARK = 0x2a2d28, BELLY = 0x76705a, BONE = 0xcfe0e2, CLAW = 0xe2d9c0, TOOTH = 0xf0eadb, GUM = 0x5a1e18;
+const GLOW = new THREE.MeshBasicMaterial({ color: 0x8fe8ff }), EYE = new THREE.MeshBasicMaterial({ color: 0xffcc40 });
+const UP = new THREE.Vector3(0, 1, 0);
+// a cylinder (or a sphere drawn out, round: true) from point a to point b, radius r
+function seg(a, b, r, paint, round = false, mat = 'cast-armor') {
+  const A = new THREE.Vector3(...a), B = new THREE.Vector3(...b), d = B.clone().sub(A), len = d.length();
+  const o = part(round ? SPH : GEO.cyl, paint, r, round ? len / 2 + r * 0.4 : len, r, ...A.add(B).multiplyScalar(0.5).toArray(), mat);
+  o.quaternion.setFromUnitVectors(UP, d.normalize());
+  return o;
+}
+// a spike, claw or tooth: a cone from a to its tip b, base radius r (flat < 1 squashes it sideways into a plate)
+function spike(a, b, r, paint, flat = 1) {
+  const o = seg(a, b, r, paint, false, 'plain');
+  o.userData.geo = CONE; o.scale.z *= flat;
+  return o;
+}
+// a fixed scatter, so every Kaiju wears the same bumps
+const bumpRng = (n) => { let x = n; return () => (x = (x * 9301 + 49297) % 233280) / 233280; };
+function kaiju(v, root, key) {
+  // the body, from the hips up (the legs, tail and head are their own groups so they can move)
+  const body = new THREE.Group(), L = 'cast-armor';
+  body.add(part(SPH, HIDE, 3.3, 3, 3.5, 0, 7.6, 0, L), part(SPH, HIDE, 3, 4.3, 3.2, 0.6, 10.2, 0, L), part(SPH, HIDE, 2.6, 3, 2.9, 1.3, 12.8, 0, L),
+    part(SPH, HIDE, 1.9, 2.3, 2, 2.3, 14.4, 0, L));
+  // the belly, banded like a crocodile's
+  body.add(part(SPH, BELLY, 2.3, 4.6, 2.6, 1.6, 9.8, 0, L));
+  for (let y = 6.2; y <= 13.4; y += 0.75) {
+    const k = (y - 9.8) / 4.6, w = Math.sqrt(Math.max(0.1, 1 - k * k));
+    body.add(part(GEO.box, 0x5e5946, 0.3, 0.14, 1.9 * w, 1.5 + 2.3 * w, y, 0, L));
+  }
+  // arms: short and clawed, held forward
+  for (const z of [-1, 1]) {
+    const sh = [2.4, 12.4, z * 2.5], el = [3.6, 10.6, z * 2.9], wr = [5, 10.4, z * 2.5];
+    body.add(part(SPH, HIDE, 1.2, 1.2, 1.2, ...sh, L), seg(sh, el, 0.7, HIDE, true), seg(el, wr, 0.55, HIDE, true));
+    for (const dz of [-0.45, 0, 0.45]) body.add(spike([5.3, 10.4, z * 2.5 + dz], [6.2, 9.7, z * 2.5 + dz * 1.4], 0.16, CLAW));
+  }
+  // knobbly hide: bumps over the back and flanks
+  const r = bumpRng(7);
+  for (let i = 0; i < 60; i++) {
+    const a = Math.PI * (0.55 + r() * 0.9), y = 6.5 + r() * 7.5, k = (y - 10.2) / 4.6, rad = Math.sqrt(Math.max(0.15, 1 - k * k)), side = r() < 0.5 ? 1 : -1;
+    body.add(part(SPH, r() < 0.5 ? HIDE_DARK : HIDE, 0.35 + r() * 0.3, 0.3 + r() * 0.25, 0.35 + r() * 0.3, 0.6 + Math.cos(a) * 3 * rad, y, Math.sin(a) * 3.2 * rad * side, L));
+  }
+  // dorsal plates: bone outside and the glow inside, a tall middle row and two lower rows splayed out
+  const plates = (g, spine) => spine.forEach(([x, y, h, lean = 0.5], i) => {
+    for (const [z, s, tilt] of [[0, 1, 0], [-0.7, 0.62, -0.35], [0.7, 0.62, 0.35]]) {
+      const H = h * s * (i % 2 ? 0.8 : 1);
+      g.add(spike([x, y, z], [x - H * lean, y + H, z + tilt * H], H * 0.42, BONE, 0.2),
+        spike([x, y + 0.1, z], [x - H * lean * 0.9, y + H * 0.9, z + tilt * H * 0.9], H * 0.36, GLOW, 0.34));
+    }
+  });
+  plates(body, [[1.2, 15.6, 1.4], [0.4, 14.9, 1.9], [-0.5, 14, 2.3], [-1.4, 12.8, 2.6], [-2.1, 11.5, 2.8], [-2.6, 10.1, 2.7], [-3, 8.7, 2.5], [-3.3, 7.4, 2.2, 0.7]]);
+  // the head (v.turret): skull, snout, jaw hanging open, two rows of teeth, glowing eyes under heavy brows, horns
+  const head = new THREE.Group(); head.position.set(3, 15.4, 0);
+  head.add(part(SPH, HIDE, 1.9, 1.4, 1.5, 0.5, 0.3, 0, L), part(SPH, HIDE, 1.7, 0.8, 1.05, 2.1, 0.05, 0, L), part(SPH, HIDE_DARK, 0.9, 0.5, 0.9, -0.6, 0.6, 0, L),
+    part(SPH, GUM, 1.5, 0.45, 0.85, 2, -0.45, 0, 'plain'));
+  const jaw = part(SPH, HIDE, 1.65, 0.45, 0.95, 1.9, -0.95, 0, L); jaw.rotation.z = -0.22; head.add(jaw);
+  for (let x = 1; x <= 3.3; x += 0.32) for (const z of [-1, 1]) {
+    const w = 0.78 - (x - 1) * 0.12, low = (x - 1) * 0.12;
+    head.add(spike([x, -0.35, z * w], [x + 0.05, -0.85, z * w], 0.1, TOOTH), spike([x - 0.1, -0.95 - low, z * w * 0.95], [x - 0.08, -0.55 - low, z * w * 0.95], 0.08, TOOTH));
+  }
+  for (const z of [-1, 1]) {
+    head.add(part(SPH, EYE, 0.24, 0.17, 0.2, 1.45, 0.55, z * 0.92, 'plain'), part(GEO.box, HIDE_DARK, 1, 0.28, 0.4, 1.45, 0.82, z * 0.82, L).rotateX(z * 0.3),
+      part(SPH, HIDE_DARK, 0.12, 0.08, 0.12, 3.55, 0.35, z * 0.3, 'plain'), spike([-0.3, 0.9, z * 0.7], [-1.5, 1.3, z * 1.1], 0.22, BONE));
+  }
+  // the tail, from the hips to a tip on the ground 15 m back, plated along its top
+  const tail = new THREE.Group(); tail.position.set(-3, 7, 0);
+  const pts = Array.from({ length: 11 }, (_, i) => { const t = i / 10; return [-t * 15, -6.2 * Math.sqrt(t) + Math.sin(t * Math.PI) * 0.8, Math.sin(t * 2.6) * 1.2 * t]; });
+  for (let i = 0; i < 10; i++) tail.add(seg(pts[i], pts[i + 1], 2.5 * (1 - i / 10) + 0.25, HIDE, true));
+  plates(tail, pts.slice(0, 9).map(([x, y], i) => [x - 0.6, y + 2.3 * (1 - i / 10) + 0.1, 1.9 * (1 - i / 11), 0.6]));
+  // legs: thick thighs, a backward ankle, splayed clawed feet; each pivots at the hip
+  v.legs = [-1, 1].map((z) => {
+    const leg = new THREE.Group(); leg.position.set(0, 7, z * 2.4);
+    leg.add(part(SPH, HIDE, 2, 2.8, 1.7, 0.3, -1.4, z * 0.2, L), seg([0.7, -3.2, z * 0.2], [-0.4, -5.6, z * 0.3], 1.05, HIDE, true), part(SPH, HIDE, 1, 1, 1, -0.4, -5.7, z * 0.3, L),
+      part(SPH, HIDE, 1.9, 0.75, 1.4, 0.5, -6.55, z * 0.3, L), part(SPH, HIDE_DARK, 0.9, 0.6, 0.9, -0.7, -6.3, z * 0.3, L));
+    for (const dz of [-0.75, 0, 0.75]) leg.add(spike([2, -6.7, z * 0.3 + dz], [3.1, -6.9, z * 0.3 + dz * 1.3], 0.22, CLAW));
+    for (let i = 0; i < 6; i++) leg.add(part(SPH, HIDE_DARK, 0.4, 0.35, 0.4, -1.2 + (i % 3) * 0.5, -0.6 - Math.floor(i / 3) * 1.1, z * 1.5, L));
+    return bake(leg, key + '|leg' + z, true);
+  });
+  bake(body, key + '|body', true); bake(head, key + '|head', true); bake(tail, key + '|tail', true);
+  Object.assign(v, { turret: head, traverse: 1, fxTip: [3.6, -0.5, 0], tail, hull: body, walk: { phase: 0, t: 0, x: null, z: 0 } });
+  root.add(body, head, tail, ...v.legs);
+  v.models.push(root);
+}
+// the Kaiju walks: legs swing with the ground it covers, the body bobs, the tail swishes even standing still
+function stride(v, dt) {
+  const w = v.walk, moved = w.x === null ? 0 : Math.hypot(v.x - w.x, v.z - w.z);
+  w.x = v.x; w.z = v.z; w.phase += moved / 3.2; w.t += dt;
+  const s = Math.sin(w.phase), bob = Math.abs(Math.cos(w.phase)) * 0.35 * Math.min(1, moved * 20);
+  v.legs[0].rotation.z = s * 0.5; v.legs[1].rotation.z = -s * 0.5;
+  v.legs[0].position.y = 7 + Math.max(0, -s) * 0.4; v.legs[1].position.y = 7 + Math.max(0, s) * 0.4;
+  v.hull.position.y = bob; v.hull.rotation.x = s * 0.04; v.turret.position.y = 15.4 + bob;
+  v.tail.position.y = 7 + bob; v.tail.rotation.y = Math.sin(w.t * 0.9 + w.phase * 0.5) * 0.18;
 }
 
 // Formation slots in local space (+x = forward). Gun crews stand behind the gun.
@@ -341,6 +450,8 @@ export function buildModel(v, root, f, fac, def) {
       if (type === 'destroyer') v.mounts = mounts;
     }
     v.models.push(root);
+  } else if (type === 'kaiju') {
+    kaiju(v, root, key);
   } else if (type === 'bunker' || type === 'worldbase') {
     const shell = new THREE.Group();
     shell.add(part(GEO.box, 0x8a8a82, 5.2, 2.4, 5.2, 0, 1.2, 0), part(GEO.box, 0x74746c, 6, 0.5, 6, 0, 2.6, 0), part(GEO.box, 0x1e1e1a, 0.3, 0.4, 3, 2.62, 1.6, 0));
@@ -396,8 +507,9 @@ export function buildModel(v, root, f, fac, def) {
 // Per frame for each unit: soldiers blend toward the posture the snapshot asks for (over POSTURE.blend seconds) and
 // swap to the far-away model beyond the LOD distance. eye is the camera position.
 export function animate(v, dt, eye, groundAt, detailed = true) {
+  if (v.legs) { stride(v, dt); return; }
   const sq = v.squad;
-  if (!sq) { moveModel(v, dt); return; }
+  if (!sq) { moveModel(v, dt); moveWheels(v, dt); return; }
   const px = v.root.position.x, pz = v.root.position.z;
   const distance = sq.poseX === undefined ? 0 : Math.hypot(px - sq.poseX, pz - sq.poseZ);
   const travel = distance > 8 ? 0 : distance;
@@ -853,6 +965,37 @@ export function vehicleBody(v) {
   for (const child of [...v.root.children]) if (child !== v.base && child !== v.sel) body.add(child);
   v.root.add(body);
   v.visualChassis = body;
+  // Measure the native track or tire footprint once, excluding barrels and raised equipment.
+  const vertices = [], point = new THREE.Vector3();
+  let bottom = Infinity;
+  const visit = node => {
+    if (node === v.turret || v.mounts?.includes(node)) return;
+    if (node.isMesh && node.geometry?.attributes.position) {
+      const positions = node.geometry.attributes.position, tracks = node.geometry.attributes.trackData, transform = relative(node, body);
+      for (let i = 0; i < positions.count; i++) {
+        if (tracks && tracks.getY(i) >= 0) continue;
+        point.fromBufferAttribute(positions, i).applyMatrix4(transform);
+        bottom = Math.min(bottom, point.y);
+        vertices.push(point.x, point.y, point.z);
+      }
+      const support = node.geometry.userData.trackSupport ?? [];
+      for (let i = 0; i < support.length; i += 3) {
+        point.fromArray(support, i).applyMatrix4(transform);
+        bottom = Math.min(bottom, point.y); vertices.push(point.x, point.y, point.z);
+      }
+    }
+    for (const child of node.children) visit(child);
+  };
+  for (const child of body.children) visit(child);
+  if (Number.isFinite(bottom)) {
+    const bounds = new THREE.Box3();
+    for (let i = 0; i < vertices.length; i += 3) if (vertices[i + 1] <= bottom + 0.15) {
+      bounds.expandByPoint(point.set(vertices[i], bottom, vertices[i + 2]));
+    }
+    if (bounds.max.x - bounds.min.x > 0.1 && bounds.max.z - bounds.min.z > 0.1) {
+      v.groundContact = { minX: bounds.min.x, maxX: bounds.max.x, minZ: bounds.min.z, maxZ: bounds.max.z, y: bottom, band: 0.15 };
+    }
+  }
   return body;
 }
 

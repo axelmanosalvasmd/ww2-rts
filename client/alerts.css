@@ -1,13 +1,12 @@
-/* Alerts list above the minimap (client/alerts.js). Self-contained: everything here is under #alerts.
-   The HUD's gunmetal panel and type; the kind reads in the text color. */
+/* Right-side alerts above the minimap, with prominent unit losses above routine tips (client/alerts.js). */
 #hud > #alerts {
   position: absolute; /* index.html places it above the minimap; alerts.js keeps it there on resize */
   display: flex; flex-direction: column; align-items: flex-end; gap: 3px;
-  max-width: min(320px, calc(100vw - 20px));
+  max-width: min(380px, calc(100vw - 20px));
   pointer-events: none; /* only the lines take clicks, the gaps between them stay on the map */
 }
 #hud > #alerts:empty { display: none; }
-#alerts .alert {
+:is(#alerts, #lossAlerts) .alert {
   pointer-events: auto; cursor: pointer;
   max-width: 100%; padding: 3px 10px;
   background: rgba(25, 28, 30, 0.9); color: #e2dfd3;
@@ -16,16 +15,37 @@
   white-space: nowrap; overflow: hidden; text-overflow: ellipsis;
   animation: alert-in 0.18s ease-out;
 }
-#alerts .alert:first-child { font-weight: 600; border-color: rgba(176, 164, 122, 0.46); } /* the newest one, where Space goes */
+#alerts > .alert { max-width: min(320px, 100%); }
+#alerts > .alert:nth-child(2) { font-weight: 600; border-color: rgba(176, 164, 122, 0.46); } /* newest routine notice, after the loss stack */
+/* Keep room below resources while larger loss notices are visible. All notices remain in history. */
+#alerts:has(> #lossAlerts:not(:empty)) > .alert:nth-of-type(n+4) { display: none; }
 /* light signal red for trouble, brass for a point won, the plain text color for the rest */
 #alerts .alert.k-attack, #alerts .alert.k-unitLost, #alerts .alert.k-pointLost, #alerts .alert.k-air { color: #ee8a7b; }
 #alerts .alert.k-pointWon { color: #d6b25e; }
 /* your base under attack: the one alert that has to be noticed, so it fills red and pulses */
 #alerts .alert.k-base { color: #fff; font-weight: 700; background: rgba(140, 36, 28, 0.94); border-color: #d4574a; animation: alert-in 0.18s ease-out, alert-base 0.9s ease-in-out 0.18s 4 alternate; }
 @keyframes alert-base { to { background: rgba(200, 60, 46, 0.96); } }
-#alerts .alert:hover, #alerts .alert.vhover { background: rgba(46, 51, 55, 0.94); border-color: rgba(214, 178, 94, 0.8); }
+:is(#alerts, #lossAlerts) .alert:hover, :is(#alerts, #lossAlerts) .alert.vhover { background: rgba(46, 51, 55, 0.94); border-color: rgba(214, 178, 94, 0.8); }
 @keyframes alert-in { from { opacity: 0; transform: translateX(8px); } }
-@media (prefers-reduced-motion: reduce) { #alerts .alert { animation: none; } }
+#alerts > #lossAlerts {
+  display: flex; flex-direction: column; gap: 6px; margin-bottom: 8px;
+  width: min(380px, calc(100vw - 24px)); max-width: 100%;
+  pointer-events: none;
+}
+#alerts > #lossAlerts:empty { display: none; }
+#lossAlerts .alert {
+  display: grid; gap: 2px; padding: 10px 14px;
+  white-space: normal; overflow-wrap: anywhere;
+  color: #fff1e8; background: rgba(73, 24, 21, 0.97);
+  border: 1px solid #c66a57; border-left: 4px solid #ff9a76;
+  box-shadow: 0 3px 14px rgba(0, 0, 0, 0.4);
+  animation: loss-in 0.22s ease-out;
+}
+#lossAlerts .loss-heading { color: #ffb293; font-size: 13px; font-weight: 700; letter-spacing: 0.1em; text-transform: uppercase; }
+#lossAlerts .loss-detail { color: #fff1e8; font-size: 20px; font-weight: 700; line-height: 1.15; }
+#lossAlerts .loss-hint { margin-top: 3px; color: #dec4bb; font-size: 12px; font-weight: 500; }
+@keyframes loss-in { from { opacity: 0; transform: translateX(6px); } }
+@media (prefers-reduced-motion: reduce) { :is(#alerts, #lossAlerts) .alert { animation: none; } }
 /* The history remains beside the minimap so battle controls stay available. */
 #alerts .alert-history {
   pointer-events: auto; width: min(320px, calc(100vw - 20px));
@@ -37,7 +57,7 @@
 #alerts .alert-history button { color: inherit; background: rgba(46, 51, 55, 0.94); border: 1px solid rgba(176, 164, 122, 0.24); cursor: pointer; font: inherit; }
 #alerts .alert-history-list { max-height: min(30vh, 250px); overflow-y: auto; padding: 4px; }
 #alerts .alert-history-entry { display: block; width: 100%; text-align: left; padding: 5px; margin: 2px 0; white-space: normal; }
-#alerts button[aria-current="true"], #alerts button:focus-visible, #alerts summary:focus-visible, #alerts .alert:focus-visible { outline: 2px solid #d6b25e; outline-offset: -2px; }
+#alerts button[aria-current="true"], #alerts button:focus-visible, #alerts summary:focus-visible, :is(#alerts, #lossAlerts) .alert:focus-visible { outline: 2px solid #d6b25e; outline-offset: -2px; }
 #alerts .alert-history-entry.k-attack, #alerts .alert-history-entry.k-base, #alerts .alert-history-entry.k-unitLost, #alerts .alert-history-entry.k-pointLost, #alerts .alert-history-entry.k-air { color: #ee8a7b; }
 #alerts .alert-history-entry.k-pointWon { color: #d6b25e; }
 .production-jobs { display: grid; gap: 3px; max-height: 150px; overflow-y: auto; }

@@ -15,7 +15,10 @@ if (factions.some((f) => !Number.isInteger(f) || f < 0 || f > 3)) throw new Erro
 const output = resolve(option('--output', `${root}/.cache/blender-mcp/naval-source.json`));
 const models = {};
 const sources = {};
-for (const file of ['client/models/naval.js', 'client/models/geom.js']) sources[file] = createHash('sha256').update(await readFile(`${root}/${file}`)).digest('hex');
+for (const file of ['client/models/naval.js', 'client/models/geom.js']) {
+  const source = (await readFile(`${root}/${file}`, 'utf8')).replaceAll('\r\n', '\n');
+  sources[file] = createHash('sha256').update(source).digest('hex');
+}
 for (const type of types) for (const fac of factions) {
   const raw = navalModel(type, fac, { color: 0xff00ff, vehicle: 0x00ffff });
   const model = { mounts: raw.mounts ?? [], tip: raw.tip ?? null };
