@@ -3196,6 +3196,17 @@ const simCopy = (source) => import('data:text/javascript;base64,' + Buffer.from(
 // Fixed Massive fixture for exact comparisons and repeatable subsystem timings.
 const massiveInternals = await simCopy(readFileSync('shared/sim.js', 'utf8')
   + '\nexport { updateVision, nearCover, behindCover, aimPoint, flagsAt, dist, spawnUnit, placeBuilding, wreckBuilding, setCell, logCell, pickTarget, breathe };');
+// A trench dug in sight reaches the snapshot even when a moving unit's path view read the full terrain memory first.
+{
+  const S = massiveInternals, g = S.createGame(JSON.parse(readFileSync('maps/default.json', 'utf8')), ['A', 'B'], false, [0, 1]);
+  for (let i = 0; i < 8; i++) S.step(g);
+  const u = [...g.units.values()].find(v => v.owner === 0 && !v.air), c = Math.floor(u.z / CELL) * g.w + Math.floor(u.x / CELL) + 2;
+  S.snapshotFor(g, 0, []);
+  S.setCell(g, c, 'T');
+  for (let i = 0; i < 4; i++) S.step(g);
+  S.terrainFor(g, 0, true); // observedPathView, for any unit of this seat on the move
+  assert.ok(S.snapshotFor(g, 0, []).cells.some(row => row[0] === c && row[1] === 'T'), 'the dug trench is still sent to its owner');
+}
 // Salvo target clusters use visible squads only, so hidden neighbors cannot change automatic target choice.
 {
   const g = fresh(field()); g.players[0].mp = g.players[1].mp = 5000;
@@ -3627,9 +3638,10 @@ const referenceNearCover = (g, u) => {
 
 // Incremental terrain matches the prior ordered scan for each viewer's independent history.
 {
-  const g = massiveFixture(), memories = g.players.map(p => new Map(p.terrainMemory ?? []));
+  const g = massiveFixture(), memories = g.players.map(p => new Map(p.terrainMemory ?? [])), outboxes = g.players.map(() => new Map());
+  // Changes wait until a snapshot (not full) takes them, whichever call found them.
   const referenceTerrainFor = (slot, full = false) => {
-    const p = g.players[slot], memory = memories[slot], changes = [], visible = new Map();
+    const p = g.players[slot], memory = memories[slot], changes = outboxes[slot], visible = new Map();
     for (const cell of g.cellLog) {
       const [c, ch, height] = cell, building = g.buildingCells?.get(c);
       if (building) {
@@ -3639,9 +3651,10 @@ const referenceNearCover = (g, u) => {
       } else if (!g.reveal && !g.skipFog && !teamSees(g, p.team, { x: (c % g.w + 0.5) * CELL, z: (Math.floor(c / g.w) + 0.5) * CELL })) continue;
       const old = memory.get(c);
       if (old && JSON.stringify(old) === JSON.stringify(cell)) continue;
-      const known = [...cell]; memory.set(c, known); changes.push(known);
+      const known = [...cell]; memory.set(c, known); changes.delete(c); changes.set(c, known);
     }
-    return full ? [...memory.values()] : changes;
+    if (full) return [...memory.values()];
+    const rows = [...changes.values()]; changes.clear(); return rows;
   };
   let comparison = 0;
   const check = (slot, full = false, snapshot = false) => {

@@ -5090,6 +5090,9 @@ function planOf(g, u) {
 }
 
 // Terrain remembers the last version each player saw. Building footprints catch up when discovered again.
+// Changes wait in an outbox per memory until the snapshot (the call without `full`) takes them: observedPathView reads
+// the full memory first whenever a unit moves, and its replay used to swallow them (dug trenches never reached the client).
+const terrainOutbox = new WeakMap();
 export function terrainFor(g, slot, full = false) {
   if (g.mode?.kind === 'world') return worldTerrainFor(g, slot, full);
   const p = g.players[slot], memory = p.terrainMemory ??= new Map();
@@ -5099,9 +5102,12 @@ export function terrainFor(g, slot, full = false) {
   // A full read at an unchanged key also skips the replay: pending cells (unseen craters, hidden mines) pile up in a long
   // battle, and observedPathView asks every tick for every player.
   const key = `${g.terrainVersion ?? 0}:${g.visionTick ?? -1}`;
-  if (!pending.size || pending.key === key) return full ? [...memory.values()] : [];
+  let changes = terrainOutbox.get(memory); // cell -> latest row, so a seat no snapshot drains (an AI) stays map-sized
+  if (!changes) terrainOutbox.set(memory, changes = new Map());
+  const take = () => { const rows = [...changes.values()]; changes.clear(); return rows; };
+  if (!pending.size || pending.key === key) return full ? [...memory.values()] : take();
   pending.key = key;
-  const changes = [], visible = new Map();
+  const visible = new Map();
   let eyes; // the team's units, filtered once: pending cells pile up in a long battle and each asks teamSees
   // Unseen footprints stay pending. Replay order also preserves remembered terrain order.
   for (const index of [...pending].sort((a, b) => a - b)) {
@@ -5117,9 +5123,9 @@ export function terrainFor(g, slot, full = false) {
       if (!visible.get(building)) continue;
     } else if (!g.reveal && !g.skipFog && !teamSees(g, p.team, cellCenter(g, c), eyes ??= [...g.units.values()].filter(u => g.players[u.owner].team === p.team))) continue;
     if (!hiddenMine) pending.delete(index);
-    const known = [...cell]; memory.set(c, known); changes.push(known);
+    const known = [...cell]; memory.set(c, known); changes.delete(c); changes.set(c, known);
   }
-  return full ? [...memory.values()] : changes;
+  return full ? [...memory.values()] : take();
 }
 
 const rounded = (v) => Math.round(v * 10) / 10;
