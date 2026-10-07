@@ -5,23 +5,6 @@ AI-vs-AI runs (see DESIGN.md for the balance log). Add new entries under **Unrel
 
 ## Unreleased
 
-- Supply trucks no longer jam at their own HQ and use less server time. Trucks coming home stopped behind the trucks
-  parked around the HQ and stayed "not arrived" for seconds on end (162 of 219 stuck samples were stuck over 5 s, nine
-  in ten within 20 m of their HQ), re-planning their whole trip every 2 s. Now:
-  - a truck stuck within loading reach of its HQ (15 m) counts as arrived there;
-  - a truck stuck elsewhere on a trip that still holds plans only a detour back onto its route about 30 m ahead;
-  - hops of 16 m or less across open ground (most trips around a base) skip the route search, which cost 6 to 16 ms
-    however short;
-  - the way home, which only prices a trip's fuel, is planned once per trip end instead of on every recheck;
-  - a recipient on the move is re-targeted once it leaves unloading reach (12 m), not every 4 m.
-  Measured in a seeded 2-player, 2-AI World Conquest match of 2.5 minutes (CPU time, so other programs do not skew
-  it): 27.9 s on master against 20.6 s, with the same 65 truck trips and troops as well supplied; on a second world
-  24.6 s against 22.8 s, within noise there. Long stuck samples fell from 162 to 1.
-  Found, not fixed: logistics still roughly double the server's CPU (8.5 to 10.7 s for the same matches without
-  trucks). Most of what remains is planning trips: re-plans when a route turns dangerous or blocked (30 to 50 ms each)
-  and new trips. Planning trips one leg at a time was tried and cost twice as much, since every leg pays the same
-  fixed cost (danger map, threat scan, fuel pricing).
-
 - The full test suite passes again after merging skirmish production bases. Fixed the AI ignoring an enemy air strike
   on squads busy building: a squad sent to rebuild a base no longer gets bombed without fighter cover. Test setups
   that wipe the map or count units now allow for the starting HQ and Barracks. The AI-match check now asks for at
@@ -38,6 +21,25 @@ AI-vs-AI runs (see DESIGN.md for the balance log). Add new entries under **Unrel
 - The build menu, recruit lock reasons, selected-facility spawning, shared facility selection/rallies and construction cancellation work with the new bases. AI builds technology and repairs/rebuilds its facilities.
 - Fixed builders reviving zero-HP buildings before destruction cleanup. Added simulation, client and AI regression coverage. No combat or income rebalance; competitive pacing remains a human-playtest follow-up.
 - Known verification gap: the latest core regression run fails the existing AI fighter-cover assertion (an announced enemy air strike should trigger fighter cover). The full suite is not green; this implementation is committed at the user's request pending regression follow-up.
+
+### 2026-10-06: Supply truck jams and re-planning (`9ae160f`)
+
+- Supply trucks no longer jam at their own HQ and use less server time. Trucks coming home stopped behind the trucks
+  parked around the HQ and stayed "not arrived" for seconds on end (162 of 219 stuck samples were stuck over 5 s, nine
+  in ten within 20 m of their HQ), re-planning their whole trip every 2 s. Now:
+  - a truck stuck within loading reach of its HQ (15 m) counts as arrived there;
+  - a truck stuck elsewhere on a trip that still holds plans only a detour back onto its route about 30 m ahead;
+  - hops of 16 m or less across open ground (most trips around a base) skip the route search, which cost 6 to 16 ms
+    however short;
+  - the way home, which only prices a trip's fuel, is planned once per trip end instead of on every recheck;
+  - a recipient on the move is re-targeted once it leaves unloading reach (12 m), not every 4 m.
+  Measured in a seeded 2-player, 2-AI World Conquest match of 2.5 minutes (CPU time, so other programs do not skew
+  it): 27.9 s on master against 20.6 s, with the same 65 truck trips and troops as well supplied; on a second world
+  24.6 s against 22.8 s, within noise there. Long stuck samples fell from 162 to 1.
+  Found, not fixed: logistics still roughly double the server's CPU (8.5 to 10.7 s for the same matches without
+  trucks). Most of what remains is planning trips: re-plans when a route turns dangerous or blocked (30 to 50 ms each)
+  and new trips. Planning trips one leg at a time was tried and cost twice as much, since every leg pays the same
+  fixed cost (danger map, threat scan, fuel pricing).
 
 ### 2026-10-06: Supply trucks on master and their World Conquest lag fixes (`625c4eb`, `5ce4243`, `8599d66`, `45eb104`)
 
