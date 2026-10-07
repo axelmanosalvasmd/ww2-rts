@@ -8502,6 +8502,13 @@ console.log('all aircraft model checks passed');
       }
     }
   }
+  // every player shares the figures (built once, a big battle's main client cost); only the far band takes the color
+  {
+    const geo = (s, lod) => s[lod].children[0].userData.geo, a = soldier('rifle', 1, 0, { color: 0x112233 }), b = soldier('rifle', 1, 0, { color: 0x445566 });
+    assert.equal(geo(a, 'near'), geo(b, 'near'), 'owners share the near figure');
+    assert.equal(geo(a, 'far').attributes.position, geo(b, 'far').attributes.position, 'owners share the far shape');
+    assert.notDeepEqual(geo(a, 'far').attributes.color.array, geo(b, 'far').attributes.color.array, 'the far band shows the owner');
+  }
   for (const fac of [0, 1, 2]) {
     const v = { type: 'medic', owner: fac, models: [] }, root = new THREE.Group();
     buildModel(v, root, { color: 0xff00ff, uniform: 0x777755, vehicle: 0x555544 }, fac, UNITS.medic);

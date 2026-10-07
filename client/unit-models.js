@@ -487,7 +487,9 @@ export function buildModel(v, root, f, fac, def) {
       // userData.poses for the posture morph targets
       loadInfantryTextures();
       const s = soldier(figure, own, i, f), poses = (g) => g.children[0].userData.geo.userData;
-      const hi = bakeMeshes(s.near, `${key}|man|${s.kit}`, false, poses(s.near), 'soldier'), lo = bakeMeshes(s.far, `${key}|far|${s.kit}`, false, poses(s.far), 'soldier');
+      // the near figure has no owner color (client/models/infantry.js), so all players share its bake; keyed by own
+      // faction, since fac may have been swapped for a UK vehicle stand-in
+      const hi = bakeMeshes(s.near, `${type}|${own}|man|${s.kit}`, false, poses(s.near), 'soldier'), lo = bakeMeshes(s.far, `${key}|far|${s.kit}`, false, poses(s.far), 'soldier');
       lo.forEach((m) => (m.visible = false));
       // man: the node client/fx.js and the corpses use; pose: the body inside it that crouches and lies down
       const man = new THREE.Group(), pose = new THREE.Group();

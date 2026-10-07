@@ -1035,13 +1035,24 @@ function figure(ctx, far) {
 // for the check script: the solved rig of a soldier in posture k
 export function rigOf(type, fac, i, k, phase = null) { const job = soldierKit(type, i, fac); return solve({ type, fac, job, F: FACTIONS[fac] ?? FACTIONS[0], owner: 0x3b73d6 }, k, phase); }
 
+// The far figure in another owner's band: the same shape, postures and gait frames, with only the standing build's
+// colors made again (one rig of the twenty or so a figure solves).
+function recolor(body, ctx) {
+  const paint = ao(mergeFigure(farParts(solve(ctx, 0), ctx)), { falloff: shadeFalloff }), g = new THREE.BufferGeometry();
+  for (const [name, a] of Object.entries(body.attributes)) g.setAttribute(name, name === 'color' ? paint.attributes.color : a);
+  g.setIndex(body.index); g.userData = body.userData;
+  return g;
+}
+
 const bodies = new Map();
 // One soldier of a squad, near and far: each a group holding one vertex-colored body for unit-models.js to bake.
+// Only the far figure wears the owner's band, so every player shares the shapes and the near figure outright.
 export function soldier(type, fac, i, f) {
   const kit = soldierKit(type, i, fac), F = FACTIONS[fac] ?? { ...FACTIONS[0], tunic: f.uniform };
   const group = (far) => {
-    const key = `${type}|${fac}|${f.color}|${kit}|${far}`;
-    if (!bodies.has(key)) bodies.set(key, figure({ type, fac, job: kit, F, owner: f.color }, far));
+    const ctx = { type, fac, job: kit, F, owner: f.color }, shape = `${type}|${fac}|${kit}|${far}`, key = far ? `${shape}|${f.color}` : shape;
+    if (!bodies.has(shape)) bodies.set(shape, figure(ctx, far));
+    if (!bodies.has(key)) bodies.set(key, recolor(bodies.get(shape), ctx));
     const g = new THREE.Group(), o = new THREE.Object3D();
     o.userData.geo = bodies.get(key); o.userData.paint = 0xffffff;
     g.add(o);
