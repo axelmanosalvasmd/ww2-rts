@@ -7,10 +7,10 @@ import { viewFor } from './shared/ai-view.js';
 import { think, resetAI } from './shared/ai.js';
 const map = { w: 80, h: 80, rows: Array(80).fill('.'.repeat(80)), spawns: [{ x: 5, y: 40 }, { x: 75, y: 40 }], points: [{ x: 55, y: 40 }] };
 const level = { notice: 1.25, wave: 3, firstAssault: 0 };
-const fixture = () => {
+const fixture = (support = 'mg') => {
   const g = createGame(map, ['AI', 'enemy'], false, [0,1], [0,1]); g.units.clear();
   for (const slot of [0,1]) g.players[slot].mp = 5000;
-  for (const type of ['rifle','rifle','mg']) assert.equal(command(g, 0, { t: 'buy', unit: type }), undefined);
+  for (const type of ['rifle','rifle',support]) assert.equal(command(g, 0, { t: 'buy', unit: type }), undefined);
   [...g.units.values()].forEach((u,i) => Object.assign(u,{x:50+i*3,z:80}));
   g.points[0].owner=1;
   const mem = {}, view = viewFor(g,0,mem), mind = beginMind(view,0,mem,1);
@@ -72,6 +72,24 @@ const refresh = (f, seconds) => { f.g.tick = seconds*20; f.view = viewFor(f.g,0,
   const hidden=structuredClone(f.g); hidden.units.get(tank.id).x=145; hidden.players[0].visible.delete(tank.id); f.g.players[0].visible.delete(tank.id);
   const a=structuredClone(f.mem),b=structuredClone(f.mem),va=viewFor(f.g,0,a),vb=viewFor(hidden,0,b);
   assert.deepEqual(planAssault(va,0,beginMind(va,0,a,1),f.sit,level,6),planAssault(vb,0,beginMind(vb,0,b,1),f.sit,level,6),'unseen tank changes do not alter decisions');
+}
+{
+  const f=fixture('tankdestroyer'); execute(f,planAssault(f.view,0,f.mind,f.sit,level,0));
+  f.mind.assault.state='engage'; f.mind.assault.stateAt=0;
+  assert.equal(command(f.g,1,{t:'buy',unit:'tank'}),undefined);
+  const tank=[...f.g.units.values()].find(u=>u.owner===1); Object.assign(tank,{x:68,z:80}); f.g.players[0].visible.add(tank.id);
+  refresh(f,2); execute(f,planAssault(f.view,0,f.mind,f.sit,level,2));
+  refresh(f,4); const countered=planAssault(f.view,0,f.mind,f.sit,level,4);
+  assert.equal(f.mind.assault.state,'engage','healthy Tank Destroyer answers known armor at low pressure');
+  execute(f,countered);
+  for(let i=0;i<2;i++) assert.equal(command(f.g,1,{t:'buy',unit:'tank'}),undefined);
+  for(const u of f.g.units.values())if(u.owner===1){Object.assign(u,{x:68,z:80});f.g.players[0].visible.add(u.id);}
+  refresh(f,6); execute(f,planAssault(f.view,0,f.mind,f.sit,level,6));
+  assert.notEqual(f.mind.assault.state,'withdraw','new armor reinforcements still respect reaction delay');
+  refresh(f,8); const pressured=planAssault(f.view,0,f.mind,f.sit,level,8);
+  assert.equal(f.mind.assault.state,'withdraw','a Tank Destroyer does not suppress overwhelming observed pressure');
+  assert.ok([...f.g.units.values()].filter(u=>u.owner===0).every(u=>u.hp===UNITS[u.type].models*UNITS[u.type].hpPer));
+  execute(f,pressured);
 }
 {
   const f=fixture();f.view={...f.view,points:[...f.view.points,{x:30,z:30,owner:-1}]};

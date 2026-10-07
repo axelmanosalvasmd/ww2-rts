@@ -244,6 +244,26 @@ AI-vs-AI runs (see DESIGN.md for the balance log). Add new entries under **Unrel
   support guns. It supports live Stop, Retreat, replacement orders and tank traps, plus seeded command-line
   runs and comparison against another simulation revision. The 1,056-case heading matrix passes locally.
 
+### 2026-10-03: World snapshot checks (`8dce8f7`)
+
+- Added a delayed-receiver World regression that keeps the original 700-tick construction deadline and all
+  gameplay assertions. It uses the delivered-snapshot wait from the model integration change.
+
+### 2026-10-03: Final engine checks (`5346990`)
+
+- Fixed authored reinforcement entries on mined ground using the underlying surface and object, so a mine marker
+  cannot hide a vehicle-blocking obstacle during match admission.
+- AI assaults count Tank Destroyers as an answer to observed armor. Healthy supported attacks keep fighting a
+  countered tank, while overwhelming reinforcements still trigger withdrawal after the usual observation delay.
+- Updated the glossary for waiting recruits, Alert history, control-group transfers, Wave profiles and authored
+  structures and scenarios.
+- Fixed the World scouting test setup to preserve live building footprints and update terrain layers together.
+  The reproduced seed and two independent seeds pass the original long-order, queue, Stop and Retreat checks.
+- Rechecked the combined engine and new models with the full suite, saved multiplayer mission, muted Linux
+  browser captures and an eight-match AI pilot. Controlled World fixtures still exceeded the 40 ms tick target
+  at their maximum: 42.745 ms on Huge and 51.474 ms on Massive. Native GPU performance and broader faction
+  balance remain unverified.
+
 ### 2026-10-03: Textured Blender infantry and engine integration (`855be86`)
 
 - Replaced near infantry bodies with a textured mesh fitted and weighted in Blender. Faces, cloth folds,
