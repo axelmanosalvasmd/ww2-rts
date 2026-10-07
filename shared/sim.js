@@ -105,7 +105,11 @@ export const CFG = {
   // supply lines: a point pays only while a vehicle could drive to it from its side's HQ. Enemy fighting units close
   // the ground within `zoc` metres of them, except within `free` metres of a point that side holds (that is a fight
   // for the point, not a cut road). Checked every `every` ticks.
-  supply: { zoc: 8, free: 16, every: 40 },
+  // territory supply (docs/territory-supply.md): recomputed every `network` ticks. Refill runs at 1 near a source and
+  // weakens with distance to `floor`: World Conquest loses `hop` per region beyond the first, each damaged (fillable)
+  // cell adding `damage` of a region; other modes fall evenly from `near` to `far` metres, a damaged cell counting as
+  // `damageCells` more cells.
+  supply: { zoc: 8, free: 16, every: 40, network: 20, hop: 0.15, damage: 0.05, near: 150, far: 600, floor: 0.25, damageCells: 5 },
   // unit behavior (DESIGN.md "Unit behavior"): how far a squad looks for cover at the end of a move (the Take Cover
   // order and a squad under fire that can't shoot back reach CFG.coverSeek), and under fire while it can answer; the gap
   // between squads (vehicles take more) and in a spread-out group; a new target must score this much better to take
@@ -749,6 +753,7 @@ export function createGame(map, names, shuffle = true, teams = names.map((_, i) 
   }
   setupScenario(g, map, SCENARIO_TOOLS);
   setupConvoys(g);
+  if (g.convoys) supplyNetwork(g, [...g.units.values()]);
   stepConvoys(g, 0, supplyHooks(g));
   if (g.mode?.kind === 'world') updateVision(g);
   return g;
@@ -1627,6 +1632,7 @@ function supplyHooks(g) {
   return {
     route: (u, at, safe) => fullConvoyRoute(g, u, at, safe),
     continueRoute: u => supplyContinueRoute(g, u),
+    supplyRate: (owner, at) => supplyRateAt(g, owner, at),
     handoff: (u, store, radius) => supplyHandoff(g, u, store, radius),
     spawn: (owner, type, source) => {
       const nearby=[...g.units.values()].filter(t=>!t.air&&!t.riding&&t.hp>0&&dist(t,source)<30), n=nearby.filter(t=>t.type==='truck').length;
@@ -1634,10 +1640,6 @@ function supplyHooks(g) {
       for(let k=0;k<40;k++){ const angle=(n+k)*2.4,radius=10+Math.floor(k/16)*5,c=nearestFree(g,source.x+Math.cos(angle)*radius,source.z+Math.sin(angle)*radius,MOVE|VBLOCK),at=cellCenter(g,c);
         if(vehiclePositionClear(g,{...at,rot:0},UNITS[type],MOVE|VBLOCK)&&nearby.every(t=>dist(t,at)>(UNITS[t.type].radius+UNITS[type].radius)*.8+1)){Object.assign(u,at);break;} }
       updateGrid(g,u);return u;
-    },
-    cache: (owner, region) => {
-      const c = findSite(g, region.x + 12, region.z + 4, UNITS.supplycache.size);
-      return c < 0 ? null : placeBuilding(g, owner, 'supplycache', c, true);
     },
     retire: u => { g.units.delete(u.id); rebuildGrid(g); },
   };
@@ -4208,19 +4210,24 @@ function sweepMines(g, list) {
 // Supply lines: per team, flood out from its HQs over ground a vehicle could cross (no river, wall, tank trap or
 // cliff). Enemy fighting units close the ground around them, except near a point the team holds. A held point is
 // cut (it pays nothing) when the flood reaches no cell inside its capture radius.
+// The ground enemy fighting units close to a team's supply: within CFG.supply.zoc of them, except near a held point.
+function zocClosed(g, list, team, held) {
+  const S = CFG.supply, W = g.w, zr = Math.ceil(S.zoc / CELL), closed = new Uint8Array(W * g.h);
+  for (const e of list) {
+    if (e.hp <= 0 || e.air || e.riding || e.retreating || g.players[e.owner].team === team || !UNITS[e.type].w?.range) continue;
+    const ex = Math.floor(e.x / CELL), ey = Math.floor(e.z / CELL);
+    for (let y = Math.max(0, ey - zr); y <= Math.min(g.h - 1, ey + zr); y++) for (let x = Math.max(0, ex - zr); x <= Math.min(W - 1, ex + zr); x++) {
+      const at = { x: (x + 0.5) * CELL, z: (y + 0.5) * CELL };
+      if (dist(e, at) <= S.zoc && !held.some(p => dist(p, at) <= S.free)) closed[y * W + x] = 1;
+    }
+  }
+  return closed;
+}
 function supplyLines(g, list) {
-  const S = CFG.supply, W = g.w, N = W * g.h, zr = Math.ceil(S.zoc / CELL), pr = Math.floor(CFG.pointRadius / CELL);
+  const W = g.w, N = W * g.h, pr = Math.floor(CFG.pointRadius / CELL);
   for (const p of g.points) if (p.owner < 0) p.cut = false;
   for (const team of new Set(g.points.filter(p => p.owner >= 0).map(p => g.players[p.owner].team))) {
-    const held = g.points.filter(p => p.owner >= 0 && g.players[p.owner].team === team), closed = new Uint8Array(N);
-    for (const e of list) {
-      if (e.hp <= 0 || e.air || e.riding || e.retreating || g.players[e.owner].team === team || !UNITS[e.type].w?.range) continue;
-      const ex = Math.floor(e.x / CELL), ey = Math.floor(e.z / CELL);
-      for (let y = Math.max(0, ey - zr); y <= Math.min(g.h - 1, ey + zr); y++) for (let x = Math.max(0, ex - zr); x <= Math.min(W - 1, ex + zr); x++) {
-        const at = { x: (x + 0.5) * CELL, z: (y + 0.5) * CELL };
-        if (dist(e, at) <= S.zoc && !held.some(p => dist(p, at) <= S.free)) closed[y * W + x] = 1;
-      }
-    }
+    const held = g.points.filter(p => p.owner >= 0 && g.players[p.owner].team === team), closed = zocClosed(g, list, team, held);
     const seen = new Uint8Array(N), q = new Int32Array(N);
     let tail = 0;
     for (const pl of g.players) if (pl.team === team && !pl.out) { const c = nearestFree(g, pl.spawn.x, pl.spawn.z); if (!seen[c]) { seen[c] = 1; q[tail++] = c; } }
@@ -4237,6 +4244,110 @@ function supplyLines(g, list) {
       for (let y = Math.max(0, py - pr); p.cut && y <= Math.min(g.h - 1, py + pr); y++) for (let x = Math.max(0, px - pr); x <= Math.min(W - 1, px + pr); x++) if (seen[y * W + x]) { p.cut = false; break; }
     }
   }
+}
+
+// ---------- territory supply (docs/territory-supply.md) ----------
+// Every CFG.supply.network ticks each team's supply spreads from its sources over ground it can use. g.supplyNet[team]
+// is what supplyRateAt reads: in World Conquest a refill rate per region, elsewhere a supply distance per cell.
+
+// Completed HQs (the spawns where a mode has none), and held points while connected to an HQ: depots in Conquest,
+// every point in Annihilation.
+function supplySources(g, team) {
+  const hqs = [...g.units.values()].filter(u => u.type === 'hq' && u.hp > 0 && (u.built ?? 1) >= 1 && u.owner >= 0 && g.players[u.owner].team === team && !g.players[u.owner].out);
+  const at = hqs.length ? [...hqs] : g.players.filter(p => p.team === team && !p.out).map(p => p.spawn);
+  for (const p of g.points ?? []) if (p.owner >= 0 && g.players[p.owner].team === team && !p.cut && !p.contested && (g.mode?.kind === 'annihilation' || p.kind === 'depot')) at.push(p);
+  return at;
+}
+// World regions that border each other over ground a vehicle crosses, and each region's damaged (fillable) cells.
+// ponytail: a full pass over the map whenever terrain changes (a few ms, at most once per network step); count
+// changed cells instead if it shows in a profile
+function worldSupplyGraph(g) {
+  const key = g.terrainVersion ?? 0;
+  if (g.supplyGraph?.key === key) return g.supplyGraph;
+  const W = g.w, map = g.world.regionMap, n = g.world.regions.length, edges = Array.from({ length: n }, () => new Set()), damage = new Float32Array(n);
+  const open = c => !(g.flags[c] & (MOVE | VBLOCK));
+  for (let c = 0; c < map.length; c++) {
+    const a = map[c];
+    if (a < 0) continue;
+    if (fillable(g, c)) damage[a]++;
+    if (!open(c)) continue;
+    for (const nb of [c % W < W - 1 ? c + 1 : -1, c + W]) {
+      const b = nb >= 0 && nb < map.length ? map[nb] : -1;
+      if (b >= 0 && b !== a && open(nb) && Math.abs(level(g, c) - level(g, nb)) <= 1) { edges[a].add(b); edges[b].add(a); }
+    }
+  }
+  return g.supplyGraph = { key, edges, damage };
+}
+// World Conquest: supply runs through regions the team owns, each one more step (plus its damage) from the nearest
+// source region. A region holding armed enemy ground units and none of the team's blocks it.
+function worldSupply(g, list) {
+  const S = CFG.supply, graph = worldSupplyGraph(g), R = g.world.regions, n = R.length, map = g.world.regionMap, armed = new Map(), net = {};
+  for (const u of list) {
+    if (u.hp <= 0 || u.air || u.riding || !UNITS[u.type].w?.range) continue;
+    const c = cellOf(g, u.x, u.z), r = c >= 0 ? map[c] : -1;
+    if (r < 0) continue;
+    if (!armed.has(r)) armed.set(r, new Set());
+    armed.get(r).add(g.players[u.owner]?.team ?? -1);
+  }
+  for (const team of new Set(g.players.filter(p => !p.out).map(p => p.team))) {
+    const here = r => armed.get(r), usable = r => R[r].team === team && !(here(r) && !here(r).has(team));
+    const cost = new Float32Array(n).fill(Infinity), done = new Uint8Array(n);
+    for (const s of supplySources(g, team)) { const c = cellOf(g, s.x, s.z), r = c >= 0 ? map[c] : -1; if (r >= 0 && R[r].team === team) cost[r] = 0; }
+    // ponytail: Dijkstra picking the cheapest open region by scan, fine for a few hundred regions; a heap past that
+    for (;;) {
+      let a = -1;
+      for (let r = 0; r < n; r++) if (!done[r] && cost[r] < Infinity && (a < 0 || cost[r] < cost[a])) a = r;
+      if (a < 0) break;
+      done[a] = 1;
+      for (const b of graph.edges[a]) if (!done[b] && usable(b)) cost[b] = Math.min(cost[b], cost[a] + 1 + graph.damage[b] * S.damage);
+    }
+    const rate = new Float32Array(n);
+    for (let r = 0; r < n; r++) rate[r] = cost[r] === Infinity ? 0 : Math.max(S.floor, 1 - S.hop * Math.max(0, cost[r] - 1));
+    net[team] = { rate };
+  }
+  return net;
+}
+// Other modes: the supply lines' flood (vehicle ground, closed in enemy zone of control), counting steps. A damaged
+// cell costs CFG.supply.damageCells more, kept in one pass with a bucket queue of a few buckets.
+function groundSupply(g, list) {
+  const S = CFG.supply, W = g.w, N = W * g.h, K = S.damageCells + 2, net = {};
+  for (const team of new Set(g.players.filter(p => !p.out).map(p => p.team))) {
+    const held = g.points.filter(p => p.owner >= 0 && g.players[p.owner].team === team), closed = zocClosed(g, list, team, held);
+    const steps = new Uint16Array(N).fill(65535), buckets = Array.from({ length: K }, () => []);
+    let pending = 0;
+    for (const s of supplySources(g, team)) { const c = nearestFree(g, s.x, s.z); if (c >= 0 && steps[c]) { steps[c] = 0; buckets[0].push(c); pending++; } }
+    for (let d = 0; pending; d++) {
+      const bucket = buckets[d % K];
+      while (bucket.length) {
+        const c = bucket.pop(); pending--;
+        if (steps[c] !== d) continue;
+        const x = c % W;
+        for (const nb of [x > 0 ? c - 1 : -1, x < W - 1 ? c + 1 : -1, c - W, c + W]) {
+          if (nb < 0 || nb >= N || g.flags[nb] & (MOVE | VBLOCK) || closed[nb] || Math.abs(level(g, nb) - level(g, c)) > 1) continue;
+          const next = Math.min(65534, d + 1 + (fillable(g, nb) ? S.damageCells : 0));
+          if (next < steps[nb]) { steps[nb] = next; buckets[next % K].push(nb); pending++; }
+        }
+      }
+    }
+    net[team] = { steps, closed };
+  }
+  return net;
+}
+function supplyNetwork(g, list) { g.supplyNet = g.world?.regionMap ? worldSupply(g, list) : groundSupply(g, list); }
+// The refill rate a player's unit gets where it stands: 1 near a source, down to CFG.supply.floor far out, 0 cut off.
+// A unit inside a house or beside a wall stands where the flood cannot go: the best open cell within 3 cells counts.
+// Standing in enemy zone of control cuts it, however close supplied ground is.
+export function supplyRateAt(g, owner, at) {
+  const S = CFG.supply, net = g.supplyNet?.[g.players[owner]?.team], c = cellOf(g, at.x, at.z);
+  if (!net || c < 0) return 0;
+  if (net.rate) { const r = g.world.regionMap[c]; return r >= 0 ? net.rate[r] : 0; }
+  if (net.closed[c]) return 0;
+  let steps = 65535;
+  const x0 = c % g.w, y0 = Math.floor(c / g.w);
+  for (let y = Math.max(0, y0 - 3); y <= Math.min(g.h - 1, y0 + 3); y++) for (let x = Math.max(0, x0 - 3); x <= Math.min(g.w - 1, x0 + 3); x++) steps = Math.min(steps, net.steps[y * g.w + x]);
+  if (steps === 65535) return 0;
+  const metres = steps * CELL;
+  return metres <= S.near ? 1 : Math.max(S.floor, 1 - (1 - S.floor) * (metres - S.near) / (S.far - S.near));
 }
 
 function activeDebrisCount(g) { return (g.fallingSections?.length ?? 0) + g.wrecks.filter(wreck => wreck.motion && !wreck.motion.settled).length; }
@@ -4754,6 +4865,8 @@ export function step(g) {
   const atAid = (u) => UNITS[u.type].infantry && (tents.some(t => allied(g, t.by, u.owner) && dist(u, t) <= CFG.aid.radius) || tracks.some(h => allied(g, h.owner, u.owner) && dist(u, h) <= CFG.aid.carrier));
   if (g.tick % 10 === 0) { healWounded(g, list, dt * 10); if (g.mines.size) sweepMines(g, list); }
   if (g.supply && g.tick % CFG.supply.every === 1) supplyLines(g, list);
+  // CFG.supply.network 0 freezes the network (tests of reserve mechanics set an empty one)
+  if (g.convoys && CFG.supply.network && g.tick % CFG.supply.network === 0) supplyNetwork(g, list);
   for (const u of list) {
     const def = UNITS[u.type], p = g.players[u.owner], full = def.models * def.hpPer;
     const home = !(def.structure || def.air || u.hp <= 0 || u.hp >= full || u.owner === g.mode?.slot) && atBase(u);

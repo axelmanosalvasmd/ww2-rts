@@ -21,13 +21,16 @@ function fixture(mode = 'conquest', teams = [0]) {
   const troop = (at = { x: 60, z: 0 }, owner = 0) => {
     const u = unit('rifle', owner, at);
     initializeUnit(g, u, { models: 5, infantry: true, speed: 4.5, w: { interval: 1.6, range: 28, inf: 3, veh: 1, perModel: true } });
-    u.logistics.provisions = 20; return u;
+    // trucks serve troops cut off from territory supply (these fixtures have no supply network)
+    u.logistics.provisions = 20; u.logistics.cutFor = 10; return u;
   };
   scheduler.setupConvoys(g);
   const step = (seconds = 1) => { scheduler.stepConvoys(g, seconds, hooks); g.tick += seconds * 20; };
   const trucks = () => [...g.units.values()].filter(u => u.type === 'truck');
+  // trucks now exist only for out-of-supply work; tests of truck mechanics add one at the player's source
+  const truck = (owner = 0) => scheduler.addTruck(g, owner, [...g.convoys.stores.values()].find(s => s.source && s.owner === owner), hooks);
   const arrive = u => { Object.assign(u, u.convoy.destination); u.path = []; u.worldGoal = null; };
-  return { g, hooks, unit, troop, step, trucks, arrive };
+  return { g, hooks, unit, troop, step, trucks, truck, arrive };
 }
 
 test('trucks stay at the source during four-second loading and unload incrementally', () => {
@@ -82,7 +85,7 @@ test('manual hold and resume preserve paid cargo and original delivery', () => {
 
 test('idle trucks with returned cargo never overwrite it when assigning a new job', () => {
   const f = fixture(); f.step();
-  const t = f.trucks()[0]; Object.assign(t.convoy.cargo, { ammo: 0.5, provisions: 40 });
+  const t = f.truck(); Object.assign(t.convoy.cargo, { ammo: 0.5, provisions: 40 });
   f.troop(); f.step(2); f.step(0);
   assert.equal(t.convoy.state, 'delivering');
   assert.equal(t.convoy.cargo.provisions, 40);
@@ -90,7 +93,7 @@ test('idle trucks with returned cargo never overwrite it when assigning a new jo
 });
 
 test('destroyed trucks lose cargo and become replaceable only after thirty seconds', () => {
-  const f = fixture(); f.step(); f.step();
+  const f = fixture(); f.troop(); f.step(); f.step();
   const before = f.trucks().length, dead = f.trucks()[0];
   dead.convoy.cargo.provisions = 100;
   scheduler.convoyDeath(f.g, dead); f.g.units.delete(dead.id);
@@ -99,21 +102,6 @@ test('destroyed trucks lose cargo and become replaceable only after thirty secon
   f.step(); f.step(0);
   assert.equal(f.trucks().length, before);
   assert.equal(f.trucks().reduce((sum, t) => sum + t.convoy.cargo.provisions, 0), 0);
-});
-
-test('region zero makes exactly one cache and its destruction waits thirty seconds', () => {
-  const f = fixture('world');
-  f.g.world = { regions: [{ id: 0, team: 0, x: 40, z: 0 }] };
-  f.step(0);
-  const store = f.g.convoys.stores.get('region:0'), cache = f.g.units.get(store.entity);
-  f.step(2); f.step(0);
-  assert.equal(f.g.convoys.stores.has(`cache:${cache.id}`), false);
-  scheduler.convoyDeath(f.g, cache); f.g.units.delete(cache.id);
-  f.step(28);
-  assert.equal(f.g.convoys.stores.get('region:0').entity, cache.id);
-  f.step(2); f.step(0);
-  assert.notEqual(f.g.convoys.stores.get('region:0').entity, cache.id);
-  assert.equal(f.g.convoys.stores.get('region:0').buckets.size, 0);
 });
 
 test('fleet shrink retires only empty automatic trucks parked at an active source', () => {
@@ -125,7 +113,7 @@ test('fleet shrink retires only empty automatic trucks parked at an active sourc
   keep.convoy.cargo.provisions = 50; keep.convoy.state = 'idle'; keep.path = [];
   for (const t of own.slice(1)) { t.convoy.state = 'idle'; t.convoy.target = null; t.convoy.cargo = empty(); t.path = []; t.worldGoal = null; Object.assign(t, { x: 0, z: 0 }); }
   f.step(2); f.step();
-  assert.equal(f.trucks().length, 2);
+  assert.equal(f.trucks().length, 1, 'with no work left only the truck still holding cargo stays');
   assert.equal(f.g.units.has(keep.id), true);
   assert.equal(keep.convoy.cargo.provisions, 50);
 });
@@ -134,7 +122,7 @@ test('source loads charge only the paying owner and explicit allied relief does 
   const f = fixture('classic', [0, 0]), recipient = f.troop({ x: 60, z: 0 }, 1);
   recipient.logistics.ammo = 0;
   f.step();
-  const t = f.trucks().find(u => u.owner === 0), beforeOther = f.g.players[1].mun;
+  const t = f.truck(), beforeOther = f.g.players[1].mun;
   for (const other of f.trucks().filter(t => t.owner === 1)) { other.convoy.hold = true; }
   f.g.players[1].away = true;
   scheduler.commandConvoy(f.g, 0, { t: 'supply', ids: [t.id], target: recipient.id }, f.hooks);
@@ -152,7 +140,7 @@ test('manual extension cannot reuse consumed operating fuel or move without fund
   assert.equal(typeof scheduler.consumeConvoyTravel, 'function');
   assert.equal(typeof scheduler.convoyTravelBudget, 'function');
   const f = fixture('classic'); f.step();
-  const t = f.trucks()[0];
+  const t = f.truck();
   assert.equal(scheduler.commandConvoy(f.g, 0, { t: 'move', orders: [[t.id, 100, 0]] }, f.hooks), null);
   assert.ok(f.g.players[0].fuel < 100);
   const funded = scheduler.convoyTravelBudget(f.g, t, 10000);
@@ -167,7 +155,7 @@ test('manual extension cannot reuse consumed operating fuel or move without fund
 
 test('returning unused paid cargo stores it once under its payer and does not refund currency', () => {
   const f = fixture('classic'); f.step();
-  const t = f.trucks()[0], source = [...f.g.convoys.stores.values()].find(s => s.source);
+  const t = f.truck(), source = [...f.g.convoys.stores.values()].find(s => s.source);
   Object.assign(t.convoy, { state: 'returning', origin: source.id, destination: { x: 0, z: 0 }, cargo: { ammo: 2, provisions: 50, fuel: 30 } });
   const money = { fuel: f.g.players[0].fuel, mun: f.g.players[0].mun };
   f.step(); f.step();
@@ -179,7 +167,7 @@ test('returning unused paid cargo stores it once under its payer and does not re
 
 test('queued waypoints reserve the complete route once and preserve manual state', () => {
   const f = fixture('classic'); f.step();
-  const t = f.trucks()[0];
+  const t = f.truck();
   scheduler.commandConvoy(f.g, 0, { t: 'move', orders: [[t.id, 100, 0]] }, f.hooks);
   t.path = [{ x: 100, z: 0 }]; t.worldGoal = { x: 100, z: 0 };
   const before = f.g.players[0].fuel;
@@ -205,7 +193,7 @@ test('moving support stores cannot receive unloaded cargo from outside handoff r
   f.step();
   const store = f.g.convoys.stores.get(`support:${host.id}`);
   store.buckets.get(0).provisions = 0;
-  const t = f.trucks()[0];
+  const t = f.truck();
   Object.assign(t, { x: 40, z: 0 });
   Object.assign(t.convoy, { state: 'unloading', timer: 8, target: { id: store.id, store: store.id, x: 40, z: 0 }, cargo: { ammo: 0, provisions: 50, fuel: 0 } });
   const before = store.buckets.get(0).provisions;
@@ -217,7 +205,7 @@ test('moving support stores cannot receive unloaded cargo from outside handoff r
 
 test('a full return source retains surplus cargo on the truck without duplicating stock', () => {
   const f = fixture('classic'); f.step();
-  const t = f.trucks()[0], source = [...f.g.convoys.stores.values()].find(s => s.source);
+  const t = f.truck(), source = [...f.g.convoys.stores.values()].find(s => s.source);
   source.buckets.set(0, { ammo: source.capacity.ammo, provisions: source.capacity.provisions, fuel: source.capacity.fuel });
   Object.assign(t.convoy, { state: 'returning', destination: { x: 0, z: 0 }, cargo: { ammo: 2, provisions: 50, fuel: 30 } });
   f.step();
@@ -256,22 +244,9 @@ test('contested depot stock pauses intact while an ownership change destroys it'
   assert.equal(f.g.convoys.stores.get('point:0').buckets.get(0), undefined);
 });
 
-test('regional ownership changes transfer the existing cache and destroy its old stocks', () => {
-  const f = fixture('world', [0, 1]);
-  f.g.world = { regions: [{ id: 0, team: 0, x: 40, z: 0 }] };
-  f.step(0);
-  const old = f.g.convoys.stores.get('region:0'); old.buckets.set(0, { ammo: 2, provisions: 90, fuel: 20 });
-  f.g.world.regions[0].team = 1; f.g.tick = 40; f.step(0);
-  const current = f.g.convoys.stores.get('region:0');
-  assert.equal(current.entity, old.entity);
-  assert.equal(f.g.units.get(current.entity).owner, 1);
-  assert.equal(current.buckets.get(0), undefined);
-  assert.equal([...f.g.units.values()].filter(u => u.type === 'supplycache').length, 1);
-});
-
 test('manual return reserves operating fuel before applying retreat state', () => {
   const f = fixture('classic'); f.step();
-  const t = f.trucks()[0]; t.x = 100; f.g.players[0].fuel = 0;
+  const t = f.truck(); t.x = 100; f.g.players[0].fuel = 0;
   assert.deepEqual(scheduler.commandConvoy(f.g, 0, { t: 'retreat', ids: [t.id] }, f.hooks), { result: 'fuel' });
   assert.equal(t.convoy.manual, false);
   f.g.players[0].fuel = 1;
@@ -300,7 +275,7 @@ test('automatic deliveries stop for newly visible danger and resume the same fun
 
 test('interrupted collection resumes toward the origin and waits to load there', () => {
   const f = fixture(); f.step();
-  const t = f.trucks()[0]; t.x = 100;
+  const t = f.truck(); t.x = 100;
   f.troop({ x: 180, z: 0 }); f.g.tick = 40; f.step(0);
   assert.equal(t.convoy.state, 'collecting');
   let safe = false;
@@ -315,22 +290,6 @@ test('interrupted collection resumes toward the origin and waits to load there',
   f.arrive(t); f.step(0);
   assert.equal(t.convoy.state, 'loading');
   assert.deepEqual(t.convoy.cargo, empty());
-});
-
-test('neutral regional intervals retain one cache entity without old-owner stock or ownership', () => {
-  const f = fixture('world', [0, 1]);
-  f.g.world = { regions: [{ id: 0, team: 0, x: 40, z: 0 }] }; f.step(0);
-  const old = f.g.convoys.stores.get('region:0'), entity = f.g.units.get(old.entity);
-  old.buckets.set(0, { ammo: 1, provisions: 50, fuel: 10 });
-  f.g.world.regions[0].team = -1; f.g.tick = 40; f.step(0);
-  assert.equal(f.g.convoys.stores.get('region:0').entity, entity.id);
-  assert.equal(entity.owner, -1);
-  assert.equal(old.active, false);
-  assert.equal(old.buckets.size, 0);
-  f.g.world.regions[0].team = 1; f.g.tick = 80; f.step(0);
-  assert.equal(f.g.convoys.stores.get('region:0').entity, entity.id);
-  assert.equal(entity.owner, 1);
-  assert.equal([...f.g.units.values()].filter(u => u.type === 'supplycache').length, 1);
 });
 
 test('automatic blocked dispatch emits a grouped route reason and suppresses repeated alerts', () => {
@@ -354,7 +313,7 @@ test('forced and stranded units receive separate grouped notifications', () => {
 
 test('collection survives source loss and resumes at a rebuilt friendly HQ', () => {
   const f = fixture('classic'); f.step();
-  const t = f.trucks()[0]; t.x = 100; f.troop({ x: 180, z: 0 }); f.g.tick = 40; f.step(0);
+  const t = f.truck(); t.x = 100; f.troop({ x: 180, z: 0 }); f.g.tick = 40; f.step(0);
   const target = t.convoy.target;
   const old = [...f.g.units.values()].find(u => u.type === 'hq');
   scheduler.convoyDeath(f.g, old); f.g.units.delete(old.id);
@@ -370,7 +329,7 @@ test('collection survives source loss and resumes at a rebuilt friendly HQ', () 
 
 test('returned paid cargo survives absent sources and resumes after a friendly HQ rebuild', () => {
   const f = fixture('classic'); f.step();
-  const t = f.trucks()[0], old = [...f.g.units.values()].find(u => u.type === 'hq');
+  const t = f.truck(), old = [...f.g.units.values()].find(u => u.type === 'hq');
   t.x = 100;
   Object.assign(t.convoy, { state: 'returning', cargo: { ammo: 1, provisions: 30, fuel: 10 } });
   scheduler.convoyDeath(f.g, old); f.g.units.delete(old.id); f.g.tick = 40; f.step(0);
@@ -386,7 +345,7 @@ test('returned paid cargo survives absent sources and resumes after a friendly H
 
 test('queued long movement funds the full current goal beyond its active navigation leg', () => {
   for(const path of [[{x:64,z:0}],[]]) {
-  const f=fixture('classic');f.step(0);const t=f.trucks()[0];
+  const f=fixture('classic');f.step(0);const t=f.truck();
   Object.assign(t,{path,worldGoal:{x:1000,z:0}});
   Object.assign(t.convoy,{manual:true,state:'manual',operatingMetres:2400});
   assert.equal(scheduler.commandConvoy(f.g,0,{t:'move',queue:true,orders:[[t.id,1000,1000]]},f.hooks),null);
@@ -430,7 +389,7 @@ test('a cycle with many trucks to reroute spreads their route plans over ticks',
 
 test('a truck stuck within loading reach of its HQ counts as home', () => {
   const f = fixture('classic'); f.step();
-  const t = f.trucks()[0], hq = [...f.g.units.values()].find(u => u.type === 'hq');
+  const t = f.truck(), hq = [...f.g.units.values()].find(u => u.type === 'hq');
   Object.assign(t, { x: hq.x + 13, z: hq.z, path: [{ x: hq.x + 9, z: hq.z }], stuck: 0 });
   Object.assign(t.convoy, { state: 'returning', cargo: { ammo: 1, provisions: 30, fuel: 10 }, destination: { x: hq.x, z: hq.z }, origin: `source:${hq.id}` });
   f.step(0);
@@ -440,7 +399,7 @@ test('a truck stuck within loading reach of its HQ counts as home', () => {
   assert.deepEqual(f.g.convoys.stores.get(`source:${hq.id}`).buckets.get(0), { ammo: 1, provisions: 30, fuel: 10 });
 });
 
-test('rechecking the same trip does not plan the way home again', () => {
+test('pricing the way home needs no route search', () => {
   const f = fixture('classic'), troop = f.troop({ x: 300, z: 0 });
   f.step(); f.step(4);
   const t = f.trucks().find(u => u.convoy.state === 'delivering');
@@ -450,7 +409,6 @@ test('rechecking the same trip does not plan the way home again', () => {
   f.hooks.route = (u, at, safe) => { if (Math.hypot(at.x - hq.x, at.z - hq.z) < 1) homeward.push(f.g.tick); return route(u, at, safe); };
   f.hooks.continueRoute = () => false;
   f.step(2); f.step(2);
-  assert.equal(homeward.length, 0, 'the way home was priced once, when the trip was funded');
   troop.x += 50; f.step(2);
-  assert.equal(homeward.length, 1, 'a new trip end prices the way home again');
+  assert.equal(homeward.length, 0, 'the way home is priced by its straight line, rechecks and new trip ends alike');
 });

@@ -9,7 +9,10 @@ export const LOGISTICS = Object.freeze({
   referenceAmmo: 3, referenceProvisions: 120, referenceFuel: 180,
   cargoEquivalents: 8, cacheEquivalents: 32, supportEquivalents: 4,
   replacementSeconds: 30, loadSeconds: 4, dispatchSeconds: 2,
-  spawnSeconds: 1, minTrucks: 2, maxTrucks: 24,
+  // Territory supply refills full reserves in refillSeconds at a rate of 1; a unit cut off keeps its last rate for
+  // supplyGrace seconds. Trucks serve only what is out of supply: at most maxTrucks each, none while nothing is.
+  refillSeconds: 40, supplyGrace: 10,
+  spawnSeconds: 1, minTrucks: 0, maxTrucks: 4,
   routeFuelPerMetre: 0.002, routeContingency: 1.2, alertSeconds: 20,
 });
 

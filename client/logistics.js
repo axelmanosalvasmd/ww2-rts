@@ -7,6 +7,8 @@ export function decodeLogistics(snapshot, visibleUnits, owner, friendly = slot =
     units: new Map((enabled ? wire.units ?? [] : []).filter(own).map(row => [row.id, row])),
     trucks: new Map((enabled ? wire.trucks ?? [] : []).filter(own).map(row => [row.id, row])),
     stores: new Map((enabled ? wire.stores ?? [] : []).filter(row => friendly(row.owner) && position(row)).map(row => [row.id, row])),
+    // World Conquest: own regions' supply rate (0 cut off, 1 full), for the overlay
+    regions: new Map(enabled ? wire.regions ?? [] : []),
     events: enabled ? wire.events ?? [] : []
   };
 }
@@ -21,6 +23,10 @@ export function reserveLabels(row) {
   if (row.emergency != null) labels.push(`Emergency fuel: ${seconds(row.emergency)}`);
   if (row.warning != null && !row.forced) labels.push(`Withdrawal in ${Math.ceil(amount(row.warning))} s`);
   if (row.forced) labels.push(row.stranded ? 'Stranded' : 'Mandatory withdrawal');
+  // territory supply: the line's strength, the grace countdown once out of it, or cut off
+  if (row.cut) labels.push('Cut off from supply');
+  else if (row.grace != null) labels.push(`Out of supply: refill stops in ${Math.ceil(amount(row.grace))} s`);
+  else if (row.supply != null) labels.push(`Supply line: ${Math.round(amount(row.supply) * 100)}%`);
   return labels;
 }
 
@@ -47,6 +53,7 @@ export function logisticsIndicator(row) {
   if (!row) return '';
   if (row.stranded) return 'Stranded';
   if (row.forced) return 'Mandatory withdrawal';
+  if (row.cut) return 'Cut off from supply';
   return row.warning != null || row.ammo != null && row.ammo < 0.25 || row.provisions < 30 || row.fuel != null && row.fuel < 45 ? 'Low supplies' : '';
 }
 
@@ -74,7 +81,7 @@ const EVENT_TEXT = { low: 'Low supplies', lowReserve: 'Low supplies', lowReserve
   unreachable: 'Delivery route unreachable', dangerous: 'Known danger blocks deliveries', danger: 'Known danger blocks deliveries',
   currency: 'Insufficient currency for supplies', funds: 'Insufficient currency for supplies', stock: 'Supply stockpile empty',
   insufficientStock: 'Supply stockpile empty', withdrawal: 'Mandatory withdrawal', forced: 'Mandatory withdrawal',
-  transit: 'Supplies in transit', stranded: 'Stranded' };
+  transit: 'Supplies in transit', stranded: 'Stranded', cut: 'Cut off from supply', restored: 'Supply line restored' };
 export function createLogisticsAlerts() {
   const seen = new Set(), recent = new Map();
   return {

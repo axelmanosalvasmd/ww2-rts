@@ -1648,6 +1648,12 @@ function drawMinimap() {
     c.imageSmoothingEnabled = !lastStart?.map.world; c.drawImage(mmFog, 0, 0, MW, MH);
   }
   const col = (slot) => css(look(slot).color);
+  // logistics overlay: own World regions tinted by supply (green full, amber weakened, red cut off)
+  const supplyTint = logisticsOverlay && logisticsData.enabled ? logisticsData.regions : null;
+  for (const r of lastSnap.world?.regions ?? []) {
+    const rate = supplyTint?.get(r.id);
+    if (rate !== undefined && r.runs) { c.fillStyle = rate <= 0 ? '#d4574a55' : rate < 1 ? '#e8c86044' : '#95c88833'; for (const [y, x0, x1] of r.runs) c.fillRect(x0 * 2, y * 2, (x1 - x0) * 2, 2); }
+  }
   for (const r of lastSnap.world?.regions ?? []) {
     c.strokeStyle = regionTeamColor(r.team); c.lineWidth = 1 / S;
     if (r.runs) { c.beginPath(); for(const [x,y,xx,yy] of territoryEdges(r.runs)){c.moveTo(x*2,y*2);c.lineTo(xx*2,yy*2);}c.stroke(); }
@@ -1678,6 +1684,9 @@ function drawMinimap() {
       c.beginPath(); route.points.forEach((p, i) => i ? c.lineTo(p.x, p.z) : c.moveTo(p.x, p.z)); c.stroke();
     }
     for (const store of supply.stores) { c.fillStyle = store.source ? '#e8c860' : '#a8d680'; c.fillRect(store.x - 4, store.z - 4, 8, 8); }
+    // own units cut off from supply: a red ring
+    c.strokeStyle = '#d4574a';
+    for (const v of units.values()) if (logisticsData.units.get(v.id)?.cut) { c.beginPath(); c.arc(v.x, v.z, 6, 0, Math.PI * 2); c.stroke(); }
     c.strokeStyle = '#d4574a66';
     for (const v of units.values()) if (foe(v.owner) && UNITS[v.type].w && fogOfWar?.at(v.x, v.z) === 'seen') {
       c.beginPath(); c.arc(v.x, v.z, UNITS[v.type].w.range, 0, Math.PI * 2); c.stroke();

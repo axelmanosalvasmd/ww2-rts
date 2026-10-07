@@ -12,7 +12,7 @@ const round = n => Math.round(n * 100) / 100;
 
 export function setupConvoys(g) {
   if (!g.logisticsEnabled) return;
-  g.convoys = { stores: new Map(), nextSpawn: new Map(), losses: new Map(), events: [], alerts: new Map(), nextEvent: 1, nextSchedule: 0, refreshQueue: [], scheduleQueue: [], scheduled: new Set(), routed: 0 };
+  g.convoys = { stores: new Map(), nextSpawn: new Map(), losses: new Map(), events: [], alerts: new Map(), nextEvent: 1, nextSchedule: 0, refreshQueue: [], scheduleQueue: [], scheduled: new Set(), routed: 0, jobs: new Map() };
 }
 
 function alert(g, owner, type, message, at, count = 1) {
@@ -93,32 +93,6 @@ function syncStores(g, hooks) {
     const p = g.points[i];
     if (p.kind === 'depot' && p.owner >= 0 && !p.contested) ensure(`point:${i}`, p.owner, p, false, null).point = i;
   }
-  if (g.world) {
-    for (const r of g.world.regions) {
-      if (r.team < 0) {
-        const previous = s.stores.get(`region:${r.id}`);
-        if (previous) {
-          previous.owner = -1; previous.buckets.clear();
-          const entity = g.units.get(previous.entity);
-          if (entity) entity.owner = -1;
-        }
-        continue;
-      }
-      const owner = g.players.find(p => p.team === r.team && !p.out)?.slot;
-      if (owner === undefined) continue;
-      const id = `region:${r.id}`, old = s.stores.get(id);
-      let entity = old && g.units.get(old.entity);
-      if (!entity || entity.hp <= 0) {
-        if (old?.lostAt !== undefined && g.tick / 20 - old.lostAt < L.replacementSeconds) continue;
-        entity = hooks.cache(owner, r);
-        if (!entity) continue;
-        entity.regionCache = r.id;
-      }
-      entity.owner = owner;
-      const store = ensure(id, owner, entity, false, entity.id);
-      store.region = r.id; delete store.lostAt;
-    }
-  }
   for (const [id, store] of s.stores) if (!store.active) {
     if (store.point !== undefined && g.points[store.point]?.owner === store.owner && g.points[store.point].contested) continue;
     if (store.region !== undefined && g.world?.regions.some(r => r.id === store.region && (r.team < 0 || store.lostAt !== undefined && g.players[store.owner]?.team === r.team))) continue;
@@ -131,19 +105,53 @@ function missing(u) {
   return { ammo: Math.max(0, (r.ammoMax - r.ammo) * r.ammoPrice - (r.ammoCredit ?? 0)), provisions: Math.max(0, L.provisions - r.provisions), fuel: r.fuel === null ? 0 : Math.max(0, L.fuel - r.fuel) + Math.max(0, L.emergency - r.emergency) };
 }
 
+// What a player gets for supplies drawn from a source: Classic and World Conquest pay Munitions and Fuel as far as
+// they last; provisions, and everything in other modes, are free.
+function buy(g, owner, k, want) {
+  if (k === 'provisions' || !construction(g)) return want;
+  const p = g.players[owner], field = k === 'ammo' ? 'mun' : 'fuel', price = k === 'fuel' ? L.fuelPrice : 1;
+  const amount = Math.min(want, Math.max(0, p[field] ?? 0) / price);
+  p[field] = Math.max(0, (p[field] ?? 0) - amount * price);
+  return amount;
+}
 function fillFromSource(g, source, owner, need, limit) {
-  const p = g.players[owner], stock = bucket(source, owner), cargo = empty();
+  const stock = bucket(source, owner), cargo = empty();
   for (const k of keys) {
     let want = Math.min(Math.max(0, need[k] ?? 0), limit[k]);
     const reused = Math.min(stock[k], want); stock[k] -= reused; cargo[k] += reused; want -= reused;
-    if (k === 'provisions' || !construction(g)) cargo[k] += want;
-    else {
-      const field = k === 'ammo' ? 'mun' : 'fuel', price = k === 'fuel' ? L.fuelPrice : 1;
-      const amount = Math.min(want, Math.max(0, p[field] ?? 0) / price);
-      p[field] = Math.max(0, (p[field] ?? 0) - amount * price); cargo[k] += amount;
-    }
+    cargo[k] += buy(g, owner, k, want);
   }
   return cargo;
+}
+
+// Territory supply (docs/territory-supply.md): every unit with reserves refills where it stands at its network rate
+// (full in L.refillSeconds at a rate of 1), paid like a source. Cut off, it keeps its last rate for L.supplyGrace
+// seconds, then gets nothing. Finite stores in supply (halftracks, aid stations, caches) restock the same way.
+function territoryService(g, dt, hooks) {
+  if (!hooks.supplyRate) return;
+  const cut = new Map();
+  for (const u of g.units.values()) {
+    const r = u.logistics;
+    if (!r || u.hp <= 0) continue;
+    const rate = hooks.supplyRate(u.owner, u.riding ? g.units.get(u.riding) ?? u : u), wasCut = (r.cutFor ?? 0) >= L.supplyGrace;
+    if (rate > 0) { r.supplyRate = rate; r.cutFor = 0; } else r.cutFor = (r.cutFor ?? 0) + dt;
+    const isCut = r.cutFor >= L.supplyGrace;
+    if (isCut && !wasCut) cut.set(u.owner, [...(cut.get(u.owner) ?? []), u]);
+    if (wasCut && !isCut) alert(g, u.owner, 'restored', 'Supply line restored', u);
+    const need = missing(u), share = isCut ? 0 : (r.supplyRate ?? 0) * dt / L.refillSeconds;
+    if (!(share > 0) || quantity(need) < 1e-6) continue;
+    const limit = { ammo: r.ammoMax * r.ammoPrice * share, provisions: L.provisions * share, fuel: (L.fuel + L.emergency) * share }, stock = empty();
+    for (const k of keys) stock[k] = buy(g, u.owner, k, Math.min(need[k], limit[k]));
+    transferStock(stock, u, dt);
+  }
+  for (const [owner, units] of cut) alert(g, owner, 'cut', `${units.length} unit${units.length === 1 ? '' : 's'} cut off from supply`, units[0], units.length);
+  for (const store of g.convoys.stores.values()) {
+    if (!store.active || store.source || store.owner < 0) continue;
+    const rate = hooks.supplyRate(store.owner, store);
+    if (!(rate > 0)) continue;
+    const b = bucket(store, store.owner), space = storeSpace(store), share = rate * dt / L.refillSeconds;
+    for (const k of keys) b[k] += buy(g, store.owner, k, Math.min(space[k], store.capacity[k] * share));
+  }
 }
 
 function moveStock(from, to, limits) {
@@ -188,15 +196,9 @@ function fundRoute(g, u, path, hooks, from = u) {
   const end = path.at(-1) ?? from;
   const origin = g.convoys.stores.get(u.convoy.origin) ?? sources(g, u.owner)[0];
   const home = origin ?? from;
-  // The way home is searched once per trip end and home, not again on every recheck of the same trip.
-  // A route without a reachable return still reserves at least its direct return.
-  const key = [end.x, end.z, home.x, home.z].map(n => Math.round(n / 4)).join(':');
-  let homeTrip = u.convoy.home;
-  if (homeTrip?.key !== key) {
-    const homePath = hooks.route({ ...u, x: end.x, z: end.z }, home, false);
-    homeTrip = { key, length: homePath.length ? routeLength(end, homePath) : distance(end, home) };
-  }
-  const homeLength = homeTrip.length;
+  // The way home is priced by its straight line, the contingency covering detours: searching it cost about 47 ms
+  // per dispatch, the larger part of what the few remaining trucks cost.
+  const homeLength = distance(end, home);
   const required = (routeLength(from, path) + homeLength) * L.routeContingency;
   const extra = Math.max(0, required - (u.convoy.operatingMetres ?? 0));
   const cost = extra * L.routeFuelPerMetre, p = g.players[u.owner];
@@ -204,7 +206,7 @@ function fundRoute(g, u, path, hooks, from = u) {
     alert(g, u.owner, 'currency', 'Not enough Fuel to dispatch supplies', u); return false;
   }
   p.fuel = Math.max(0, (p.fuel ?? 0) - cost);
-  u.convoy.operatingMetres = (u.convoy.operatingMetres ?? 0) + extra; u.convoy.home = homeTrip;
+  u.convoy.operatingMetres = (u.convoy.operatingMetres ?? 0) + extra;
   return true;
 }
 
@@ -240,7 +242,7 @@ function sendTruck(g, u, target, hooks, manual = false) {
   return true;
 }
 
-function targetsFor(g, owner) {
+function targetsFor(g, owner, hooks) {
   const targets = [], occupied = new Set();
   for (const u of g.units.values()) if (u.type === 'truck' && u.owner === owner && u.hp > 0 && u.convoy?.target && !['idle', 'returning', 'waitingReturn'].includes(u.convoy.state)) {
     occupied.add(u.convoy.target.id);
@@ -251,6 +253,8 @@ function targetsFor(g, owner) {
   for (const u of troops.sort((a, b) => a.logistics.provisions - b.logistics.provisions)) {
     if (assigned.has(u.id) || occupied.has(`unit:${u.id}`)) continue;
     const r = u.logistics;
+    // troops in supply refill from the territory; trucks are for the ones cut off
+    if ((r.cutFor ?? 0) < L.supplyGrace) continue;
     if (r.provisions > 90 && (!r.ammoMax || r.ammo / r.ammoMax > .75) && (r.fuel === null || r.fuel > L.fuel * .75) && !r.forced) continue;
     const members = troops.filter(t => !assigned.has(t.id) && !occupied.has(`unit:${t.id}`) && distance(t, u) <= 10);
     const need = empty();
@@ -259,8 +263,8 @@ function targetsFor(g, owner) {
   }
   for (const store of g.convoys.stores.values()) {
     if (!store.active || store.source || !friendly(g, store.owner, owner) || occupied.has(store.id)) continue;
-    const relevant = troops.some(u => distance(u, store) < 200) || store.region !== undefined;
-    if (!relevant) continue;
+    // stores in supply restock from the territory; trucks stock the ones beyond it
+    if (hooks?.supplyRate?.(store.owner, store) > 0 || !troops.some(u => distance(u, store) < 200)) continue;
     const b = bucket(store, owner), need = empty();
     for (const k of keys) need[k] = Math.min(storeSpace(store)[k], Math.max(0, store.capacity[k] * .5 - b[k]));
     if (quantity(need) > 1) targets.push({ id: store.id, store: store.id, owner, x: store.x, z: store.z, need, priority: store.support ? 170 : 180 + (store.region === undefined ? 0 : .01 * distance(store, g.players[owner].spawn)) });
@@ -358,8 +362,9 @@ function fleet(g, hooks) {
   for (const p of g.players) {
     if (p.out || p.away) continue;
     const own = [...g.units.values()].filter(u => u.owner === p.slot && u.hp > 0), active = own.filter(u => u.type === 'truck');
-    const count = own.filter(u => u.logistics).length;
-    const desired = Math.min(L.maxTrucks, Math.max(L.minTrucks, 2 + Math.ceil(count / (4 * scaleOf(g)))));
+    // trucks only for what is out of supply: the busy ones plus open jobs
+    const busy = active.filter(u => u.convoy.state !== 'idle' || u.convoy.manual || u.convoy.hold).length;
+    const desired = Math.min(L.maxTrucks, Math.max(L.minTrucks, busy + (g.convoys.jobs.get(p.slot) ?? 0)));
     let surplus = active.length - desired;
     for (let i = active.length - 1; i >= 0 && surplus > 0; i--) {
       const u = active[i], c = u.convoy;
@@ -373,10 +378,16 @@ function fleet(g, hooks) {
     if (active.length + losses.length >= desired || now < (g.convoys.nextSpawn.get(p.slot) ?? 0)) continue;
     const source = sources(g, p.slot)[0];
     if (!source) continue;
-    const u = hooks.spawn(p.slot, 'truck', source);
-    u.autoRetreat = false; u.convoy = { state: 'idle', cargo: empty(), target: null, origin: source.id, timer: 0, manual: false, hold: false, route: [], destination: null, operatingMetres: 0 };
+    addTruck(g, p.slot, source, hooks);
     g.convoys.nextSpawn.set(p.slot, now + L.spawnSeconds);
   }
+}
+
+// A new automatic truck, idle at a source.
+export function addTruck(g, owner, source, hooks) {
+  const u = hooks.spawn(owner, 'truck', source);
+  u.autoRetreat = false; u.convoy = { state: 'idle', cargo: empty(), target: null, origin: source.id, timer: 0, manual: false, hold: false, route: [], destination: null, operatingMetres: 0 };
+  return u;
 }
 
 // The cycle queues every player. A player's pass stops when this tick's route plans are used up and goes on next
@@ -392,7 +403,8 @@ function schedule(g, hooks) {
 function schedulePlayer(g, p, hooks) {
   const s = g.convoys;
   const idle = [...g.units.values()].filter(u => u.owner === p.slot && u.type === 'truck' && u.hp > 0 && u.convoy.state === 'idle' && !u.convoy.manual && !u.convoy.hold && !s.scheduled.has(u.id));
-  const targets = targetsFor(g, p.slot);
+  const targets = targetsFor(g, p.slot, hooks);
+  s.jobs.set(p.slot, targets.length);
   for (const u of idle) {
     if (s.routed >= ROUTES_PER_TICK) return false;
     s.scheduled.add(u.id);
@@ -402,7 +414,7 @@ function schedulePlayer(g, p, hooks) {
       let assigned = false;
       const origins = originsFor(g, p.slot, target);
       noStock ||= !origins.length;
-      for (const origin of origins) if (assignJob(g, u, target, origin, hooks)) { assigned = true; targets.splice(i, 1); break; }
+      for (const origin of origins) if (assignJob(g, u, target, origin, hooks)) { assigned = true; targets.splice(i, 1); s.jobs.set(p.slot, targets.length); break; }
       blocked ||= origins.length > 0 && !assigned;
       if (assigned) break;
     }
@@ -483,10 +495,13 @@ export function stepConvoys(g, dt, hooks) {
     // an unfinished pass carries on first (with many trucks it can outlast a cycle), so no truck or player starves
     if (!s.refreshQueue.length) s.refreshQueue = [...g.units.values()].filter(u => u.type === 'truck' && u.convoy).map(u => u.id);
     if (!s.scheduleQueue.length) { s.scheduleQueue = g.players.map(p => p.slot); s.scheduled = new Set(); }
+    // jobs counted before the fleet sizes itself, so a new job gets its truck this cycle
+    for (const p of g.players) if (!p.out && !p.away) s.jobs.set(p.slot, targetsFor(g, p.slot, hooks).length);
     s.nextSchedule = g.tick + Math.round(L.dispatchSeconds * 20);
   }
   refreshRoutes(g, hooks); fleet(g, hooks); schedule(g, hooks);
   localService(g, dt, hooks);
+  territoryService(g, dt, hooks);
   for (const u of g.units.values()) {
     if (u.type !== 'truck' || u.hp <= 0 || u.convoy.hold) continue;
     const c = u.convoy;
@@ -610,7 +625,10 @@ export function logisticsSnapshot(g, slot) {
   const p = g.players[slot], visible = store => friendly(g, store.owner, slot);
   return {
     enabled: true,
-    units: [...g.units.values()].filter(u => u.owner === slot && u.logistics).map(u => ({ id: u.id, ammo: u.logistics.ammoMax ? round(u.logistics.ammo / u.logistics.ammoMax) : null, provisions: round(u.logistics.provisions), fuel: u.logistics.fuel === null ? null : round(u.logistics.fuel), emergency: u.logistics.emergency === null ? null : round(u.logistics.emergency), warning: u.logistics.warning === null ? null : round(u.logistics.warning), forced: u.logistics.forced, stranded: u.logistics.stranded })),
+    units: [...g.units.values()].filter(u => u.owner === slot && u.logistics).map(u => ({ id: u.id, ammo: u.logistics.ammoMax ? round(u.logistics.ammo / u.logistics.ammoMax) : null, provisions: round(u.logistics.provisions), fuel: u.logistics.fuel === null ? null : round(u.logistics.fuel), emergency: u.logistics.emergency === null ? null : round(u.logistics.emergency), warning: u.logistics.warning === null ? null : round(u.logistics.warning), forced: u.logistics.forced, stranded: u.logistics.stranded,
+      supply: round((u.logistics.cutFor ?? 0) >= L.supplyGrace ? 0 : u.logistics.supplyRate ?? 0), cut: (u.logistics.cutFor ?? 0) >= L.supplyGrace,
+      grace: u.logistics.cutFor > 0 && u.logistics.cutFor < L.supplyGrace ? Math.ceil(L.supplyGrace - u.logistics.cutFor) : null })),
+    regions: g.world && g.supplyNet?.[p.team]?.rate ? g.world.regions.flatMap((r, i) => r.team === p.team ? [[r.id, round(g.supplyNet[p.team].rate[i])]] : []) : undefined,
     trucks: [...g.units.values()].filter(u => u.owner === slot && u.convoy).map(u => ({ id: u.id, state: u.convoy.state, manual: u.convoy.manual, hold: u.convoy.hold, cargo: Object.fromEntries(keys.map(k => [k, round(u.convoy.cargo[k])])), destination: u.convoy.destination, route: u.path.map(at => ({ x: round(at.x), z: round(at.z) })) })),
     stores: [...g.convoys.stores.values()].filter(s => s.active && visible(s)).map(s => ({ id: s.id, owner: s.owner, x: round(s.x), z: round(s.z), source: s.source, stock: { ...bucket(s, slot) }, capacity: { ...s.capacity } })),
     events: g.convoys.events.filter(e => e.owner === slot).map(({ owner, at, ...e }) => e),

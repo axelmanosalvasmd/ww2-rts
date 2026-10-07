@@ -5,6 +5,22 @@ AI-vs-AI runs (see DESIGN.md for the balance log). Add new entries under **Unrel
 
 ## Unreleased
 
+- Supply now flows through connected friendly territory instead of a fleet of trucks (docs/territory-supply.md).
+  Units refill where they stand: at full rate near an HQ (or a held depot in Conquest, any held point in
+  Annihilation), weakening along the line to 25%. In World Conquest supply runs through owned regions that border
+  each other; elsewhere it follows ground vehicles can cross. Enemy-held ground, armed enemies standing on the line
+  (within 8 m) and broken bridges or rubble cut it; craters weaken it until squads fill them in. A unit out of supply
+  keeps refilling for 10 s, then lives on its reserves, which the existing shortage and withdrawal rules govern. Trucks
+  now serve only units and caches beyond supply, at most 4 per player, and World Conquest's region caches are gone.
+  Refills are paid as before (Munitions and Fuel in Classic and World Conquest). The logistics overlay tints owned
+  World regions by supply strength and rings cut-off units on the minimap; unit cards show the line's strength or the
+  grace countdown; new alerts say when units are cut off and when a line is restored (English and Spanish).
+  Measured in seeded 2-player, 2-AI World Conquest matches of 2.5 minutes (CPU time): 15.4 and 13.6 s against 23.2
+  and 24.9 s with trucks, and 11.8 and 10.0 s with logistics off. Logistics' extra cost fell by about 70%, from 11 to
+  15 s to about 3.6 s. Not reached: the target of under 10% of server CPU (it is about 25%; most of what remains is
+  the few remaining trucks and per-unit store checks). Found, not fixed: outside World Conquest, cut-off units are
+  usually in enemy contact or beyond vehicle ground, so trucks rarely reach them.
+
 - The full test suite passes again after merging skirmish production bases. Fixed the AI ignoring an enemy air strike
   on squads busy building: a squad sent to rebuild a base no longer gets bombed without fighter cover. Test setups
   that wipe the map or count units now allow for the starting HQ and Barracks. The AI-match check now asks for at

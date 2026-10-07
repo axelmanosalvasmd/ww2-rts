@@ -41,8 +41,23 @@ with its remaining ammunition. Stop pauses escape; a direct move may seek anothe
 withdrawal prevents capture, construction and queued attacks. Retreat protection applies only during
 actual withdrawal progress, never while stranded. There is no teleport, automatic death or surrender.
 
+Territory supply (2026-10-06, full rules in `docs/territory-supply.md`) refills reserves through connected friendly
+ground; trucks serve only what is beyond it. Once a second each team's supply spreads from its sources (completed
+HQs, or the spawns where there are none; held Conquest depots and every held Annihilation point while connected).
+World Conquest spreads over owned regions that border each other over vehicle ground; a region holding armed enemy
+ground units and none of the team's blocks it. Other modes flood vehicle ground from the sources, closed within 8 m
+of armed enemies except within 16 m of a held point (the point cut check's rule), and a unit standing in that zone
+is cut. The refill rate is 1 near a source and weakens to 0.25: World loses 0.15 per region beyond the first, each
+damaged (fillable) cell adding 0.05 of a region; other modes fall evenly from 150 to 600 m of travel, a damaged cell
+counting 10 m more. Craters weaken a line and Fill in restores it; rubble and broken bridges block vehicles, so they
+cut it. At 1, empty reserves refill in 40 s, paid like source loads (Munitions and Fuel in Classic and World
+Conquest). A unit out of supply keeps its last rate for 10 s, then gets nothing; finite stores in supply restock the
+same way. Outside World Conquest a cut-off unit is usually in enemy contact or beyond vehicle ground, where trucks
+cannot go either, so it lives on its reserves until the line reopens.
+
 Unarmed supply trucks have 120 HP, 7.5 m/s speed, 12 m sight, zero population and no recruitment card.
-The automatic fleet is `min(24, max(2, 2 + ceil(eligibleTroops / (4 * army.pop))))`, with one spawn per second.
+Trucks serve only troops cut off from supply and stores beyond it: each player's fleet is its busy trucks plus open
+jobs, at most 4, with one spawn per second; idle trucks retire at a source.
 Destroyed trucks lose cargo and become replaceable after 30 seconds. Empty surplus trucks retire safely
 at a source. Loading takes four seconds; deliveries unload incrementally over eight seconds. Automatic
 routes use remembered terrain and currently visible threats, rechecking every two seconds; a route that
@@ -53,15 +68,15 @@ ranges; stalled vehicles or exhausted operating fuel retry dispatch. Danger navi
 newly remembered heights but ignore cosmetic ground wear. A truck stuck on a trip that still holds plans only a
 detour back onto its route about 30 m ahead; one stuck within loading reach of its source counts as arrived there
 (parked trucks crowd an HQ). Hops of 16 m or less across open known ground skip the route search, the way home is
-priced once per trip end, and a moving recipient is re-targeted once it leaves unloading reach (12 m). Unknown ambushes remain possible. Direct movement and queued waypoints suspend dispatch; explicit Stop holds
+priced by its straight line (the contingency covers detours), and a moving recipient is re-targeted once it leaves unloading reach (12 m). Unknown ambushes remain possible. Direct movement and queued waypoints suspend dispatch; explicit Stop holds
 until Resume deliveries or another order. Explicit relief can enter known danger and supply an ally.
 
 Sources are completed HQs in construction modes and in any match with HQs (skirmish bases put one on the old home
 position), and the existing home positions elsewhere. Allies share sources, but a
 player's new trucks start at that player's own source. Forward
 Supply Caches cost 60 MP, take 12 seconds and have 400 HP on a 2x2 footprint. Held depot Points,
-hospitals and halted halftracks carry finite supplies. World regions receive one physical relay, empty
-when newly captured; neutralization clears stock and suspends ownership until recapture. HQ recovery
+hospitals and halted halftracks carry finite supplies. World regions no longer get relay caches: the region graph
+carries their supply. HQ recovery
 restores a source without eliminating surviving World armies. Cargo retains its paying owner even at
 allied infrastructure. Automatic fleets spend and serve their own stocks; explicit allied relief is available.
 
@@ -71,15 +86,16 @@ Small arms/MG/autocannon replacements cost .01 Munitions per projectile, ordinar
 howitzer/rocket ammunition .10. Vehicle fuel costs 6 Fuel for 180 ordinary driving seconds and 2 for
 60 emergency seconds. Classic and World pay these amounts from existing currencies. Other selected
 modes generate cargo freely; provisions are free at sources. Truck trips prepay .002 Fuel per route metre,
-including the physical return route and 20% contingency. Actual powered movement consumes funded
+including the straight-line return and 20% contingency. Actual powered movement consumes funded
 metres; extended manual routes reserve additional Fuel. Income, recruitment and ability prices remain.
 Reinforcement retains MP costs and uses five provision seconds per replacement. Healing/repair uses
 one provision second per five restored HP, including medic and Engineer provider stocks.
 
 The optional overlay and cards expose owner stocks, allied stores, observed threats and known selected
-routes. Ordinary drag selection, select-all, idle selection and combat groups exclude trucks. Direct
-clicks or logistics selection permit control. Alerts group shortage, route, currency, transit, withdrawal
-and stranded states with a 20-second cooldown. Spectators receive no private reserve/cargo/job data.
+routes; the minimap tints owned World regions by supply (green full, amber weakened, red cut off) and rings own
+units that are cut off, and unit cards show the line's strength or the grace countdown. Ordinary drag selection, select-all, idle selection and combat groups exclude trucks. Direct
+clicks or logistics selection permit control. Alerts group shortage, route, currency, transit, withdrawal,
+stranded, cut-off and restored states with a 20-second cooldown. Spectators receive no private reserve/cargo/job data.
 The AI uses its own stock observations, preserves mandatory withdrawal and waits for half recovery.
 
 Implementation: `shared/logistics.js` owns reserve accounting, `shared/supply-convoys.js` owns inventory,

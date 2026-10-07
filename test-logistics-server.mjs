@@ -71,7 +71,9 @@ try {
     ws.send(JSON.stringify({t:'start'}));await wait(m=>m.t==='start');tickRooms();tickRooms();
     const live=await wait(m=>m.t==='s'&&m.logistics?.enabled);
     assert.equal(rooms.get(code).game.logisticsEnabled,true,`${mode}: ordinary live matches enable supplies`);
-    assert.ok(live.logistics.units.length>0&&live.logistics.trucks.length>0,`${mode}: initial snapshot includes stocks and the automatic fleet`);
+    assert.ok(live.logistics.units.length>0,`${mode}: initial snapshot includes stocks`);
+    // everyone starts in supply, so no truck is needed yet
+    assert.ok(live.logistics.units.every(row=>row.supply>0&&!row.cut)&&live.logistics.trucks.length===0,`${mode}: starting troops are in supply and no truck is needed`);
     assert.ok(live.logistics.units.every(row=>rooms.get(code).game.units.get(row.id).owner===0),`${mode}: live stock rows belong only to the player`);
   }
   console.log('logistics server activation, spectator privacy and AI withdrawal checks passed');

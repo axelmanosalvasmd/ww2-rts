@@ -83,7 +83,7 @@ export { icon };
 export function createHud(ctx) {
   const logisticsControls = document.createElement('span');
   logisticsControls.style.display = 'flex';
-  logisticsControls.innerHTML = '<button data-logistics-overlay aria-label="Logistics overlay" title="Show known supply stores and selected truck routes">' + icon('supplycache') + '</button>' +
+  logisticsControls.innerHTML = '<button data-logistics-overlay aria-label="Logistics overlay" title="Show supply territory, known supply stores and selected truck routes">' + icon('supplycache') + '</button>' +
     '<button data-logistics-selection aria-label="Logistics selection" title="Select supply trucks with a drag box">' + icon('truck') + '</button>';
   $('util').append(logisticsControls);
   logisticsControls.querySelector('[data-logistics-overlay]').onclick = () => ctx.toggleLogisticsOverlay();

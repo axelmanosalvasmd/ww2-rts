@@ -54,6 +54,15 @@ assert.ok(reserveLabels(decoded.units.get(1)).includes('Withdrawal in 12 s'));
 assert.ok(truckLabels(decoded.trucks.get(2)).includes('Ammunition cargo: 12.0'));
 assert.equal(logisticsIndicator(decoded.units.get(1)), 'Low supplies');
 assert.equal(logisticsIndicator({ forced: true, stranded: true }), 'Stranded');
+// territory supply on unit cards, indicators and the World overlay
+assert.ok(reserveLabels({ provisions: 120, supply: 0.62 }).includes('Supply line: 62%'));
+assert.ok(reserveLabels({ provisions: 120, supply: 1, grace: 7 }).includes('Out of supply: refill stops in 7 s'));
+assert.ok(reserveLabels({ provisions: 120, supply: 0, cut: true }).includes('Cut off from supply'));
+assert.equal(logisticsIndicator({ provisions: 120, cut: true }), 'Cut off from supply');
+assert.equal(logisticsIndicator({ provisions: 120, supply: 1 }), '', 'a unit in supply with full reserves shows nothing');
+assert.deepEqual([...decodeLogistics({ logistics: { enabled: true, units: [], trucks: [], stores: [], events: [], regions: [[3, 0.85], [7, 0]] } }, units, 0).regions], [[3, 0.85], [7, 0]], 'World region supply decodes for the overlay');
+assert.equal(spanish('Supply line: 62%'), 'Línea de suministro: 62%');
+assert.equal(spanish('Cut off from supply'), 'Aislado del suministro');
 const primitives = overlayItems(decoded, new Set([2]), units, p => p.x < 30);
 assert.equal(primitives.routes.length, 1);
 assert.equal(primitives.stores.length, 1);
