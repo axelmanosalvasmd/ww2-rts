@@ -5,7 +5,7 @@ AI-vs-AI runs (see DESIGN.md for the balance log). Add new entries under **Unrel
 
 ## Unreleased
 
-### 2026-10-06: Destroy your own units, roomier bases, tanks no longer stuck at spawn
+### 2026-10-06: Destroy your own units, roomier bases, tanks no longer stuck at spawn (`257d357`)
 
 - Select your own units or buildings and press Delete to destroy them. No refund, and the enemy earns no kill bounty.
 - Fortified bases (Horde, Assault defenders, Annihilation) are laid out like a compound with roads: HQ in the middle,
