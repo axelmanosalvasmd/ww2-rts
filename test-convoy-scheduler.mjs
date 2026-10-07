@@ -427,3 +427,30 @@ test('a cycle with many trucks to reroute spreads their route plans over ticks',
   assert.ok([...perTick.values()].every(calls => calls.length <= 3), 'at most three route plans per tick');
   for (const t of fleet) assert.ok(routed.some(([, id]) => id === t.id), 'every due truck is rerouted within the cycle');
 });
+
+test('a truck stuck within loading reach of its HQ counts as home', () => {
+  const f = fixture('classic'); f.step();
+  const t = f.trucks()[0], hq = [...f.g.units.values()].find(u => u.type === 'hq');
+  Object.assign(t, { x: hq.x + 13, z: hq.z, path: [{ x: hq.x + 9, z: hq.z }], stuck: 0 });
+  Object.assign(t.convoy, { state: 'returning', cargo: { ammo: 1, provisions: 30, fuel: 10 }, destination: { x: hq.x, z: hq.z }, origin: `source:${hq.id}` });
+  f.step(0);
+  assert.equal(t.convoy.state, 'returning', 'a truck still driving home is not there yet');
+  t.stuck = 1; f.step(0);
+  assert.equal(t.convoy.state, 'idle', 'parked trucks blocking the last metres do not keep it out');
+  assert.deepEqual(f.g.convoys.stores.get(`source:${hq.id}`).buckets.get(0), { ammo: 1, provisions: 30, fuel: 10 });
+});
+
+test('rechecking the same trip does not plan the way home again', () => {
+  const f = fixture('classic'), troop = f.troop({ x: 300, z: 0 });
+  f.step(); f.step(4);
+  const t = f.trucks().find(u => u.convoy.state === 'delivering');
+  assert.ok(t);
+  const hq = [...f.g.units.values()].find(u => u.type === 'hq'), homeward = [];
+  const route = f.hooks.route;
+  f.hooks.route = (u, at, safe) => { if (Math.hypot(at.x - hq.x, at.z - hq.z) < 1) homeward.push(f.g.tick); return route(u, at, safe); };
+  f.hooks.continueRoute = () => false;
+  f.step(2); f.step(2);
+  assert.equal(homeward.length, 0, 'the way home was priced once, when the trip was funded');
+  troop.x += 50; f.step(2);
+  assert.equal(homeward.length, 1, 'a new trip end prices the way home again');
+});

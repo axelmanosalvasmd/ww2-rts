@@ -188,9 +188,15 @@ function fundRoute(g, u, path, hooks, from = u) {
   const end = path.at(-1) ?? from;
   const origin = g.convoys.stores.get(u.convoy.origin) ?? sources(g, u.owner)[0];
   const home = origin ?? from;
-  const homePath = hooks.route({ ...u, x: end.x, z: end.z }, home, false);
+  // The way home is searched once per trip end and home, not again on every recheck of the same trip.
   // A route without a reachable return still reserves at least its direct return.
-  const homeLength = homePath.length ? routeLength(end, homePath) : distance(end, home);
+  const key = [end.x, end.z, home.x, home.z].map(n => Math.round(n / 4)).join(':');
+  let homeTrip = u.convoy.home;
+  if (homeTrip?.key !== key) {
+    const homePath = hooks.route({ ...u, x: end.x, z: end.z }, home, false);
+    homeTrip = { key, length: homePath.length ? routeLength(end, homePath) : distance(end, home) };
+  }
+  const homeLength = homeTrip.length;
   const required = (routeLength(from, path) + homeLength) * L.routeContingency;
   const extra = Math.max(0, required - (u.convoy.operatingMetres ?? 0));
   const cost = extra * L.routeFuelPerMetre, p = g.players[u.owner];
@@ -198,7 +204,7 @@ function fundRoute(g, u, path, hooks, from = u) {
     alert(g, u.owner, 'currency', 'Not enough Fuel to dispatch supplies', u); return false;
   }
   p.fuel = Math.max(0, (p.fuel ?? 0) - cost);
-  u.convoy.operatingMetres = (u.convoy.operatingMetres ?? 0) + extra;
+  u.convoy.operatingMetres = (u.convoy.operatingMetres ?? 0) + extra; u.convoy.home = homeTrip;
   return true;
 }
 
@@ -421,6 +427,16 @@ function schedulePlayer(g, p, hooks) {
 // A world route plan costs about 4 ms (up to 50): rechecking every truck on the cycle tick put 10 to 40 of them in one
 // tick. The cycle queues the trucks instead, and they are served a few route plans per tick, in order.
 const ROUTES_PER_TICK = 3;
+// A stuck truck on a trip that still holds plans only a detour back onto its route about 30 m ahead, not the whole
+// trip again (a quarter of all route checks found a truck stuck, mostly in traffic near its HQ).
+function repairRoute(g, u, hooks) {
+  const i = u.path.findIndex(p => distance(u, p) >= 30), at = i < 0 ? u.path.length - 1 : i, rejoin = u.path[at];
+  const detour = hooks.route(u, rejoin, true); g.convoys.routed++;
+  if (!detour.length || distance(detour.at(-1), rejoin) > 1) return false;
+  u.path = [...detour, ...u.path.slice(at + 1)]; u.stuck = 0;
+  u.convoy.route = u.path.map(p => ({ x: p.x, z: p.z }));
+  return true;
+}
 function refreshRoutes(g, hooks) {
   const s = g.convoys;
   while (s.refreshQueue.length && s.routed < ROUTES_PER_TICK) {
@@ -447,7 +463,9 @@ function refreshRoutes(g, hooks) {
     // already driving there (a World Conquest truck follows worldGoal in legs, so its path may be empty between
     // them): keep the route. Re-routing every truck each dispatch cost two world-size path searches
     // apiece (there and home) and stalled the server every 2 s. A target that has moved off gets a new route.
-    if (c.state === resume && (u.path.length || u.worldGoal) && c.destination && distance(c.destination, target) < 4 && hooks.continueRoute?.(u, target) === true) continue;
+    const onCourse = c.state === resume && c.destination && distance(c.destination, target) < L.truckRadius;
+    if (onCourse && u.path.length && (u.stuck ?? 0) > .5 && repairRoute(g, u, hooks)) continue;
+    if (onCourse && (u.path.length || u.worldGoal) && hooks.continueRoute?.(u, target) === true) continue;
     if (sendTruck(g, u, target, hooks)) c.state = resume;
     else {
       c.state = resume === 'collecting' ? 'waitingCollect' : resume === 'returning' ? 'waitingReturn' : 'waiting';
@@ -478,11 +496,14 @@ export function stepConvoys(g, dt, hooks) {
     }
     const arrived = c.destination && distance(u, c.destination) <= L.truckRadius && (!u.path.length || distance(u, u.worldGoal ?? c.destination) < 1);
     const origin = g.convoys.stores.get(c.origin);
-    if (c.state === 'collecting' && arrived && origin?.active && hooks.handoff(u, origin, L.sourceRadius)) { c.state = 'loading'; c.timer = L.loadSeconds; u.path = []; u.worldGoal = null; }
+    // Trucks parked around an HQ block the exact end of a route there (nine in ten stuck trucks were within 20 m of
+    // their own HQ, most of them coming home): stuck within loading reach of the source counts as there.
+    const atSource = ['collecting', 'returning'].includes(c.state) && (u.stuck ?? 0) > .5 && origin?.active && distance(u, origin) <= L.sourceRadius && hooks.handoff(u, origin, L.sourceRadius);
+    if (c.state === 'collecting' && (arrived || atSource) && origin?.active && hooks.handoff(u, origin, L.sourceRadius)) { c.state = 'loading'; c.timer = L.loadSeconds; u.path = []; u.worldGoal = null; }
     if (c.state === 'loading') { c.timer -= dt; if (c.timer <= 0) loadJob(g, u, hooks); }
     else if (c.state === 'delivering' && arrived) { c.state = 'unloading'; c.timer = L.unloadSeconds; u.path = []; u.worldGoal = null; }
     else if (c.state === 'unloading') deliver(g, u, dt, hooks);
-    else if (c.state === 'returning' && arrived) {
+    else if (c.state === 'returning' && (arrived || atSource)) {
       if (!origin?.active || !hooks.handoff(u, origin, L.sourceRadius)) { c.state = 'waitingReturn'; continue; }
       moveStock(c.cargo, bucket(origin, u.owner), storeSpace(origin));
       c.state = 'idle'; c.target = null; c.destination = null; u.path = []; u.worldGoal = null;

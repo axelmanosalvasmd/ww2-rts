@@ -50,7 +50,10 @@ failed to the same place waits 2 s, then 4, 8, 16 and 32 s before the next searc
 recheck and the players to dispatch, served at most 3 truck dispatches per tick; an unfinished pass carries over. Moving
 routes can be reused after checking every remaining leg against remembered obstacles and visible weapon
 ranges; stalled vehicles or exhausted operating fuel retry dispatch. Danger navigation updates include
-newly remembered heights but ignore cosmetic ground wear. Unknown ambushes remain possible. Direct movement and queued waypoints suspend dispatch; explicit Stop holds
+newly remembered heights but ignore cosmetic ground wear. A truck stuck on a trip that still holds plans only a
+detour back onto its route about 30 m ahead; one stuck within loading reach of its source counts as arrived there
+(parked trucks crowd an HQ). Hops of 16 m or less across open known ground skip the route search, the way home is
+priced once per trip end, and a moving recipient is re-targeted once it leaves unloading reach (12 m). Unknown ambushes remain possible. Direct movement and queued waypoints suspend dispatch; explicit Stop holds
 until Resume deliveries or another order. Explicit relief can enter known danger and supply an ally.
 
 Sources are completed HQs in construction modes and in any match with HQs (skirmish bases put one on the old home

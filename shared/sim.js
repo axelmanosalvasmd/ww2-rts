@@ -1570,7 +1570,14 @@ function supplyHandoff(g, u, store, radius) {
   state.paths.set(key,reachable);return reachable;
 }
 
+// A hop of a few metres in the open, the commonest truck trip (around a base after loading or unloading), needs no
+// search: each search cost 6 to 16 ms however short. Too close to matter for the danger rules.
+const SHORT_HOP = 16;
 function fullConvoyRoute(g,u,at,safe) {
+  if (dist(u, at) <= SHORT_HOP) {
+    const def = UNITS[u.type], known = g.mode?.kind === 'world' ? worldPathView(g, u.owner) : observedPathView(g, u.owner);
+    if (walkable(known, u, at, blockOf(def), bodyRadius(def))) return [{ x: at.x, z: at.z }];
+  }
   const route=supplyRoute(g,u,at,safe);
   if (!route.length || dist(route.at(-1),at)<=3) return route;
   const known=g.mode?.kind==='world' ? worldPathView(g,u.owner) : observedPathView(g,u.owner);
