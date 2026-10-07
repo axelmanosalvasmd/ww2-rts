@@ -2,6 +2,44 @@
 
 WW2 tactics RTS in the browser for three friends. Decided 2026-09-30.
 
+## Bug audit repairs (2026-10-07)
+
+The simulation validates every movement row before convoy handling or withdrawal state changes. Invalid
+rows refuse the whole command. Cache deliveries require completed construction and register newly
+completed caches immediately, rather than waiting for the next logistics cycle.
+
+Recovery still requires a valid reinforcement or repair location and the existing MP price. Nearby
+source or cache provisions serve it first; a unit can use its carried provisions when no store can pay.
+The cost remains 5 provisions per reinforced infantry model and repaired vehicle HP divided by 5.
+Explicit allied cache relief stays attributed to the payer, with consumption rights limited to the
+amount actually unloaded for the recipient. Automatic fleets cannot take that donated stock or another
+player's private inventory. Initial convoy assignment shares the three-search tick limit with route
+refreshes, resumes unfinished searches fairly, and preserves exponential failure backoff.
+
+Blocking construction footprints refuse live ground occupants during play and recovery. Initial bases
+retain their startup layout and relocate obstructed starting squads before play. Cancellation removes the building's
+physical sections and any pending debris before clearing its ground. Manual aimed abilities clear
+competing work and movement orders. Boarding needs a clear local approach; landing craft may meet
+infantry across water at a reachable bank but cannot load through a wall or cliff. Off-map aircraft
+interception consumes one AA round per firing attempt. Queued sorties wait until aircraft are ready.
+
+Client placement keeps authored terrain facts separately from live terrain. World sends an original
+character and elevation only alongside a discovered cell, with authored mines reduced to their physical
+underlying surface. Reconnect restores these facts without sending undiscovered terrain. Objective
+visibility is restored independently of text changes; scripted announcements need no earlier snapshot
+and retain the existing duplicate suppression. AI bridge memory grows from detached observations.
+
+An uncontested armed enemy blocks a World supply source as well as transit regions. If all players
+lose their final owned regions together, the result is a draw. Pending Horde map selection commits its
+settings together only while the requester still hosts the lobby and no newer mode request supersedes it.
+No unit prices, weapon statistics, capture thresholds or income rates were retuned.
+
+Rifle, Conscript and Engineer figures have four work frames, played while a squad digs or builds in place.
+The twenty movement frames and three posture targets remain. The original shovel added 24 triangles to
+distant infantry and exceeded its 150-triangle budget. The distant tool now uses four closed, outward-facing
+triangles, lowering the maximum figure from 169 to 149. Near tool detail and all animation frames retain
+matching topology. `test-infantry-dig.mjs` checks the budget, closed faces and baked animation contracts.
+
 ## Skirmish production bases
 
 Conquest, Assault, Annihilation and Horde use completed production buildings to unlock **instant MP-only purchases**. Classic and World Conquest keep their existing resource economies and training queues. Tutorial stays unchanged.

@@ -41,7 +41,8 @@ const settledRubble = (g, cells, message) => {
 // The large-world checks use real clients and a fresh authoritative server.
 {
   const { execFileSync } = await import('node:child_process');
-  for (const file of process.env.CORE_ONLY ? [] : ['test-logistics.mjs', 'test-convoy-scheduler.mjs', 'test-world-supply.mjs', 'test-territory-supply.mjs', 'test-logistics-server.mjs', 'test-world-waterways.js', 'test-world-multiple-rivers.js', 'test-world-generation.js', 'test-world-territories.js',
+  for (const file of process.env.CORE_ONLY ? [] : ['test-audit-commands.mjs', 'test-audit-combat.mjs', 'test-audit-logistics.mjs', 'test-audit-client.mjs', 'test-audit-ai.mjs', 'test-audit-world.mjs', 'test-audit-server.mjs', 'test-infantry-dig.mjs',
+    'test-logistics.mjs', 'test-convoy-scheduler.mjs', 'test-world-supply.mjs', 'test-territory-supply.mjs', 'test-logistics-server.mjs', 'test-world-waterways.js', 'test-world-multiple-rivers.js', 'test-world-generation.js', 'test-world-territories.js',
     'test-world-conquest.js', 'test-world-teams.js', 'test-world-acceptance.js', 'test-world-observation.js', 'test-world-movement.js', 'test-world-river.js',
     'test-engine-controls.js', 'test-engine-world.js', 'test-engine-movement.js', 'test-movement-lab.js', 'test-engine-projectiles.js', 'test-engine-scenarios.js', 'test-engine-ai.js', 'test-engine-acceptance.js', 'test-engine-presentation.mjs',
     'test-engine-spectators.js', 'test-engine-scenario-start.js', 'test-engine-breaches.mjs', 'test-engine-authoring.js', 'test-engine-vehicle-pose.mjs', 'test-engine-ai-privacy.js', 'test-engine-localization.mjs',
@@ -6261,7 +6262,13 @@ for (const lookupFinished of [false, true]) {
   const marchRoot = new THREE.Group(), march = { id: 17, type: 'rifle', root: marchRoot, models: [], x: 0, z: 0, supp: 0, flags: 0, cover: 0 };
   buildModel(march, marchRoot, look, 0, UNITS.rifle);
   animate(march, 1 / 60, eye);
-  assert.equal(march.models[0].userData.hi[0].morphTargetInfluences.length, 23, 'three suppression/retreat targets plus walk, aim, crouch and crawl frames');
+  assert.equal(march.models[0].userData.hi[0].morphTargetInfluences.length, 27, 'three suppression/retreat targets plus walk, aim, crouch, crawl and dig frames');
+  // A squad digging in place (flag 16) plays the spade stroke: all its weight on the four dig frames.
+  const digRoot = new THREE.Group(), digger = { id: 18, type: 'rifle', root: digRoot, models: [], x: 0, z: 0, supp: 0, flags: 16, cover: 0 };
+  buildModel(digger, digRoot, look, 0, UNITS.rifle);
+  for (let i = 0; i < 30; i++) animate(digger, 1 / 30, eye);
+  const digWeights = digger.models[0].userData.hi[0].morphTargetInfluences;
+  assert.ok(Math.abs(digWeights.slice(23).reduce((a, b) => a + b, 0) - 1) < 1e-6, 'a digging man is wholly in the dig stroke');
   for (let i = 0; i < 120; i++) { marchRoot.position.x += 0.03; march.x = marchRoot.position.x; animate(march, 1 / 60, eye); }
   const leader = march.models[0].userData, rear = march.models[5].userData;
   assert.ok(leader.motion.blend > 0.9, 'walking enables actual limb locomotion');

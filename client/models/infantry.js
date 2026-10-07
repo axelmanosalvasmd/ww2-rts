@@ -395,6 +395,22 @@ function item(kind, F, far) {
     for (const z of [-0.026, 0.026]) add(new THREE.CylinderGeometry(0.017, 0.015, 0.085, far ? 3 : 6, 1, true), 0x2a2a26, chain(T(0.04, 0, z), RZ(-Math.PI / 2)), 'gunmetal');
   } else if (kind === 'belt') {
     add(box(1, 0.01, 0.045), BRASS, T(0.5, 0, 0), 'gunmetal');
+  } else if (kind === 'shovel') {
+    // a long-handled spade along +x from the grip: the T-grip, the ash shaft, the steel blade face down (-y)
+    if (far) {
+      // A closed tapered tool keeps the distant figure below 150 triangles without needing a two-sided material.
+      const points = [[0, 0, 0], [0.64, 0.012, 0], [0.89, -0.006, 0.085], [0.89, -0.006, -0.085]];
+      [[0, 2, 1], [0, 1, 3], [0, 3, 2], [1, 2, 3]].forEach((face, i) => {
+        const g = new THREE.BufferGeometry();
+        g.setAttribute('position', new THREE.Float32BufferAttribute(face.flatMap(k => points[k]), 3));
+        g.setIndex([0, 1, 2]); g.computeVertexNormals();
+        add(g, i === 3 ? STEEL : F.wood, null, i === 3 ? 'gunmetal' : 'wood');
+      });
+    } else {
+      along(0.016, 0.016, 0, 0.66, F.wood, 6, 'wood');
+      add(box(0.025, 0.025, 0.12), F.wood, null, 'wood');
+      add(box(0.24, 0.012, 0.17), STEEL, T(0.77, 0, 0), 'gunmetal');
+    }
   }
   return out;
 }
@@ -535,8 +551,28 @@ function headMatrix(body, dir, { jut = [0, 0, 0], roll = 0 } = {}) {
 
 // Solve a pose: the body placed so the weapon or the hands land where the spec wants them, then the legs, arms and
 // head, the weapon's frame and the carried things in the soldier's own space.
+// The squads that dig (sim CFG.fortBuilders, and the medics who borrow the engineer figure): every build of theirs
+// carries a spade, so all builds keep the same parts. Outside the dig it is shrunk away at the hip, so blending into
+// the dig draws it out from there.
+const DIGGERS = new Set(['rifle', 'conscript', 'engineer']);
+// The dig stroke, four keyframes (morph targets, posture 'dig'): where the grip and the blade's tip go in the body's
+// own frame, the spine's lean and turn, and the pelvis height. Raise, drive the blade in, lever the dirt up, then
+// swing it out to the left and toss it.
+const DIG = [
+  { grip: [0.22, 1.02, 0.2], tip: [0.86, 0.3, 0.08], lean: 0.32, turn: -0.1, y: 0.66 },
+  { grip: [0.24, 0.72, 0.16], tip: [0.66, -0.06, 0.06], lean: 0.6, turn: -0.15, y: 0.6 },
+  { grip: [0.02, 0.66, 0.2], tip: [0.62, 0.2, 0.02], lean: 0.48, turn: -0.05, y: 0.62 },
+  { grip: [0.12, 0.98, 0.12], tip: [0.42, 0.66, -0.66], lean: 0.18, turn: -0.5, y: 0.67 },
+];
+// a digger at dig frame i: his weapon laid on the ground beside him (as a corpse's), feet braced, both hands on the spade
+function digSpec(ctx, i) {
+  const f = fallenSpec(ctx), d = DIG[i];
+  return { ...f, stance: 'brace', fallen: false, yaw: 0, lean: d.lean, turn: d.turn, root: [0, d.y, 0], dig: d };
+}
+
 function solve(ctx, k, phase = null) {
-  const s = k === 'fallen' ? fallenSpec(ctx) : spec(ctx, k);
+  const s = k === 'fallen' ? fallenSpec(ctx) : k === 'dig' ? digSpec(ctx, phase) : spec(ctx, k);
+  if (k === 'dig') phase = null;
   if (phase !== null && k !== 'fallen') {
     // Each boot spends half a cycle planted, travelling back as the body advances, then swings forward.
     const low = k === 1, crawl = k === 2;
@@ -666,6 +702,16 @@ function solve(ctx, k, phase = null) {
     hL = put(sho(-1), [0.16, 0.06, -0.28]);
     hR = put(sho(1), [0.1, 0.05, 0.38]);
     pL = V([0.2, -0.2, -1]); pR = V([0.15, -0.2, 1]);
+  }
+  if (DIGGERS.has(ctx.type)) {
+    if (s.dig) {
+      // right fist on the T-grip, left hand down the shaft
+      const grip = V(s.dig.grip).applyMatrix4(M0), tip = V(s.dig.tip).applyMatrix4(M0), along = tip.clone().sub(grip);
+      const m = basis(grip, along, v3(0, 1, 0));
+      things.push({ kind: 'shovel', m: m.multiply(SC(along.length() / 0.89, 1, 1)) });
+      hR = grip.clone(); hL = grip.clone().addScaledVector(along, 0.32);
+      pR = rot([-0.4, -0.6, 1]); pL = rot([0, -1, -0.6]);
+    } else things.push({ kind: 'shovel', m: chain(body.on(0.8), T(torsoAt(0.8, -Math.PI / 2, 0.03)), SC(0.01)) });
   }
   const arms = [arm(body, -1, hL, pL), arm(body, 1, hR, pR)];
   return { s, body, legs, arms, H, W, info, sling, things, M0 };
@@ -946,7 +992,9 @@ function farParts(r, ctx) {
   });
   if (r.W) for (const p of weapon(r.s.gun.kind, F, 1).parts) add(p.geo, p.color, r.W.clone().multiply(p.m), p.mat);
   else if (r.sling) for (const p of weapon('carbine', F, 1).parts) add(p.geo, p.color, r.sling.clone().multiply(p.m), p.mat);
-  const t = r.things.find((x) => x.kind !== 'belt' && x.kind !== 'binos');
+  const spade = r.things.find((x) => x.kind === 'shovel');
+  if (spade) for (const p of item('shovel', F, true)) add(p.geo, p.color, spade.m.clone().multiply(p.m), p.mat);
+  const t = r.things.find((x) => x.kind !== 'belt' && x.kind !== 'binos' && x.kind !== 'shovel');
   if (t) for (const p of item(t.kind, F, true)) add(p.geo, p.color, t.m.clone().multiply(p.m), p.mat);
   else if (ctx.job === 'flamer') add(box(0.12, 0.4, 0.26), F.flamer === 'roks2' ? 0x5f5a42 : 0x4d5240, chain(b.on(0.9), T(torsoAt(0.9, Math.PI, 0.06)), RY(Math.PI)), 'armor-paint'); // the tanks
   else add(box(0.06, 0.16, 0.16), F.bag, chain(b.on(0.95), T(torsoAt(0.95, Math.PI, 0.03)), RY(Math.PI)), 'canvas');
@@ -975,6 +1023,12 @@ function figure(ctx, far) {
     const r = solve(ctx, posture, i / count), g = mergeFigure(far ? farParts(r, ctx) : nearParts(r, ctx));
     if (g.attributes.position.count !== n) throw new Error(`${ctx.type} ${ctx.job}: gait changed topology`);
     return { position: g.attributes.position, normal: g.attributes.normal, posture, muzzle: muzzle(r) };
+  }));
+  // the dig stroke, after the gait frames: unit-models.js plays it while the squad digs or builds
+  if (DIGGERS.has(ctx.type)) body.userData.gait.push(...DIG.map((_, i) => {
+    const r = solve(ctx, 'dig', i), g = mergeFigure(far ? farParts(r, ctx) : nearParts(r, ctx));
+    if (g.attributes.position.count !== n) throw new Error(`${ctx.type} ${ctx.job}: dig frame ${i} changed topology`);
+    return { position: g.attributes.position, normal: g.attributes.normal, posture: 0, muzzle: muzzle(r) };
   }));
   return body;
 }

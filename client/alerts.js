@@ -175,11 +175,11 @@ function snapshot(s, prev) {
   if (!hooks) return;
   if (!history.acceptTick(s.tick)) return; // duplicate or old retained snapshots never redeliver Alerts
   matchTime = s.tick / 20;
-  if (!prev) return; // reconnect keeps delivered history and begins a fresh comparison
   const me = hooks.me(), friend = (slot) => slot >= 0 && hooks.friend(slot);
   if (s.winner != null || s.out?.[me]) return;
   // the map's scripted events (triggers) speak to everyone
   for (const sh of s.shots ?? []) if (sh.k === 'say') push('event', sh.localized?.[document.documentElement?.lang ?? 'en'] ?? sh.text, sh.x, sh.z);
+  if (!prev) return; // direct events need no baseline; reconnect begins a fresh comparison for state changes
   const before = new Map(prev.units.map(u => [u[0], u]));
   const after = new Map(s.units.map(u => [u[0], u]));
   const shotsAt = new Map();

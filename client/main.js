@@ -13,7 +13,7 @@ import { selectionPoints } from './selection-view.js';
 import { createOrders } from './orders.js';
 import { createFormationPreview } from './formation-preview.js';
 import { facingSpots, slotSize, SHAPES } from '/shared/formation.js';
-import { availability, denySentence, placementState } from './availability.js';
+import { availability, denySentence, placementState, rememberPlacementTerrain } from './availability.js';
 import { createFeedback } from './feedback.js';
 import { UNITS, UNIT_TYPES, CELL, CFG, SUPPORT, SUPPORT_TYPES, BUILDABLE, builderTypes, isSkirmishBaseMode, productionAccess, levelOf, levelChar, startState, canBuild, winVp, supCost, popCap, abCost, priceOf, FORTS, lineFort, placementCheck, ENTRENCH, entrenchPlan, segmentCost, RIDING_FLAG, TERRAIN, TRENCH } from '/shared/sim.js';
 import { alerts } from './alerts.js';
@@ -452,6 +452,7 @@ function startGame(m, restored = null) {
   me = m.you; names = m.names; teams = m.teams ?? names.map((_, i) => i); factions = m.factions ?? []; lastStart = m; mmImage = null;
   if (!EDIT) audio.start({ faction: facOf(me), slot: me });
   const map = m.map;
+  rememberPlacementTerrain(map, m.cells); // capture original facts before applying current heights and World rows
   worldRegions?.dispose(); worldRegions = null;
   terrain?.ground.dispose();
   rubbleDecals?.dispose(); rubbleDecals = null;
@@ -582,6 +583,7 @@ function setLevel(map, cell, lv) {
 
 function applyCells(cells) {
   if (!cells?.length || !terrain) return;
+  rememberPlacementTerrain(lastStart.map, cells);
   groundVersion++;
   // Ground wear and scorching only change the paint. The relief, the 3D pieces, the scenery and the water are redone
   // only for cells whose type, height or damage stage changed: traffic wears many cells in a big battle.

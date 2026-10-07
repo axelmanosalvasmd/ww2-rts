@@ -506,12 +506,15 @@ wss.on('connection', (ws, req) => {
       const p = room.players[msg.slot];
       if (p && (host ? msg.t === 'team' || p.ai || p === me : msg.t === 'faction' && p === me)) { p[msg.t] = msg.v; lobby(room); }
     } else if (msg.t === 'mode' && host && room.state !== 'play' && ['conquest', 'assault', 'annihilation', 'classic', 'horde', 'tutorial', 'world'].includes(msg.v)) {
+      const selection = room.modeRequest = {};
       if (msg.v === 'tutorial') Object.assign(room, { mapName: 'tutorial', mapSpawns: TUTORIAL_SPAWNS });
       if (msg.v === 'horde') {
         // Horde: a map with defender spawns (the first one, if the current map has none), and never Endless
         const ok = await hordeMaps(), name = ok.includes(room.mapName) ? room.mapName : ok[0];
-        if (!name || room.state === 'play' || me.ws !== ws || !isHost(room, me)) return;
-        if (name !== room.mapName) { room.mapName = name; room.mapSpawns = (await loadMap(name)).spawns; }
+        if (!name || room.state === 'play' || me.ws !== ws || !isHost(room, me) || room.modeRequest !== selection) return;
+        const map = name !== room.mapName ? await loadMap(name) : null;
+        if (room.state === 'play' || me.ws !== ws || !isHost(room, me) || room.modeRequest !== selection) return;
+        if (map) { room.mapName = name; room.mapSpawns = map.spawns; }
         if (room.army === 'endless') room.army = 'standard';
       }
       room.mode = msg.v; lobby(room);

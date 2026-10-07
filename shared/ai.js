@@ -37,11 +37,19 @@ const trenchesNear = (view, p, r) => cellsNear(view, p, r, c => view.flags[c] & 
 // how many of my side's mines lie within r of p (the view's terrain shows only the mines my side laid)
 const minesNear = (view, p, r) => view.mines.filter(m => d(p, m) <= r).length;
 
-// A blown bridge to put back: the map's bridge cells are noted on the first look, and one that is river now gets a
+// Keep every bridge delivered to this seat, including World crossings scouted after the first look.
+function rememberBridges(view, mem) {
+  if (mem.bridgeMap === view.mapChars) return;
+  const cells = new Set(mem.bridges ?? []);
+  view.mapChars.forEach((ch, c) => { if (ch === '=') cells.add(c); });
+  mem.bridges = [...cells]; mem.bridgeMap = view.mapChars;
+}
+
+// A blown bridge to put back: observed bridge cells are remembered, and one that is river now gets a
 // builder squad. The span runs along the shorter stretch of water through the cell. One job per look.
 function rebuildBridge(view, slot, squads, enemies, busy, mem, submit) {
   const me = view.players[slot], now = view.tick / 20;
-  mem.bridges ??= view.mapChars.flatMap((ch, c) => (ch === '=' ? [c] : []));
+  rememberBridges(view, mem);
   // The squad this AI sent to dig a bridge is remembered, since a view shows that a squad digs but not what.
   const crew = mem.bridgeCrew ??= new Map(), byId = new Map(squads.map(u => [u.id, u]));
   for (const [id, job] of crew) {
@@ -156,6 +164,7 @@ const inCover = (_view, u) => u.cover === 1 || u.cover === 2;
 // Refresh on the same beat as human snapshots. A think between beats uses the previous view.
 export function observe(g, slot, cache) {
   const mem = memoryOf(g, slot), view = viewFor(g, slot, mem, cache);
+  rememberBridges(view, mem);
   flushHordeMovement(view, slot, mem, cmd => command(g, slot, cmd));
   return view;
 }

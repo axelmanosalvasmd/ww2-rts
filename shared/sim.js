@@ -913,7 +913,7 @@ function fortify(g, p) {
       const a = corner - side * swing;
       const c = cellOf(g, p.spawn.x + Math.cos(a) * rr * CELL - size * CELL / 2, p.spawn.z + Math.sin(a) * rr * CELL - size * CELL / 2);
       const cells = c >= 0 && footprint(g, c, size);
-      if (cells && canStamp(g, cells) && !cells.some(k => dist(cellCenter(g, k), b) < UNITS.bunker.radius + (rr > 8 ? 8 : 1))
+      if (cells && canStamp(g, cells, true) && !cells.some(k => dist(cellCenter(g, k), b) < UNITS.bunker.radius + (rr > 8 ? 8 : 1))
         && ![...g.units.values()].some(f => f.type === 'flakpos' && dist(f, footCenter(g, c, size)) < (rr > 8 ? 14 : 8))) { placeBuilding(g, p.slot, 'flakpos', c, true); break place; }
     }
   }
@@ -927,8 +927,13 @@ const footprint = (g, c, size) => {
 };
 // open ground with nothing built on it and at most one level of fall across it (the builders level it, and craters
 // and trenches get filled in)
-const canStamp = (g, cells) => !!cells && cells.every(c => !(g.flags[c] & MOVE) && !'WF=KOAQ'.includes(g.chars[c]))
-  && Math.max(...cells.map(c => level(g, c))) - Math.min(...cells.map(c => level(g, c))) <= 1;
+function stampOccupied(g, cells) {
+  for (const u of g.units?.values() ?? []) if (u.hp > 0 && !UNITS[u.type].air && !u.riding && !UNITS[u.type].structure && cells.includes(cellOf(g, u.x, u.z))) return true;
+  return false;
+}
+// Initial bases retain their layout and clear obstructed starting troops before play begins.
+const canStamp = (g, cells, allowOccupied = false) => !!cells && cells.every(c => !(g.flags[c] & MOVE) && !'WF=KOAQ'.includes(g.chars[c]))
+  && Math.max(...cells.map(c => level(g, c))) - Math.min(...cells.map(c => level(g, c))) <= 1 && (allowOccupied || !stampOccupied(g, cells));
 const footCenter = (g, c, size) => ({ x: (c % g.w + size / 2) * CELL, z: (Math.floor(c / g.w) + size / 2) * CELL });
 
 // place a building (finished, or a Construction Site at 25% hp) with its top-left cell at c
@@ -999,12 +1004,12 @@ function wreckBuilding(g, u) {
   for (const n of g.nodes ?? []) if (n.depot === u.id) n.depot = 0;
 }
 // the first spot at or around (x, z) where a size x size building fits, clear of spawns, points and other nodes
-function findSite(g, x, z, size, avoid = []) {
+function findSite(g, x, z, size, avoid = [], allowOccupied = false) {
   const start = cellOf(g, Math.min(g.w * CELL - 1, Math.max(0, x)), Math.min(g.h * CELL - 1, Math.max(0, z)));
   const seen = new Set([start]), q = [start];
   for (let i = 0; i < q.length && i < 4000; i++) {
     const c = q[i], at = footCenter(g, c, size);
-    if (canStamp(g, footprint(g, c, size)) && avoid.every(([p, r]) => dist(p, at) >= r)) return c;
+    if (canStamp(g, footprint(g, c, size), allowOccupied) && avoid.every(([p, r]) => dist(p, at) >= r)) return c;
     const cx = c % g.w, cy = Math.floor(c / g.w);
     for (const [dx, dy] of [[1, 0], [-1, 0], [0, 1], [0, -1]]) {
       const nx = cx + dx, ny = cy + dy, n = ny * g.w + nx;
@@ -1114,6 +1119,7 @@ function stepWorld(g, list, dt) {
     p.out = true;
     for (const u of [...g.units.values()]) if (u.owner === p.slot) { g.units.delete(u.id); if (UNITS[u.type].building) wreckBuilding(g, u); }
   }
+  if (g.winner === null && g.players.every(p => p.out)) finish(g, -1, 'draw');
   if (g.winner === null) for (const team of new Set(g.players.map(p => p.team))) if (worldOwned(g, team) === g.world.total) { finish(g, team, 'world', g.world.regions.find(r => r.capTick === g.tick)); break; }
 }
 function worldIncome(g, p, list, dt) {
@@ -1310,7 +1316,7 @@ function setupSkirmishBases(g) {
     // a road about 6 m wide between every two base buildings, so tanks and the Kaiju get in and out
     const avoid = [...g.points.map(q => [q, CFG.pointRadius + 5]), ...[...g.units.values()].filter(u => UNITS[u.type].structure).map(u => [u, UNITS[u.type].radius + 9])];
     for (const type of ['hq', 'barracks']) {
-      let c = findSite(g, p.spawn.x - 3, p.spawn.z - 3, 3, avoid);
+      let c = findSite(g, p.spawn.x - 3, p.spawn.z - 3, 3, avoid, true);
       // Custom maps can leave no legal footprint (for example a one-cell causeway).
       // Like Classic's HQ, clear a small starting pad rather than crashing match creation.
       if (c < 0) {
@@ -1926,6 +1932,12 @@ function leaveCarrier(g, u, c, thrown = false) {
   u.hp -= UNITS[u.type].models * UNITS[u.type].hpPer * CFG.aid.evict;
   g.shots.push({ t: u.id, to: u.owner, x: u.x, z: u.z, k: 'hurt', kill: u.hp <= 0 });
 }
+function boardingReachable(g, u, c) {
+  if (flagsAt(g, u.x, u.z) & MOVE) return false;
+  if (!UNITS[c.type].naval) return walkable(g, u, c, MOVE, 0.15);
+  // Landing craft can meet a squad at the bank, but cannot load through buildings or cliffs.
+  return noCliffs(g, u, c) && crossedCells(u, c, CELL, g.w, g.h).every(k => !(g.flags[k] & MOVE) || physicalWorldCell(g, k) === 'W');
+}
 // a free house cell with open ground next to it (so the squad can see and shoot out), nearest to `from`
 function entryCell(g, c0, from, taken) {
   const seen = new Set([c0]), q = [c0], edge = [];
@@ -1997,6 +2009,10 @@ function worldCellData(g, c) {
 }
 function seenWorldCell(g, c, team) {
   const row = [c, g.chars[c], g.height?.[c] ?? 0, g.cellState[c], worldCellData(g, c)];
+  if (g.world) {
+    const initial = g.initialTerrain;
+    row[4].initial = [initial.chars[c] === 'N' ? composeWorldCell(initial.ground[c], initial.objects[c]) : initial.chars[c], initial.height?.[c] ?? 0];
+  }
   if (row[1] === 'N' && mineKnown(g, c, team)) { const owner = g.mines.get(c) ?? -1; row[4].mineOwned = owner >= 0 && g.players[owner].team === team; }
   if (row[1] === 'N' && !mineKnown(g, c, team)) {
     row[1] = physicalWorldCell(g, c); delete row[4].mine; delete row[4].mineOwned; delete row[4].mineMaterial;
@@ -2755,6 +2771,7 @@ function enqueueOrder(u, order) {
 // A waiting order starts once the unit has nothing under way. A step it took on its own (into cover, to make room or
 // backing off, see react) gives way to it; a fresh unit's walk to the rally point does not.
 function startQueuedOrders(g, u) {
+  if (u.air && (u.air.state === 'rearm' || u.air.fuel <= 0 || u.air.ammo <= 0)) return;
   if (u.orders?.length && u.drift && u.drift !== 'rally') { u.drift = false; u.path = []; u.reverse = null; }
   while (u.orders?.length && planOf(g, u)[0] === 0) {
     const order = u.orders.shift(), remaining = u.orders;
@@ -2791,6 +2808,7 @@ function dispatchOrderGroups(g, slot, cmd) {
 
 export function command(g, slot, cmd, auto = false) {
   if (g.winner !== null || !Number.isInteger(slot) || !g.players[slot] || g.players[slot].out || g.players[slot].away || !cmd || typeof cmd !== 'object' || Array.isArray(cmd)) return 'blocked';
+  if ('orders' in cmd && (!Array.isArray(cmd.orders) || cmd.orders.some(o => !Array.isArray(o) || o.length < 3 || !Number.isSafeInteger(o[0]) || !Number.isFinite(o[1]) || !Number.isFinite(o[2])))) return 'blocked';
   const convoyCommand = commandConvoy(g, slot, cmd, supplyHooks(g));
   if (convoyCommand) return convoyCommand.result;
   const controlledIds=Array.isArray(cmd.ids)?cmd.ids:Array.isArray(cmd.orders)?cmd.orders.map(o=>o[0]):[];
@@ -2962,7 +2980,7 @@ export function command(g, slot, cmd, auto = false) {
       if (AIMED_AB.has(ab.id)) {
         if (x === null || z === null) { reason = 'blocked'; continue; }
         if (auto) u.nade = { x, z, auto: true };
-        else { exitBuilding(g, u); Object.assign(u, { traffic: null, trafficWait: 0, moveOutcome: 'interrupted', moveOutcomeTick: g.tick, worldGoal: null, orders: [], face: null, nade: { x, z }, attackId: 0, repath: 0, fireAt: -1 }); }
+        else { exitBuilding(g, u); Object.assign(u, { traffic: null, trafficWait: 0, moveOutcome: 'interrupted', moveOutcomeTick: g.tick, worldGoal: null, orders: [], face: null, entrench: null, dig: null, build: 0, enter: -1, board: 0, amove: null, targetId: 0, stuck: 0, path: [], drift: false, reverse: null, nade: { x, z }, attackId: 0, repath: 0, fireAt: -1 }); }
       }
       else if (!payAb(g, u)) { reason = 'mun'; continue; }
       else if (ab.id === 'suppress') { u.buff = ab.dur; u.cd = ab.cd; }
@@ -3077,6 +3095,10 @@ export function command(g, slot, cmd, auto = false) {
     if (!b || b.owner !== slot || !UNITS[b.type].building || b.built >= 1) return 'unseen';
     g.players[slot].mp += UNITS[b.type].cost * 0.75; tally(g, slot, 'mpSpent', -UNITS[b.type].cost * 0.75);
     g.units.delete(b.id);
+    const sections = new Set(g.structures.get(b.structureId)?.sections.map(section => section.id));
+    for (const c of b.cells) if (g.structuralCells.get(c)?.entityId === b.id) g.structuralCells.delete(c);
+    g.structures.delete(b.structureId);
+    g.fallingSections = g.fallingSections.filter(section => !sections.has(section.section));
     for (const c of b.cells) setCell(g, c, '.');
     for (const n of g.nodes ?? []) if (n.depot === b.id) n.depot = 0;
   } else if (cmd.t === 'destroy') {
@@ -3977,6 +3999,7 @@ function intercepted(g, s, list) {
   for (const u of list) {
     const aa = UNITS[u.type].aa;
     if (down || !aa?.chance || u.holdFire || u.hp <= 0 || g.players[u.owner].team === team || dist(u, s) > aa.range || (aa.setup && u.still < 2) || (u.built !== undefined && u.built < 1)) continue;
+    if (u.logistics?.forced && !u.logistics.stranded || !consumeAmmo(u, 1)) continue;
     g.shots.push({ f: u.id, fo: u.owner, x: s.x, z: s.z, k: 'flak', pub: true });
     if (Math.random() < aa.chance) { down = true; by = u.owner; }
   }
@@ -4322,7 +4345,7 @@ function worldSupply(g, list) {
   for (const team of new Set(g.players.filter(p => !p.out).map(p => p.team))) {
     const here = r => armed.get(r), usable = r => R[r].team === team && !(here(r) && !here(r).has(team));
     const cost = new Float32Array(n).fill(Infinity), done = new Uint8Array(n);
-    for (const s of supplySources(g, team)) { const c = cellOf(g, s.x, s.z), r = c >= 0 ? map[c] : -1; if (r >= 0 && R[r].team === team) cost[r] = 0; }
+    for (const s of supplySources(g, team)) { const c = cellOf(g, s.x, s.z), r = c >= 0 ? map[c] : -1; if (r >= 0 && usable(r)) cost[r] = 0; }
     // ponytail: Dijkstra picking the cheapest open region by scan, fine for a few hundred regions; a heap past that
     for (;;) {
       let a = -1;
@@ -4560,7 +4583,7 @@ export function step(g) {
     if (u.board) {
       const c = g.units.get(u.board);
       if (!c || c.hp <= 0 || c.cargo) u.board = 0;
-      else if (dist(u, c) <= CFG.aid.board) { Object.assign(u, { riding: c.id, board: 0, path: [], attackId: 0, targetId: 0 }); c.cargo = u.id; continue; }
+      else if (dist(u, c) <= CFG.aid.board && boardingReachable(g, u, c)) { Object.assign(u, { riding: c.id, board: 0, path: [], attackId: 0, targetId: 0 }); c.cargo = u.id; continue; }
       else if (!u.path.length && u.repath <= 0) requestStepPath(g, u, c, 'board');
     }
 

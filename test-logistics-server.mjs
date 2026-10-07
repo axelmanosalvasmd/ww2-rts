@@ -8,6 +8,8 @@ import { think } from './shared/ai.js';
 
 process.env.PORT = '0';
 process.env.HOST = '127.0.0.1';
+process.env.PUBLIC_URL = 'http://test';
+process.env.EDIT_PASSWORD = 'test';
 const { server, wss, loop, rooms, clock, tickRooms, watcherSnapshot, logisticsEnabledFor } = await import('./server.js');
 clearInterval(loop);
 if (!server.listening) await once(server, 'listening');

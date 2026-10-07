@@ -1,5 +1,5 @@
 import { worldLayers, composeWorldCell } from '../shared/world-layers.js';
-import { UNITS, FORTS, CFG, TERRAIN, CELL, priceOf, supCost, popCap, popUse, dropPop, abCost, levelOf, teamSees, buildKinds, builderTypes, isSkirmishBaseMode, productionAccess, productionBuildings } from '../shared/sim.js';
+import { UNITS, FORTS, CFG, TERRAIN, CELL, RIDING_FLAG, priceOf, supCost, popCap, popUse, dropPop, abCost, levelOf, teamSees, buildKinds, builderTypes, isSkirmishBaseMode, productionAccess, productionBuildings } from '../shared/sim.js';
 
 // Server denials deliberately contain no target details.
 export const DENY_SENTENCES = Object.freeze({
@@ -24,7 +24,7 @@ export const cooldownSeconds = (cd) => Math.max(0, Math.ceil(cd));
 const yes = () => ({ ok: true, reason: '' });
 const no = (reason) => ({ ok: false, reason });
 export const snapshotUnits = (s) => (s?.units ?? []).map((v) => ({
-  id: v[0], type: v[1], owner: v[2], x: v[3], z: v[4], hp: v[7], cd: v[11], flags: v[12], built: v[14] ?? 1,
+  id: v[0], type: v[1], owner: v[2], x: v[3], z: v[4], hp: v[7], cd: v[11], flags: v[12], riding: !!(v[12] & RIDING_FLAG), built: v[14] ?? 1,
   queue: (s.queues ?? []).find((q) => q[0] === v[0])?.slice(4) ?? [],
 }));
 // Global cards prefer a selected compatible facility, otherwise the server chooses one.
@@ -142,6 +142,25 @@ export function buyCount(s, cfg, action, want) {
 }
 
 // Adapter for the shared server placement and sight rules, using unsmoothed snapshot positions.
+// Ordinary maps are public at match start. World baselines grow only from delivered, discovered cells.
+const placementTerrain = new WeakMap();
+export function rememberPlacementTerrain(map, cells = []) {
+  let initial = placementTerrain.get(map);
+  if (!initial) {
+    initial = {
+      chars: map.world ? Array(map.w * map.h).fill('?') : [...map.rows.join('')],
+      height: Array.from({ length: map.w * map.h }, (_, c) => map.world ? 0 : levelOf(map.heights?.[Math.floor(c / map.w)]?.[c % map.w] ?? '0')),
+    };
+    placementTerrain.set(map, initial);
+  }
+  if (map.world) for (const [c, ch, lv, , data] of cells) {
+    if (initial.chars[c] !== '?') continue;
+    initial.chars[c] = data?.initial?.[0] ?? (ch === 'N' ? composeWorldCell(data?.ground ?? '.', data?.object ?? '.') : ch);
+    initial.height[c] = data?.initial?.[1] ?? lv ?? 0;
+  }
+  return initial;
+}
+
 export function placementState(s, map, grid, teams, layers) {
   const chars = grid.flat(), w = map.w, h = map.h, us = snapshotUnits(s), authored = worldLayers(map), ground = layers?.groundGrid?.flat() ?? authored.ground, objects = layers?.objectGrid?.flat() ?? authored.objects;
   const g = { w, h, chars, ground, objects, mode: s.mode, logisticsEnabled: s.logistics?.enabled === true, logisticsEnabled: s.logistics?.enabled === true, world: s.world ? { regions: s.world.regions } : undefined, naval: map.naval === true, flags: chars.map((ch, c) => TERRAIN[ch === 'N' ? composeWorldCell(ground[c], objects[c]) : ch] ?? 0),
@@ -151,6 +170,6 @@ export function placementState(s, map, grid, teams, layers) {
     nodes: (s.nodes ?? []).map(([x, z]) => ({ x, z, c: (Math.floor(z / CELL) - 1) * w + Math.floor(x / CELL) - 1,
       depot: us.find((v) => v.type === 'depot' && Math.hypot(v.x - x, v.z - z) < 1)?.id ?? 0 })),
   };
-  g.initialTerrain = { chars: [...map.rows.join('')], height: g.height }; // the map as drawn: what "Fill in" works back to
+  g.initialTerrain = rememberPlacementTerrain(map, s.cells);
   return { game: g, sees: (slot, at) => teamSees(g, teams[slot] ?? slot, at) };
 }

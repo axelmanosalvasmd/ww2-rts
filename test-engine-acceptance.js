@@ -2,7 +2,7 @@
 import assert from 'node:assert/strict';
 import WebSocket from 'ws';
 import * as sim from './shared/sim.js';
-import { mkdtemp, symlink, unlink, writeFile } from 'node:fs/promises';
+import { mkdtemp, unlink, writeFile } from 'node:fs/promises';
 import { join } from 'node:path';
 import { tmpdir } from 'node:os';
 import { migrateWorldMap } from './shared/world-layers.js';
@@ -164,9 +164,9 @@ try {
         { id: 'completed', scope: 'match', side: 0, recipients: 'side', condition: { kind: 'triggerComplete', trigger: 'captured' }, repeat: { mode: 'once' }, actions: [{ kind: 'objectiveComplete', objective: 'hold' }] },
         { id: 'bounded', scope: 'match', side: 0, recipients: 'side', condition: combined, repeat: { mode: 'whileTrue', cooldown: 2, max: 2 }, actions: [{ kind: 'damage', box: [52, 50, 52, 50], damage: 20 }, { kind: 'say', text: { en: 'Breach pulse', es: 'Pulso de apertura' }, recipients: 'side', side: 0 }] },
         { id: 'destroyed', scope: 'match', side: 0, recipients: 'side', condition: { kind: 'all', conditions: [{ kind: 'time', seconds: 34 }, { kind: 'triggerComplete', trigger: 'bounded' }] }, repeat: { mode: 'once' }, actions: [{ kind: 'destroy', box: [52, 50, 52, 50] }] }] };
-    const evidence = await mkdtemp(join(tmpdir(), 'ww2-saved-mission-')), savedName = `engine-mission-${process.pid}`;
-    savedMissionLink = join(import.meta.dirname, 'maps', `${savedName}.json`);
-    await symlink(join(evidence, 'mission.json'), savedMissionLink);
+    const evidence = await mkdtemp(join(tmpdir(), 'ww2-saved-mission-')), savedName = `engine-mission-${process.pid}`, fixturePath = join(import.meta.dirname, 'maps', `${savedName}.json`);
+    await writeFile(fixturePath, '{}', { flag: 'wx' });
+    savedMissionLink = fixturePath;
     const url = `http://127.0.0.1:${server.server.address().port}/maps/${savedName}.json`, headers = { 'x-edit-password': 'test', 'content-type': 'application/json' };
     const save = await fetch(url, { method: 'POST', headers, body: JSON.stringify(map) }); assert.equal(save.status, 200, await save.text());
     const reload = await fetch(url, { headers }); assert.equal(reload.status, 200); const saved = await reload.json();

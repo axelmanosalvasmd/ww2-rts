@@ -67,7 +67,7 @@ export function createObjectives(hooks) {
       return `${o.state === 'complete' ? '✓' : '•'} ${label}`;
     }).join('\n');
     if (goal) goal.classList.toggle('scenario-goals', scenarioGoals.length > 0);
-    if (goal && goal.textContent !== text) { goal.textContent = text; goal.hidden = !text; placeBanner(); }
+    if (goal && (goal.textContent !== text || goal.hidden !== !text)) { goal.textContent = text; goal.hidden = !text; placeBanner(); }
     for (let i = 0; i < (s.points ?? []).length; i++) {
       const [owner, capper, progress, contested = 0, cut = 0, locked = 0] = s.points[i], old = pointState[i];
       pointState[i] = { owner, flipped: old && old.owner !== owner ? time : old?.flipped ?? -Infinity };

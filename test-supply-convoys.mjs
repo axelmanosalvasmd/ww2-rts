@@ -80,7 +80,11 @@ const trucksOf = (g, owner = 0) => [...g.units.values()].filter(u => u.owner ===
   advance(g, 6);
   u.logistics.provisions = 0;
   for (const t of g.units.values()) if (t.owner === 0 && t.type === 'truck') t.convoy.hold = true;
-  advance(g, 21);
+  // Keep deliveries paused for the entire shortage, including trucks spawned after the initial hold.
+  for (let n = 0; n < Math.ceil(21 / TICK); n++) {
+    for (const t of g.units.values()) if (t.owner === 0 && t.type === 'truck') t.convoy.hold = true;
+    step(g);
+  }
   assert.equal(u.logistics.forced, true, 'exhaustion overrides the ordinary auto-retreat toggle');
   command(g, 0, { t: 'attack', ids: [u.id], target: troops(g, 1)[0].id });
   assert.equal(u.logistics.forced, true, 'ordinary attack cannot cancel supply withdrawal');

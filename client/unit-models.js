@@ -533,6 +533,11 @@ export function animate(v, dt, eye, groundAt, detailed = true) {
     if (sq.guns) { sq.guns.hi.visible = !far; sq.guns.lo.visible = far; }
   }
   const goal = postureOf(v.supp ?? 0, v.flags ?? 0, v.cover), w = sq.w, step = dt / POSTURE.blend;
+  // digging (flag 16) or building (128) where it stands, not pinned down: the men play the spade stroke built into
+  // their figure (client/models/infantry.js DIG), each on his own beat, at about one stroke every 1.6 seconds
+  const working = (v.flags & 144) && goal < 2 && sq.poseSpeed < 0.3;
+  sq.work = Math.max(0, Math.min(1, (sq.work ?? 0) + (working ? step : -step)));
+  if (sq.work) sq.workT = (sq.workT ?? 0) + dt * 0.62;
   if (returned) for (let i = 0; i < 4; i++) w[i] = i === goal ? 1 : 0;
   for (let i = 0; i < 4; i++) {
     const d = (i === goal ? 1 : 0) - w[i];
@@ -560,13 +565,16 @@ export function animate(v, dt, eye, groundAt, detailed = true) {
     const blend = motion.blend;
     const aim = sq.aimBlend * blend * w[0] / sum;
     const upright = blend * (w[0] + w[3]) / sum - aim, crouch = blend * w[1] / sum, crawl = blend * w[2] / sum;
-    const gait = u.gait ??= new Float64Array(20), pw = u.postureWeights ??= new Float64Array(4), mp = u.poseValues ??= new Float64Array(6);
+    // the dig frames (24-27) exist only on the figures of squads that dig
+    const frames = u.hi[0].morphTargetInfluences.length - 3, dig = frames > 20 ? sq.work * (1 - blend) : 0;
+    const gait = u.gait ??= new Float64Array(frames), pw = u.postureWeights ??= new Float64Array(4), mp = u.poseValues ??= new Float64Array(6);
     gait.fill(0); mp.fill(0);
     gaitWeights(motion.phase, upright, 8, gait, 0); gaitWeights(motion.phase, aim, 4, gait, 8);
     gaitWeights(motion.phase, crouch, 4, gait, 12); gaitWeights(motion.phase, crawl, 4, gait, 16);
-    for (let i = 0; i < 4; i++) pw[i] = w[i] / sum * (1 - blend);
+    if (dig) gaitWeights((sq.workT ?? 0) + motion.seed, dig, 4, gait, 20);
+    for (let i = 0; i < 4; i++) pw[i] = w[i] / sum * (1 - blend) * (1 - dig);
     for (let i = 0; i < 4; i++) for (let j = 0; j < 6; j++) mp[j] += pw[i] * POSES[i][j];
-    for (let j = 0; j < 6; j++) mp[j] += upright * POSES[3][j] + aim * POSES[0][j] + crouch * POSES[1][j] + crawl * POSES[2][j];
+    for (let j = 0; j < 6; j++) mp[j] += upright * POSES[3][j] + (aim + dig) * POSES[0][j] + crouch * POSES[1][j] + crawl * POSES[2][j];
     const ox = mp[4] - HAND[0], oy = mp[5] - HAND[1];
     const tips = u.hi[0].geometry.userData.muzzles;
     if (tips) {

@@ -5,6 +5,18 @@ AI-vs-AI runs (see DESIGN.md for the balance log). Add new entries under **Unrel
 
 ## Unreleased
 
+- Fixed server crashes caused by Supply orders aimed at unfinished or newly completed caches, and by malformed movement orders. Unfinished caches now refuse deliveries safely; completed caches can accept them immediately.
+- Supplied troops can reinforce and repair at forward production buildings using their carried provisions when no nearby supply store is available.
+- Convoys keep their limit of three route searches per tick when looking for new jobs and retain increasing retry delays for blocked routes.
+- Supplies explicitly delivered to an ally's cache can now be used by that ally's troops. Automatic convoy stock keeps its original owner.
+- Construction refuses footprints occupied by ground troops, so buildings cannot trap their builders. Cancelling a site also removes its physical sections, preventing ghost rubble later.
+- Manual grenades and other aimed abilities replace prior construction, digging and boarding orders correctly. Troops cannot board carriers through water, walls or cliffs, while landing craft still accept troops from a reachable bank.
+- Anti-aircraft guns spend ammunition when firing at off-map support aircraft and cannot intercept with empty magazines. Aircraft keep queued sorties until rearming finishes.
+- Fill in keeps the original terrain height through live changes and World reconnects. Active objectives reappear after reconnect, and opening scripted announcements display once.
+- World AI remembers bridges discovered later in the match and can repair them. Enemy troops can blockade supply in the source region itself. Losing every player's final region at once ends the match in a draw.
+- A Horde map still loading in the lobby cannot change the mode or map of a match that has started, or overwrite a newer mode selection.
+- Squads visibly dig and build with spades. Distant shovels stay within the existing 150-triangle limit (maximum 149, down from 169).
+
 ### 2026-10-06: Destroy your own units, roomier bases, tanks no longer stuck at spawn (`257d357`)
 
 - Select your own units or buildings and press Delete to destroy them. No refund, and the enemy earns no kill bounty.

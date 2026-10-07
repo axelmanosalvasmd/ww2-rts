@@ -2,8 +2,20 @@
 import assert from 'node:assert/strict';
 import { registerHooks } from 'node:module';
 import { spawnSync } from 'node:child_process';
+import { mkdtempSync, openSync, closeSync, readFileSync, unlinkSync, rmdirSync } from 'node:fs';
+import { tmpdir } from 'node:os';
+import { join } from 'node:path';
 import { pathToFileURL } from 'node:url';
 import WebSocket from 'ws';
+
+function runControl(flag) {
+  const dir = mkdtempSync(join(tmpdir(), 'ww2-traffic-control-')), file = join(dir, 'output.log');
+  const fd = openSync(file, 'w');
+  try {
+    const result = spawnSync(process.execPath, [import.meta.filename, flag], { stdio: ['ignore', fd, fd], timeout: 30000 });
+    return { ...result, stdout: readFileSync(file, 'utf8'), stderr: result.error?.message ?? '' };
+  } finally { closeSync(fd); unlinkSync(file); rmdirSync(dir); }
+}
 
 const liveTruthControl = process.argv.includes('--live-truth-control');
 const liveCoverControl = process.argv.includes('--live-cover-control');
@@ -190,7 +202,7 @@ try {
     assert(open.at(-1).rot > 0, 'the stable actor order selects the positive side');
     assert.deepEqual(hidden, open, 'unobserved terrain cannot change the initial voluntary trajectory');
     console.log('PASS traffic privacy: identical client trajectories before contact', JSON.stringify({ open, hidden }));
-    const control = spawnSync(process.execPath, [import.meta.filename, '--live-truth-control'], { encoding: 'utf8', timeout: 30000 });
+    const control = runControl('--live-truth-control');
     assert.equal(control.status, 0, `live-truth regression control failed: ${control.stdout}\n${control.stderr}`);
     assert(control.stdout.includes('opposite sides before contact'));
     console.log(control.stdout.trim());
@@ -205,7 +217,7 @@ try {
       assert(open.at(-1).z > 55, 'known cover permits the positive side');
       assert.deepEqual(hidden, open, 'hidden wreck metadata cannot change the ordinary infantry yield response');
       console.log('PASS cover privacy: identical infantry client trajectories before contact', JSON.stringify({ open, hidden }));
-      const control = spawnSync(process.execPath, [import.meta.filename, '--live-cover-control'], { encoding: 'utf8', timeout: 30000 });
+      const control = runControl('--live-cover-control');
       assert.equal(control.status, 0, `live-cover regression control failed: ${control.stdout}\n${control.stderr}`);
       assert(control.stdout.includes('opposite infantry sides before contact')); console.log(control.stdout.trim());
     }
