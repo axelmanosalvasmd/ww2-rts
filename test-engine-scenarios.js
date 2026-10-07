@@ -1,6 +1,7 @@
 import assert from 'node:assert/strict';
 import { createGame, step, validateMap, snapshotFor, UNITS, popOf, popCap, CELL } from './shared/sim.js';
 import { migrateScenario, validateScenario } from './shared/scenarios.js';
+import { migrateWorldMap, composeWorldCell } from './shared/world-layers.js';
 const map = () => ({name:'mission',w:24,h:24,rows:Array(24).fill('.'.repeat(24)),spawns:[{x:2,y:2},{x:21,y:21}],points:[{id:'crossroads',x:12,y:12}]});
 const mission = () => ({version:1,areas:[{id:'gate',box:[8,8,10,10]}],groups:[{id:'squad',units:[]}],objectives:[{id:'hold',text:{en:'Hold the gate',es:'Defiende la entrada'},recipients:'side',side:0}],triggers:[]});
 const trigger = (id,condition,actions,repeat={mode:'once'},extra={}) => ({id,scope:'match',recipients:'side',side:0,condition,actions,repeat,...extra});
@@ -34,6 +35,17 @@ function ticks(g,n) { for(let i=0;i<n;i++) step(g); }
  const g=start(m); step(g);assert.equal(g.scenario.groups.squad.length,3);assert(g.scenario.groups.squad.every(id=>g.units.get(id).path.length));ticks(g,10);assert.equal(g.scenario.groups.squad.length,3,'no duplicate arrival');assert(popOf(g,0)<=popCap(g,0));
  const h=start(m);while(popOf(h,0)<popCap(h,0)) { const u=structuredClone([...h.units.values()][0]);u.id=h.nextId++;h.units.set(u.id,u); }
  step(h);assert.equal(h.scenario.deferred.length,1);assert.equal(h.scenario.groups.squad.length,0);h.units.delete([...h.units.values()].find(u=>u.owner===0).id);step(h);assert.equal(h.scenario.groups.squad.length,1);ticks(h,120);assert.equal(h.scenario.deferred.length,0,'bounded expiry cancels blocked arrivals');
+}
+{
+ for (const [ground, object, mine, blocked] of [['.','R',false,true],['.','R',true,true],['D','.',true,false],['.','.',true,false]]) {
+  const m=migrateWorldMap(map());
+  for (const [key,ch] of [['ground',ground],['objects',object],['mines',mine?'N':'.']]) { const row=[...m.layers[key][9]];row[9]=ch;m.layers[key][9]=row.join(''); }
+  const row=[...m.rows[9]];row[9]=composeWorldCell(ground,object,mine);m.rows[9]=row.join('');
+  m.scenario=mission();m.scenario.triggers=[trigger('vehicleEntry',{kind:'time',seconds:0},[{kind:'reinforce',group:'squad',side:0,roster:[{type:'armoredcar',count:1}],at:[9,9],order:{kind:'hold'},expires:5}])];
+  assert.equal(validateMap(m),null,'layered entry fixture has a valid map contract');
+  if (blocked) assert.throws(()=>start(m),/unavailable/,`rubble rejects vehicle entry with mine=${mine}`);
+  else { const g=start(m);step(g);assert.equal(g.scenario.triggers['vehicleEntry@match'].count,1);assert.equal(g.scenario.groups.squad.length,1,`${ground} mine allows normal vehicle arrival`);assert.equal(g.scenario.deferred.length,0);assert.equal(g.units.get(g.scenario.groups.squad[0]).type,'armoredcar'); }
+ }
 }
 {
  const m=map();m.scenario=mission();m.scenario.groups[0].units=[{id:'leader',type:'rifle',side:0,x:9,y:9}];m.scenario.triggers=[trigger('loss',{kind:'all',conditions:[{kind:'unitLost',unit:'leader'},{kind:'groupLost',group:'squad'}]},[say('Lost')]),trigger('entry',{kind:'all',conditions:[{kind:'areaEntry',area:'gate',group:'squad'},{kind:'groupCount',group:'squad',op:'equal',count:1}]},[say('Entered')])];

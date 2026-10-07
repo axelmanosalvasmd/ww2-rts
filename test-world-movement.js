@@ -1,7 +1,8 @@
 // Long movement and discovery acceptance through the browser's real room protocol.
 import assert from 'node:assert/strict';
 import WebSocket from 'ws';
-import { CELL, TERRAIN, CFG } from './shared/sim.js';
+import { CELL, CFG, createGame, mutateWorldCell } from './shared/sim.js';
+import { generateWorldMap } from './shared/world-conquest.js';
 Object.assign(process.env, { PORT: '0', HOST: '127.0.0.1', EDIT_PASSWORD: 'test', PUBLIC_URL: 'http://test' });
 const server = await import('./server.js');
 clearInterval(server.loop);
@@ -42,13 +43,27 @@ try {
   const host = await connect('movement-host'); await connect('movement-rival');
   host.send({t:'mode',v:'world'}); host.send({t:'start'}); await host.barrier();
   await until(() => host.start,'world start received'); await tick(4);
-  const g = server.rooms.get('worldmove').game;
+  // Preserve the reproduced home-departure case and make later failures replayable.
+  const room = server.rooms.get('worldmove'), seed = Number(process.env.WORLD_MOVE_SEED ?? 142761591);
+  room.map = generateWorldMap({ seed, players: 2, teams: [0, 1] });
+  const g = room.game = createGame(room.map, ['movement-host', 'movement-rival'], false, [0, 1], [0, 1], { mode: 'world', weather: 'clear' });
+  for (const p of room.players) p.net = { sent: new Map(), full: true };
+  await tick(4);
   const rifle = [...g.units.values()].find(u => u.owner === 0 && u.type === 'rifle');
   const start = {...g.players[0].spawn}, direction = start.x < g.w*CELL/2 ? 1 : -1;
   const target = {x:start.x+direction*150,z:start.z};
   // A clear 150 m route with a short wall beyond initial vision. This setup avoids random geography deciding the test.
   const wallX = Math.floor((start.x+direction*52)/CELL), wallZ = Math.floor(start.z/CELL);
-  const put = (x,y,ch,height=0) => { const c=y*g.w+x; g.chars[c]=ch; g.flags[c]=TERRAIN[ch]; g.height[c]=height; g.cellHp[c]=ch==='B'?100000:0; };
+  const put = (x,y,ch,height=0) => {
+    assert.ok(x >= 0 && y >= 0 && x < g.w && y < g.h, 'the controlled corridor stays within the generated map');
+    const c = y * g.w + x;
+    // A live installation keeps its blocking footprint. Clearing it alone would
+    // order the scout through an HQ body that the local traffic solver still sees.
+    if (ch === '.' && g.buildingCells.has(c)) return;
+    g.structuralCells.delete(c);
+    assert.ok(mutateWorldCell(g, c, { ground: '.', object: ch === 'B' ? 'B' : '.', mine: false, height }));
+    g.cellHp[c] = ch === 'B' ? 100000 : 0;
+  };
   for (let y = wallZ-12; y <= wallZ+12; y++)
     for (let x = Math.floor(Math.min(start.x,target.x)/CELL)-8; x <= Math.floor(Math.max(start.x,target.x)/CELL)+8; x++) put(x,y,'.');
   for (let y = wallZ-3; y <= wallZ+3; y++) put(wallX,y,'B');
@@ -81,9 +96,10 @@ try {
     // Check exact collision coordinates while keeping arrival checks on received snapshots.
     const x=Math.floor(rifle.x/CELL), z=Math.floor(rifle.z/CELL);
     assert.ok(x!==wallX || z<wallZ-3 || z>wallZ+3, 'ordinary movement never enters the wall');
-    detoured ||= Math.abs(row[4]-start.z)>5;
+    detoured ||= Math.abs(x-wallX)<=3 && Math.abs(row[4]-start.z)>5;
     reached = Math.hypot(row[3]-target.x,row[4]-target.z)<3;
   }
+  if (!detoured || !reached) console.log(JSON.stringify({ seed, start, target, wallX, wallZ, row: host.units.get(rifle.id), plan: host.latest.plans.find(p => p[0] === rifle.id), orders: host.latest.orders, path: rifle.path, goal: rifle.worldGoal, traffic: rifle.traffic, wait: rifle.trafficWait, outcome: rifle.moveOutcome }));
   assert.ok(detoured,'scouting finds and routes around the newly discovered wall');
   assert.ok(reached,'the original order completes across several route legs before the queued order starts');
   let queuedReached = false;
@@ -110,7 +126,7 @@ try {
   }
   assert.ok(returned,'retreat continues through its route legs to friendly ground');
   assert.equal(host.denied.length,0,'movement and stop use accepted normal commands');
-  console.log('World long movement, hidden terrain, collision, continued arrival and stop checked');
+  console.log(`World long movement, hidden terrain, collision, continued arrival and stop checked (seed ${seed})`);
 } finally {
   server.clock.setTimeout=()=>null;
   for (const c of clients) c.ws.terminate();

@@ -1483,28 +1483,31 @@ normal budget and unlocks, with mixed/infantry/armor/siege profiles announced du
 shares target 65% infantry, 50% armor and 45% siege; a category repeats at most twice. These are initial behavior
 settings, not a faction-balance conclusion.
 
-The first full-engine comparison used four paired seeds on Default Conquest with three Normal AI seats,
-Standard armies and the normal 20 Hz step/10 Hz observation schedule. Both variants finished all four matches
-and recorded USA/Germany/USSR wins of 2/1/1. Median match duration changed from 548.425 to 595.050 seconds;
-three final matches lasted longer and one ended sooner. Authoritative combat kills totaled 80 before and 56 after.
-This eight-match behavior pilot compares the full engine changes and does not establish faction balance or isolate
-AI strength. Exact per-seed results, movement outcomes and frozen source hashes are in the
-[verification record](docs/engine-game-feel-verification.md#integrated-engine-pilot).
+The final full-engine pilot reran four paired seeds on Default Conquest after the Tank Destroyer counter fix and
+model integration's traffic correction, with three Normal AI seats, Standard armies and the normal 20 Hz step/10 Hz
+observation schedule. Both variants finished all four matches. USA/Germany/USSR wins were 2/1/1 before and 1/2/1
+after. Median match duration changed from 548.425 to 568.100 seconds; two final matches lasted longer and two
+ended sooner. Median first ownership
+of all points changed from 42.425 to 47.150 seconds, and authoritative combat kills totaled 80 before and 56 after.
+The historical baseline predates current World geography, but this unchanged Default map does not exercise it.
+This eight-match behavior pilot does not establish faction balance or isolate AI strength. The new traffic rule
+changed per-seed gameplay outcomes; fresh source manifests and exact movement outcomes are in the
+[verification record](docs/engine-game-feel-verification.md#final-integration).
 
 Large idle Horde launches keep a private Wave-scoped FIFO and submit four ordinary ground move orders per
 100 ms observation beat (the normal 10 Hz delivery). A 238-unit staged batch launches in 59 following beats (5.9 seconds), with at most
 6 seconds including the first observation wait. Adaptive 5 Hz delivery doubles that bound to 12 seconds. Dead units, changed owner/orders, a break, a new Wave and a
 controller reset discard stale work. Fielded units still count toward ordinary Wave completion; direct player
 commands retain immediate path searches. This spreads initial searches without reducing total search work.
-The baseline and rebased four-defender Wave 10 Massive bridge fixture measured a 728.910 ms baseline maximum tick and
-32.601 ms on the final engine, including a 29.161 ms maximum AI phase, over 160 ticks on the local i5-12400.
+The historical baseline and final four-defender Wave 10 Massive bridge fixture measured a 728.910 ms baseline maximum tick and
+31.013 ms on the combined engine, including a 27.672 ms maximum AI phase, over 160 ticks on the local i5-12400.
 The earlier integrated engine reached 1,047.132 ms before staggering. Both fixtures reached the existing
 240 field and Reserve caps. The baseline predates the strategic geography merge and was not rerun. Final p95
-increased from 5.558 to 27.244 ms, with more path work spread across ticks;
+increased from 5.558 to 25.097 ms, with more path work spread across ticks;
 this is a bounded fixture measurement, not a total CPU reduction or universal latency guarantee.
-Current-only Huge/Massive World fixtures measured 30.607/49.943 ms p95, with 47.787/124.532 ms maximums above the
+Current-only Huge/Massive World fixtures measured 25.940/32.330 ms p95, with 42.745/51.474 ms maximums above the
 40 ms tick budget. Their random seeds, staged resources, unpaced ticks and disabled compression limit comparison.
-Exact conditions and source hashes are in the [verification record](docs/engine-game-feel-verification.md#measured-workloads).
+Exact conditions and source hashes are in the [verification record](docs/engine-game-feel-verification.md#final-integration).
 
 Waiting production jobs have stable owner-only IDs and retain the charge paid at purchase. Canceling a waiter refunds
 that exact MP/Fuel charge once and releases its reserved population without resetting active training. Alert history
@@ -1515,7 +1518,9 @@ Detailed animation is gated before expensive unit work; camera return uses the c
 
 Scenario authoring uses stable IDs, localized text, bounded conditions/actions, player/team/match scopes and finite
 repeat policies. Trigger dependencies cannot cycle. Reinforcements use normal arrival/population/terrain rules and
-finite expiry. Reconnect preserves execution identity without issuing rewards again. Scenario and mine source is
+finite expiry. Initial entry checks compose the surface and object independently of mine markers, so hidden
+overlays cannot admit a vehicle onto blocked ground. Reconnect preserves execution identity without issuing rewards
+again. Scenario and mine source is
 available only to authenticated editing; public previews and match starts conceal future script contents. Failed
 validation leaves the previous match/lobby intact. The separate effect-priority/load-control proposal remains outside
 the approved scope.
