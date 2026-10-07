@@ -16,10 +16,10 @@ function radiusPair(a, b, defs) {
 }
 // nearby is unordered: the conflict ties on id and the rest only asks some/every, so the sort was wasted work.
 export function trafficStep(g, u, goal, context) {
-  const { defs, grid, clear, coverRank, visible, dt } = context;
+  const { defs, grid, clear, coverRank, visible, dt } = context, friend = context.friend ?? (v => v.owner === u.owner);
   if (!goal || protectedUnit(u)) { u.traffic = null; u.trafficWait = 0; return { goal, blocked: false }; }
   const def = defs[u.type], d = length(u, goal), dx = (goal.x - u.x) / (d || 1), dz = (goal.z - u.z) / (d || 1);
-  const radius = bodyRadius(def) + 7, nearby = grid.candidates(u, radius, false, v => v.id !== u.id && v.id !== u.board && v.hp > 0 && !(v.owner === u.owner && ((v.ghost ?? 0) > g.tick || (u.ghost ?? 0) > g.tick)) && !v.air && !v.riding && v.garrison < 0 && !(def.infantry && defs[v.type].infantry) && visible(v));
+  const radius = bodyRadius(def) + 7, nearby = grid.candidates(u, radius, false, v => v.id !== u.id && v.id !== u.board && v.hp > 0 && !(((v.ghost ?? 0) > g.tick || (u.ghost ?? 0) > g.tick) && friend(v)) && !v.air && !v.riding && v.garrison < 0 && !(def.infantry && defs[v.type].infantry) && visible(v));
   const velocity = Math.min(def.speed, d / dt), vx = dx * velocity, vz = dz * velocity;
   let conflict = null, time = Infinity;
   for (const v of nearby) {
@@ -35,8 +35,8 @@ export function trafficStep(g, u, goal, context) {
     if (rx * rvx + rz * rvz >= 0 && Math.hypot(rx, rz) >= min - 0.1) continue;
     if (t < time || t === time && v.id < conflict?.id) { conflict = v; time = t; }
   }
-  // Gridlocked by a friend (waiting, yielding, waiting again): pass through friends for a moment (a ghost, see stepOut).
-  if (conflict?.owner === u.owner && u.trafficWait >= TRAFFIC.ghost) {
+  // Gridlocked by a friend, own or allied (waiting, yielding, waiting again): pass through friends for a moment (a ghost, see stepOut).
+  if (conflict && friend(conflict) && u.trafficWait >= TRAFFIC.ghost) {
     u.ghost = g.tick + Math.round(TRAFFIC.ghostTime / dt); u.traffic = null; u.trafficWait = 0; u.trafficEntered = !!u.path?.length;
     return { goal: u.path?.[0] ?? goal, blocked: false };
   }

@@ -13,7 +13,7 @@ import { supportedSections, validateStructures, STRUCTURE_LIMITS } from './struc
 import { DEBRIS_LIMITS, SECTION_MASS, wreckMass, debrisBody, stepDebris, settleDebris, debrisRow } from './debris-motion.js';
 import { navigationLeg } from './navigation.js';
 import { isGroundVehicle, movementProfile, bodyRadius, vehiclePositionClear, sweptVehicleClear, vehicleStep, vehicleNavigationView, vehicleDestinationClear, segmentCliffClear } from './vehicle-motion.js';
-import { trafficStep, rememberTrafficPosition, trafficWins } from './local-traffic.js';
+import { trafficStep, rememberTrafficPosition, trafficWins, TRAFFIC } from './local-traffic.js';
 import { initializeUnit, tickReserves, consumeDrivingFuel, consumeAmmo, canFire, shortageRate, recoveryRate } from './logistics.js';
 import { setupConvoys, stepConvoys, convoyDeath, commandConvoy, logisticsSnapshot, supportProvision, convoyTravelBudget, consumeConvoyTravel } from './supply-convoys.js';
 
@@ -776,9 +776,20 @@ function setupHorde(g, map) {
   const slot = g.players.length - 1;
   for (const p of g.players) p.mp = p.slot === slot ? 0 : CFG.assault.defenderMp;
   fortify(g, g.players[0]);
-  const gate = (i) => ({ x: (map.spawns[i].x + 0.5) * CELL, z: (map.spawns[i].y + 0.5) * CELL });
+  const bunker = [...g.units.values()].find(u => u.type === 'bunker');
+  // the waves walk on 16 m in from the spawn along a tank's route to the bunker, so a spawn on the map edge (often a
+  // narrow strip along it) puts them in the street they leave by, facing the right way, instead of jammed on the edge
+  const gate = (i) => {
+    let at = { x: (map.spawns[i].x + 0.5) * CELL, z: (map.spawns[i].y + 0.5) * CELL }, left = 16;
+    for (const w of findPath(g, { ...at, type: 'medium', owner: slot }, bunker)) {
+      const d = dist(at, w);
+      if (d >= left) return { x: at.x + (w.x - at.x) * left / d, z: at.z + (w.z - at.z) * left / d };
+      left -= d; at = w;
+    }
+    return at;
+  };
   g.mode = { profileSeed: g.seed, profileHistory: [], kind: 'horde', defenderTeam: 0, attackerTeam: 1, slot, defenders: slot, wave: 0, active: false, timeLeft: CFG.horde.break, reserve: [], budget: 0, left: 0,
-    bunker: [...g.units.values()].find(u => u.type === 'bunker').id, gates: map.spawns.map((_, i) => i).filter(i => !map.defend.includes(i)).map(gate) };
+    bunker: bunker.id, gates: map.spawns.map((_, i) => i).filter(i => !map.defend.includes(i)).map(gate) };
   prepareHordeProfile(g);
 }
 // Profiles change purchasing weights and guarantee a defining share of the same Wave budget.
@@ -1001,8 +1012,8 @@ function stepOut(g, u, at, r, a, origin = null) {
   Object.assign(u, cellCenter(g, c), { rot: a, aim: a, ghost: g.tick + Math.round(CFG.spawnGhost / TICK) });
   updateGrid(g, u);
 }
-// two friends that overlap because one just stepped out pass through each other instead of locking up
-const ghostPair = (g, a, b) => a.owner === b.owner && ((a.ghost ?? 0) > g.tick || (b.ghost ?? 0) > g.tick);
+// two friends (own or allied) that overlap because one just stepped out pass through each other instead of locking up
+const ghostPair = (g, a, b) => allied(g, a.owner, b.owner) && ((a.ghost ?? 0) > g.tick || (b.ghost ?? 0) > g.tick);
 function wreckBuilding(g, u) {
   const structure = g.structures?.get(u.structureId);
   if (structure) for (const section of structure.sections) failWorldSection(g, section, [...g.units.values()], { x: 0, z: 1 });
@@ -4643,7 +4654,7 @@ export function step(g) {
     let trafficTerrain;
     const trafficView = () => trafficTerrain ??= g.mode?.kind === 'world' ? worldPathView(g, u.owner) : observedPathView(g, u.owner);
     const traffic = def.naval || def.structure ? { goal: u.path[0], blocked: false } : trafficStep(g, u, u.path[0], {
-      defs: UNITS, grid: gridFor(g), dt, visible: v => seenBy(g, u.owner, v.id),
+      defs: UNITS, grid: gridFor(g), dt, visible: v => seenBy(g, u.owner, v.id), friend: v => allied(g, u.owner, v.owner),
       clear: (a, b) => walkable(trafficView(), a, b, blockOf(def), groundVehicle ? bodyRadius(def) : 0.9),
       coverRank: at => def.infantry ? coverRank(trafficView(), at, u.hitFrom) : 3,
     });
@@ -4665,19 +4676,31 @@ export function step(g) {
           u.motionClearance = { goal, reverse: direction < 0, path: u.path, until: g.tick + 80 };
           next = vehicleStep(u, def, [goal], Math.min(speed, 1.2), dt, direction < 0); break;
         }
+        // walled in lengthwise too (a hull shoved off-centre and sideways in a narrow street): slide over, up to
+        // 1.5 m at 1.2 m/s, to where the turn fits. Separation already shoves hulls sideways, so this adds no new move.
+        if (!u.motionClearance) for (const side of [0.5, -0.5, 1, -1, 1.5, -1.5]) {
+          const at = { x: before.x - Math.sin(before.rot) * side, z: before.z + Math.cos(before.rot) * side, rot: before.rot };
+          const bearing = Math.atan2(route[0].z - at.z, route[0].x - at.x) + (reverse ? Math.PI : 0);
+          if (!sweptVehicleClear(g, before, at, def, blockOf(def)) || !sweptVehicleClear(g, at, { ...at, rot: bearing }, def, blockOf(def))) continue;
+          const k = Math.min(1, 1.2 * dt / Math.abs(side));
+          next = { ...next, x: before.x + (at.x - before.x) * k, z: before.z + (at.z - before.z) * k, rot: before.rot, moveSpeed: 0 }; break;
+        }
       }
       const fuelLimit = speed * dt, proposed = dist(next, before);
       if ((u.convoy || u.logistics) && proposed > fuelLimit) { const f = fuelLimit / (proposed || 1); next.x = before.x + (next.x-before.x)*f; next.z = before.z + (next.z-before.z)*f; next.moveSpeed *= f; }
       // Never allow a hull to rotate or travel through a cell during this tick.
       let clearMotion = sweptVehicleClear(g, before, next, def, blockOf(def));
       if (clearMotion) {
-        const nearby = gridFor(g).candidates(u, bodyRadius(def) + 9, false, v => v.id !== u.id && v.hp > 0 && !v.air && !v.riding && v.garrison < 0);
-        clearMotion = nearby.every(v => {
+        const nearby = gridFor(g).candidates(u, bodyRadius(def) + 9, false, v => v.id !== u.id && v.hp > 0 && !v.air && !v.riding && v.garrison < 0 && !ghostPair(g, u, v));
+        const blocker = nearby.find(v => {
           const min = bodyRadius(def) + bodyRadius(UNITS[v.type]);
           const dx = next.x - before.x, dz = next.z - before.z, t = Math.max(0, Math.min(1, ((v.x - before.x) * dx + (v.z - before.z) * dz) / (dx * dx + dz * dz || 1)));
           const closest = Math.hypot(before.x + dx * t - v.x, before.z + dz * t - v.z);
-          return closest >= min - 1e-6 || dist(before, v) < min && dist(next, v) > dist(before, v);
+          return !(closest >= min - 1e-6 || dist(before, v) < min && dist(next, v) > dist(before, v));
         });
+        clearMotion = !blocker;
+        // boxed in by a friend for a while (a crowded gate or street): pass through friends for a moment
+        if (blocker && allied(g, blocker.owner, u.owner) && u.stuck > TRAFFIC.ghost) u.ghost = g.tick + Math.round(TRAFFIC.ghostTime / dt);
       }
       if (clearMotion) { u.x = next.x; u.z = next.z; u.rot = next.rot; u.moveSpeed = next.moveSpeed; }
       else {

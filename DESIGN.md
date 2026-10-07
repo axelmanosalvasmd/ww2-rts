@@ -1451,6 +1451,17 @@ ghosts through friends for 2 s. Enemies always collide. Late armor Horde waves, 
 their gate after 20 s (3 seeds each): Hill 112 51% to 0%, Stalingrad Factory 86% to 44%, Bastogne 50% to 36%. The rest
 are vehicles turning on the spot near the map edge with no one blocking them, left for later.
 
+Horde gate jams (2026-10-07): the rest were three things. A gate walks units on 16 m in from its spawn along a medium
+tank's route to the bunker (Stalingrad Factory's spawns sit in a 6 m strip on the map edge, where hulls could not turn
+into the street). A vehicle whose move is refused because a friend's body is in the way for 3 s (`TRAFFIC.ghost`) ghosts
+through friends for 2 s; this body check, not traffic, held most of them. A hull that can neither turn nor drive 2 m
+along its axis (off-centre and sideways in a narrow street) slides sideways up to 1.5 m at 1.2 m/s to where the turn
+fits. Measure: late armor waves (wave 12, four defenders, 3 seeds), vehicles under 10% closer to the bunker 60 s after
+walking on and not fighting: Stalingrad Factory 91% to 1%, Bastogne 24% to 1%, Hill 112 66% to 0%. Without the body
+ghost 27 to 29%, without the slide 5 to 8%. Holding units at a full gate, stopping only the hull that drives into
+another (instead of both) and shorter back-up moves made no difference and were dropped. All ghosting (spawn, traffic,
+bodies) is between allies (`allied`, your own units included), never enemies.
+
 Movement lab fixes (2026-10-04): braking reserves a discrete tick of stopping distance, and acceleration from rest
 uses the forward or reverse profile instead of the braking rate. An exact vehicle destination must have the same
 turning clearance as the navigation cell center. A click too close to a wall resolves to that open center, while

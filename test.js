@@ -7070,6 +7070,15 @@ for (const lookupFinished of [false, true]) {
   const ctx = { defs: UNITS, dt: 0.05, grid: { candidates: (u, r, _, keep) => [front].filter(keep) }, clear: () => false, coverRank: () => 3, visible: () => true };
   for (; jam.tick < 100; jam.tick++) if (!trafficStep(jam, back, back.path[0], ctx).blocked) through.push(jam.tick);
   assert.ok(through.length && through[0] <= 80 && back.ghost > through[0], 'a tank gridlocked behind a friend ghosts through it after 3 s, not never');
+  for (const ally of [true, false]) {
+    const f2 = { ...front, owner: 1, trafficWait: 20 }, b2 = { ...back, owner: 2, ghost: 0, trafficWait: 0, traffic: null }, jam2 = { tick: 0, units: new Map([[1, f2], [2, b2]]) };
+    const ctx2 = { ...ctx, grid: { candidates: (u, r, _, keep) => [f2].filter(keep) }, friend: () => ally };
+    let passed = false;
+    for (; jam2.tick < 100; jam2.tick++) passed ||= !trafficStep(jam2, b2, b2.path[0], ctx2).blocked;
+    assert.equal(passed, ally, ally ? 'an allied tank in the way is ghosted through like your own' : 'an enemy tank in the way never is');
+  }
+  const city = createGame(JSON.parse(readFileSync('maps/stalingrad-factory.json', 'utf8')), ['a', 'b'], false, [0, 1], [0, 1], { mode: 'horde' });
+  assert.ok(city.mode.gates.every(t => Math.min(t.x, t.z, city.w * CELL - t.x, city.h * CELL - t.z) >= 12), 'Horde gates on map-edge spawns walk units on inside the map, not jammed on its edge');
   // the wave's make-up: within budget, only what is unlocked, never snipers
   const cost = (list) => list.reduce((a, t) => a + UNITS[t].cost, 0);
   for (let i = 0; i < 20; i++) {
