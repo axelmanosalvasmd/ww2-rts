@@ -22,6 +22,71 @@ AI-vs-AI runs (see DESIGN.md for the balance log). Add new entries under **Unrel
 - Fixed builders reviving zero-HP buildings before destruction cleanup. Added simulation, client and AI regression coverage. No combat or income rebalance; competitive pacing remains a human-playtest follow-up.
 - Known verification gap: the latest core regression run fails the existing AI fighter-cover assertion (an announced enemy air strike should trigger fighter cover). The full suite is not green; this implementation is committed at the user's request pending regression follow-up.
 
+### 2026-10-06: Territory supply (`c2dc946`)
+
+- Supply now flows through connected friendly territory instead of a fleet of trucks (docs/territory-supply.md).
+  Units refill where they stand: at full rate near an HQ (or a held depot in Conquest, any held point in
+  Annihilation), weakening along the line to 25%. In World Conquest supply runs through owned regions that border
+  each other; elsewhere it follows ground vehicles can cross. Enemy-held ground, armed enemies standing on the line
+  (within 8 m) and broken bridges or rubble cut it; craters weaken it until squads fill them in. A unit out of supply
+  keeps refilling for 10 s, then lives on its reserves, which the existing shortage and withdrawal rules govern. Trucks
+  now serve only units and caches beyond supply, at most 4 per player, and World Conquest's region caches are gone.
+  Refills are paid as before (Munitions and Fuel in Classic and World Conquest). The logistics overlay tints owned
+  World regions by supply strength and rings cut-off units on the minimap; unit cards show the line's strength or the
+  grace countdown; new alerts say when units are cut off and when a line is restored (English and Spanish).
+  Measured in seeded 2-player, 2-AI World Conquest matches of 2.5 minutes (CPU time): 15.4 and 13.6 s against 23.2
+  and 24.9 s with trucks, and 11.8 and 10.0 s with logistics off. Logistics' extra cost fell by about 70%, from 11 to
+  15 s to about 3.6 s. Not reached: the target of under 10% of server CPU (it is about 25%; most of what remains is
+  the few remaining trucks and per-unit store checks). Found, not fixed: outside World Conquest, cut-off units are
+  usually in enemy contact or beyond vehicle ground, so trucks rarely reach them.
+
+### 2026-10-06: Supply truck jams and re-planning (`9ae160f`)
+
+- Supply trucks no longer jam at their own HQ and use less server time. Trucks coming home stopped behind the trucks
+  parked around the HQ and stayed "not arrived" for seconds on end (162 of 219 stuck samples were stuck over 5 s, nine
+  in ten within 20 m of their HQ), re-planning their whole trip every 2 s. Now:
+  - a truck stuck within loading reach of its HQ (15 m) counts as arrived there;
+  - a truck stuck elsewhere on a trip that still holds plans only a detour back onto its route about 30 m ahead;
+  - hops of 16 m or less across open ground (most trips around a base) skip the route search, which cost 6 to 16 ms
+    however short;
+  - the way home, which only prices a trip's fuel, is planned once per trip end instead of on every recheck;
+  - a recipient on the move is re-targeted once it leaves unloading reach (12 m), not every 4 m.
+  Measured in a seeded 2-player, 2-AI World Conquest match of 2.5 minutes (CPU time, so other programs do not skew
+  it): 27.9 s on master against 20.6 s, with the same 65 truck trips and troops as well supplied; on a second world
+  24.6 s against 22.8 s, within noise there. Long stuck samples fell from 162 to 1.
+  Found, not fixed: logistics still roughly double the server's CPU (8.5 to 10.7 s for the same matches without
+  trucks). Most of what remains is planning trips: re-plans when a route turns dangerous or blocked (30 to 50 ms each)
+  and new trips. Planning trips one leg at a time was tried and cost twice as much, since every leg pays the same
+  fixed cost (danger map, threat scan, fuel pricing).
+
+### 2026-10-06: Supply trucks on master and their World Conquest lag fixes (`625c4eb`, `5ce4243`, `8599d66`, `45eb104`)
+
+- Supply trucks are now on master: the physical supply slice (`165b0fe`, see its entry below) merged with skirmish
+  bases. Any match with an HQ now supplies from it (bases put an HQ on the old home position, where trucks used to
+  load, and without this they never delivered), and the hold check waits a second because trucks now brake before
+  they stand.
+- Fixed allied supply trucks appearing at your HQ instead of their own. New trucks took the first friendly HQ in the
+  list, which was always the first ally's.
+- Fixed supply trucks lagging World Conquest, which with the merge alone ran at p95 up to 145 ms with one 77 s stall
+  in a 2-player, 2-AI probe. Now: p95 22 to 45 ms and at most 114 ms over 4 minutes, against 20 to 32 ms and 144 ms
+  on master without trucks. Causes and fixes:
+  - A truck that found no route retried a whole-world search every 2 s, from two places. A failed route to the same
+    place now waits 2, 4, 8, 16, then 32 s.
+  - Every 2 s all trucks were assigned and rechecked in the same tick, each planning its trip there and back (about
+    4 ms, up to 50), so up to 40 route plans landed in one tick. Trucks are now queued, at most 3 dispatches per
+    tick; an unfinished pass carries over.
+  - Trucks re-planned trips that still worked; they now keep a route whose every leg is still clear and safe.
+  - A safe route near seen enemies built a new danger map, and with it a whole-world route graph, for every truck;
+    now one danger map per side, updated cell by cell.
+  - The remembered-ground view rebuilt its seen units, wrecks, fires and mines (a pass over every remembered cell)
+    on every call, several per unit per tick. It now keeps them per player per tick and tracks mines cell by cell.
+  - Remembered cells were compared through JSON strings, route graphs rebuilt for look-only changes, and a building
+    going up (repairing its sections every tick) counted as a terrain change, redoing the whole map's fog and
+    memory. Hit points, wear and scorch are now look-only.
+  The speedups come from another session's finished work; its Horde, sandbox, dig-bar and bridge-crossing changes
+  are not part of this.
+  Left for later: one long trip is still planned whole in one tick (up to about 50 ms).
+
 ### 2026-10-06: World Conquest AI observation lag fix (`40c23fd`)
 
 - Reduced World Conquest lag from AI players. Every AI rebuilt its full view, copying its whole terrain memory, on
@@ -73,6 +138,13 @@ AI-vs-AI runs (see DESIGN.md for the balance log). Add new entries under **Unrel
   Projectile acceptance checks also wait for compressed commands to arrive before advancing the simulation,
   preventing intermittent validation failures on busy machines.
   The full-match AI smoke test uses a fixed seed while retaining its capture, combat and victory checks.
+
+### 2026-10-05: Physical supply routes and unit reserves (`165b0fe`)
+
+- Armies now depend on physical supply trucks in Conquest, Classic, Annihilation and World Conquest. Deliveries run automatically, with optional direct orders, hold/resume controls and a logistics overlay.
+- Units carry about 90 seconds of ammunition and 120 seconds of provisions. Vehicles burn a 180-second fuel reserve while driving and keep 60 seconds for escape. Reserves below 25% reduce firing or recovery; exhausted provisions trigger a 20-second withdrawal warning. Recovery requires 50% of every applicable reserve, and encircled troops remain stranded until they can escape or receive relief.
+- Build forward Supply Caches for 60 MP in 12 seconds. Captured World regions gain empty relays, rebuilt HQs restore supply, allied relief keeps separate paid stocks, and lost trucks receive free replacements after 30 seconds. Classic and World cargo spends existing Munitions and Fuel without changing income rules.
+- Truck cargo and troop stocks remain private. Supply controls support English and Spanish. Fixed interrupted deliveries after source loss, cargo preservation through queued orders, and handoffs across impassable water. Naval supply remains for a later slice; aircraft retain their sortie rules. Found for later: very large World victory snapshots can still cause pauses.
 
 ### 2026-10-05: Windows naval source fingerprints (`d8bda15`)
 

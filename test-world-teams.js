@@ -98,6 +98,9 @@ try {
   assert.equal(rival.latest('s').world.owned, 128, 'victory snapshot reports the whole continent');
   assert.equal(rival.latest('s').end.reason, 'world', 'result records total conquest');
 
+  // The completed Massive room has already proved its result. Keep its full-map
+  // victory snapshots out of the separate active-room AI timing fixture.
+  server.rooms.delete('worldteams');
   const aiHost = await connect('worldai', 'observer');
   await aiHost.send({ t: 'mode', v: 'world' });
   await aiHost.send({ t: 'addAi' });

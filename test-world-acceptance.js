@@ -56,6 +56,8 @@ async function start(code, teams = [0, 1], size = 'huge') {
   await seats[0].send({ t: 'mode', v: 'world' });
   await seats[0].send({ t: 'worldSize', v: size });
   await seats[0].send({ t: 'weather', v: 'clear' });
+  // These territorial fixtures exclude incidental combat and convoys. Dedicated logistics suites cover supplies.
+  server.rooms.get(code).logistics = false;
   await seats[0].send({ t: 'start' });
   for (const c of seats) await c.wait('start');
   const g = server.rooms.get(code).game;

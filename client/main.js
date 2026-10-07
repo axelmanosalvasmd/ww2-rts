@@ -56,6 +56,7 @@ import { territoryEdges } from '/shared/world-territories.js';
 import { createWorldRegions } from './world-regions.js';
 import { createAutocast } from './autocast.js';
 import { t as tr } from './i18n.js';
+import { decodeLogistics, logisticsIndicator, overlayItems, createLogisticsAlerts } from './logistics.js';
 
 // Each player has a faction (names, uniforms, tanks, voice) and their own color (by slot).
 const FACTIONS = [
@@ -439,12 +440,15 @@ const SHARED_GEOS = new Set(Object.values(GEO));
 let relief = null, mapView = null, worldRegions = null;
 function hAt(x, z) { return relief?.hAt(x, z) ?? 0; }
 const units = new Map(), selected = new Set(), groups = {}, fx = [];
+let logisticsData = decodeLogistics({}, units, -1), logisticsOverlay = false, logisticsSelection = false;
+const logisticsAlerts = createLogisticsAlerts();
 
 let lastStart = null;
 function startGame(m, restored = null) {
   lobbyView.hide(); // frees the backdrop's renderer before the match builds its world
   clearFacing(); formationPreview.group.removeFromParent();
   pings.reset(); autocast.reset(); alerts.startMatch(m.matchId);
+  logisticsAlerts.reset(); logisticsData = decodeLogistics({}, units, -1); logisticsSelection = false;
   me = m.you; names = m.names; teams = m.teams ?? names.map((_, i) => i); factions = m.factions ?? []; lastStart = m; mmImage = null;
   if (!EDIT) audio.start({ faction: facOf(me), slot: me });
   const map = m.map;
@@ -680,6 +684,10 @@ function makeUnit(id, type, owner) {
   v.shield = new THREE.Mesh(GEO.shield, new THREE.MeshBasicMaterial({ depthTest: false, transparent: true }));
   v.shield.scale.set(0.5, 0.5, 1); v.shield.position.set(1.55, 0, 0.01); v.shield.renderOrder = 4; v.shield.visible = false; v.bars.add(v.shield);
   v.bars.add(symbolBadge(type, f.color)); // military map symbol in the owner's color, left of the bar
+  v.supplyFlag = new THREE.Mesh(GEO.plane, new THREE.MeshBasicMaterial({ color: 0xd6b25e, depthTest: false }));
+  v.supplyFlag.scale.set(0.4, 0.4, 1); v.supplyFlag.rotation.z = Math.PI / 4;
+  v.supplyFlag.position.set(2.1, 0, 0.02); v.supplyFlag.renderOrder = 5; v.supplyFlag.visible = false;
+  v.bars.add(v.supplyFlag);
   world.add(root, v.bars);
   return v;
 }
@@ -877,6 +885,14 @@ function applySnapshot(s) {
     for (let i = 0; i < n && i * 3 + 2 < points.length; i++) v.orders.push({ kind: points[i * 3], x: points[i * 3 + 1], z: points[i * 3 + 2] });
   }
   for (const [id, prog, rx, rz, ...queue] of s.queues ?? []) { const v = units.get(id); if (v) Object.assign(v, { prog, queue, rally: rx >= 0 ? { x: rx, z: rz } : null }); }
+  logisticsData = decodeLogistics(s, units, watching || s.out?.[me] ? -1 : me, owner => !foe(owner));
+  for (const v of units.values()) {
+    const reserve = logisticsData.units.get(v.id), indication = logisticsIndicator(reserve);
+    v.supplyFlag.visible = !!indication;
+    v.supplyFlag.material.color.set(indication === 'Low supplies' ? 0xd6b25e : 0xd4574a);
+  }
+  if (!watching && !s.out?.[me]) for (const warning of logisticsAlerts.update(logisticsData.events, s.tick / 20))
+    alerts.push('event', warning.x, warning.z, warning.text);
   applyGhosts(s.ghosts);
   for (const [id, jobs] of s.productionJobs ?? []) { const v = units.get(id); if (v) v.productionJobs = jobs; }
   coverGroup ??= coverRings(); // fighter cover rings, pooled (client/markers.js)
@@ -978,6 +994,9 @@ function placementView() {
 const hud = createHud({
   get me() { return me; }, get teams() { return teams; }, get names() { return names; }, get PRIORITY() { return PRIORITY; }, get host() { return !!lobbyState?.amHost; }, get watching() { return watching; },
   units, selected, look, facOf, color: (slot) => css(look(slot).color), classic: () => classicMode(), naval: () => lastStart?.map?.naval === true, send: sendCmd, blip,
+  logistics: () => logisticsData, logisticsOverlay: () => logisticsOverlay, logisticsSelection: () => logisticsSelection,
+  toggleLogisticsOverlay: () => { logisticsOverlay = !logisticsOverlay; if (lastSnap) updateHud(lastSnap); },
+  toggleLogisticsSelection: () => { logisticsSelection = !logisticsSelection; if (lastSnap) updateHud(lastSnap); },
   retreat: () => retreat(), takeCover: (q) => takeCover(q), stance: (k) => toggleStance(k), entrench: (k) => startEntrench(k), stop: () => { sendCmd({ t: 'stop', ids: [...selected] }); blip(330); }, amove: () => selected.size && setAim('amove'), area: () => startArea(), rally: () => startRally(),
   transferGroup: (n) => transferGroup(n), dig: (k) => startDig(k), form: () => fm, setForm: (p) => setFormation(p), reform: (d) => reform(d), unload: () => unload(), build: (k) => startBuild(k), ability: (t) => useAbility(t), support: (k) => aimSupport(k), fType: () => fKeyType(),
   autocast: (t) => { const on = autocast.toggle(t, [...selected].map(id => units.get(id)).filter(v => v?.type === t && v.owner === me), classicMode()); if (on !== null) blip(); },
@@ -1008,7 +1027,7 @@ function aimSupport(k) {
   setAim(k); blip(700);
 }
 function buildBuyBar() { hud.buildCard(); }
-function updateHud(s) { drawPlans(); hud.update(s); }
+function updateHud(s) { drawPlans(); drawLogisticsRoutes(); hud.update(s); }
 
 // the builder squad nearest the clicked spot puts the fortification across its approach
 let fortKind = 'trench';
@@ -1072,6 +1091,29 @@ function entrenchPreview(group, a, b) {
 // Selected units show where they're going and what they're locked onto (sent by the server for your own units)
 // one layer for every match: route lines rewritten in place each snapshot (see markers.js)
 const plans = planLayer(hAt);
+const supplyRoutes = new THREE.Group();
+let supplyRouteKey = '';
+const knownSupplyPosition = p => !fogOfWar || ['seen', 'explored'].includes(fogOfWar.at(p.x, p.z));
+function drawLogisticsRoutes() {
+  if (!world) return;
+  if (supplyRoutes.parent !== world) { world.add(supplyRoutes); supplyRouteKey = ''; }
+  supplyRoutes.visible = logisticsOverlay && logisticsData.enabled;
+  if (!supplyRoutes.visible) return;
+  const routeItems = overlayItems(logisticsData, selected, units, knownSupplyPosition);
+  const key = JSON.stringify(routeItems);
+  if (key === supplyRouteKey) return;
+  supplyRouteKey = key;
+  for (const child of [...supplyRoutes.children]) { supplyRoutes.remove(child); child.geometry.dispose(); child.material.dispose(); }
+  for (const route of routeItems.routes) {
+    const points = route.points.map(p => new THREE.Vector3(p.x, hAt(p.x, p.z) + 0.3, p.z));
+    const line = new THREE.Line(new THREE.BufferGeometry().setFromPoints(points), new THREE.LineBasicMaterial({ color: route.manual ? 0xe8c860 : 0x95c888, depthTest: true }));
+    supplyRoutes.add(line);
+  }
+  for (const store of routeItems.stores) {
+    const points = Array.from({ length: 33 }, (_, i) => { const a = i / 32 * Math.PI * 2, x = store.x + Math.cos(a) * 4, z = store.z + Math.sin(a) * 4; return new THREE.Vector3(x, hAt(x, z) + 0.3, z); });
+    supplyRoutes.add(new THREE.Line(new THREE.BufferGeometry().setFromPoints(points), new THREE.LineBasicMaterial({ color: store.source ? 0xe8c860 : 0x95c888 })));
+  }
+}
 function drawPlans() {
   if (!world) return;
   if (plans.group.parent !== world) world.add(plans.group);
@@ -1320,10 +1362,11 @@ const centerSelection = (list) => {
   cam.z = list.reduce((sum, v) => sum + v.z, 0) / list.length;
 };
 const selection = createSelection({ units, selected, groups, owner: () => (observing() ? -1 : me), definitions: UNITS, canUseBuilding: v => productionAccess({ mode: lastSnap?.mode, players: teams.map(team => ({ team })) }, v, me), // a spectator selects nothing, so orders nothing
+  logisticsSelection: () => logisticsSelection && logisticsData.enabled,
   screenOf: (v) => screenOf(v), screenPointsOf: (v) => selectionPoints(v, camera, screenOf, innerWidth, innerHeight), viewport: () => ({ width: innerWidth, height: innerHeight }), center: centerSelection });
 function transferGroup(number) {
   if (observing()) return;
-  const eligible = [...selected].filter(id => { const v = units.get(id); return v?.owner === me && !UNITS[v.type].structure && !(v.flags & (512 | 262144)) && v.hp > 0; });
+  const eligible = [...selected].filter(id => { const v = units.get(id); return v?.owner === me && v.type !== 'truck' && !UNITS[v.type].structure && !(v.flags & (512 | 262144)) && v.hp > 0; });
   selection.group(String(number), 'transfer', performance.now());
   feedback.show(`Moved ${eligible.length} units to group ${number}; removed from other groups`); blip(990);
 }
@@ -1605,6 +1648,12 @@ function drawMinimap() {
     c.imageSmoothingEnabled = !lastStart?.map.world; c.drawImage(mmFog, 0, 0, MW, MH);
   }
   const col = (slot) => css(look(slot).color);
+  // logistics overlay: own World regions tinted by supply (green full, amber weakened, red cut off)
+  const supplyTint = logisticsOverlay && logisticsData.enabled ? logisticsData.regions : null;
+  for (const r of lastSnap.world?.regions ?? []) {
+    const rate = supplyTint?.get(r.id);
+    if (rate !== undefined && r.runs) { c.fillStyle = rate <= 0 ? '#d4574a55' : rate < 1 ? '#e8c86044' : '#95c88833'; for (const [y, x0, x1] of r.runs) c.fillRect(x0 * 2, y * 2, (x1 - x0) * 2, 2); }
+  }
   for (const r of lastSnap.world?.regions ?? []) {
     c.strokeStyle = regionTeamColor(r.team); c.lineWidth = 1 / S;
     if (r.runs) { c.beginPath(); for(const [x,y,xx,yy] of territoryEdges(r.runs)){c.moveTo(x*2,y*2);c.lineTo(xx*2,yy*2);}c.stroke(); }
@@ -1627,6 +1676,22 @@ function drawMinimap() {
   for (const v of units.values()) {
     c.beginPath(); c.arc(v.x, v.z, isVeh(v.type) ? 3.5 : 2.6, 0, Math.PI * 2); c.fillStyle = col(v.owner); c.fill();
     if (selected.has(v.id)) { c.strokeStyle = '#fff'; c.lineWidth = 1.5 / S; c.stroke(); }
+  }
+  if (logisticsOverlay && logisticsData.enabled) {
+    const supply = overlayItems(logisticsData, selected, units, knownSupplyPosition);
+    c.save(); c.strokeStyle = '#a8d680'; c.lineWidth = 1.5 / S;
+    for (const route of supply.routes) {
+      c.beginPath(); route.points.forEach((p, i) => i ? c.lineTo(p.x, p.z) : c.moveTo(p.x, p.z)); c.stroke();
+    }
+    for (const store of supply.stores) { c.fillStyle = store.source ? '#e8c860' : '#a8d680'; c.fillRect(store.x - 4, store.z - 4, 8, 8); }
+    // own units cut off from supply: a red ring
+    c.strokeStyle = '#d4574a';
+    for (const v of units.values()) if (logisticsData.units.get(v.id)?.cut) { c.beginPath(); c.arc(v.x, v.z, 6, 0, Math.PI * 2); c.stroke(); }
+    c.strokeStyle = '#d4574a66';
+    for (const v of units.values()) if (foe(v.owner) && UNITS[v.type].w && fogOfWar?.at(v.x, v.z) === 'seen') {
+      c.beginPath(); c.arc(v.x, v.z, UNITS[v.type].w.range, 0, Math.PI * 2); c.stroke();
+    }
+    c.restore();
   }
   alerts.drawPings(c, S);
   pings.drawMinimap(c, S);

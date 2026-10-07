@@ -925,8 +925,35 @@ function carrier(P, fac) {
 
 // ---------------------------------------------------------------- the registry
 
+// An unarmed cargo lorry: six wheels, a separate cab and a canvas-covered bed.
+function supplyTruck(P, fac) {
+  const h = parts();
+  h.box(P.deep, 5.1, 0.18, 1.15, 0, 0.7, 0);
+  h.box(P.base, 1.3, 0.55, 1.35, 1.8, 1.08, 0);
+  h.box(P.base, 1.18, 1.35, 1.75, 0.58, 1.45, 0);
+  h.box(P.dark, 1.3, 0.12, 1.85, 0.58, 2.18, 0);
+  h.box(P.glass, 0.025, 0.45, 1.45, 1.18, 1.82, 0);
+  h.box(P.deep, 0.035, 0.42, 1.15, 2.47, 1.04, 0);
+  h.box(P.steel, 0.13, 0.18, 1.88, 2.55, 0.7, 0);
+  h.box(P.wood, 2.85, 0.16, 1.85, -1.42, 1.04, 0);
+  h.box(P.canvas, 2.7, 1.32, 1.76, -1.42, 1.78, 0);
+  h.box(P.canvas, 2.78, 0.12, 1.85, -1.42, 2.48, 0);
+  h.box(P.base, 0.09, 0.5, 1.88, -2.83, 1.31, 0);
+  for (const side of [-1, 1]) {
+    h.box(P.glass, 0.72, 0.4, 0.025, 0.58, 1.85, side * 0.887);
+    h.box(P.base, 2.85, 0.48, 0.075, -1.42, 1.35, side * 0.92);
+    h.box(P.owner, 0.78, 0.17, 0.018, -1.42, 1.86, side * 0.898);
+    for (const x of [-2.55, -1.42, -0.3]) h.box(P.wood, 0.075, 0.5, 0.09, x, 1.35, side * 0.94);
+    for (const x of [1.7, -1.05, -2.13]) wheel(h, P, 0.48, 0.27, x, 0.48, side * 0.92, side);
+    lamp(h, P, 2.47, 1.22, side * 0.66, 0.085);
+    sideMark(h, P, fac, 0.58, 0.32, 1.24, 0.886, side, 0);
+  }
+  return { hull: finish(G.merge(h.list)), turret: null, turretAt: [0, 0, 0], tip: null };
+}
+
 // each unit's builder and its paint scheme
 const BUILD = {
+  truck: [[supplyTruck, 'od'], [supplyTruck, 'grey'], [supplyTruck, 'green'], [supplyTruck, 'scc15']],
   armoredcar: [[m8, 'od'], [sdkfz222, 'grey'], [ba64, 'green'], [daimler, 'scc15']],
   flaktrack: [[m16, 'od'], null, null],
   halftrack: [[m16, 'od'], [m16, 'grey'], [m16, 'green'], [carrier, 'scc15']], // ponytail: every faction's carrier borrows the M16 half-track until it gets its own
