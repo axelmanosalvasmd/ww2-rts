@@ -3790,7 +3790,7 @@ for (const f of readdirSync('maps')) {
   for (const pl of shelled.players) {
     const own = [...shelled.units.values()].filter(u => u.owner === pl.slot && u.type === 'flakpos');
     assert.equal(own.length, CFG.assault.baseFlak, `${pl.name} starts with ${CFG.assault.baseFlak} flak emplacements`);
-    assert.ok(own.every(u => u.built === 1 && Math.hypot(u.x - pl.spawn.x, u.z - pl.spawn.z) < 10 * CELL), 'finished, inside the base');
+    assert.ok(own.every(u => u.built === 1 && Math.hypot(u.x - pl.spawn.x, u.z - pl.spawn.z) < CFG.assault.fortRadius * CELL), 'finished, inside the trench line');
   }
   const fg = createGame(map, ['a', 'b'], false, [0, 1], [0, 1], { mode: 'annihilation' });
   const squad = [...fg.units.values()].find(u => u.owner === 0 && u.type === 'rifle');
@@ -7133,8 +7133,8 @@ for (const lookupFinished of [false, true]) {
     const tank = [...g.units.values()].find(u => u.owner === 0 && u.type === 'tank');
     for (const u of [...g.units.values()]) if (u !== k && u !== tank && u.type !== 'bunker') g.units.delete(u.id);
     g.mode.budget = 0; g.mode.reserve = [];
-    Object.assign(k, { x: 60, z: 60, rot: rear ? Math.PI : 0, xp: 0, path: [], orders: [], amove: null, holdPos: true, cooldown: 1e9 });
-    Object.assign(tank, { x: 80, z: 60, rot: Math.PI, xp: 0, path: [], orders: [], amove: null, holdPos: true, cooldown: 0 });
+    Object.assign(k, { x: 60, z: 80, rot: rear ? Math.PI : 0, xp: 0, path: [], orders: [], amove: null, holdPos: true, cooldown: 1e9 });
+    Object.assign(tank, { x: 80, z: 80, rot: Math.PI, xp: 0, path: [], orders: [], amove: null, holdPos: true, cooldown: 0 });
     const hp = k.hp;
     for (let i = 0; i < 100 && tank.shotAt === undefined; i++) step(g);
     assert.notEqual(tank.shotAt, undefined, 'the defender launches a tank shell at the Kaiju');

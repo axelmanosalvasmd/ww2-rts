@@ -15,6 +15,28 @@ const own = (g, owner, type) => [...g.units.values()].find(u => u.owner === owne
 const fresh = () => { const g = createGame(map, ['a', 'b'], false, [0, 1], [0, 1], { mode: 'classic', weather: 'clear' }); g.players[0].mp = 10000; g.players[0].fuel = 10000; return g; };
 const jobsOf = (s, id) => s.productionJobs.find(row => row[0] === id)?.[1] ?? [];
 
+// Destroy scuttles only your own units and buildings, with no bounty for the enemy.
+{
+  const g = fresh(), hq = own(g, 0, 'hq'), rival = own(g, 1, 'hq');
+  assert.equal(command(g, 0, { t: 'destroy', ids: [rival.id] }), 'unseen');
+  assert.equal(command(g, 0, { t: 'destroy', ids: [hq.id] }), undefined);
+  step(g);
+  assert.ok(!g.units.has(hq.id) && g.units.has(rival.id), 'own HQ gone, rival HQ untouched');
+  assert.equal(match({ code: 'Delete' }, 'army'), 'destroy');
+}
+
+// Tanks made in a crowded Horde base step out clear of their building and of each other, and drive away.
+{
+  const map = { w: 60, h: 60, rows: Array(60).fill('.'.repeat(60)), spawns: [{ x: 30, y: 5 }, { x: 10, y: 54 }, { x: 50, y: 54 }], defend: [0], points: [{ x: 30, y: 30 }] };
+  const g = createGame(map, ['a'], false, [0], [0], { mode: 'horde' }), b = own(g, 0, 'barracks');
+  b.type = 'motorpool'; g.players[0].mp = 1e5; g.players[0].fuel = 1e5;
+  for (let i = 0; i < 6; i++) assert.equal(command(g, 0, { t: 'buy', unit: 'tank', from: b.id }), undefined);
+  const tanks = [...g.units.values()].filter(u => u.type === 'tank'), start = tanks.map(u => ({ x: u.x, z: u.z }));
+  command(g, 0, { t: 'move', orders: tanks.map(u => [u.id, 60, 90]) });
+  for (let t = 0; t < 600; t++) step(g);
+  assert.ok(tanks.every((u, i) => Math.hypot(u.x - start[i].x, u.z - start[i].z) > 30), 'every new tank leaves the base');
+}
+
 // Exact charge reversal, population release, no head reset, now-active races and stable owner views.
 {
   const g = fresh(), b = own(g, 0, 'hq'); b.type = 'motorpool';

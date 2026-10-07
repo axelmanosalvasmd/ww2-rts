@@ -1372,6 +1372,7 @@ function transferGroup(number) {
 }
 const actions = {
   stop: () => { sendCmd({ t: 'stop', ids: [...selected] }); blip(330); },
+  destroy: () => { if (selected.size) { sendCmd({ t: 'destroy', ids: [...selected] }); blip(110); } },
   retreat, unload, cover: () => takeCover(), ability: () => useAbility(fKeyType()), amove: () => selected.size && setAim('amove'), area: startArea,
   mute: toggleMute,
   alert: () => { rig.cancelFollow(); const al = alerts.newest(); if (al) { cam.x = al.x; cam.z = al.z; } else centerSelection([...selected].map(id => units.get(id)).filter(Boolean)); },

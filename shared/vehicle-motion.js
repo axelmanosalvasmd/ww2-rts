@@ -20,10 +20,13 @@ export const angleDelta = (from, to) => Math.atan2(Math.sin(to - from), Math.cos
 export const turnAngle = (from, to, amount) => { const a = from + Math.max(-amount, Math.min(amount, angleDelta(from, to))); return Math.atan2(Math.sin(a), Math.cos(a)); };
 
 // An oriented footprint against cell boxes. Checking boxes also catches a thin wall between sample points.
-export function vehiclePositionClear(g, at, def, block, cell = 2) {
+export const vehiclePositionClear = (g, at, def, block, cell = 2) => !vehicleOverlap(g, at, def, block, cell, 1);
+// How many blocked cells the hull overlaps (Infinity off the map), counting no further than limit.
+function vehicleOverlap(g, at, def, block, cell = 2, limit = Infinity) {
+  let count = 0;
   const long = bodyRadius(def), wide = (def.radius ?? 1) * 0.48, a = at.rot ?? 0;
   const cos = Math.cos(a), sin = Math.sin(a), bx = Math.abs(cos) * long + Math.abs(sin) * wide, bz = Math.abs(sin) * long + Math.abs(cos) * wide;
-  if (at.x - bx < 0 || at.z - bz < 0 || at.x + bx >= g.w * cell || at.z + bz >= g.h * cell) return false;
+  if (at.x - bx < 0 || at.z - bz < 0 || at.x + bx >= g.w * cell || at.z + bz >= g.h * cell) return Infinity;
   const half = cell / 2;
   for (let y = Math.floor((at.z - bz) / cell); y <= Math.floor((at.z + bz) / cell); y++) {
     for (let x = Math.floor((at.x - bx) / cell); x <= Math.floor((at.x + bx) / cell); x++) {
@@ -32,13 +35,16 @@ export function vehiclePositionClear(g, at, def, block, cell = 2) {
       if (Math.abs(dx) >= bx + half - 1e-6 || Math.abs(dz) >= bz + half - 1e-6) continue;
       if (Math.abs(dx * cos + dz * sin) >= long + half * (Math.abs(cos) + Math.abs(sin)) - 1e-6) continue;
       if (Math.abs(-dx * sin + dz * cos) >= wide + half * (Math.abs(cos) + Math.abs(sin)) - 1e-6) continue;
-      return false;
+      if (++count >= limit) return count;
     }
   }
-  return true;
+  return count;
 }
 export function sweptVehicleClear(g, from, to, def, block, cell = 2) {
   if (!segmentCliffClear(g, from, to, cell)) return false;
+  // a hull already against a wall (spawned or shoved there) may move as long as it digs in no deeper
+  const stuckIn = vehicleOverlap(g, from, def, block, cell);
+  if (stuckIn) return vehicleOverlap(g, to, def, block, cell) <= stuckIn;
   const d = Math.hypot(to.x - from.x, to.z - from.z), turn = angleDelta(from.rot ?? 0, to.rot ?? from.rot ?? 0);
   const count = Math.max(1, Math.ceil(d / 0.25), Math.ceil(Math.abs(turn) / 0.05));
   for (let i = 1; i <= count; i++) {

@@ -5,6 +5,7 @@ const binding = (id, code, label, help, context = 'global', modifiers = {}) =>
 export const bindings = [
   binding('stop', 'KeyX', 'X', 'Stop selected units'),
   binding('retreat', 'KeyR', 'R', 'Retreat selected units'),
+  binding('destroy', 'Delete', 'Del', 'Destroy the selected units and buildings (no refund)'),
   binding('ability', 'KeyF', 'F', 'Use the first ready selected ability'),
   binding('amove', 'KeyG', 'G', 'Aim an attack-move order'),
   binding('area', 'KeyB', 'Shift+B', 'Shell an area: mortars, howitzers, rocket trucks, ships and bombers keep firing on a spot', 'global', { shift: true }),

@@ -162,8 +162,8 @@ const trucksOf = (g, owner = 0) => [...g.units.values()].filter(u => u.owner ===
 }
 {
   const m=map(),g=game(),s=snapshotFor(g,0,[]),preview=placementState(s,m,m.rows.map(row=>[...row]),[0,1]);
-  assert.equal(placementCheck(preview.game,{kind:'supplycache',x:25,z:51,team:0}).ok,true,'the client placement preview accepts enabled supply caches');
-  assert.equal(command(g,0,{t:'build',ids:[troops(g)[0].id],kind:'supplycache',x:25,z:51}),undefined,'Conquest builders can place a forward cache');
+  assert.equal(placementCheck(preview.game,{kind:'supplycache',x:33,z:51,team:0}).ok,true,'the client placement preview accepts enabled supply caches');
+  assert.equal(command(g,0,{t:'build',ids:[troops(g)[0].id],kind:'supplycache',x:33,z:51}),undefined,'Conquest builders can place a forward cache');
   assert.ok([...g.units.values()].some(u=>u.owner===0&&u.type==='supplycache'&&u.built===0));
   assert.equal(denySentence('ammo'),'Not enough carried ammunition','an empty weapon gets a readable denial');
 }

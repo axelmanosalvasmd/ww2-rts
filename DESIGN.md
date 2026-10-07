@@ -410,6 +410,11 @@ every look. The horde wave is unchanged: it still attack-moves the bunker and st
 - Each defender gets a Command Bunker (3000 hp, MG slit, always visible) between their HQ and a generated line of
   trenches and sandbag walls facing the map center. Direct fire does 25% to it; explosives use their demolition value
   (bomb 400, satchel 600, rocket 120, shell 90), so every destruction tool is a way in.
+- Base layout (2026-10-06): fortified bases are laid out as a compound with roads, so tanks and the Kaiju get in and
+  out. HQ on the spawn, the bunker 8 cells forward at the gate, flak on the corners, the Barracks beside the HQ with a
+  lane between, trenches at `CFG.assault.fortRadius` 15 cells (was 11) around it all. Starting buildings keep about
+  6 m between them, and `siteNear` (AI and helper placement) keeps a 4 m lane to every standing building. The old
+  layout left one 4 m gap through the base: tanks made there could not path out and the Kaiju stalled at the bunker.
 - Off-map support does 5% of its demolition value to the bunker (`CFG.assault.supportMul`): a bombing run used to be
   the main way to kill it. The AI attacker stops aiming strikes at it. Attacker wins /20 after: Three Crossroads 15,
   River Towns 12, Pegasus 7, Seawall 7, Stalingrad 7, Bocage 4 (was 11), Hill 112 3, Monte Cassino 1 (was 11).
@@ -453,8 +458,9 @@ every look. The horde wave is unchanged: it still attack-moves the bunker and st
   shell, 200 shells to drop one alone (about 40 min for one gun, 13 for three). A menace if ignored, never the
   way to crack a bunker.
 - Base anti-air (2026-10-02): `fortify()` (Assault defenders, every Annihilation player, the Horde base) also places
-  `CFG.assault.baseFlak` (4) finished Flak Emplacements about 6 cells from the spawn, two toward the front and two on
-  the rear flanks. Outside Classic the fort builder squads (`CFG.fortBuilders`) may build one more with the 'build'
+  `CFG.assault.baseFlak` (4) finished Flak Emplacements on the compound's corners, about 10 cells from the spawn, two
+  toward the front and two on the rear flanks (a corner off the map edge swings toward the front; cramped ground falls
+  back to a tighter ring, down to 6 cells). Outside Classic the fort builder squads (`CFG.fortBuilders`) may build one more with the 'build'
   command (`FIELD_BUILDS`; Classic keeps Engineers and `BUILDABLE`). Emplacements are buildings: Assault's win, its
   "structures left" total and the timeline count bunkers only.
 - Out players (and their teams) earn no manpower and do not count on capture points. Humans keep their seat and team

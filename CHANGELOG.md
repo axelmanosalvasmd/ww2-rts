@@ -5,6 +5,21 @@ AI-vs-AI runs (see DESIGN.md for the balance log). Add new entries under **Unrel
 
 ## Unreleased
 
+### 2026-10-06: Destroy your own units, roomier bases, tanks no longer stuck at spawn
+
+- Select your own units or buildings and press Delete to destroy them. No refund, and the enemy earns no kill bounty.
+- Fortified bases (Horde, Assault defenders, Annihilation) are laid out like a compound with roads: HQ in the middle,
+  the bunker forward at the gate, flak on the four corners, the Barracks beside the HQ, trenches further out (15 cells
+  instead of 11). Every map still gets all four flak emplacements (before, 3 map and mode pairs got fewer).
+- Tanks made in a crowded base no longer get stuck at spawn. A new tank used to appear inside its building and on the
+  same spot as the tanks before it, so it found no route out: in a Horde base 6 new tanks moved 0 m in 30 s, now all
+  six drive out. Vehicles now step out where the hull fits, fanned out around the door; a hull wedged against a wall
+  backs out to open ground first and may move as long as it does not dig in deeper.
+- The Kaiju no longer stalls against the Horde bunker: its route through the old base ran straight through it.
+- New buildings placed by the AI keep a 4 m lane to the buildings around them, so they never seal a road.
+- Found, not fixed: two tanks can still deadlock on open ground when one yields to the other but its own sidestep is
+  blocked, so neither moves.
+
 - The full test suite passes again after merging skirmish production bases. Fixed the AI ignoring an enemy air strike
   on squads busy building: a squad sent to rebuild a base no longer gets bombed without fighter cover. Test setups
   that wipe the map or count units now allow for the starting HQ and Barracks. The AI-match check now asks for at

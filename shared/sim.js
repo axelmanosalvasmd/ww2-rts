@@ -25,7 +25,7 @@ export const TICK = 1 / 20;
 export const CFG = {
   vpToWin: 1200, mpStart: 150,
   // Assault mode: attackers must destroy every defender's command bunker before the clock runs out.
-  assault: { time: 900, directMul: 0.25, supportMul: 0.05, attackerMp: 320, attackerBase: 5, defenderMp: 250, defenderBase: 3.5, fortRadius: 11,
+  assault: { time: 900, directMul: 0.25, supportMul: 0.05, attackerMp: 320, attackerBase: 5, defenderMp: 250, defenderBase: 3.5, fortRadius: 15,
     // Annihilation: every player gets a fortified bunker; a team is out when its last bunker falls. No clock.
     // howitzerMul: howitzer shells on an Annihilation bunker. A slow menace if ignored, never the way to crack one.
     // baseFlak: finished Flak Emplacements every fortified base starts with, inside its trench line
@@ -900,16 +900,21 @@ function fortify(g, p) {
   }
   // the bunker sits between the HQ and the fortifications
   const b = spawnUnit(g, p.slot, 'bunker');
-  const at = nearestFree(g, p.spawn.x + Math.cos(toward) * 5 * CELL / 2, p.spawn.z + Math.sin(toward) * 5 * CELL / 2);
+  const at = nearestFree(g, p.spawn.x + Math.cos(toward) * 8 * CELL, p.spawn.z + Math.sin(toward) * 8 * CELL);
   Object.assign(b, cellCenter(g, at), { rot: toward, aim: toward });
-  // flak emplacements in a ring inside the trenches, two toward the front and two on the rear flanks
+  // flak emplacements on the compound's four corners inside the trenches, a lane a Kaiju fits through between them
+  // and the HQ, the bunker and the barracks (laid out after this, see setupSkirmishBases)
   const size = UNITS.flakpos.size;
   for (let i = 0; i < CFG.assault.baseFlak; i++) {
-    const a = toward + [0.7, -0.7, 2.1, -2.1][i % 4] + Math.floor(i / 4) * 0.35;
-    for (const rr of [6, 5, 7, 4, 8]) {
+    // a corner off the map edge (a spawn backed against it) swings toward the front until it fits
+    const side = i % 2 ? -1 : 1, corner = toward + side * ([0.9, 0.9, 2.6, 2.6][i % 4] + Math.floor(i / 4) * 0.35);
+    // cramped ground (a cliff, a river, a town) falls back to a tighter ring before giving the corner up
+    place: for (const rr of [10, 11, 9, 12, 8, 7, 13, 6]) for (const swing of [0, 0.3, -0.3, 0.6, 1, 1.5]) {
+      const a = corner - side * swing;
       const c = cellOf(g, p.spawn.x + Math.cos(a) * rr * CELL - size * CELL / 2, p.spawn.z + Math.sin(a) * rr * CELL - size * CELL / 2);
       const cells = c >= 0 && footprint(g, c, size);
-      if (cells && canStamp(g, cells) && !cells.some(k => dist(cellCenter(g, k), b) < UNITS.bunker.radius + 1)) { placeBuilding(g, p.slot, 'flakpos', c, true); break; }
+      if (cells && canStamp(g, cells) && !cells.some(k => dist(cellCenter(g, k), b) < UNITS.bunker.radius + (rr > 8 ? 8 : 1))
+        && ![...g.units.values()].some(f => f.type === 'flakpos' && dist(f, footCenter(g, c, size)) < (rr > 8 ? 14 : 8))) { placeBuilding(g, p.slot, 'flakpos', c, true); break place; }
     }
   }
 }
@@ -968,7 +973,18 @@ function produceUnit(g, b, owner, type) {
   const to = b.rally ?? g.players[owner].rally ?? { x: g.w * CELL / 2, z: g.h * CELL / 2 }, a = Math.atan2(to.z - b.z, to.x - b.x), r = UNITS[b.type].radius + 2;
   const u = spawnUnit(g, owner, type);
   if (u.air) { Object.assign(u, { x: b.x, z: b.z }); updateGrid(g, u); return; }
-  const c = nearestFree(g, b.x + Math.cos(a) * r, b.z + Math.sin(a) * r, blockOf(UNITS[type]));
+  // step out where the hull has room to turn (the vehicle clearance grid, not bare cells) and fan out around the
+  // door, so a tank never starts inside its building or on top of the last one out
+  const def = UNITS[type], nav = isGroundVehicle(def) ? vehicleNavigationView(g, def, blockOf(def)) : g;
+  const out = [...g.units.values()].filter(t => t !== u && !t.air && !t.riding && t.hp > 0 && dist(t, b) < r + 12);
+  let c = -1;
+  for (let k = 0; k < 30 && c < 0; k++) {
+    // rings of six spots facing the rally first, each ring one hull further out
+    const turn = a + (k % 6 >> 1) * 0.6 * (k & 1 ? -1 : 1), far = r + def.radius * (1 + 2 * Math.floor(k / 6));
+    const spot = nearestFree(nav, b.x + Math.cos(turn) * far, b.z + Math.sin(turn) * far, blockOf(def));
+    if (out.every(t => dist(t, cellCenter(g, spot)) > (UNITS[t.type].radius + def.radius) * 0.8)) c = spot;
+  }
+  if (c < 0) c = nearestFree(nav, b.x + Math.cos(a) * (r + def.radius), b.z + Math.sin(a) * (r + def.radius), blockOf(def));
   Object.assign(u, cellCenter(g, c), { rot: a, aim: a });
   updateGrid(g, u);
   if (b.rally) { u.worldGoal = { ...b.rally }; u.path = findPath(g, u, b.rally); u.drift = 'rally'; }
@@ -1291,7 +1307,8 @@ function worldPathView(g, slot) {
 function setupSkirmishBases(g) {
   const owners = g.mode?.kind === 'horde' ? g.players.slice(0, 1) : g.players;
   for (const p of owners) {
-    const avoid = [...g.points.map(q => [q, CFG.pointRadius + 5]), ...[...g.units.values()].filter(u => UNITS[u.type].structure).map(u => [u, UNITS[u.type].radius + 5])];
+    // a road about 6 m wide between every two base buildings, so tanks and the Kaiju get in and out
+    const avoid = [...g.points.map(q => [q, CFG.pointRadius + 5]), ...[...g.units.values()].filter(u => UNITS[u.type].structure).map(u => [u, UNITS[u.type].radius + 9])];
     for (const type of ['hq', 'barracks']) {
       let c = findSite(g, p.spawn.x - 3, p.spawn.z - 3, 3, avoid);
       // Custom maps can leave no legal footprint (for example a one-cell causeway).
@@ -1305,7 +1322,7 @@ function setupSkirmishBases(g) {
         for (const k of cells) setCell(g, k, '.');
       }
       const b = placeBuilding(g, p.slot, type, c, true);
-      avoid.push([b, 9]);
+      avoid.push([b, 12]);
     }
   }
   // Starting troops existed before fortifications were placed. Move any trapped squad out of the footprints.
@@ -1435,7 +1452,9 @@ function homeOf(g, u) {
 }
 // where a size x size building could go near (x, z), clear of nodes, points and spawns: its center, or null
 export function siteNear(g, x, z, size) {
-  const avoid = [...(g.nodes ?? []).map(n => [n, 5]), ...g.points.map(p => [p, CFG.pointRadius + 2]), ...g.players.map(p => [p.spawn, 6])];
+  // a 4 m lane to every standing building, so a new one never seals a road through the base
+  const lanes = [...g.units.values()].filter(u => UNITS[u.type].structure && u.hp > 0).map(u => [u, UNITS[u.type].radius + size * CELL / 2 + 4]);
+  const avoid = [...(g.nodes ?? []).map(n => [n, 5]), ...g.points.map(p => [p, CFG.pointRadius + 2]), ...g.players.map(p => [p.spawn, 6]), ...lanes];
   const c = findSite(g, x - size * CELL / 2, z - size * CELL / 2, size, avoid);
   return c < 0 ? null : footCenter(g, c, size);
 }
@@ -2462,7 +2481,10 @@ export function findPath(g, from, to) {
   pathFailures.delete(from); // a fresh immediate command resets earlier retry failures
   // vehicles can't cross tank traps; infantry go around wire when there's a way (straight lines don't cross it either)
   const def = UNITS[from.type], naval = !!def?.naval, veh = def && !def.infantry && !naval, block = blockOf(def), pull = naval ? block : veh ? block | MUD | WOOD : MOVE | WIRE;
-  const W = g.w, N = W * g.h, fullGoal = nearestFree(g, to.x, to.z, block), start = Math.max(0, cellOf(g, from.x, from.z));
+  const W = g.w, N = W * g.h, fullGoal = nearestFree(g, to.x, to.z, block), stand = Math.max(0, cellOf(g, from.x, from.z));
+  // a unit standing where its hull has no room (a tank spawned or shoved against a building) first backs out to the
+  // nearest clear cell, else every neighbor is closed and no route ever leaves it
+  const start = g.flags[stand] & block ? nearestFree(g, from.x, from.z, block) : stand, escape = start !== stand ? cellCenter(g, start) : null;
   const leg = navigationLeg(g, start, fullGoal, block), goal = leg.goal;
   const exactEnd = fullGoal === cellOf(g, to.x, to.z) && (!isGroundVehicle(def) || vehicleDestinationClear(g, to, def, block));
   const routeEnd = exactEnd ? { x: to.x, z: to.z } : cellCenter(g, fullGoal);
@@ -2535,13 +2557,14 @@ export function findPath(g, from, to) {
     }
   }
   if (goal !== start && (seen[goal] !== gen || came[goal] < 0)) { stats.failed++; return []; }
+  if (goal === start && escape) return [escape, routeEnd];
   if (goal === start && dist(from, routeEnd) > 0.05 && walkable(g, from, routeEnd, block)) return [routeEnd];
   const pts = [];
   for (let c = goal; c !== start && c >= 0; c = came[c]) pts.unshift({ x: (c % W + 0.5) * CELL, z: (Math.floor(c / W) + 0.5) * CELL });
   if (!leg.limited && goal === fullGoal && pts.length) pts[pts.length - 1] = routeEnd;
   // string-pull: jump to the furthest waypoint reachable in a straight line
-  const out = [];
-  let at = from;
+  const out = escape ? [escape] : [];
+  let at = escape ?? from;
   for (let i = 0; i < pts.length;) {
     let j = pts.length - 1;
     // a vehicle keeps to the road it chose: no shortcut past the next road cell
@@ -3056,6 +3079,12 @@ export function command(g, slot, cmd, auto = false) {
     g.units.delete(b.id);
     for (const c of b.cells) setCell(g, c, '.');
     for (const n of g.nodes ?? []) if (n.depot === b.id) n.depot = 0;
+  } else if (cmd.t === 'destroy') {
+    // scuttle your own units and buildings: no refund, they die on the next tick like any loss (wrecks, rubble),
+    // and lastHit = owner counts it as friendly fire so no enemy earns the bounty
+    const list = [...ids, cmd.id].map(id => g.units.get(id)).filter(u => u?.owner === slot && u.hp > 0 && !u.riding);
+    if (!list.length) return 'unseen';
+    for (const u of list) { u.hp = 0; u.lastHit = slot; }
   } else if (cmd.t === 'rally') {
     if (isConstructionMode(g) || (isSkirmishBaseMode(g) && (cmd.id !== undefined || ids.length))) {
       const x = num(cmd.x, g.w * CELL), z = num(cmd.z, g.h * CELL), list = cmd.id === undefined ? ids : [cmd.id];
