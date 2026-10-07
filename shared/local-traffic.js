@@ -14,11 +14,12 @@ function radiusPair(a, b, defs) {
   const da = defs[a.type], db = defs[b.type];
   return da.infantry && db.infantry ? (da.radius + db.radius) * 0.45 : bodyRadius(da) + bodyRadius(db);
 }
+// nearby is unordered: the conflict ties on id and the rest only asks some/every, so the sort was wasted work.
 export function trafficStep(g, u, goal, context) {
   const { defs, grid, clear, coverRank, visible, dt } = context;
   if (!goal || protectedUnit(u)) { u.traffic = null; u.trafficWait = 0; return { goal, blocked: false }; }
   const def = defs[u.type], d = length(u, goal), dx = (goal.x - u.x) / (d || 1), dz = (goal.z - u.z) / (d || 1);
-  const radius = bodyRadius(def) + 7, nearby = grid.candidates(u, radius, true, v => v.id !== u.id && v.id !== u.board && v.hp > 0 && !v.air && !v.riding && v.garrison < 0 && !(def.infantry && defs[v.type].infantry) && visible(v));
+  const radius = bodyRadius(def) + 7, nearby = grid.candidates(u, radius, false, v => v.id !== u.id && v.id !== u.board && v.hp > 0 && !v.air && !v.riding && v.garrison < 0 && !(def.infantry && defs[v.type].infantry) && visible(v));
   const velocity = Math.min(def.speed, d / dt), vx = dx * velocity, vz = dz * velocity;
   let conflict = null, time = Infinity;
   for (const v of nearby) {

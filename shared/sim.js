@@ -1467,9 +1467,10 @@ export function siteNear(g, x, z, size) {
 // how far a unit sees before height and houses: weather shortens it for everything on the ground (shared/weather.js)
 const visionOf = (g, u) => UNITS[u.type].vision * (u.air ? 1 : sightMul(g));
 // can this team see the spot right now? Airborne planes see across terrain.
-export function teamSees(g, team, at) {
-  return [...g.units.values()].some(u => g.players[u.owner].team === team && dist(u, at) <= visionOf(g, u)
-    && (u.air ? airborne(u) : UNITS[u.type].building || los(g, u, at)));
+export function teamSees(g, team, at, units = g.units.values()) {
+  for (const u of units) if (g.players[u.owner].team === team && dist(u, at) <= visionOf(g, u)
+    && (u.air ? airborne(u) : UNITS[u.type].building || los(g, u, at))) return true;
+  return false;
 }
 
 function spawnUnit(g, owner, type, n = g.units.size) {
@@ -5095,10 +5096,13 @@ export function terrainFor(g, slot, full = false) {
   const pending = p.terrainPending ??= new Set(g.cellLog.keys());
   // What is still pending waits on a new cell, a found mine or a vision pass; until one comes there is nothing to redo.
   // ponytail: a ruin's teamSees check also follows live positions, so it can show up one vision pass (4 ticks) later.
+  // A full read at an unchanged key also skips the replay: pending cells (unseen craters, hidden mines) pile up in a long
+  // battle, and observedPathView asks every tick for every player.
   const key = `${g.terrainVersion ?? 0}:${g.visionTick ?? -1}`;
-  if (!pending.size || (!full && pending.key === key)) return full ? [...memory.values()] : [];
+  if (!pending.size || pending.key === key) return full ? [...memory.values()] : [];
   pending.key = key;
   const changes = [], visible = new Map();
+  let eyes; // the team's units, filtered once: pending cells pile up in a long battle and each asks teamSees
   // Unseen footprints stay pending. Replay order also preserves remembered terrain order.
   for (const index of [...pending].sort((a, b) => a - b)) {
     const stored = g.cellLog[index], c = stored[0], cell = seenWorldCell(g, c, p.team), old = memory.get(c);
@@ -5111,7 +5115,7 @@ export function terrainFor(g, slot, full = false) {
       if (!visible.has(building)) visible.set(building, allied(g, building.owner, slot)
         || (g.units.has(building.id) ? p.visible.has(building.id) : teamSees(g, p.team, building)));
       if (!visible.get(building)) continue;
-    } else if (!g.reveal && !g.skipFog && !teamSees(g, p.team, cellCenter(g, c))) continue;
+    } else if (!g.reveal && !g.skipFog && !teamSees(g, p.team, cellCenter(g, c), eyes ??= [...g.units.values()].filter(u => g.players[u.owner].team === p.team))) continue;
     if (!hiddenMine) pending.delete(index);
     const known = [...cell]; memory.set(c, known); changes.push(known);
   }

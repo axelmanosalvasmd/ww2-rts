@@ -208,7 +208,7 @@ function trimmed(room, net, msg, cache) {
   net.full = false;
   return msg;
 }
-const sendSeat = (room, i, shots, cells, cache, extra) => { const p = room.players[i]; if (connected(p)) p.ws.send(JSON.stringify(trimmed(room, p.net ??= { sent: new Map() }, { ...snapshotFor(room.game, i, shots, cells, cache), ...extra }, cache))); };
+const sendSeat = (room, i, shots, cells, cache, extra) => { const p = room.players[i]; if (connected(p)) sendSnapshot(room, p, JSON.stringify(trimmed(room, p.net ??= { sent: new Map() }, { ...snapshotFor(room.game, i, shots, cells, cache), ...extra }, cache))); };
 export function watcherSnapshot(g, shots, cells, cache, extra) {
   const msg = { ...snapshotFor(g, 0, shots, cells, cache), ...extra };
   // A spectator has no seat. The projected seat supplies terrain and visible units,
@@ -624,7 +624,7 @@ function timedRoomTick(room) {
   if (sent) {
     const shots = g.shots, cells = g.newCells; g.shots = []; g.newCells = [];
     const recipients = [];
-    room.players.forEach((p, i) => { if (p.ws?.readyState === 1) recipients.push(i); });
+    room.players.forEach((p, i) => { if (p.ws?.readyState === 1 && !backedUp(p)) recipients.push(i); });
     const watched = !!room.spectators?.some(s => s.ws?.readyState === 1);
     if (recipients.length || watched) {
       const online = room.players.map(p => !!p.ws || !!p.ai), ping = room.players.map(p => (p.ai ? -1 : p.rtt ?? null));
@@ -635,7 +635,7 @@ function timedRoomTick(room) {
         snapshotBuild += Number(process.hrtime.bigint() - buildAt) / 1e6;
         const stringifyAt = process.hrtime.bigint(), json = JSON.stringify(msg);
         snapshotStringify += Number(process.hrtime.bigint() - stringifyAt) / 1e6;
-        p.ws.send(json);
+        sendSnapshot(room, p, json);
       }
       if (watched) sendWatchers(room, shots, cells, cache, { online, ping });
     }
@@ -648,6 +648,22 @@ function timedRoomTick(room) {
     const stats = tickStats(meter), costs = Object.entries(stats).map(([phase, v]) => `${phase} ${v.p50.toFixed(2)}/${v.p95.toFixed(2)} ms`).join(', ');
     console.log(`[tick ${room.code}] p50/p95: ${costs}; snapshots every ${room.snapEvery} ticks`);
   }
+}
+
+// A socket still writing 256 KB of old snapshots skips new ones: piling more on only queued its pongs behind megabytes
+// (40 s pings in an overloaded match). ws.send's callback runs once a frame is written, so `inflight` counts the deflate
+// queue too. When it clears the seat gets one fresh snapshot, its deltas counted from the last one sent.
+function backedUp(p) { return (p.ws.inflight ?? 0) >= 256 * 1024 && (p.ws.owed = true); }
+function sendSnapshot(room, p, json) {
+  const ws = p.ws;
+  ws.inflight = (ws.inflight ?? 0) + json.length;
+  ws.send(json, () => {
+    ws.inflight -= json.length;
+    if (!ws.owed || ws.inflight >= 256 * 1024 || p.ws !== ws) return;
+    ws.owed = false;
+    const i = room.players.indexOf(p);
+    if (i >= 0 && room.state === 'play' && room.game) sendSeat(room, i, [], [], snapshotCache(room.game), { online: room.players.map(q => !!q.ws || !!q.ai), ping: room.players.map(q => (q.ai ? -1 : q.rtt ?? null)) });
+  });
 }
 
 export function tickRooms() {

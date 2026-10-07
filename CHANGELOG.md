@@ -5,6 +5,9 @@ AI-vs-AI runs (see DESIGN.md for the balance log). Add new entries under **Unrel
 
 ## Unreleased
 
+- Fixed pings climbing to 10 s and beyond late in big fights. The server tick grew with the battle (3 ms at 66 units to 70 ms at 268 in a 2v2 Annihilation), and once it overran, snapshots piled up 3 MB deep per socket with pongs stuck behind them. Now a player whose connection is 256 KB behind skips snapshots and gets one fresh snapshot when it catches up, so a slow server or connection costs smoothness, not a minute of lag.
+- The server does about 44% less work in large battles (CPU 119 s to 67 s over a 6000-tick Massive 2v2 Annihilation with the same result): remembered terrain no longer rechecks every pending crater for every player each tick, team sight checks no longer copy the whole unit list per cell, and vehicle traffic skips a sort it never needed. Path searches and crowd separation are the next biggest costs, left for later.
+
 ### 2026-10-07: Audit fixes and digging animation (`5e5dffd`)
 
 - Fixed server crashes caused by Supply orders aimed at unfinished or newly completed caches, and by malformed movement orders. Unfinished caches now refuse deliveries safely; completed caches can accept them immediately.
