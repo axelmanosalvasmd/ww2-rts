@@ -42,6 +42,7 @@ export const CFG = {
   mpBase: 4, catchupMax: 6, catchupPer: 60,
   captureTime: 8, pointRadius: 8, popCap: 12,
   retreatSpeed: 1.5, retreatDamage: 0.25, reinforceRadius: 15, reinforceEvery: 2,
+  spawnGhost: 4, // seconds a new unit passes through friends it overlaps (stepOut)
   // incoming accuracy/suppression multipliers; blasts only care about trenches
   coverMul: 0.5, trenchBlastMul: 0.5,
   // trenches: incoming accuracy/suppression goes from fresh (just jumped in) to dug (after settle s standing still).
@@ -851,8 +852,7 @@ function stepHorde(g, dt) {
     // boss waves: a Kaiju per H.boss waves so far walks on at a gate (they count toward "wave dead" like the rest)
     if (m.wave % H.boss === 0) for (let i = 0; i < m.wave / H.boss; i++) {
       const gate = m.gates[i % m.gates.length], u = spawnUnit(g, m.slot, 'kaiju');
-      Object.assign(u, cellCenter(g, nearestFree(g, gate.x, gate.z, blockOf(UNITS.kaiju))));
-      updateGrid(g, u);
+      stepOut(g, u, gate, 0, Math.atan2(bunker.z - gate.z, bunker.x - gate.x), gate);
       command(g, m.slot, { t: 'amove', orders: [[u.id, bunker.x, bunker.z]] });
       g.shots.push({ k: 'say', text: 'THE KAIJU HAS SURFACED', ...gate, pub: true });
     }
@@ -874,9 +874,8 @@ function stepHorde(g, dt) {
   // reserves walk on at the gates, one per gate twice a second, while there is room on the field
   if (g.tick % 10 === 0) for (const gate of m.gates) {
     if (!m.reserve.length || field >= Math.min(H.fieldMax, H.field * m.defenders)) break;
-    const u = spawnUnit(g, m.slot, m.reserve.pop()), a = Math.random() * Math.PI * 2;
-    Object.assign(u, cellCenter(g, nearestFree(g, gate.x + Math.cos(a) * 5, gate.z + Math.sin(a) * 5, blockOf(UNITS[u.type]), gate)));
-    updateGrid(g, u); field++;
+    const u = spawnUnit(g, m.slot, m.reserve.pop());
+    stepOut(g, u, gate, 3, Math.atan2(bunker.z - gate.z, bunker.x - gate.x), gate); field++;
     command(g, m.slot, { t: 'amove', orders: [[u.id, bunker.x, bunker.z]] });
   }
   m.left = field + m.reserve.length + Math.ceil(m.budget / Math.min(...pool.map(([t]) => UNITS[t].cost)));
@@ -978,24 +977,32 @@ function produceUnit(g, b, owner, type) {
   const to = b.rally ?? g.players[owner].rally ?? { x: g.w * CELL / 2, z: g.h * CELL / 2 }, a = Math.atan2(to.z - b.z, to.x - b.x), r = UNITS[b.type].radius + 2;
   const u = spawnUnit(g, owner, type);
   if (u.air) { Object.assign(u, { x: b.x, z: b.z }); updateGrid(g, u); return; }
-  // step out where the hull has room to turn (the vehicle clearance grid, not bare cells) and fan out around the
-  // door, so a tank never starts inside its building or on top of the last one out
-  const def = UNITS[type], nav = isGroundVehicle(def) ? vehicleNavigationView(g, def, blockOf(def)) : g;
-  const out = [...g.units.values()].filter(t => t !== u && !t.air && !t.riding && t.hp > 0 && dist(t, b) < r + 12);
-  let c = -1;
-  for (let k = 0; k < 30 && c < 0; k++) {
-    // rings of six spots facing the rally first, each ring one hull further out
-    const turn = a + (k % 6 >> 1) * 0.6 * (k & 1 ? -1 : 1), far = r + def.radius * (1 + 2 * Math.floor(k / 6));
-    const spot = nearestFree(nav, b.x + Math.cos(turn) * far, b.z + Math.sin(turn) * far, blockOf(def));
-    if (out.every(t => dist(t, cellCenter(g, spot)) > (UNITS[t.type].radius + def.radius) * 0.8)) c = spot;
-  }
-  if (c < 0) c = nearestFree(nav, b.x + Math.cos(a) * (r + def.radius), b.z + Math.sin(a) * (r + def.radius), blockOf(def));
-  Object.assign(u, cellCenter(g, c), { rot: a, aim: a });
-  updateGrid(g, u);
+  stepOut(g, u, b, r, a);
   if (b.rally) { u.worldGoal = { ...b.rally }; u.path = findPath(g, u, b.rally); u.drift = 'rally'; }
   else if (isSkirmishBaseMode(g)) sendToRally(g, u);
   return u;
 }
+// A new unit steps out from `at` (a door, a gate, a spawn) facing angle a: where its hull has room to turn (the vehicle
+// clearance grid, not bare cells) and clear of everyone already there, so it never starts inside a building or on top
+// of the last one out. origin keeps it in the movement region of that spot (not on an isolated cliff top). It is a
+// spawn ghost for a few seconds: friends it still overlaps neither stop it nor make it wait (see separation, traffic).
+function stepOut(g, u, at, r, a, origin = null) {
+  const def = UNITS[u.type], block = blockOf(def), nav = isGroundVehicle(def) ? vehicleNavigationView(g, def, block) : g;
+  const labels = origin ? regionsFor(g, block) : null, home = origin ? labels[nearestFree(g, origin.x, origin.z, block)] : 0;
+  const out = [...g.units.values()].filter(t => t !== u && !t.air && !t.riding && t.hp > 0 && dist(t, at) < r + 12);
+  let c = -1;
+  for (let k = 0; k < 30 && c < 0; k++) {
+    // rings of six spots facing a first, each ring one hull further out
+    const turn = a + (k % 6 >> 1) * 0.6 * (k & 1 ? -1 : 1), far = r + def.radius * (1 + 2 * Math.floor(k / 6));
+    const spot = nearestFree(nav, at.x + Math.cos(turn) * far, at.z + Math.sin(turn) * far, block);
+    if ((!labels || labels[spot] === home) && out.every(t => dist(t, cellCenter(g, spot)) > (UNITS[t.type].radius + def.radius) * 0.8)) c = spot;
+  }
+  if (c < 0) c = nearestFree(origin ? g : nav, at.x + Math.cos(a) * (r + def.radius), at.z + Math.sin(a) * (r + def.radius), block, origin);
+  Object.assign(u, cellCenter(g, c), { rot: a, aim: a, ghost: g.tick + Math.round(CFG.spawnGhost / TICK) });
+  updateGrid(g, u);
+}
+// two friends that overlap because one just stepped out pass through each other instead of locking up
+const ghostPair = (g, a, b) => a.owner === b.owner && ((a.ghost ?? 0) > g.tick || (b.ghost ?? 0) > g.tick);
 function wreckBuilding(g, u) {
   const structure = g.structures?.get(u.structureId);
   if (structure) for (const section of structure.sections) failWorldSection(g, section, [...g.units.values()], { x: 0, z: 1 });
@@ -3139,7 +3146,12 @@ export function command(g, slot, cmd, auto = false) {
         const makers = productionBuildings(g, slot, cmd.unit), b = Object.hasOwn(cmd, 'from') ? makers.find(m => m.id === cmd.from) : makers[0];
         if (!b) return 'needs';
         p.mp -= price.mp; tally(g, slot, 'mpSpent', price.mp); produceUnit(g, b, slot, cmd.unit);
-      } else { p.mp -= price.mp; tally(g, slot, 'mpSpent', price.mp); sendToRally(g, spawnUnit(g, slot, cmd.unit)); }
+      } else {
+        p.mp -= price.mp; tally(g, slot, 'mpSpent', price.mp);
+        const u = spawnUnit(g, slot, cmd.unit), to = p.rally ?? { x: g.w * CELL / 2, z: g.h * CELL / 2 };
+        if (!u.air) stepOut(g, u, p.spawn, 4, Math.atan2(to.z - p.spawn.z, to.x - p.spawn.x), p.spawn);
+        sendToRally(g, u);
+      }
       return;
     }
     // queue it at the building asked for, else the one with the shortest queue
@@ -4802,7 +4814,7 @@ export function step(g) {
       if (d === 0) { dx = a.id < b.id ? 1e-6 : -1e-6; dz = 0; d = 1e-6; }
       const sa = UNITS[a.type].structure, sb = UNITS[b.type].structure;
       if (sa && sb) continue;
-      const solidContact = !UNITS[a.type].infantry && !UNITS[b.type].infantry && (isGroundVehicle(UNITS[a.type]) || isGroundVehicle(UNITS[b.type]));
+      const solidContact = !UNITS[a.type].infantry && !UNITS[b.type].infantry && (isGroundVehicle(UNITS[a.type]) || isGroundVehicle(UNITS[b.type])) && !ghostPair(g, a, b);
       const push = (min - d) / 2 * (solidContact ? sa || sb ? 2 : 1 : sa || sb ? 1 : 0.5), px = dx / d * push, pz = dz / d * push;
       // a squad holding its cover is not pushed off it, and does not push back at a friend walking past
       const ha = !sa && (a.holdPos || a.build || a.dig || a.entrench || shovedFromCover(g, a, a.x - px, a.z - pz)), hb = !sb && (b.holdPos || b.build || b.dig || b.entrench || shovedFromCover(g, b, b.x + px, b.z + pz));

@@ -1,6 +1,6 @@
 // Steering uses the existing spatial index. It leaves the ordered route intact.
 import { bodyRadius } from './vehicle-motion.js';
-export const TRAFFIC = Object.freeze({ horizon: 0.7, wait: 0.35, alternate: 1.1, replan: 3, age: 2, maxYield: 5 });
+export const TRAFFIC = Object.freeze({ horizon: 0.7, wait: 0.35, alternate: 1.1, replan: 3, age: 2, maxYield: 5, ghost: 3, ghostTime: 2 });
 const length = (a, b) => Math.hypot(a.x - b.x, a.z - b.z);
 const priority = (g, u) => (u.retreating ? 30 : u.drift ? 0 : u.path?.length ? 10 : 20) + Math.min(25, Math.floor((u.trafficWait ?? 0) / TRAFFIC.age) * 5);
 export function trafficWins(g, a, b) {
@@ -19,7 +19,7 @@ export function trafficStep(g, u, goal, context) {
   const { defs, grid, clear, coverRank, visible, dt } = context;
   if (!goal || protectedUnit(u)) { u.traffic = null; u.trafficWait = 0; return { goal, blocked: false }; }
   const def = defs[u.type], d = length(u, goal), dx = (goal.x - u.x) / (d || 1), dz = (goal.z - u.z) / (d || 1);
-  const radius = bodyRadius(def) + 7, nearby = grid.candidates(u, radius, false, v => v.id !== u.id && v.id !== u.board && v.hp > 0 && !v.air && !v.riding && v.garrison < 0 && !(def.infantry && defs[v.type].infantry) && visible(v));
+  const radius = bodyRadius(def) + 7, nearby = grid.candidates(u, radius, false, v => v.id !== u.id && v.id !== u.board && v.hp > 0 && !(v.owner === u.owner && ((v.ghost ?? 0) > g.tick || (u.ghost ?? 0) > g.tick)) && !v.air && !v.riding && v.garrison < 0 && !(def.infantry && defs[v.type].infantry) && visible(v));
   const velocity = Math.min(def.speed, d / dt), vx = dx * velocity, vz = dz * velocity;
   let conflict = null, time = Infinity;
   for (const v of nearby) {
@@ -34,6 +34,11 @@ export function trafficStep(g, u, goal, context) {
     // A unit already moving away does not hold up someone behind it.
     if (rx * rvx + rz * rvz >= 0 && Math.hypot(rx, rz) >= min - 0.1) continue;
     if (t < time || t === time && v.id < conflict?.id) { conflict = v; time = t; }
+  }
+  // Gridlocked by a friend (waiting, yielding, waiting again): pass through friends for a moment (a ghost, see stepOut).
+  if (conflict?.owner === u.owner && u.trafficWait >= TRAFFIC.ghost) {
+    u.ghost = g.tick + Math.round(TRAFFIC.ghostTime / dt); u.traffic = null; u.trafficWait = 0; u.trafficEntered = !!u.path?.length;
+    return { goal: u.path?.[0] ?? goal, blocked: false };
   }
   if (u.traffic) {
     const v = g.units.get(u.traffic.by);

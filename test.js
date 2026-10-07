@@ -7062,6 +7062,14 @@ for (const lookupFinished of [false, true]) {
   // each takes its own spot around the bunker (unit behavior: settle within coverSeek, then step off a held spot)
   assert.ok(horde().every(u => u.amove && Math.hypot(u.amove.x - bunker.x, u.amove.z - bunker.z) <= 2 * CFG.behavior.coverSeek + 2), 'every horde unit attack-moves on the bunker');
   assert.equal(g.players[2].inc, 0, 'the horde has no income');
+  // two friendly tanks gridlocked with no room to yield: the one waiting passes through as a ghost within a few seconds
+  const { trafficStep } = await import('./shared/local-traffic.js');
+  const front = { id: 1, type: 'tank', owner: 2, hp: 1, x: 3, z: 0, vx: 0, vz: 0, trafficWait: 20, garrison: -1, path: [{ x: 10, z: 0 }] };
+  const back = { id: 2, type: 'tank', owner: 2, hp: 1, x: 0, z: 0, garrison: -1, path: [{ x: 10, z: 0 }] };
+  const jam = { tick: 0, units: new Map([[1, front], [2, back]]) }, through = [];
+  const ctx = { defs: UNITS, dt: 0.05, grid: { candidates: (u, r, _, keep) => [front].filter(keep) }, clear: () => false, coverRank: () => 3, visible: () => true };
+  for (; jam.tick < 100; jam.tick++) if (!trafficStep(jam, back, back.path[0], ctx).blocked) through.push(jam.tick);
+  assert.ok(through.length && through[0] <= 80 && back.ghost > through[0], 'a tank gridlocked behind a friend ghosts through it after 3 s, not never');
   // the wave's make-up: within budget, only what is unlocked, never snipers
   const cost = (list) => list.reduce((a, t) => a + UNITS[t].cost, 0);
   for (let i = 0; i < 20; i++) {

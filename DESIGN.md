@@ -1443,6 +1443,14 @@ tank accelerates at 4.8 m/s², brakes at 7.5 m/s² and turns at 1.5 rad/s; a Tig
 is 40% to 50% of forward top speed by profile. Hierarchical navigation and local smoothing use the recipient's
 remembered terrain, costs and hull clearance. Live hidden terrain cannot choose a route or retry.
 
+Spawn ghosts (2026-10-07): every unit that walks on (a production door, a Horde gate, a plain spawn) steps out at
+the first spot fanned around its facing where its hull can turn and no one else stands (`stepOut`). For 4 s
+(`CFG.spawnGhost`) friends it still overlaps neither freeze it on contact nor make it wait in traffic; soft separation
+still spreads them. A unit blocked by a friend for 3 s in all (`TRAFFIC.ghost`: waiting, yielding and waiting again)
+ghosts through friends for 2 s. Enemies always collide. Late armor Horde waves, share of units still within 12 m of
+their gate after 20 s (3 seeds each): Hill 112 51% to 0%, Stalingrad Factory 86% to 44%, Bastogne 50% to 36%. The rest
+are vehicles turning on the spot near the map edge with no one blocking them, left for later.
+
 Movement lab fixes (2026-10-04): braking reserves a discrete tick of stopping distance, and acceleration from rest
 uses the forward or reverse profile instead of the braking rate. An exact vehicle destination must have the same
 turning clearance as the navigation cell center. A click too close to a wall resolves to that open center, while
