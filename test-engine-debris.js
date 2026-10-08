@@ -1,4 +1,5 @@
 import assert from 'node:assert/strict';
+import {fixtureCommand,clearFixtureUnits} from './test-fixtures.js';
 import { debrisBody, stepDebris, DEBRIS_LIMITS, wreckMass } from './shared/debris-motion.js';
 import { createGame, step, damageWorldSection, snapshotFor, UNITS, CELL, TICK } from './shared/sim.js';
 import { fixtureCommand as command } from './test-fixtures.js';
@@ -24,11 +25,11 @@ const base = { w: 32, h: 32, rows: Array(32).fill('.'.repeat(32)), spawns: [{ x:
 function fresh(material = 'stone') {
   const c = 10 * base.w + 10, rows = base.rows.map(row => [...row]); rows[10][10] = 'B';
   const g = createGame({ ...base, rows: rows.map(row => row.join('')), structures: [{ id: 'section', kind: 'house', sections: [{ id: 'wall', c, hp: 40, material, anchor: true, supports: [] }] }] }, ['a', 'b'], false);
-  g.units.clear(); g.players.forEach(p => { p.mp = 10000; p.spawn = { x: -1000, z: -1000 }; });
+  clearFixtureUnits(g); g.players.forEach(p => { p.mp = 10000; p.spawn = { x: -1000, z: -1000 }; });
   return { g, c };
 }
 function put(g, owner, type, x, z) {
-  assert.equal(command(g, owner, { t: 'buy', unit: type }), undefined);
+  assert.equal(fixtureCommand(g, owner, { t: 'buy', unit: type }), undefined);
   const u = [...g.units.values()].at(-1); Object.assign(u, { x, z, auto: false, holdFire: true, holdPos: true, cooldown: 1e9, path: [] }); return u;
 }
 {

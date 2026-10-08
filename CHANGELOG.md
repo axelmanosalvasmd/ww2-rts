@@ -5,6 +5,32 @@ AI-vs-AI runs (see DESIGN.md for the balance log). Add new entries under **Unrel
 
 ## Unreleased
 
+- Operative shots hit the soldiers you see. A squad in the open is now its drawn men, each a 0.45 m body on the
+  formation slot the client draws (slots moved to `shared/squad-men.js`, shared by client and server, with a lag
+  of speed/9 for marching men). Before, a squad was one 1.2 m cylinder at its centre, so the end men of a rifle
+  block could not be hit and shots into empty ground inside it could. The man you hit is the one who falls; the
+  last man of the block steps up into his place. Damage numbers are unchanged. Squads in a trench or a house
+  still use the old single body (the client seats trench men itself). The operative is now drawn on his own
+  position instead of the front-left slot of a rifle block, 1.9 m off his hitbox.
+- Operatives can lead a squad: F picks the commander's nearest infantry squad within 8 m, which attack-moves to
+  4 m behind the operative as he goes. F again, or any order from the commander, lets it go. While it has two or
+  more men, a dead operative comes back after the usual 8 s as one of its men (the squad loses a man, no MP)
+  instead of walking up from the HQ. The HUD shows the squad and its men.
+- Merged onto master: the operative's snapshot flag moved from bit 65536 (now the open-gate flag) to
+  `OPERATIVE_FLAG` 131072; the branch's own fixture fixes gave way to master's `clearFixtureUnits` ones.
+- Left for later: the man a squad gives up for the operative drops as a corpse on the client; the per-man body
+  ignores kneeling and prone poses (a pinned squad is as tall as a standing one).
+
+- WIP branch publication: FPS simulation, multiplayer, native-browser death/respawn/reconnect and public HTTPS/WSS acceptance checks pass. The full `node test.js` gate is not passing: AI full-match story and seeded capture assertions remain unresolved. Published as a user-authorized WIP exception, not a release or approval to merge.
+
+- Added an isolated commander plus first-person infantry MVP. Teammates attach to a human commander's army without taking an army seat. Desktop WASD, native mouse aim, hold-click rifle fire, crosshair, HP, hit/damage feedback and a ground-level rifle view use the same terrain and authoritative battle as the RTS.
+- Operatives have one soldier's 20 HP and 4.5 m/s movement. Their rifle deals 6 infantry damage, reaches 36 m and fires at most once every 0.65 s. Death waits 8 s and spends 10 commander MP to replace the soldier, or waits for sufficient MP. The first soldier is free.
+- Server input validation rejects stale/replayed/non-finite/out-of-bounds input; movement obeys infantry terrain and cliffs, and shots use server-side aim rays, visibility and obstruction checks. Operatives cannot issue army commands and commanders cannot redirect their controlled soldier. Disconnect stops input without pausing the army; refresh restores the companion identity. No spectator fog lift is used.
+- Added lobby role choice, commander selection, dedicated teammate FPS links, a separate in-match FPS tab button and desktop-only instructions. RTS controls, normal spectators and existing unit type indices remain intact. World Conquest is intentionally unsupported for companions in this MVP.
+- Fixed the start/snapshot race: clients receive battlefield initialization before simulation snapshots. Fixed focused FPS buttons swallowing WASD after mouse capture, short input disappearing on slow rendering, and own-model visibility being restored by network snapshots.
+- Added simulation, socket, desktop input, real-browser and public HTTPS/WSS acceptance scripts. Isolated demo launcher uses a separate loopback port and temporary Cloudflare HTTPS tunnel. This is a preview, not permanent production hosting.
+- Browser acceptance now uses a connected enemy commander instead of a disconnected disabled AI, preserves absent-player authority checks, targets the exact native input window, waits for actual movement and verifies refresh keeps the respawned soldier. Combat regression fixtures use existing producer/terrain cleanup helpers rather than relaxing production rules.
+
 - Drills (no game change): small authored scenes for AI behaviour questions, played on the server's AI schedule.
   `drills/drill.js` places a drill's units on a small map, runs its timed script and returns its measure;
   `node tools/drill.mjs drills/<name>.js --seeds 200` runs one across seeds. The first drill, `drills/flank-answer.js`,

@@ -1,0 +1,62 @@
+body.operative #hud, body.operative #menu, body.operative #openOperative { display: none !important; }
+#openOperative { position:fixed;right:10px;top:205px;z-index:4; }
+#overlay:not(.hidden) ~ #openOperative {display:none;}
+#operativeJoin { margin-top:12px; }
+#operativeRoster {margin-top:6px;}
+
+/* first person HUD (client/operative-view.js) */
+#fpsHud { position:fixed;inset:0;pointer-events:none;z-index:6;color:#efe9d6;text-shadow:0 1px 2px #000a;font-variant-numeric:tabular-nums; }
+#fpsHud .hidden { display:none; }
+#fpsPanel { position:absolute;left:50%;top:50%;transform:translate(-50%,-50%);padding:16px 20px;max-width:520px;pointer-events:auto;text-align:center; }
+#fpsPanel b {color:var(--brass);letter-spacing:2px;}
+#fpsStatus {margin:6px 0 8px;}
+#fpsPanel .muted {line-height:1.6;}
+#fpsPanel button {margin-top:12px;margin-right:14px;}
+
+/* crosshair: four ticks that open with the weapon's spread (--gap), a dot through the sights */
+#fpsCross { --gap:8px;position:absolute;left:50%;top:50%;width:0;height:0;transition:opacity .12s; }
+#fpsCross i { position:absolute;background:#f2edda;box-shadow:0 0 2px #000c;transition:transform .05s linear; }
+#fpsCross .t,#fpsCross .b { width:2px;height:9px;left:-1px; }
+#fpsCross .l,#fpsCross .r { height:2px;width:9px;top:-1px; }
+#fpsCross .t { bottom:var(--gap); } #fpsCross .b { top:var(--gap); }
+#fpsCross .l { right:var(--gap); } #fpsCross .r { left:var(--gap); }
+#fpsCross b { position:absolute;width:2px;height:2px;left:-1px;top:-1px;background:#f2edda;box-shadow:0 0 2px #000; }
+#fpsCross.ads i { opacity:0; }
+
+/* hit marker: four short diagonal strokes; red on a kill */
+#fpsHit { position:absolute;left:50%;top:50%;width:0;height:0;opacity:0;transition:opacity .08s; }
+#fpsHit.on { opacity:1; }
+#fpsHit i { position:absolute;width:10px;height:2px;background:#fff;box-shadow:0 0 2px #000; }
+#fpsHit i:nth-child(1) { transform:translate(4px,-8px) rotate(-45deg); } #fpsHit i:nth-child(2) { transform:translate(-14px,-8px) rotate(45deg); }
+#fpsHit i:nth-child(3) { transform:translate(4px,6px) rotate(45deg); } #fpsHit i:nth-child(4) { transform:translate(-14px,6px) rotate(-45deg); }
+#fpsHit.kill i { background:#e2584a; }
+#fpsKill { position:absolute;left:50%;top:calc(50% + 46px);transform:translateX(-50%);font:700 13px/1 var(--type);letter-spacing:2px;color:var(--brass);opacity:0;transition:opacity .3s;text-transform:uppercase; }
+
+/* bottom left: health; bottom right: weapons, ammunition, grenades */
+#fpsVitals { position:absolute;left:28px;bottom:26px;display:flex;align-items:center;gap:12px; }
+#fpsHpBar { width:180px;height:8px;background:#0008;border:1px solid #fff3; }
+#fpsHpBar i { display:block;height:100%;width:100%;background:linear-gradient(90deg,#8e9b5f,#b8c27f);transition:width .2s; }
+#fpsHud.low #fpsHpBar i { background:#c8483b; }
+#fpsHealth { font:700 26px/1 var(--type); }
+#fpsSquad { font:600 11px/1 var(--type);letter-spacing:1.5px;color:#d8d2bccc;text-transform:uppercase; }
+#fpsLoadout { position:absolute;right:28px;bottom:24px;text-align:right; }
+#fpsWeapons { font:600 11px/1 var(--type);letter-spacing:1.5px;color:#d8d2bccc;white-space:pre;text-transform:uppercase; }
+#fpsAmmo { margin-top:6px; }
+#fpsAmmo b { font:700 40px/1 var(--type); }
+#fpsAmmo span { font:600 13px/1 var(--type);color:#d8d2bccc;letter-spacing:1px; }
+#fpsAmmo.empty b { color:#e2584a; }
+#fpsReload { height:3px;width:150px;margin:6px 0 0 auto;background:#0008; }
+#fpsReload i { display:block;height:100%;background:var(--brass); }
+#fpsNades { margin-top:6px;font:600 13px/1 var(--type);letter-spacing:2px;color:#cfd3a8; }
+
+/* hurt: a red edge that flashes, an arrow toward the shooter; low health keeps a dark red vignette */
+#fpsDamage { position:absolute;inset:0;box-shadow:inset 0 0 140px 30px #a52a22;opacity:0; }
+#fpsVignette { position:absolute;inset:0;background:radial-gradient(ellipse at center,transparent 55%,#0006 100%); }
+#fpsHud.low #fpsVignette { background:radial-gradient(ellipse at center,transparent 40%,#5a0e0acc 100%);animation:fpsPulse 1.1s ease-in-out infinite; }
+@keyframes fpsPulse { 50% { opacity:.6; } }
+#fpsDir { position:absolute;left:50%;top:50%;width:0;height:0;opacity:0;transition:opacity .4s; }
+#fpsDir i { position:absolute;left:-26px;top:-150px;width:52px;height:22px;background:radial-gradient(ellipse at 50% 100%,#e2584aee,#e2584a00 70%);clip-path:polygon(50% 0,100% 100%,0 100%); }
+#fpsDead { position:absolute;inset:0;display:flex;flex-direction:column;align-items:center;justify-content:center;background:radial-gradient(ellipse at center,#1a0705aa,#000d); }
+#fpsDead.hidden { display:none; }
+#fpsDead h2 { font:700 34px/1 var(--type);letter-spacing:6px;text-transform:uppercase;color:#d8574a;margin:0 0 14px; }
+@media(max-width:650px){#fpsVitals{left:12px;bottom:12px}#fpsLoadout{right:12px;bottom:12px}#fpsHpBar{width:110px}}

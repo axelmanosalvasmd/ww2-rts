@@ -196,17 +196,23 @@ function followView(cam) {
   scene.fog.near = dist * 0.6 / sky.haze; scene.fog.far = dist * 3.8 / sky.haze;
 
   camera.updateMatrixWorld();
-  center.set(0, 0, 0);
-  corners.forEach(([sx, sy], i) => {
-    const dir = v3.set(sx, sy, 0.5).unproject(camera).sub(camera.position).normalize();
-    const t = dir.y < -0.02 ? Math.min(600, (gy - camera.position.y) / dir.y) : 600;
-    foot[i].copy(camera.position).addScaledVector(dir, t);
-    center.add(foot[i]);
-  });
-  center.multiplyScalar(0.25);
   let rad = 0;
-  for (const p of foot) rad = Math.max(rad, p.distanceTo(center));
-  rad = Math.ceil((rad + 10) / 8) * 8; // steps of 8 m, so panning doesn't resize the shadow map
+  if (cam?.fps) {
+    // at eye level the frustum reaches the horizon: shadow a fixed patch ahead of the soldier instead, kept sharp
+    camera.getWorldDirection(v3); v3.y = 0; v3.normalize();
+    center.copy(camera.position).addScaledVector(v3, 22); center.y = gy; rad = 48;
+  } else {
+    center.set(0, 0, 0);
+    corners.forEach(([sx, sy], i) => {
+      const dir = v3.set(sx, sy, 0.5).unproject(camera).sub(camera.position).normalize();
+      const t = dir.y < -0.02 ? Math.min(600, (gy - camera.position.y) / dir.y) : 600;
+      foot[i].copy(camera.position).addScaledVector(dir, t);
+      center.add(foot[i]);
+    });
+    center.multiplyScalar(0.25);
+    for (const p of foot) rad = Math.max(rad, p.distanceTo(center));
+    rad = Math.ceil((rad + 10) / 8) * 8; // steps of 8 m, so panning doesn't resize the shadow map
+  }
 
   // snap the box center to whole shadow texels in light space: shadow edges don't crawl while panning
   const texel = (2 * rad) / sun.shadow.mapSize.x;

@@ -5,6 +5,7 @@ import { setupTutorial, stepTutorial } from './tutorial.js';
 import { gridFor, rebuildGrid, updateGrid, SpatialGrid, setHeavy } from './grid.js';
 import { planWeather, stepWeather, sightMul, weatherSpeed, weatherRow } from './weather.js';
 import { normalizeFace, slotSize, facingSpots } from './formation.js';
+import { menAt, menDrawn } from './squad-men.js';
 import { knownTerritoryRuns } from './world-territories.js';
 import { generateWorldMap, WORLD_TUNING } from './world-conquest.js';
 import { validateScenario, setupScenario, stepScenario, scenarioFor, scenarioShotFor } from './scenarios.js';
@@ -1794,6 +1795,178 @@ function supplyWithdrawal(g, u) {
   retreatUnit(g,u); u.path=path; u.worldGoal=path.length ? goal : null; u.retreating=!!path.length; r.stranded=false;
 }
 
+// Companions share their commander's army and fog, never an army seat or spectator view.
+export function joinOperative(g, key, owner) {
+  if (!g.players[owner] || g.players[owner].out || g.winner !== null) return null;
+  g.operatives ??= new Map();
+  if (g.operatives.has(key)) return g.operatives.get(key);
+  const op = { key, owner, unitId: 0, squadId: 0, respawnAt: 0, online: true, input: null, lastInput: -100, lastSeq: -1, shots: 0, hits: 0, kills: 0, seen: {}, want: {} };
+  g.operatives.set(key, op);
+  spawnOperative(g, op);
+  return op;
+}
+// Jump, reload and grenade arrive as running counts, so a lost or repeated packet never drops or doubles a press.
+// The first count after a (re)connect is only a baseline.
+const EDGES = ['jump', 'reload', 'nade', 'squad'];
+export function operativeInput(g, key, input) {
+  const op = g.operatives?.get(key);
+  if (!op?.online || g.winner !== null || g.players[op.owner].out || !input ||
+      !Number.isSafeInteger(input.seq) || input.seq <= op.lastSeq ||
+      ![input.forward, input.strafe, input.yaw, input.pitch].every(Number.isFinite) ||
+      Math.abs(input.forward) > 1 || Math.abs(input.strafe) > 1 || Math.abs(input.yaw) > 1e4 || Math.abs(input.pitch) > 1.45) return false;
+  op.lastSeq = input.seq;
+  const weapon = Number.isInteger(input.weapon) && OPERATIVE_WEAPONS[input.weapon] ? input.weapon : op.input?.weapon ?? 0;
+  op.input = { forward: input.forward, strafe: input.strafe, yaw: input.yaw, pitch: input.pitch, fire: input.fire === true,
+    ads: input.ads === true, crouch: input.crouch === true, sprint: input.sprint === true, weapon };
+  op.seen ??= {}; op.want ??= {};
+  for (const k of EDGES) {
+    const n = input[k];
+    if (!Number.isSafeInteger(n) || n < 0) continue;
+    if (op.seen[k] != null && n > op.seen[k]) op.want[k] = true;
+    op.seen[k] = n;
+  }
+  op.lastInput = g.tick;
+  return true;
+}
+// walk equals a rifleman's speed. Spread is in radians (hip fire, aimed down the sights).
+export const OPERATIVE = Object.freeze({ hp: 20, eye: 1.65, crouchEye: 1.1, respawn: 8, cost: 10, nades: 3, nadeCd: 1, swap: 0.45,
+  walk: UNITS.rifle.speed, sprint: 7, crouch: 2.3, ads: 2.8, accel: 30, airAccel: 6, jump: 4.6, gravity: 15 });
+export const OPERATIVE_WEAPONS = Object.freeze([
+  Object.freeze({ id: 'rifle', name: 'Rifle', mag: 8, interval: 0.32, reload: 2.4, range: 60, damage: 8, veh: 0.5, supp: 6, hip: 0.02, ads: 0.003, fx: 'sniper' }),
+  Object.freeze({ id: 'smg', name: 'SMG', mag: 32, interval: 0.1, reload: 2.1, range: 32, damage: 3.5, veh: 0.2, supp: 3, hip: 0.05, ads: 0.022, fx: 'commando' }),
+]);
+const operativeTop = (t) => (t.crouch ? 1.25 : 1.85);
+function fireOperative(g, u, op, input, moving) {
+  const w = OPERATIVE_WEAPONS[u.weapon];
+  u.cooldown = w.interval; u.mags[u.weapon]--; op.shots++; u.shotAt = g.tick;
+  const eye = (g.height ? heightAt(g, u.x, u.z) : 0) + u.jy + (u.crouch ? OPERATIVE.crouchEye : OPERATIVE.eye);
+  // Spread grows with speed and in the air, shrinks crouched. The server rolls it; the client only draws its guess.
+  const spread = (input.ads ? w.ads : w.hip) * (1 + Math.min(1.5, moving / OPERATIVE.walk)) * (u.jy > 0 ? 3 : 1) * (u.crouch ? 0.6 : 1);
+  const r = spread * Math.sqrt(Math.random()), a = Math.random() * Math.PI * 2;
+  const yaw = input.yaw + Math.cos(a) * r, pitch = Math.max(-1.5, Math.min(1.5, input.pitch + Math.sin(a) * r));
+  const hx = Math.cos(yaw), hz = Math.sin(yaw), cp = Math.cos(pitch), dy = Math.sin(pitch);
+  // Only bodies near the ray's line are tested at each step. A squad in the open is its drawn men (shared/squad-men.js),
+  // each a body of his own: miss the man and the shot goes past him.
+  // ponytail: squads in a trench or a house stay one 1.2 m body; the client seats trench men itself (main.js manTrench)
+  const targets = [], near = (x, z, radius, add) => {
+    const rx = x - u.x, rz = z - u.z, along = rx * hx + rz * hz;
+    if (along > -radius && along < w.range + radius && Math.abs(rx * hz - rz * hx) <= radius) targets.push(add);
+  };
+  for (const t of g.units.values()) {
+    if (t === u || !(t.hp > 0) || t.air || t.riding || !g.players[u.owner].visible.has(t.id)) continue;
+    const def = UNITS[t.type], top = t.operative ? operativeTop(t) : def.infantry ? 1.85 : def.structure ? 5 : 3;
+    if (def.infantry && !t.operative && t.garrison < 0 && !inTrench(g, t)) {
+      menAt(t, menDrawn(t.type, t.hp, def.models * def.hpPer)).forEach((p, m) => near(p.x, p.z, 0.45, { t, x: p.x, z: p.z, radius: 0.45, top, m }));
+    } else {
+      const radius = t.operative ? 0.4 : def.infantry ? 1.2 : def.radius;
+      near(t.x, t.z, radius, { t, x: t.x, z: t.z, radius, top });
+    }
+  }
+  let hit = null, man, end = { x: u.x, y: eye, z: u.z };
+  // A fixed-distance ray, never a target ID from the client, and never nearest-enemy aim assist.
+  for (let i = 2, steps = Math.round(w.range * 5); i <= steps; i++) {
+    const d = i * 0.2;
+    end = { x: u.x + hx * cp * d, y: eye + dy * d, z: u.z + hz * cp * d };
+    if (cellOf(g, end.x, end.z) < 0 || end.y < (g.height ? heightAt(g, end.x, end.z) : 0)) break;
+    if (i % 5 === 0 && !los(g, u, end)) break;
+    const found = targets.find((b) => {
+      const floor = (g.height ? heightAt(g, b.x, b.z) : 0) + (b.t.jy ?? 0);
+      return Math.hypot(end.x - b.x, end.z - b.z) <= b.radius && end.y >= floor && end.y <= floor + b.top;
+    });
+    if (found) { if (los(g, u, end)) { hit = found.t; man = found.m; } break; }
+  }
+  const enemy = hit && !allied(g, u.owner, hit.owner);
+  if (enemy) {
+    hurt(g, hit, { inf: w.damage, veh: w.veh, terrain: w.veh, supp: w.supp }, 1, u.owner);
+    hit.hitBy = u.id; hit.hitAt = g.tick; hit.hitFrom = { x: u.x, z: u.z };
+    op.hits++; if (hit.hp <= 0) op.kills++;
+  }
+  // Others see the operative's fire as an ordinary small-arms shot from that soldier.
+  // m: the drawn man hit, so the client drops that one if the squad loses a man (client/main.js)
+  g.shots.push({ k: w.fx, f: u.id, fo: u.owner, x: end.x, y: end.y, z: end.z, ...(enemy ? { t: hit.id, to: hit.owner, hit: true, ...(man !== undefined && { m: man }) } : {}) });
+}
+function throwOperative(g, u, input) {
+  const ab = UNITS.rifle.ab, d = Math.max(3, Math.min(24, 13 + input.pitch * 16));
+  const x = Math.max(0.5, Math.min(g.w * CELL - 0.5, u.x + Math.cos(input.yaw) * d)), z = Math.max(0.5, Math.min(g.h * CELL - 0.5, u.z + Math.sin(input.yaw) * d));
+  const at = { x, z, y: levelAt(g, x, z) * CFG.levelHeight + 0.02 }, duration = 0.45 + d / 20;
+  const flight = addFlight(g, u, at, PROJECTILE_PROFILES.grenade, { duration, explosive: true, blastSource: ab, blastRadius: ab.radius, effect: 'boom' });
+  g.nades.push({ x, z, t: duration, owner: u.owner, ab, flight: flight.id });
+  g.shots.push({ f: u.id, fo: u.owner, x, z, k: 'throw', physical: true, local: true });
+  u.nades--; u.nadeT = OPERATIVE.nadeCd;
+}
+// Inside the map and walkable for a narrow body.
+const operativeCanStand = (g, u, x, z) => x >= 0.4 && z >= 0.4 && x < g.w * CELL - 0.4 && z < g.h * CELL - 0.4 && walkable(g, u, { x, z }, MOVE, 0.35);
+function stepOperative(g, u) {
+  const op = g.operatives.get(u.operative), input = op.online && g.tick - op.lastInput <= 5 ? op.input : null;
+  const live = !!input && g.winner === null && !g.players[u.owner].out, want = live ? op.want ?? {} : {};
+  op.want = {};
+  u.cooldown = Math.max(0, u.cooldown - TICK);
+  u.nadeT = Math.max(0, u.nadeT - TICK);
+  u.supp = Math.max(0, u.supp - 8 * TICK);
+  const grounded = u.jy <= 0 && u.vy <= 0;
+  if (live) {
+    u.rot = u.aim = input.yaw;
+    if (want.jump && grounded) { u.vy = OPERATIVE.jump; u.crouch = false; }
+    else u.crouch = input.crouch && (grounded || u.crouch);
+  }
+  if (u.jy > 0 || u.vy > 0) { u.vy -= OPERATIVE.gravity * TICK; u.jy = Math.max(0, u.jy + u.vy * TICK); if (!u.jy) u.vy = 0; }
+  // Velocity eases toward what the keys ask for: quick on the ground, little control in the air.
+  const f = live ? input.forward : 0, s = live ? input.strafe : 0;
+  const sprinting = live && input.sprint && f > 0 && !input.ads && !u.crouch;
+  const cap = sprinting ? OPERATIVE.sprint : u.crouch ? OPERATIVE.crouch : live && input.ads ? OPERATIVE.ads : OPERATIVE.walk;
+  const len = Math.max(1, Math.hypot(f, s)), yaw = live ? input.yaw : u.rot;
+  const tx = (Math.cos(yaw) * f - Math.sin(yaw) * s) / len * cap, tz = (Math.sin(yaw) * f + Math.cos(yaw) * s) / len * cap;
+  const step = (grounded ? OPERATIVE.accel : OPERATIVE.airAccel) * TICK, ddx = tx - u.vx, ddz = tz - u.vz, dl = Math.hypot(ddx, ddz);
+  if (dl <= step) { u.vx = tx; u.vz = tz; } else { u.vx += ddx / dl * step; u.vz += ddz / dl * step; }
+  // Each axis on its own, so a wall met at an angle is slid along instead of stopping the soldier dead.
+  const x0 = u.x, z0 = u.z;
+  if (u.vx && operativeCanStand(g, u, u.x + u.vx * TICK, u.z)) u.x += u.vx * TICK; else u.vx = 0;
+  if (u.vz && operativeCanStand(g, u, u.x, u.z + u.vz * TICK)) u.z += u.vz * TICK; else u.vz = 0;
+  u.moveSpeed = Math.hypot(u.x - x0, u.z - z0) / TICK;
+  if (u.moveSpeed) updateGrid(g, u);
+  if (!live) return;
+  // weapons: switching drops a reload in progress; an empty magazine reloads on the trigger
+  const w = OPERATIVE_WEAPONS[u.weapon];
+  if (input.weapon !== u.weapon) { u.weapon = input.weapon; u.reloadT = 0; u.cooldown = Math.max(u.cooldown, OPERATIVE.swap); }
+  else if (u.reloadT > 0) { if ((u.reloadT -= TICK) <= 0) { u.reloadT = 0; u.mags[u.weapon] = w.mag; } }
+  else if ((want.reload || (input.fire && !u.mags[u.weapon])) && u.mags[u.weapon] < w.mag) u.reloadT = w.reload;
+  if (want.squad) pickSquad(g, u, op);
+  leadSquad(g, u, op);
+  if (want.nade && u.nades > 0 && !u.nadeT && !sprinting) throwOperative(g, u, input);
+  else if (input.fire && !sprinting && !u.reloadT && u.cooldown <= 0 && u.mags[u.weapon] > 0) fireOperative(g, u, op, input, u.moveSpeed);
+}
+// F: the nearest of the commander's squads within 8 m falls in behind the operative; F again lets it go. Any order
+// from the commander takes it back too (command() clears u.follow).
+const ledSquad = (g, op) => { const s = g.units.get(op.squadId); return s && s.hp > 0 && s.follow === op.key ? s : null; };
+function pickSquad(g, u, op) {
+  const led = ledSquad(g, op);
+  if (led) { led.follow = 0; op.squadId = 0; return; }
+  let best = null, bd = 8;
+  for (const s of g.units.values()) {
+    const d = Math.hypot(s.x - u.x, s.z - u.z);
+    if (d < bd && s.owner === u.owner && s.hp > 0 && UNITS[s.type].infantry && !s.operative && !s.riding && !s.follow) { best = s; bd = d; }
+  }
+  if (best) { best.follow = op.key; op.squadId = best.id; }
+}
+// The squad attack-moves to a spot 4 m behind the operative whenever he has moved off its last one. A retreat runs its course.
+function leadSquad(g, u, op) {
+  const s = ledSquad(g, op);
+  if (!s) { op.squadId = 0; return; }
+  if (g.tick % 5 || s.retreating) return;
+  const x = Math.max(1, Math.min(g.w * CELL - 1, u.x - Math.cos(u.rot) * 4)), z = Math.max(1, Math.min(g.h * CELL - 1, u.z - Math.sin(u.rot) * 4));
+  if (s.amove ? Math.hypot(s.amove.x - x, s.amove.z - z) < 3 : Math.hypot(s.x - x, s.z - z) < 5) return;
+  command(g, s.owner, { t: 'amove', orders: [[s.id, x, z]] });
+  s.follow = op.key;
+}
+// A new soldier is one of the led squad's men while it has two or more; otherwise he comes from the HQ for MP.
+function spawnOperative(g, op, from = null) {
+  const u = spawnUnit(g, op.owner, 'rifle');
+  if (from) { from.hp -= UNITS[from.type].hpPer; u.x = from.x; u.z = from.z; updateGrid(g, u); }
+  Object.assign(u, { hp: UNITS.rifle.hpPer, operative: op.key, auto: false, autoRetreat: false, holdFire: true, holdPos: true,
+    vx: 0, vz: 0, vy: 0, jy: 0, crouch: false, weapon: op.input?.weapon ?? 0, mags: OPERATIVE_WEAPONS.map(w => w.mag), reloadT: 0, nades: OPERATIVE.nades, nadeT: 0 });
+  op.unitId = u.id; op.input = null;
+  return u;
+}
 // ---------- planes ----------
 export const airborne = (u) => !!u.air && (u.air.state === 'out' || u.air.state === 'station' || u.air.state === 'home');
 // where a plane takes off and rearms: in Classic its owner's nearest finished Airfield, otherwise (or with none) an
@@ -2918,7 +3091,7 @@ export function command(g, slot, cmd, auto = false) {
   if (cmd.t === 'recover' && g.mode?.kind === 'world') return recoverWorld(g, slot);
   if (cmd.t === 'orders' && Array.isArray(cmd.commands)) return dispatchOrderGroups(g, slot, cmd);
   // a squad riding in a carrier takes no orders: its carrier does (unload)
-  const mine = (id) => { const u = g.units.get(id); return u && u.owner === slot && !UNITS[u.type].structure && !u.riding && (!u.logistics?.forced || ['move', 'stop', 'retreat', 'holdFire', 'holdPos', 'autoRetreat'].includes(cmd.t) || u.logistics.stranded && ['attack', 'ability'].includes(cmd.t)) ? u : null; };
+  const mine = (id) => { const u = g.units.get(id); if (!(u && u.owner === slot && !u.operative && !UNITS[u.type].structure && !u.riding && (!u.logistics?.forced || ['move', 'stop', 'retreat', 'holdFire', 'holdPos', 'autoRetreat'].includes(cmd.t) || u.logistics.stranded && ['attack', 'ability'].includes(cmd.t)))) return null; u.follow = 0; return u; }; // an order takes a squad back from the operative leading it
   const limit = Math.max(50, g.units.size), ids = Array.isArray(cmd.ids) ? cmd.ids.slice(0, limit) : [];
   if ((cmd.t === 'move' || cmd.t === 'amove') && Array.isArray(cmd.orders)) {
     const face = cmd.face === undefined ? null : normalizeFace(cmd.face);
@@ -4381,7 +4554,7 @@ function healWounded(g, list, dt) {
     let best = null, worst = 1, far = null, farWorst = A.hurt;
     for (const u of gridFor(g).candidates(m, idle ? A.seek : A.medic, false)) {
       const def = UNITS[u.type], frac = u.hp / (def.models * def.hpPer);
-      if (u === m || !def.infantry || u.hp <= 0 || u.riding || u.retreating || !allied(g, u.owner, m.owner)) continue;
+      if (u === m || u.operative || !def.infantry || u.hp <= 0 || u.riding || u.retreating || !allied(g, u.owner, m.owner)) continue;
       const d = dist(u, m);
       if (d <= A.medic && frac < worst) { best = u; worst = frac; }
       else if (d <= A.seek && frac < farWorst) { far = u; farWorst = frac; }
@@ -4617,6 +4790,12 @@ export function step(g) {
   rebuildGrid(g);
   const flightPrior = new Map([...g.units.values()].map(u => [u.id, { x: u.x, z: u.z, rot: u.rot }]));
   g.tick++;
+  for (const op of g.operatives?.values() ?? []) {
+    if (op.unitId || !op.online || g.tick < op.respawnAt || g.winner !== null || g.players[op.owner].out) continue;
+    const s = ledSquad(g, op);
+    if (s && s.garrison < 0 && !s.riding && s.hp > UNITS[s.type].hpPer) spawnOperative(g, op, s);
+    else if (g.players[op.owner].mp >= OPERATIVE.cost) { g.players[op.owner].mp -= OPERATIVE.cost; spawnOperative(g, op); }
+  }
   stepWorldDebris(g, TICK);
   if (g.winner === null && (g.tick === 1 || g.tick % SAMPLE_EVERY === 0)) sample(g, isStructure(g));
   stepWeather(g);
@@ -4643,6 +4822,7 @@ export function step(g) {
   const crews = new Map(); // construction site id -> engineers working on it this tick
   for (const u of g.units.values()) {
     if (u.hp <= 0) continue;
+    if (u.operative) { stepOperative(g, u); continue; }
     const def = UNITS[u.type], w = def.w, sm = suppMul(u);
     tickReserves(g, u, dt);
     supplyWithdrawal(g, u);
@@ -5092,6 +5272,7 @@ export function step(g) {
   // CFG.supply.network 0 freezes the network (tests of reserve mechanics set an empty one)
   if (g.convoys && CFG.supply.network && g.tick % CFG.supply.network === 0) supplyNetwork(g, list);
   for (const u of list) {
+    if (u.operative) continue;
     const def = UNITS[u.type], p = g.players[u.owner], full = def.models * def.hpPer;
     const home = !(def.structure || def.air || u.hp <= 0 || u.hp >= full || u.owner === g.mode?.slot) && atBase(u);
     if (!home && !(u.hp > 0 && u.hp < full && u.owner !== g.mode?.slot && atAid(u))) { u.reinf = 0; continue; }
@@ -5106,6 +5287,10 @@ export function step(g) {
 
   for (const u of list) if (u.hp <= 0) {
     convoyDeath(g, u);
+    if (u.operative) {
+      const op = g.operatives.get(u.operative);
+      op.unitId = 0; op.input = null; op.respawnAt = g.tick + Math.ceil(OPERATIVE.respawn / TICK);
+    }
     g.units.delete(u.id); if (UNITS[u.type].building) wreckBuilding(g, u);
     // A knocked-out vehicle stays where it stopped (not one that went into the river with its bridge). On open ground,
     // a crater, a road or mud its cell becomes a wreck (Q): vehicles go around, infantry take cover, explosions clear
@@ -5313,9 +5498,10 @@ export function terrainFor(g, slot, full = false) {
 
 const rounded = (v) => Math.round(v * 10) / 10;
 export const GATE_OPEN_FLAG = 65536; // a gate standing open
+export const OPERATIVE_FLAG = 131072; // a first-person operative: one man, drawn on his own spot
 export const AUTO_FLAG = 16384; // a unit's autocast is on; only its owner is told (1024 marks a mass entrenchment)
 export const RIDING_FLAG = 262144, CARGO_FLAG = 524288; // inside a carrier (its side sees that); a carrier with a squad in it
-const unitFlags = (g, u) => (u.riding ? RIDING_FLAG : 0) | (u.cargo ? CARGO_FLAG : 0) | (u.retreating ? 1 : 0) | (u.buff > 0 ? 2 : 0) | (u.ap ? 4 : 0) | (u.reinf > 0 || g.tick - (u.healAt ?? -1e9) < 12 ? 8 : 0) | (u.dig ? 16 : 0) | (u.garrison >= 0 ? 32 | g.house[u.garrison] << 20 : 0) | (u.amove ? 64 : 0) | (u.build ? 128 : 0) | (UNITS[u.type].camo && u.still >= 3 && g.tick - (u.shotAt ?? -1e9) >= 80 ? 256 : 0) | (u.air && !airborne(u) ? 512 : 0) | (u.entrench ? 1024 : 0) | (dusty(g, u) ? 32768 : 0) | (u.open ? GATE_OPEN_FLAG : 0);
+const unitFlags = (g, u) => (u.operative ? OPERATIVE_FLAG : 0) | (u.riding ? RIDING_FLAG : 0) | (u.cargo ? CARGO_FLAG : 0) | (u.retreating ? 1 : 0) | (u.buff > 0 ? 2 : 0) | (u.ap ? 4 : 0) | (u.reinf > 0 || g.tick - (u.healAt ?? -1e9) < 12 ? 8 : 0) | (u.dig ? 16 : 0) | (u.garrison >= 0 ? 32 | g.house[u.garrison] << 20 : 0) | (u.amove ? 64 : 0) | (u.build ? 128 : 0) | (UNITS[u.type].camo && u.still >= 3 && g.tick - (u.shotAt ?? -1e9) >= 80 ? 256 : 0) | (u.air && !airborne(u) ? 512 : 0) | (u.entrench ? 1024 : 0) | (dusty(g, u) ? 32768 : 0) | (u.open ? GATE_OPEN_FLAG : 0);
 function unitRow(g, u) {
   const r = rounded;
   return [u.id, u.type, u.owner, r(u.x), r(u.z), r(u.rot), r(u.aim), Math.ceil(u.hp), Math.round(u.supp), u.targetId || 0, inTrench(g, u) ? 2 : inCover(g, u) ? 1 : UNITS[u.type].infantry && nearCover(g, u) ? 3 : 0,

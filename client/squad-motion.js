@@ -29,7 +29,9 @@ export function moveSquad(v, elapsed) {
       m.x = targetX; m.z = targetZ; m.yaw = yaw; m.speed = m.blend = 0;
     } else if (dt) {
       // Unequal response times loosen the ranks on a turn. No oscillating slot noise or idle foot shuffling.
-      if (speed > 0.025) {
+      // a man stepping into a fallen man's place (u.refill, client/main.js) walks over to it while the squad stands
+      if (u.refill && Math.hypot(targetX - m.x, targetZ - m.z) <= 0.3) u.refill = false;
+      if (speed > 0.025 || u.refill) {
         const response = 1 - Math.exp(-dt * (7 + seed * 4));
         const dx = (targetX - m.x) * response, dz = (targetZ - m.z) * response;
         const travel = Math.hypot(dx, dz), limit = dt * (speed + 1.2), step = travel > limit ? limit / travel : 1;

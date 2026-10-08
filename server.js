@@ -6,7 +6,7 @@ import { randomBytes, createHash, timingSafeEqual } from 'node:crypto';
 import { execFile } from 'node:child_process';
 import { join, normalize, extname } from 'node:path';
 import { WebSocketServer } from 'ws';
-import { createGame, step, command, snapshotFor, snapshotCache, unitDelta, terrainFor, fogFor, validateMap, spawnsFor, worldMapFor, TICK, MAX_PLAYERS, FACTION_COUNT } from './shared/sim.js';
+import { createGame, step, command, snapshotFor, snapshotCache, unitDelta, terrainFor, fogFor, validateMap, spawnsFor, worldMapFor, joinOperative, operativeInput, OPERATIVE, UNITS, TICK, MAX_PLAYERS, FACTION_COUNT } from './shared/sim.js';
 import { generateWorldMap } from './shared/world-conquest.js';
 import { mapForClient } from './shared/world-layers.js';
 import { WEATHER_CHOICES, weatherRow } from './shared/weather.js';
@@ -169,7 +169,7 @@ const hostOf = (room) => {
 // Their view is a projection like the AI's (shared/ai-view.js), so the real seat's terrain memory and fog stay its own.
 // A room whose seats are all AIs is hosted by its first connected spectator.
 const MAX_SPECTATORS = 8, EVERYTHING = { has: () => true };
-const everyone = (room) => [...room.players, ...room.spectators];
+const everyone = (room) => [...room.players, ...room.spectators, ...(room.operatives ?? [])];
 const isHost = (room, p) => { const h = hostOf(room); return h >= 0 ? room.players[h] === p : room.spectators.find(connected) === p; };
 // The spectators share one terrain memory on the game (logCell feeds g.watchPending), so a snapshot replays only new
 // cells; a spectator's start gets a fresh memory (the defaults) and so the whole terrain.
@@ -245,6 +245,51 @@ function sendWatchers(room, shots, cells, cache, extra) {
   const json = JSON.stringify(trimmed(room, room.watchNet ??= { sent: new Map() }, watcherSnapshot(view, shots, cells, cache, extra), cache));
   for (const s of watching) s.ws.send(json);
 }
+// Each companion owns an independent delta/terrain/fog stream. Never project EVERYTHING.
+function operativeView(room, person) {
+  const g = room.game, i = room.players.indexOf(person.commander), source = g.players[i];
+  if (!source) return null;
+  const memory = person.view ??= { terrainMemory: new Map(source.terrainMemory ?? []), terrainPending: new Set(), worldTerrainSent: new Map(), fog: { version: -1, base: new Uint8Array(g.w * g.h) } };
+  for (const index of g.cellLog.keys()) memory.terrainPending.add(index);
+  const players = [...g.players]; players[i] = { ...source, ...memory };
+  return { ...g, players };
+}
+function operativeStatus(g, person) {
+  const op = g.operatives?.get(person.token), u = op && g.units.get(op.unitId), sq = op && g.units.get(op.squadId);
+  // the squad he leads: its name and the men the sim counts
+  const squad = sq && sq.follow === op.key && sq.hp > 0 ? { id: sq.id, name: UNITS[sq.type].name, men: Math.ceil(sq.hp / UNITS[sq.type].hpPer) } : null;
+  const squadSpawn = !!squad && sq.garrison < 0 && !sq.riding && sq.hp > UNITS[sq.type].hpPer; // the next soldier is one of its men (shared/sim.js spawnOperative)
+  return { id: u?.id ?? 0, hp: Math.max(0, Math.ceil(u?.hp ?? 0)), maxHp: OPERATIVE.hp,
+    respawn: op ? Math.max(0, Math.ceil((op.respawnAt - g.tick) * TICK)) : 0, cost: OPERATIVE.cost, squad, squadSpawn,
+    waiting: !u && !squadSpawn && (g.players[op?.owner]?.mp ?? 0) < OPERATIVE.cost, seq: op?.lastSeq ?? -1, shots: op?.shots ?? 0, hits: op?.hits ?? 0, kills: op?.kills ?? 0,
+    // exact position and motion for the client's prediction, and the loadout the HUD shows
+    ...(u && { x: Math.round(u.x * 100) / 100, z: Math.round(u.z * 100) / 100, vx: Math.round(u.vx * 100) / 100, vz: Math.round(u.vz * 100) / 100, jy: Math.round(u.jy * 100) / 100,
+      crouch: u.crouch, weapon: u.weapon, mags: u.mags, reload: Math.round(u.reloadT * 10) / 10, nades: u.nades,
+      from: g.tick - u.hitAt <= 10 && u.hitFrom ? [Math.round(u.hitFrom.x), Math.round(u.hitFrom.z)] : null }) };
+}
+function sendOperativeStart(room, person) {
+  const i = room.players.indexOf(person.commander);
+  if (i < 0 || room.mode === 'world') return;
+  const op = joinOperative(room.game, person.token, i);
+  if (!op) return;
+  op.online = connected(person); op.lastSeq = -1; op.input = null; op.seen = {}; op.want = {};
+  person.inputAt = 0; person.net = { sent: new Map(), full: true }; person.view = null;
+  const g = operativeView(room, person);
+  send(person.ws, { t: 'start', role: 'operative', operative: operativeStatus(g, person), matchId: room.matchId,
+    map: mapForClient(room.map), you: i, spawn: g.players[i].spawn, spawns: g.players.map(p => p.spawn),
+    cells: terrainFor(g, i, true), fog: fogFor(g, i, true), names: g.players.map(p => p.name), teams: g.players.map(p => p.team), factions: g.players.map(p => p.faction), weather: weatherRow(g) });
+  if (room.pause) send(person.ws, pauseMessage(room));
+}
+function sendOperatives(room, shots, cells, cache, extra) {
+  for (const person of room.operatives ?? []) {
+    if (!connected(person)) continue;
+    const i = room.players.indexOf(person.commander), g = operativeView(room, person);
+    if (!g || i < 0) continue;
+    const msg = { ...snapshotFor(g, i, shots, cells, cache), ...extra, operative: operativeStatus(g, person) };
+    for (const key of ['movement', 'queues', 'productionJobs', 'plans', 'orders', 'air', 'rally', 'works', 'covers', 'sup']) delete msg[key];
+    send(person.ws, trimmed(room, person.net ??= { sent: new Map(), full: true }, msg, cache));
+  }
+}
 // new players default to their own team (free-for-all) and the next faction in the cycle
 // assault needs someone on the defending team and someone attacking it
 const assaultReady = (room) => room.mode !== 'assault' || (room.players.some(p => p.team === room.defenderTeam) && room.players.some(p => p.team !== room.defenderTeam));
@@ -256,7 +301,7 @@ const seats = (room) => (room.mode === 'world' ? MAX_PLAYERS : room.mode === 'ho
 async function lobby(room) {
   const maps = await listMaps(), horde = room.mode === 'horde' ? await hordeMaps() : undefined;
   everyone(room).forEach((p) => { const i = room.players.indexOf(p); send(p.ws, {
-    spectator: i < 0, amHost: isHost(room, p), spectators: room.spectators.map(s => s.name),
+    role: p.role ?? 'commander', commander: p.role === 'operative' ? room.players.indexOf(p.commander) : undefined, operatives: (room.operatives ?? []).map(o => ({ name: o.name, commander: room.players.indexOf(o.commander), online: connected(o) })), spectator: i < 0 && p.role !== 'operative', amHost: isHost(room, p), spectators: room.spectators.map(s => s.name),
     listed: !!room.listed,
     hordeMaps: horde, hordeBest: room.mode === 'horde' ? recordOf(room) : null,
     t: 'lobby', code: room.code, state: room.state, you: i, host: hostOf(room), maps, mapName: room.mode === 'world' ? 'world' : room.mapName, spawns: seats(room), publicUrl: PUBLIC_URL,
@@ -317,6 +362,8 @@ async function startMatch(room) {
   if (room.game !== game) return; // ended or restarted meanwhile
   room.players.forEach((_, i) => sendStart(room, i));
   room.spectators.forEach(s => sendStart(room, 0, s));
+  for (const op of room.operatives ?? []) sendOperativeStart(room, op);
+  room.starting = null;
 }
 
 // watcher: a spectator, who gets seat i's start without a fog mask (the client then hides nothing)
@@ -378,6 +425,7 @@ function pauseTick(room) {
     const cache = snapshotCache(g);
     room.players.forEach((_, i) => sendSeat(room, i, shots, cells, cache, { online, ping }));
     sendWatchers(room, shots, cells, cache, { online, ping });
+    if (room.operatives?.length) sendOperatives(room, shots, cells, cache, { online, ping });
   }
   return true;
 }
@@ -465,18 +513,23 @@ wss.on('connection', (ws, req) => {
         if (room.game && room.players.includes(me) && !me.ai) { resetAI(room.game, room.players.indexOf(me)); resetCommander(room.game, room.players.indexOf(me)); }
         if (old && old !== ws) { send(old, { t: 'replaced' }); old.close(); }
       }
+      else if (msg.role === 'operative') {
+        const commander = Number.isInteger(msg.commander) && room.players[msg.commander];
+        if (!commander || commander.ai || (room.operatives ?? []).length >= 4 || !token || room.mode === 'world') { send(ws, { t: 'deny', cmd: 'join', reason: 'commander' }); return ws.close(1008, 'operative needs human commander; world mode unsupported'); }
+        (room.operatives ??= []).push(me = { token, name, ws, role: 'operative', commander });
+      }
       else if (room.state === 'lobby' && room.players.length < MAX_PLAYERS && (!room.listed || room.players.length < seats(room)) && msg.spectate !== true) addSeat(room, me = newPlayer(room, { token, name, ws }));
       else if (room.spectators.length < MAX_SPECTATORS) room.spectators.push(me = { token, name, ws }); // no seat to take, or asked to watch
       else { send(ws, { t: 'full', reason: room.state === 'play' ? 'started' : 'seats' }); return ws.close(); }
       room.emptySince = null;
       lobby(room);
-      if (room.state !== 'lobby' && room.game) room.players.includes(me) ? sendStart(room, room.players.indexOf(me)) : sendStart(room, 0, me);
+      if (room.state !== 'lobby' && room.game) me.role === 'operative' ? sendOperativeStart(room, me) : room.players.includes(me) ? sendStart(room, room.players.indexOf(me)) : sendStart(room, 0, me);
       if (room.pause?.reason === 'drop' && room.pause.player === me) resumeRoom(room);
       if (tutorial && room.players[0] === me) await startMatch(room);
       return;
     }
     const slot = room.players.indexOf(me), seated = slot >= 0, host = isHost(room, me);
-    if (me.ws !== ws || (!seated && !room.spectators.includes(me))) return; // a replaced socket may still be open for a moment; a freed seat has no slot
+    if (me.ws !== ws || (!seated && !room.spectators.includes(me) && !(room.operatives ?? []).includes(me))) return; // a replaced socket may still be open for a moment; a freed seat has no slot
     if (msg.t === 'ping') {
       if ('x' in msg || 'z' in msg) return mapPing(room, me, slot, msg, send);
       if (Number.isFinite(msg.rtt)) me.rtt = Math.min(9999, Math.max(0, Math.round(msg.rtt)));
@@ -485,6 +538,14 @@ wss.on('connection', (ws, req) => {
       // number the tick meter holds to its 40 ms budget) and the ticks between snapshots
       const meter = room.state === 'play' && room.tickMeter;
       return send(ws, { t: 'pong', c: msg.c, ...(meter && { srv: [Math.round(tickStats(meter).snapshotTick.p95 * 10) / 10, room.snapEvery] }) });
+    }
+    if (me.role === 'operative') {
+      if (msg.t === 'fps' && room.state === 'play' && room.game && !room.pause) {
+        const now = clock.now();
+        if (now - (me.inputAt ?? 0) >= 20) { me.inputAt = now; operativeInput(room.game, me.token, msg); }
+      } else if (msg.t === 'resync' && me.net) me.net.full = true;
+      else if (msg.t === 'name' && typeof msg.name === 'string') { me.name = cleanName(msg.name); lobby(room); }
+      return; // No army orders, host powers, seat changes or full-map spectator fallback.
     }
     if (msg.t === 'name' && typeof msg.name === 'string') { me.name = cleanName(msg.name); lobby(room); }
     else if (msg.t === 'addAi' && host && room.state === 'lobby' && room.players.length < MAX_PLAYERS && (!room.listed || room.players.length < seats(room))) {
@@ -561,6 +622,11 @@ wss.on('connection', (ws, req) => {
   ws.on('close', () => {
     if (!me || me.ws !== ws) return;
     me.ws = null;
+    if (me.role === 'operative') {
+      const op = room.game?.operatives?.get(me.token); if (op) { op.online = false; op.input = null; }
+      if (!everyone(room).some(connected)) room.emptySince = clock.now();
+      lobby(room); return;
+    }
     const watching = room.spectators.includes(me);
     if (watching) room.spectators = room.spectators.filter(s => s !== me); // a spectator holds nothing to come back to
     if (!everyone(room).some(connected)) room.emptySince = clock.now();
@@ -589,6 +655,7 @@ function holdEnding(room) {
     const cache = snapshotCache(g);
     room.players.forEach((_, i) => sendSeat(room, i, shots, cells, cache, { online, ping }));
     sendWatchers(room, shots, cells, cache, { online, ping });
+    if (room.operatives?.length) sendOperatives(room, shots, cells, cache, { online, ping });
   }
   if (g.held < HOLD_TICKS) return true;
   room.players.forEach((p, i) => (p.lastMatch = { outcome: g.winner === -1 ? 'draw' : g.winner === g.players[i].team ? 'victory' : 'defeat', team: g.players[i].team }));
@@ -619,8 +686,8 @@ function timedRoomTick(room) {
     const shots = g.shots, cells = g.newCells; g.shots = []; g.newCells = [];
     const recipients = [];
     room.players.forEach((p, i) => { if (p.ws?.readyState === 1 && !backedUp(p)) recipients.push(i); });
-    const watched = !!room.spectators?.some(s => s.ws?.readyState === 1);
-    if (recipients.length || watched) {
+    const watched = !!room.spectators?.some(s => s.ws?.readyState === 1), accompanied = !!room.operatives?.some(connected);
+    if (recipients.length || watched || accompanied) {
       const online = room.players.map(p => !!p.ws || !!p.ai), ping = room.players.map(p => (p.ai ? -1 : p.rtt ?? null));
       const cacheAt = process.hrtime.bigint(), cache = built ?? snapshotCache(g);
       snapshotBuild += Number(process.hrtime.bigint() - cacheAt) / 1e6;
@@ -632,6 +699,7 @@ function timedRoomTick(room) {
         sendSnapshot(room, p, json);
       }
       if (watched) sendWatchers(room, shots, cells, cache, { online, ping });
+      if (room.operatives?.length) sendOperatives(room, shots, cells, cache, { online, ping });
     }
   }
   const ended = process.hrtime.bigint(), now = Date.now();
@@ -663,7 +731,7 @@ function sendSnapshot(room, p, json) {
 export function tickRooms() {
   for (const room of rooms.values()) {
     if (room.emptySince != null && clock.now() - room.emptySince > 60_000) { rooms.delete(room.code); continue; }
-    if (room.state !== 'play' || !room.game) continue; // game may still be loading its map
+    if (room.state !== 'play' || !room.game || room.starting) continue; // clients must receive start before any snapshot
     if (pauseTick(room)) continue;
     const g = room.game;
     room.players.forEach((p, i) => (g.players[i].away = !p.ws && !p.ai));

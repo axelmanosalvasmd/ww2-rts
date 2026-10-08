@@ -27,7 +27,8 @@ import { cromwell } from './models/cromwell.js';
 import { isWheeled, wheeledModel } from './models/wheeled.js';
 import { bakedNavalModel } from './models/blender-baked.js';
 import navalFinished from './models/naval-finished-data.js';
-import { gunModel, GUN_SLOTS, sandbagRing } from './models/guns.js'; // the crew-served weapons (machine guns, mortars, AT guns, flak) and the flak position's sandbags
+import { gunModel, sandbagRing } from './models/guns.js';
+import { SLOTS, SLOT_SCALE } from '../shared/squad-men.js'; // the crew-served weapons (machine guns, mortars, AT guns, flak) and the flak position's sandbags
 
 // unit-sized shapes, scaled per part. Soldiers, including the fallen ones, come from client/models/infantry.js.
 const GEO = {
@@ -295,22 +296,8 @@ function stride(v, dt) {
   v.tail.position.y = 7 + bob; v.tail.rotation.y = Math.sin(w.t * 0.9 + w.phase * 0.5) * 0.18;
 }
 
-// Formation slots in local space (+x = forward). Gun crews stand behind the gun.
-// Line infantry is drawn as a battalion: a block of ranks with more men than the sim counts (def.models), front rank
-// first so the rear ranks thin out as the squad loses health. Purely a look; main.js maps health onto the men drawn.
+// Formation slots: shared/squad-men.js, so the server hits the men drawn here. main.js maps health onto them.
 // Each man is his own mesh here; drawSoldiers() below draws all men of one figure as one instanced draw call.
-const block = (cols, rows, gap = 0.65) => Array.from({ length: cols * rows }, (_, i) => [((rows - 1) / 2 - Math.floor(i / cols)) * gap, (i % cols - (cols - 1) / 2) * gap]);
-const SLOTS = {
-  rifle: block(5, 3),
-  ...GUN_SLOTS, // mg, mortar, at, flak: around the weapons of client/models/guns.js
-  sniper: [[0.4, 0], [-0.5, 0.6]],
-  medic: [[0.3, 0.4], [-0.3, -0.4]],
-  flamer: [[0.45, 0], [-0.25, 0.75], [-0.35, -0.7]], // the flamethrower ahead, a rifleman either side behind him
-  engineer: block(3, 2),
-  ranger: block(6, 2),
-  commando: block(5, 3),
-  conscript: block(7, 3),
-};
 const BLOCKS = new Set(['rifle', 'engineer', 'ranger', 'conscript', 'commando']); // smaller men, so the ranks stand shoulder to shoulder
 
 // soldier posture, blended by weight: [lean (rad, + = back), height scale, shift x, shift y, weapon x, weapon y]
@@ -503,9 +490,9 @@ export function buildModel(v, root, f, fac, def) {
       lo.forEach((m) => (m.visible = false));
       // man: the node client/fx.js and the corpses use; pose: the body inside it that crouches and lies down
       const man = new THREE.Group(), pose = new THREE.Group();
-      man.position.set(x * 1.3, 0, z * 1.3); man.scale.setScalar(scale);
+      man.position.set(x * SLOT_SCALE, 0, z * SLOT_SCALE); man.scale.setScalar(scale);
       pose.add(...hi, ...lo); man.add(pose);
-      man.userData = { slot: [x * 1.3, z * 1.3], pose, hi, lo, meshes: [...hi, ...lo], index: i };
+      man.userData = { slot: [x * SLOT_SCALE, z * SLOT_SCALE], pose, hi, lo, meshes: [...hi, ...lo], index: i };
       root.add(man); v.models.push(man);
     });
     v.squad = { w: [1, 0, 0, 0], far: false, moveFire: def.w?.moveFire !== undefined };

@@ -16,6 +16,8 @@ await check('test-skirmish-client.js', () => import('./test-skirmish-client.js')
 await check('test-skirmish-ai.js', () => import('./test-skirmish-ai.js'));
 await check('test-tech.js', () => import('./test-tech.js'));
 await check('test-fortress.js', () => import('./test-fortress.js'));
+await check('test-operative.mjs', () => import('./test-operative.mjs'));
+await check('test-operative-client.mjs', () => import('./test-operative-client.mjs'));
 import { createGame, step, los, findPath, validateMap, snapshotFor, snapshotCache, inTrench, vet, spawnSlots, popOf, popCap, CFG, CELL, SUPPORT, UNITS, teamSees, levelOf } from './shared/sim.js';
 import { SpatialGrid, updateGrid } from './shared/grid.js';
 import { DEBRIS_LIMITS } from './shared/debris-motion.js';
@@ -50,7 +52,7 @@ const settledRubble = (g, cells, message) => {
 // Child files (the large-world checks among them use real clients and a fresh authoritative server) run in
 // parallel with the checks below, each in its own process.
 const childFiles = runFiles(['test-audit-commands.mjs', 'test-audit-combat.mjs', 'test-audit-logistics.mjs', 'test-audit-client.mjs', 'test-audit-ai.mjs', 'test-audit-world.mjs', 'test-audit-server.mjs', 'test-infantry-dig.mjs', 'test-snapshot-backpressure.mjs',
-    'test-logistics.mjs', 'test-convoy-scheduler.mjs', 'test-world-supply.mjs', 'test-territory-supply.mjs', 'test-logistics-server.mjs', 'test-world-waterways.js', 'test-world-multiple-rivers.js', 'test-world-generation.js', 'test-world-territories.js',
+    'test-logistics.mjs', 'test-convoy-scheduler.mjs', 'test-world-supply.mjs', 'test-territory-supply.mjs', 'test-logistics-server.mjs', 'test-operative-server.mjs', 'test-world-waterways.js', 'test-world-multiple-rivers.js', 'test-world-generation.js', 'test-world-territories.js',
     'test-world-conquest.js', 'test-world-teams.js', 'test-world-acceptance.js', 'test-world-observation.js', 'test-world-movement.js', 'test-world-river.js',
     'test-engine-controls.js', 'test-engine-world.js', 'test-engine-movement.js', 'test-movement-lab.js', 'test-engine-projectiles.js', 'test-engine-scenarios.js', 'test-engine-ai.js', 'test-ai-human.js', 'test-engine-acceptance.js', 'test-engine-presentation.mjs',
     'test-engine-spectators.js', 'test-engine-scenario-start.js', 'test-engine-breaches.mjs', 'test-engine-authoring.js', 'test-engine-vehicle-pose.mjs', 'test-engine-ai-privacy.js', 'test-engine-localization.mjs',
@@ -4279,11 +4281,15 @@ await check("A remembered tank is a threat the rifles do not walk into", async (
   assert.ok(!defending.commands.some(c => (c.t === 'amove' || c.t === 'move') && c.orders?.some(([, x]) => x > 100)), 'that look does not open the other enemy point');
 
   const siren = createGame(aiMap(), ['AI', 'enemy'], false, [0, 1]);
-  siren.units.clear(); siren.players[0].mp = 1000;
+  clearFixtureUnits(siren); siren.players[0].mp = 1000;
+  // Fighter-cover response is a combat fixture, not missing-base reconstruction.
+  for (const [i,type] of ['hq','barracks','motorpool','airfield'].entries()) massiveInternals.placeBuilding(siren,0,type,12*siren.w+8+i*10,true);
   const watcher = massiveInternals.spawnUnit(siren, 0, 'rifle');
   Object.assign(watcher, { x: 40, z: 40, cd: 999 });
   const freshTank = massiveInternals.spawnUnit(siren, 1, 'tank');
   Object.assign(freshTank, { x: 140, z: 140 });
+  // Relocated eyes must refresh terrain fog before checking a visible air-strike siren.
+  massiveInternals.updateVision(siren);
   siren.players[0].visible.add(freshTank.id);
   siren.strikes.push({ kind: 'bombing', owner: 1, x: 42, z: 40, dir: 0, t: 4, live: false, left: 1, next: 0 });
   const cover = aiCommands(siren, 0, {}, 7, { level: 'normal' });
