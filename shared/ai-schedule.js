@@ -47,18 +47,20 @@ function seeded(seed) {
 // A headless match on the server's schedule. With a seed, Math.random is seeded for the whole match (creation
 // included) and restored afterwards, so the same seed plays the same match. seats defaults to a Normal AI in every
 // seat plus, in Horde, the Horde seat itself, as on the server. onTick(g, { sent }) runs after the AI and before the
-// beat clears the tick's events (g.shots, g.newCells), like the server's snapshot. The match stops at a winner,
-// after maxTicks, or when until(g) returns true.
-export function playMatch({ map, names, teams, factions, options = {}, shuffle = true, seats, seed, maxTicks = Infinity, until, onTick, sim: s = sim }) {
+// beat clears the tick's events (g.shots, g.newCells), like the server's snapshot. setup(g) runs once after creation
+// (a drill places its units there); beforeStep(g) runs before each step, so events it adds reach this tick's AI. The match stops at a winner, after maxTicks, or when until(g) returns true.
+export function playMatch({ map, names, teams, factions, options = {}, shuffle = true, seats, seed, maxTicks = Infinity, until, onTick, setup, beforeStep, sim: s = sim }) {
   const random = Math.random;
   if (seed !== undefined) Math.random = seeded(seed);
   try {
     const g = s.createGame(map, names, shuffle, teams, factions, options);
+    setup?.(g);
     const playing = seats ?? g.players.map((_, slot) => ({ slot, level: 'normal' }));
     if (!seats && g.mode?.kind === 'horde') playing.push({ slot: g.mode.slot, level: 'normal' });
     const views = [], start = s.snapshotCache(g);
     for (const { slot, brain = brainOf(g, slot) } of playing) views[slot] = brain.observe(g, slot, start);
     while (g.winner === null && g.tick < maxTicks && !until?.(g)) {
+      beforeStep?.(g);
       s.step(g);
       const sent = g.tick % 2 === 0 || g.winner !== null;
       aiTick(g, playing, views, { sent, sim: s });

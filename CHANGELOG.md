@@ -5,6 +5,14 @@ AI-vs-AI runs (see DESIGN.md for the balance log). Add new entries under **Unrel
 
 ## Unreleased
 
+- Drills (no game change): small authored scenes for AI behaviour questions, played on the server's AI schedule.
+  `drills/drill.js` places a drill's units on a small map, runs its timed script and returns its measure;
+  `node tools/drill.mjs drills/<name>.js --seeds 200` runs one across seeds. The first drill, `drills/flank-answer.js`,
+  hits two squads with the camera on the fight or elsewhere: 100 seeds per level take about 13 s and give answer
+  medians of 0.85 / 0.55 / 0.25 s on screen and 3.5 / 1.65 / 1.0 s off screen (Easy / Normal / Hard), every hit
+  answered. The commander test now uses it instead of its own hand-built scene (121 lines down to 68).
+  `playMatch` gains `setup` and `beforeStep` hooks.
+
 - Enemy commanders now play like a person at a keyboard (issue #48). Each AI seat has its own camera and only plans
   against enemies it has looked at, notices damage on screen after a reaction time and off screen after an alert,
   and gives orders through timed clicks and keys, at most one command per tick, under per-difficulty input caps.

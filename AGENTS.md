@@ -30,6 +30,13 @@ Tests and CI exist to move the game where we want it to go, not to keep old beha
 - New test files: wrap each case in `check(name, fn)`, or add the file to the child list in `test.js`. Room tests
   send through `sendsReadBy` (`test-socket.js`) and wait for the snapshot of the tick they stepped, never a fixed sleep.
 
+## Asking the AI a question fast
+
+Do not answer an AI behaviour question with whole matches when a small scene will do. A drill (`drills/*.js`, format in
+`drills/drill.js`) places a few units on a small map, runs a script on the server's AI schedule and returns a measure;
+`node tools/drill.mjs drills/<name>.js --seeds 200` runs it across seeds in seconds, and tests can assert it. Keep
+whole-match runs (`tools/ai-balance.mjs`, `tools/ai-human-report.mjs`) for balance and strength, at 60 matches.
+
 ## Other rules
 
 - Never use em dashes, in code comments, docs, commit messages or chat. Use a period, comma, colon or parentheses.
