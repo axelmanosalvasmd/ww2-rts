@@ -36,7 +36,7 @@ import { disposeTree } from './upkeep.js';
 import { audio } from './audio.js';
 import { vehicleDamageFrame, vehicleTerrainPose, environmentalMix } from './engine-presentation.js';
 import { battleFrame } from './battle-sound.js';
-import { createProps } from './props.js';
+import { createProps, candidateBatches } from './props.js';
 import { createWater } from './water.js';
 import { createAviation } from './aircraft.js';
 import { epilogue } from './epilogue.js';
@@ -252,6 +252,10 @@ $('modeSel').onchange = () => sendCmd({ t: 'mode', v: $('modeSel').value });
 // army size labels come from CFG.armies, so they cannot drift from the real numbers
 $('armySel').innerHTML = Object.entries(CFG.armies).map(([key, v]) => `<option value="${esc(key)}">${esc(key[0].toUpperCase() + key.slice(1))}${v.pop === 1 && v.income === 1 ? '' : `: ${v.pop}x units, ${v.income}x income`}</option>`).join('');
 $('armySel').onchange = () => sendCmd({ t: 'army', v: $('armySel').value });
+$('sandboxChk').onchange = () => sendCmd({ t: 'sandbox', v: $('sandboxChk').checked });
+// Sandbox matches: pick a unit and a side, then every click on the map spawns one (the 'spawn' command)
+$('sbUnit').innerHTML = Object.keys(UNITS).filter((t) => !UNITS[t].structure).map((t) => `<option value="${esc(t)}">${esc(UNITS[t].name)}</option>`).join('');
+$('sbGo').onclick = () => setAim('spawn');
 const wx = createWeatherView({ sendCmd }); // client/weather-view.js: lobby select, score strip line
 $('defSel').onchange = () => sendCmd({ t: 'defender', v: +$('defSel').value });
 $('addAi').onclick = () => sendCmd({ t: 'addAi' });
@@ -374,6 +378,7 @@ function renderLobby(m) {
   const assault = m.mode === 'assault', teamIds = [...new Set(m.players.map(p => p.team))].sort((a, b) => a - b);
   $('modeSel').value = m.mode || 'conquest'; $('modeSel').disabled = !host || !lobby;
   $('armySel').value = m.army || 'standard'; $('armySel').disabled = !host || !lobby;
+  $('sandboxChk').checked = !!m.sandbox; $('sandboxChk').disabled = !host || !lobby;
   wx.lobby(m, host && lobby);
   for (const o of $('armySel').options) if (o.value === 'endless') o.hidden = o.disabled = horde;
   const best = m.hordeBest, mins = (t) => `${Math.floor(t / 60)}:${String(t % 60).padStart(2, '0')}`;
@@ -445,11 +450,15 @@ const logisticsAlerts = createLogisticsAlerts();
 
 let lastStart = null;
 function startGame(m, restored = null) {
+  propPreparation?.props?.dispose();
+  propPreparation = null;
+  terrainDue.pieces = terrainDue.minimap = terrainDue.props = false; terrainDue.wait = 0;
   lobbyView.hide(); // frees the backdrop's renderer before the match builds its world
   clearFacing(); formationPreview.group.removeFromParent();
   pings.reset(); autocast.reset(); alerts.startMatch(m.matchId);
   logisticsAlerts.reset(); logisticsData = decodeLogistics({}, units, -1); logisticsSelection = false;
   me = m.you; names = m.names; teams = m.teams ?? names.map((_, i) => i); factions = m.factions ?? []; lastStart = m; mmImage = null;
+  $('sandbox').classList.toggle('hidden', !m.sandbox || watching);
   if (!EDIT) audio.start({ faction: facOf(me), slot: me });
   const map = m.map;
   rememberPlacementTerrain(map, m.cells); // capture original facts before applying current heights and World rows
@@ -561,12 +570,39 @@ let props = null;
 let rubbleDecals = null;
 // big battles change cells every snapshot: the 3D pieces and the minimap's terrain are redone at most every 0.25 s
 const terrainDue = { pieces: false, minimap: false, props: false, wait: 0 };
+let propPreparation = null;
+const mergePropBox = (a, b) => !a ? b : !b ? a : [Math.min(a[0], b[0]), Math.min(a[1], b[1]), Math.max(a[2], b[2]), Math.max(a[3], b[3])];
 function terrainFrame(dt) {
+  // Finish one consistent discovery snapshot, then pick up anything revealed while it was preparing.
+  if (!propPreparation && terrainDue.props && lastStart?.map.world) {
+    const map = lastStart.map;
+    propPreparation = { work: candidateBatches({ ...map, rows: [...map.rows], discovered: map.discovered.slice() }), props: null };
+    terrainDue.props = false;
+  }
+  if (propPreparation) {
+    const until = performance.now() + 3;
+    do {
+      const batch = propPreparation.work.next();
+      if (batch.done) {
+        if (!propPreparation.props) {
+          const pending = propPreparation.props = createProps({ map: lastStart.map, grid: terrain.physicalGrid, hAt, parent: world, prepared: batch.value, deferRefresh: true });
+          pending.group.visible = false; pending.setNodes(lastSnap?.nodes, false);
+          propPreparation.work = pending.refreshBatches();
+        } else {
+          const pending = propPreparation.props;
+          const box = mergePropBox(propPreparation.dirtyBox, pending.setNodes(lastSnap?.nodes, false));
+          // One local catch-up publishes even while scouts or shell craters keep changing terrain.
+          if (box) pending.refresh(box);
+          props?.dispose(); props = propPreparation.props; props.group.visible = true; propPreparation = null;
+          break;
+        }
+      }
+    } while (performance.now() < until);
+  }
   if ((terrainDue.wait -= dt) > 0 || !(terrainDue.pieces || terrainDue.minimap || terrainDue.props)) return;
   if (terrainDue.pieces && terrain) buildStructures();
-  if (terrainDue.props && lastStart?.map.world) { props?.dispose(); props = createProps({ map: lastStart.map, grid: terrain.physicalGrid, hAt, parent: world }); }
   if (terrainDue.minimap) { mmImage = null; mapView?.refresh(); }
-  terrainDue.pieces = terrainDue.minimap = terrainDue.props = false; terrainDue.wait = 0.25;
+  terrainDue.pieces = terrainDue.minimap = false; terrainDue.wait = 0.25;
 }
 // all 3D terrain pieces (client/structures.js), rebuilt from the grid whenever a cell changes
 function buildStructures() {
@@ -604,12 +640,13 @@ function applyCells(cells) {
     }
     if (lv !== undefined) setLevel(lastStart.map, cell, lv);
   }
-  terrain.ground.paint(terrain.grid, terrain.state, terrain.groundGrid, terrain.objectGrid);
+  terrain.ground.paint(terrain.grid, terrain.state, terrain.groundGrid, terrain.objectGrid, cells);
  // repaints only the tiles around changed cells
   if (shaped.length) {
     const xs = shaped.map(([cell]) => cell % terrain.w), ys = shaped.map(([cell]) => Math.floor(cell / terrain.w));
     const box = [Math.min(...xs) * CELL, Math.min(...ys) * CELL, (Math.max(...xs) + 1) * CELL, (Math.max(...ys) + 1) * CELL];
     relief.update(shaped); props?.refresh(box);
+    if (propPreparation?.props) propPreparation.dirtyBox = mergePropBox(propPreparation.dirtyBox, box);
     if (!water && shaped.some(([, ch]) => 'WF='.includes(ch))) { water = createWater(terrain.physicalGrid, lastStart.map, hAt); if (water) world.add(water.mesh); }
     else water?.changed(shaped); terrainDue.minimap = true; // the fog overlay follows the relief through onGeometry
     refreshTerrain(...box);
@@ -679,8 +716,12 @@ function makeUnit(id, type, owner) {
   const bg = v.barBg = new THREE.Mesh(GEO.plane, new THREE.MeshBasicMaterial({ color: 0x111111, depthTest: false })); bg.scale.set(2.4, 0.42, 1);
   v.hpBar = new THREE.Mesh(GEO.plane, new THREE.MeshBasicMaterial({ color: f.color, depthTest: false })); v.hpBar.scale.set(2.3, 0.2, 1); v.hpBar.position.set(0, 0.07, 0.01);
   v.suppBar = new THREE.Mesh(GEO.plane, new THREE.MeshBasicMaterial({ color: 0xffd23a, depthTest: false })); v.suppBar.scale.set(2.3, 0.1, 1); v.suppBar.position.set(0, -0.11, 0.01);
-  bg.renderOrder = 3; v.hpBar.renderOrder = v.suppBar.renderOrder = 4;
-  v.bars.add(bg, v.hpBar, v.suppBar);
+  // the work bar under them (construction or digging progress), shown while there is work going on
+  v.workBg = new THREE.Mesh(GEO.plane, new THREE.MeshBasicMaterial({ color: 0x111111, depthTest: false })); v.workBg.scale.set(2.4, 0.2, 1); v.workBg.position.set(0, -0.38, 0);
+  v.workBar = new THREE.Mesh(GEO.plane, new THREE.MeshBasicMaterial({ color: 0xe8c66a, depthTest: false })); v.workBar.scale.set(0, 0.12, 1); v.workBar.position.set(0, -0.38, 0.01);
+  v.workBg.visible = v.workBar.visible = false;
+  bg.renderOrder = v.workBg.renderOrder = 3; v.hpBar.renderOrder = v.suppBar.renderOrder = v.workBar.renderOrder = 4;
+  v.bars.add(bg, v.hpBar, v.suppBar, v.workBg, v.workBar);
   // veterancy: up to three gold stars above the bar
   v.stars = [-0.5, 0, 0.5].map(x => { const st = new THREE.Mesh(GEO.plane, new THREE.MeshBasicMaterial({ color: 0xffd24a, depthTest: false })); st.scale.set(0.32, 0.32, 1); st.position.set(x, 0.42, 0.01); st.rotation.z = Math.PI / 4; st.renderOrder = 4; st.visible = false; v.bars.add(st); return st; });
   v.shield = new THREE.Mesh(GEO.shield, new THREE.MeshBasicMaterial({ depthTest: false, transparent: true }));
@@ -756,7 +797,7 @@ function removeUnit(v) {
   releaseBuildingBreach(v);
   releaseWheels(v);
   world.remove(v.bars);
-  for (const m of [v.barBg, v.hpBar, v.suppBar, ...v.stars, v.shield]) m.material.dispose(); // the badge's material is shared
+  for (const m of [v.barBg, v.hpBar, v.suppBar, v.workBg, v.workBar, ...v.stars, v.shield]) m.material.dispose(); // the badge's material is shared
   if (isAir(v.type)) {
     // a plane shot down falls as its own copy, drawn from the 'planedown' shot (client/aircraft.js); this one just goes
     aviation.release(v); world.remove(v.root);
@@ -830,7 +871,7 @@ function applySnapshot(s) {
     seen.add(id);
     let v = units.get(id);
     if (!v) { v = makeUnit(id, type, owner); Object.assign(v, { x, z, rot, aim }); units.set(id, v); }
-    Object.assign(v, { owner, tx: x, tz: z, trot: rot, taim: aim, hp, supp, tgt, cover, cd, flags, vet: stars || 0, moveSpeed: moveSpeed ?? 0, vx: vx ?? 0, vz: vz ?? 0, travelDir: travelDir ?? rot, garr: !!(flags & 32), built: built ?? 1, plan: null, orders: [] });
+    Object.assign(v, { owner, tx: x, tz: z, trot: rot, taim: aim, hp, supp, tgt, cover, cd, flags, vet: stars || 0, moveSpeed: flags & 16 ? 0 : moveSpeed ?? 0, dig: flags & 16 ? moveSpeed ?? 0 : 0, vx: vx ?? 0, vz: vz ?? 0, travelDir: travelDir ?? rot, garr: !!(flags & 32), built: built ?? 1, plan: null, orders: [] });
     if (!productionAccess({ mode: s.mode, players: teams.map(team => ({ team })) }, v, me)) { v.rally = null; v.queue = []; v.productionJobs = []; }
     if (v.body) v.body.scale.y = 0.15 + 0.85 * v.built; // a construction site rises as it's built
     if (v.door) v.door.visible = !(flags & GATE_OPEN_FLAG); // a gate's door shows while it is shut
@@ -856,6 +897,10 @@ function applySnapshot(s) {
     v.suppBar.visible = supp > 0;
     v.suppBar.scale.x = 2.3 * supp / 100; v.suppBar.position.x = -1.15 * (1 - supp / 100);
     if (v.suppColor !== suppColor) v.suppBar.material.color.set(v.suppColor = suppColor);
+    // work bar: how far a construction site is built, or how far a digging squad is through its dig
+    const work = UNITS[type].building && v.built < 1 ? v.built : flags & 16 ? v.dig : -1;
+    v.workBg.visible = v.workBar.visible = work >= 0;
+    if (work >= 0) { v.workBar.scale.x = 2.3 * work; v.workBar.position.x = -1.15 * (1 - work); }
   }
   autocast.adopt(s.units, me, classicMode()); // new units of a type take the player's remembered autocast choice
   for (const sh of s.shots) {
@@ -981,7 +1026,7 @@ function aimShape(kind, color) {
   }
   if (UNITS[kind]?.building) return aimMarker({ len: UNITS[kind].size * CELL, width: UNITS[kind].size * CELL, arrow: false }, color);
   if (SUPPORT[kind]?.point) return aimMarker({ r: SUPPORT[kind].radius ?? SUPPORT[kind].blast ?? 4 }, color);
-  if (kind === 'grenade' || kind === 'barrage' || kind === 'satchel' || kind === 'amove' || kind === 'rally' || kind === 'area')
+  if (kind === 'grenade' || kind === 'barrage' || kind === 'satchel' || kind === 'amove' || kind === 'rally' || kind === 'area' || kind === 'spawn')
     return aimMarker({ r: kind === 'grenade' ? UNITS.rifle.ab.radius : kind === 'barrage' || kind === 'area' ? UNITS.rocket.w.spread : kind === 'satchel' ? UNITS.ranger.ab.radius : 2 }, color);
   const [len, width] = kind === 'dig' ? (FORTS[fortKind].nest ? [3 * CELL, 2 * CELL] : [FORTS[fortKind].n * CELL, CELL]) : [SUPPORT[kind].len, SUPPORT[kind].width];
   return aimMarker({ len, width }, color); // an arrow past the far end shows which way it runs
@@ -1212,7 +1257,7 @@ function setAim(kind, unit = null) {
   clearFacing();
   feedback.reset();
   targeting = kind; aimedUnit = unit; aimCenter = null;
-  $('hint').textContent = { depot: 'Click a resource node', barracks: 'Click where to build', motorpool: 'Click where to build', grenade: 'Click where to throw', barrage: 'Click where to fire the salvo', satchel: 'Click where to plant the charge', amove: 'Click where to attack-move', area: 'Click the ground to shell (they keep firing until given another order)', rally: 'Click where recruits should gather' }[kind] ?? 'Click to set the center';
+  $('hint').textContent = { depot: 'Click a resource node', barracks: 'Click where to build', motorpool: 'Click where to build', grenade: 'Click where to throw', barrage: 'Click where to fire the salvo', satchel: 'Click where to plant the charge', amove: 'Click where to attack-move', area: 'Click the ground to shell (they keep firing until given another order)', rally: 'Click where recruits should gather', spawn: 'Click the map to spawn (once per click)' }[kind] ?? 'Click to set the center';
   $('hint').textContent += '. Right-click cancels';
 }
 function startRally() {
@@ -1505,6 +1550,7 @@ renderer.domElement.addEventListener('mousedown', (e) => {
     const kind = targeting, g = groundAt(e.clientX, e.clientY);
     if (!g) { feedback.show(denySentence('blocked')); return; }
     if (kind === 'rally') { rallyAt(g); return; }
+    if (kind === 'spawn') { sendCmd({ t: 'spawn', unit: $('sbUnit').value, enemy: $('sbSide').value === 'enemy', x: g.x, z: g.z }); marker(g.x, g.z, 0xe8c860); return; } // stays armed: right-click stops
     if (UNITS[kind]?.building) {
       if (explainUnavailable(available({ t: 'build', kind }))) return;
       const f = footAt(kind, g);

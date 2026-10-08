@@ -22,7 +22,7 @@ export function battleFrame(cam, units, me) {
     if (isVeh(v.type) && moving) engines.push(v);
     const work = v.flags & 16 ? 'dig' : v.flags & 128 ? 'build' : null;
     if (work && !moving && now > (foley.get(v.id) ?? 0)) {
-      foley.set(v.id, now + 2.5 + Math.random() * 1.5);
+      foley.set(v.id, now + 1.2 + Math.random() * 0.8);
       audio.play(work, v, { gain: v.owner === me ? 1 : 0.7 });
     }
   }

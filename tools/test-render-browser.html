@@ -36,8 +36,9 @@ try {
   let copies = 0;
   const copy = renderer.copyTextureToTexture.bind(renderer);
   renderer.copyTextureToTexture = (...args) => { copies++; return copy(...args); };
-  for (let y = 3; y < 11; y++) for (let x = 4; x < 14; x++) grid[y][x] = x < 8 ? 'R' : '+';
-  ground.paint(grid, state);
+  const changed = [];
+  for (let y = 3; y < 11; y++) for (let x = 4; x < 14; x++) { grid[y][x] = x < 8 ? 'R' : '+'; changed.push(y * w + x); }
+  ground.paint(grid, state, undefined, undefined, changed);
   assert(callbacks.size === 1 && copies === 0, 'incremental painting must wait for its frame');
   let paintedFrames = 0;
   while (callbacks.size) {

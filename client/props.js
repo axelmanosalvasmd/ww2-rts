@@ -6,7 +6,7 @@ import { gfx } from './gfx.js';
 import { CELL, CFG, levelOf } from '../shared/sim.js';
 import { treeGeometry, leafGeometry, leafMaterial, barkMaterial } from './foliage.js';
 import { surface } from './surfaces.js';
-import { fieldCells } from './ground.js';
+import { fieldCellBatches } from './ground.js';
 
 const KINDS = ['deciduous', 'poplar', 'pine', 'bush', 'grass', 'crop', 'rocks', 'fence', 'haystack', 'supplies'];
 const TALL = new Set(['deciduous', 'poplar', 'pine', 'fence', 'haystack']);
@@ -72,6 +72,14 @@ export function kindFor(c, heights) {
 }
 
 export function candidates(map) {
+  const work = candidateBatches(map);
+  let batch;
+  do { batch = work.next(); } while (!batch.done);
+  return batch.value;
+}
+
+// Yield between rows so discovery can prepare the same seeded scenery across render frames.
+export function* candidateBatches(map) {
   const { w, h, rows } = map, paths = pathSegments(map), list = [], occupied = new Set();
   const zones = [
     ...(map.spawns ?? []).filter(Boolean).map(p => ({ x: (p.x + 0.5) * CELL, z: (p.y + 0.5) * CELL, r: CFG.reinforceRadius + 4 })),
@@ -101,10 +109,10 @@ export function candidates(map) {
 
   // Summed hedge counts make the 17 by 17 country-density query cheap on large maps.
   const stride = w + 1, hedge = new Uint32Array((w + 1) * (h + 1));
-  for (let y = 0; y < h; y++) for (let x = 0; x < w; x++) {
+  for (let y = 0; y < h; y++) { yield; for (let x = 0; x < w; x++) {
     const i = (y + 1) * stride + x + 1;
     hedge[i] = (rows[y][x] === 'H' ? 1 : 0) + hedge[i - 1] + hedge[i - stride] - hedge[i - stride - 1];
-  }
+  } }
   const country = (x, y) => {
     const x0 = Math.max(0, x - 8), x1 = Math.min(w, x + 9), y0 = Math.max(0, y - 8), y1 = Math.min(h, y + 9);
     const n = hedge[y1 * stride + x1] - hedge[y0 * stride + x1] - hedge[y1 * stride + x0] + hedge[y0 * stride + x0];
@@ -118,7 +126,7 @@ export function candidates(map) {
   };
 
   // Fence sections follow selected straight hedge runs, two cells to one side.
-  for (const [dx, dy] of [[1, 0], [0, 1]]) for (let y = 0; y < h; y++) for (let x = 0; x < w; x++) {
+  for (const [dx, dy] of [[1, 0], [0, 1]]) for (let y = 0; y < h; y++) { yield; for (let x = 0; x < w; x++) {
     if (rows[y][x] !== 'H' || rows[y - dy]?.[x - dx] === 'H') continue;
     let length = 0;
     while (rows[y + dy * length]?.[x + dx * length] === 'H') length++;
@@ -146,11 +154,11 @@ export function candidates(map) {
       trim();
       start += run + 2 + hash(x + start, y, 96) % 4;
     }
-  }
+  } }
 
   // One merged three-piece crate/barrel cluster beside selected house groups.
   const seen = new Set();
-  for (let y = 0; y < h; y++) for (let x = 0; x < w; x++) {
+  for (let y = 0; y < h; y++) { yield; for (let x = 0; x < w; x++) {
     if (rows[y][x] !== 'B' || seen.has(y * w + x)) continue;
     const q = [[x, y]], house = []; seen.add(y * w + x);
     while (q.length) {
@@ -165,25 +173,25 @@ export function candidates(map) {
     for (const [ax, ay] of house) for (const [dx, dy] of STEPS) spots.push({ cx: ax + dx * 2, cy: ay + dy * 2, anchor: [ax, ay] });
     spots.sort((a, b) => hash(a.cx, a.cy, 101) - hash(b.cx, b.cy, 101));
     for (const p of spots) if (add('supplies', p.cx, p.cy, undefined, p.anchor)) break;
-  }
+  } }
 
   // Poplars occur in short orderly rows along field boundaries.
-  for (let y = 3; y < h - 3; y++) for (let x = 3; x < w - 3; x++) {
+  for (let y = 3; y < h - 3; y++) { yield; for (let x = 3; x < w - 3; x++) {
     if (country(x, y) < 0.15 || fraction(x, y, 105) > 0.0012) continue;
     const vertical = hash(x, y, 106) & 1, n = 3 + hash(x, y, 107) % 3;
     for (let k = 0; k < n; k++) add('poplar', x + (vertical ? 0 : k * 2), y + (vertical ? k * 2 : 0), 0, null, 0.92 + fraction(x, y, 108) * 0.12);
-  }
+  } }
 
   // standing wheat on about half of the ploughed fields (client/ground.js), a patch per cell in the furrows' direction
-  const fields = fieldCells(map);
-  for (let y = 2; y < h - 2; y++) for (let x = 2; x < w - 2; x++) {
+  const fields = yield* fieldCellBatches(map);
+  for (let y = 2; y < h - 2; y++) { yield; for (let x = 2; x < w - 2; x++) {
     const f = fields[y * w + x];
     if (f && fraction(Math.floor(x / 10), Math.floor(y / 8), 130) < 0.5) add('crop', x, y, f === 2 ? Math.PI / 2 : 0, null, 0.92 + fraction(x, y, 131) * 0.16);
-  }
+  } }
 
   let hay = 0;
   const hayCap = Math.min(16, Math.max(3, Math.round(w * h / 2200)));
-  for (let y = 2; y < h - 2; y++) for (let x = 2; x < w - 2; x++) {
+  for (let y = 2; y < h - 2; y++) { yield; for (let x = 2; x < w - 2; x++) {
     if (!clear(x, y) || occupied.has(y * w + x)) continue;
     const d = country(x, y), nearPath = corridor((x + 0.5) * CELL, (y + 0.5) * CELL, 0.7);
     if (fraction(x, y, 111) < 0.013 + d * 0.065 &&
@@ -193,22 +201,22 @@ export function candidates(map) {
     if (fraction(x, y, 115) < 0.004 * (nearPath ? 0.3 : 1) &&
         add('rocks', x, y, undefined, null, 0.8 + fraction(x, y, 116) * 0.3)) continue;
     if (hay < hayCap && d > 0.22 && fraction(x, y, 117) < 0.0012 && add('haystack', x, y)) hay++;
-  }
+  } }
   // meadow grass on the open cells left over, thicker in hedged country, kept off the paths
-  for (let y = 2; y < h - 2; y++) for (let x = 2; x < w - 2; x++) {
+  for (let y = 2; y < h - 2; y++) { yield; for (let x = 2; x < w - 2; x++) {
     if (occupied.has(y * w + x) || fraction(x, y, 120) > 0.1 + 0.16 * country(x, y)) continue;
     if (!corridor((x + 0.5) * CELL, (y + 0.5) * CELL, 0.4)) add('grass', x, y, undefined, null, 0.8 + fraction(x, y, 121) * 0.5);
-  }
+  } }
   const trees = list.filter(c => ['deciduous', 'pine', 'poplar'].includes(c.kind)).sort((a, b) => a.seed - b.seed);
   const capped = new Set(trees.slice(1200));
   // woods ('O' cells): a tree on about one cell in three, smaller than a field tree so the canopy stays readable.
   // They are the wood itself, so they skip the clearings and paths the scattered trees keep to. Capped separately.
   const wood = [];
-  for (let y = 0; y < h; y++) for (let x = 0; x < w; x++) {
+  for (let y = 0; y < h; y++) { yield; for (let x = 0; x < w; x++) {
     if (rows[y][x] !== 'O' || fraction(x, y, 140) > 0.3) continue;
     wood.push({ kind: fraction(x, y, 141) < 0.3 ? 'pine' : 'deciduous', cx: x, cy: y, x: (x + 0.5) * CELL + (fraction(x, y, 142) - 0.5) * 1.2, z: (y + 0.5) * CELL + (fraction(x, y, 143) - 0.5) * 1.2,
       seed: hash(x, y, 144), angle: fraction(x, y, 145) * Math.PI * 2, scale: 0.55 + fraction(x, y, 146) * 0.3, wood: true });
-  }
+  } }
   wood.sort((a, b) => a.seed - b.seed);
   return [...list.filter(c => !capped.has(c)), ...wood.slice(0, 1500)];
 }
@@ -295,15 +303,22 @@ function meshesFor(kind) {
   return [[geo, surface({ rocks: 'stone', fence: 'wood', haystack: 'straw', supplies: 'wood' }[kind], true), 'solid']];
 }
 
-export function createProps({ map, grid, hAt, parent }) {
-  const cached = candidates(map), group = new THREE.Group(), meshes = new Map();
+export function createProps({ map, grid, hAt, parent, prepared = candidates(map), deferRefresh = false }) {
+  const cached = prepared, group = new THREE.Group(), meshes = new Map();
   group.name = 'scenery-props'; parent.add(group);
+  const capacities = new Map(KINDS.map(kind => [kind, 0]));
+  for (const c of cached) {
+    capacities.set(c.kind, capacities.get(c.kind) + 1);
+    if (c.kind === 'deciduous') capacities.set('pine', capacities.get('pine') + 1);
+  }
   for (const kind of KINDS) {
     // Deciduous trees can become pines when live elevation favours that species.
-    const capacity = cached.filter(c => c.kind === kind || (kind === 'pine' && c.kind === 'deciduous')).length;
+    const capacity = capacities.get(kind);
     if (!capacity) continue;
     const list = meshesFor(kind).map(([geo, material, role]) => {
-      const mesh = new THREE.InstancedMesh(geo, material, capacity);
+      // Only placed instances are drawn. Avoid initializing thousands of unused identity matrices.
+      const mesh = new THREE.InstancedMesh(geo, material, 0);
+      mesh.instanceMatrix = new THREE.InstancedBufferAttribute(new Float32Array(capacity * 16), 16);
       mesh.name = role === 'bark' ? `${kind}-bark` : kind; mesh.userData.role = role;
       mesh.count = 0; mesh.receiveShadow = true;
       // A mesh spans the whole map; disabling culling avoids stale instance bounds.
@@ -314,7 +329,7 @@ export function createProps({ map, grid, hAt, parent }) {
     });
     meshes.set(kind, list);
   }
-  let nodes = [], disposed = false;
+  let nodes = [], disposed = false, refreshVersion = 0;
   const matrix = new THREE.Matrix4(), scale = new THREE.Vector3(), turn = new THREE.Quaternion(), at = new THREE.Vector3();
   const UP = new THREE.Vector3(0, 1, 0);
   // where one prop stands, as drawn: c.at is its kind (null: not shown), c.m its matrix, c.col and c.bark its tints
@@ -340,30 +355,49 @@ export function createProps({ map, grid, hAt, parent }) {
   // box [x0, z0, x1, z1] (world units): only the props near those cells are placed again (a prop looks up to two
   // cells away, its anchor included); the rest keep where they stood. Left out: all of them.
   const PAD = 3 * CELL;
-  function refresh(box) {
+  function* refreshBatches(box) {
     if (disposed) return;
-    for (const [kind, list] of meshes) for (const mesh of list) {
-      mesh.count = 0;
-      // grass and crops are too low to shade anything; Low drops tree and bush shadows too
-      mesh.castShadow = kind !== 'grass' && kind !== 'crop' && !gfx.low;
-    }
+    const version = ++refreshVersion;
+    const counts = new Map([...meshes.keys()].map(kind => [kind, 0]));
+    let processed = 0;
     for (const c of cached) {
+      if (++processed % 128 === 0) {
+        yield;
+        if (disposed || version !== refreshVersion) return;
+      }
       if (!box || c.at === undefined || (c.x > box[0] - PAD && c.x < box[2] + PAD && c.z > box[1] - PAD && c.z < box[3] + PAD)) place(c);
       if (!c.at) continue;
-      const list = meshes.get(c.at), i = list[0].count;
+      const list = meshes.get(c.at), i = counts.get(c.at);
       for (const mesh of list) {
         mesh.instanceMatrix.array.set(c.m, i * 16);
         mesh.setColorAt(i, mesh.userData.role === 'bark' ? c.bark : c.col);
-        mesh.count = i + 1;
       }
+      counts.set(c.at, i + 1);
     }
-    for (const list of meshes.values()) for (const mesh of list) { mesh.instanceMatrix.needsUpdate = true; mesh.instanceColor.needsUpdate = true; }
+    if (disposed || version !== refreshVersion) return;
+    for (const [kind, list] of meshes) for (const mesh of list) {
+      mesh.count = counts.get(kind);
+      // Grass and crops are too low to shade anything; Low drops tree and bush shadows too.
+      mesh.castShadow = kind !== 'grass' && kind !== 'crop' && !gfx.low;
+      mesh.instanceMatrix.needsUpdate = true; mesh.instanceColor.needsUpdate = true;
+    }
   }
+  function refresh(box) { const work = refreshBatches(box); while (!work.next().done) {} }
   const unsubscribe = gfx.onChange(() => refresh());
-  refresh();
+  if (!deferRefresh) refresh();
   return {
-    group, refresh,
-    setNodes(next) { if (disposed) return; nodes = next ?? []; refresh(); },
+    group, refresh, refreshBatches,
+    setNodes(next, refreshNow = true) {
+      if (disposed) return;
+      const previous = new Set(nodes.map(([x, z]) => `${x}:${z}`)), current = new Set((next ?? []).map(([x, z]) => `${x}:${z}`));
+      const changed = [...nodes.filter(([x, z]) => !current.has(`${x}:${z}`)), ...(next ?? []).filter(([x, z]) => !previous.has(`${x}:${z}`))];
+      nodes = next ?? [];
+      if (!changed.length) return null;
+      const box = [Math.min(...changed.map(n => n[0])) - 4, Math.min(...changed.map(n => n[1])) - 4,
+        Math.max(...changed.map(n => n[0])) + 4, Math.max(...changed.map(n => n[1])) + 4];
+      if (refreshNow) refresh(box);
+      return box;
+    },
     dispose() {
       if (disposed) return;
       // geometries and materials are shared between matches (client/foliage.js, client/surfaces.js)
