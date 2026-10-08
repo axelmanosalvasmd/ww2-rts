@@ -9,6 +9,7 @@ import { fixtureCommand as command, clearFixtureUnits, fixtureFactories } from '
 await import('./test-skirmish-bases.js');
 await import('./test-skirmish-client.js');
 await import('./test-skirmish-ai.js');
+await import('./test-tech.js');
 import { createGame, step, los, findPath, validateMap, snapshotFor, snapshotCache, inTrench, vet, spawnSlots, popOf, popCap, CFG, CELL, SUPPORT, UNITS, teamSees, levelOf } from './shared/sim.js';
 import { SpatialGrid, updateGrid } from './shared/grid.js';
 import { DEBRIS_LIMITS } from './shared/debris-motion.js';

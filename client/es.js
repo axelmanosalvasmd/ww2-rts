@@ -1373,4 +1373,13 @@ export default {
   'No record yet here with 1 defender.': 'Todavía no hay récord aquí con 1 defensor.',
   'No record yet here with {0} defenders.': 'Todavía no hay récord aquí con {0} defensores.',
   'Land Mattress': 'Land Mattress',
+  // HQ tiers and the Armory
+  'Platoon HQ': 'CG de pelotón', 'Company HQ': 'CG de compañía', 'Battalion HQ': 'CG de batallón',
+  'Needs {0}': 'Necesita: {0}', 'Upgrade to {0}': 'Mejorar a {0}', 'Top tier': 'Nivel máximo',
+  'Armory': 'Armería', 'Researches weapon and armor upgrades': 'Investiga mejoras de armas y blindaje',
+  'Infantry Weapons {0}': 'Armas de infantería {0}', 'Vehicle Guns {0}': 'Cañones de vehículos {0}', 'Vehicle Armor {0}': 'Blindaje de vehículos {0}',
+  '{0} researched': 'Investigado: {0}', 'Needs a higher HQ tier': 'Necesita un CG de nivel superior',
+  'Fully researched': 'Investigación completa', 'Already researching': 'Ya se está investigando',
+  'Needs a finished {0}': 'Necesita: {0} terminado', 'Each Armory researches one line at a time': 'Cada Armería investiga una línea a la vez',
+  'The next HQ tier unlocks new buildings and units. Research pauses while you have no finished HQ': 'El siguiente nivel de CG desbloquea edificios y unidades. La investigación se pausa mientras no tengas un CG terminado',
 };

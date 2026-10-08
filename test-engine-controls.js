@@ -213,7 +213,7 @@ try {
   await host.send({ t: 'mode', v: 'classic' }); await host.send({ t: 'weather', v: 'clear' }); await host.send({ t: 'start' }); await waitFor(() => host.latest('start'));
   const g = server.rooms.get('jobtest').game, b = own(g, 0, 'hq');
   // Exercise the fuel producer without waiting on unrelated construction in this queue acceptance fixture.
-  b.type = 'motorpool'; g.players[0].mp = 10000; g.players[0].fuel = 10000;
+  b.type = 'motorpool'; g.players[0].mp = 10000; g.players[0].fuel = 10000; g.players[0].tier = 3; // HQ tiers: tanks need Battalion HQ
   for (const u of g.units.values()) Object.assign(u, { holdFire: true, auto: false });
   for (const type of ['tank', 'tank', 'tank', 'at']) await host.send({ t: 'buy', unit: type, from: b.id });
   await tick();

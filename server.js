@@ -292,7 +292,7 @@ async function startMatch(room) {
   let game;
   try {
     game = createGame(map, room.players.map(p => p.name), true, room.players.map(p => p.team), room.players.map(p => p.faction), { mode: room.mode, worldSize: room.worldSize ?? 'huge', defenderTeam: room.defenderTeam, army: room.army,
-      weather: room.weather ?? 'map', mapKey: room.mapName, weatherSeed: Math.floor(Math.random() * 2 ** 31), logistics: room.logistics !== false && logisticsEnabledFor(room.mode, map) });
+      weather: room.weather ?? 'map', mapKey: room.mapName, weatherSeed: Math.floor(Math.random() * 2 ** 31), logistics: room.logistics !== false && logisticsEnabledFor(room.mode, map), tech: room.tech !== false });
   } catch {
     Object.assign(room, previous);
     room.starting = null;

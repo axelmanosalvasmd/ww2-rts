@@ -13,6 +13,7 @@ import { SHAPES } from '/shared/formation.js';
 import { SUPPORT_KEYS, FORT_KEYS, FORT_BADGES, BUILD_KEYS, CARD_KEYS, label, badge } from './keys.js';
 import { availability, buyCount, cooldownSeconds, recruitAction } from './availability.js';
 import { setAvailability, installTooltips } from './feedback.js';
+import { TECH, TIER_NAMES, techCost } from '/shared/tech.js';
 import { t as tr } from './i18n.js';
 import { reserveLabels, truckLabels, storeLabels, storeForUnit, logisticsIndicator } from './logistics.js';
 
@@ -40,7 +41,7 @@ const ENTRENCH_TIP = { line: 'One straight trench from the first click to the se
 const STANCE = { holdFire: [2048, 'Hold fire', 'shoot only when given an attack order (snipers and guns stay hidden)'],
   holdPos: [4096, 'Hold position', 'never move without an order, not even to cover'],
   autoRetreat: [8192, 'Auto-retreat', `run for home when below ${Math.round(CFG.autoRetreat * 100)}% strength`] };
-const BUILD_ROLE = { supplycache: 'Stores delivered supplies', depot: 'On a resource node: +1.5 MP/s', barracks: 'Trains MGs and elite infantry', motorpool: 'Trains AT guns, tanks, rockets',
+const BUILD_ROLE = { supplycache: 'Stores delivered supplies', armory: 'Researches weapon and armor upgrades', depot: 'On a resource node: +1.5 MP/s', barracks: 'Trains MGs and elite infantry', motorpool: 'Trains AT guns, tanks, rockets',
   airfield: 'Trains planes; their base', flakpos: 'Shoots down planes over your base', shipyard: 'On the coast: trains landing craft' };
 const AIR_STATE = ['Ready', 'Flying out', 'On station', 'Heading home', 'Rearming'];
 const AIMED = new Set(['grenade', 'barrage', 'satchel']); // abilities that need a spot clicked
@@ -328,7 +329,7 @@ export function createHud(ctx) {
       orderBtn('data-f="snap"', 'f_snap', '', 'Snap to trenches: infantry placed within 3 m of a trench step into it');
     // outside Classic the Build menu also puts up a Flak Emplacement (in Classic the Engineers' card has it)
     if (m === 'build') return (ctx.logistics().enabled && UNITS.supplycache ? orderBtn('data-a="bld:supplycache"', 'supplycache', '', 'Supply Cache: stores delivered supplies. 60 MP, 12 s') : '') +
-      (ctx.classic() ? '' : buildKinds(false, isSkirmishBaseMode(snapshot)).filter(k => k !== 'supplycache' && (k !== 'shipyard' || ctx.naval())).map(k => orderBtn(`data-a="bld:${k}"`, k, '', `${UNITS[k].name}: ${UNITS[k].cost} MP, ${UNITS[k].buildTime}s. Click where; selected builder squads construct it. Right-click a damaged building to repair it`, k)).join('')) +
+      (ctx.classic() ? '' : buildKinds(false, isSkirmishBaseMode(snapshot)).filter(k => k !== 'supplycache' && (k !== 'shipyard' || ctx.naval()) && (k !== 'armory' || snapshot?.tech)).map(k => orderBtn(`data-a="bld:${k}"`, k, '', `${UNITS[k].name}: ${UNITS[k].cost} MP, ${UNITS[k].buildTime}s. Click where; selected builder squads construct it. Right-click a damaged building to repair it`, k)).join('')) +
       Object.entries(FORTS).map(([k, f]) => orderBtn(`data-a="fort:${k}"`, k, FORT_BADGES[k], `${f.name}${FORT_KEYS[k] ? ` (${FORT_KEYS[k]})` : ''}: ${FORT_TIP[k] ?? ''}. ${lineFort(k) && k !== 'trench' ? 'Click where it starts, then where it ends: one piece, or a continuous line that every selected builder squad works on. Price per piece' : 'Click where; the nearest builder squad puts it across its approach'}`)).join('');
     return ENTRENCH_TYPES.map((k) => orderBtn(`data-a="ent:${k}"`, `e_${k}`, k === 'line' ? badge('entrench:line') : '',
       `${ENTRENCH[k]}${k === 'line' ? ` (${label('entrench:line')})` : ''}: ${ENTRENCH_TIP[k]}. Every selected builder squad digs; each segment is paid as it is started. Shift on the second click queues it. Right-click a planned pattern with other squads to send them to help`)).join('');
@@ -459,7 +460,7 @@ export function createHud(ctx) {
     for (const k of document.querySelectorAll('#support kbd, #abil kbd')) k.classList.toggle('quiet', used.includes(k.textContent));
   }
   // Recruit mode (outside Classic): the letters show on the cards and the header tab reads "Recruiting".
-  let recruiting = false;
+  let recruiting = false, autoOpened = false; // autoOpened: recruit mode came from selecting a production building
   function setRecruit(on) {
     recruiting = !!on && !ctx.classic(); grp = -1;
     const card = $('buy'), tab = card.querySelector('[data-recruit]');
@@ -513,6 +514,12 @@ export function createHud(ctx) {
       info.dataset.key = key;
       info.innerHTML = bld ? `<span data-facility-text></span>` + (bld.built < 1 && bld.owner === ctx.me ? ' <button data-cancel-site>Cancel (75% back)</button>' : '') : '';
       info.querySelector('[data-cancel-site]')?.addEventListener('click', () => ctx.send({t:'cancel',id:bld.id}));
+      // selecting one of my finished production buildings opens recruit mode on the group it makes most of
+      const makes = bld && bld.built >= 1 && bld.owner === ctx.me ? UNITS[bld.type].makes ?? [] : [];
+      const counts = [...card.querySelectorAll('.grp')].map((g) => [...g.querySelectorAll('[data-unit]')].filter((b) => makes.includes(b.dataset.unit)).length);
+      const best = counts.indexOf(Math.max(0, ...counts));
+      if (makes.length && best >= 0 && counts[best]) { setRecruit(true); grp = best; lettered(); quietBadges(); autoOpened = true; }
+      else if (autoOpened) { autoOpened = false; setRecruit(false); }
     }
     info.style.display = bld ? '' : 'none';
     if (bld) setText(info.querySelector('[data-facility-text]'), `${UNITS[bld.type].name}: ${bld.built < 1 ? Math.round(bld.built*100)+'% built' : 'Ready'} . ${Math.ceil(bld.hp)} HP. ${bld.built < 1 ? 'Right-click with builders to assist' : 'Right-click with builders to repair'}`);
@@ -540,7 +547,7 @@ export function createHud(ctx) {
           const pr = priceOf(s, t), fuel = pr.fuel ? `${pr.fuel} Fuel, ` : '';
           return unitCard(t, `data-train="${t}"`, `${pr.mp} MP`, `${fuel}${UNITS[t].train}s`, unitTip(t, ctx.me, `. ${pr.mp} MP${pr.fuel ? ` + ${pr.fuel} Fuel` : ''}, trains in ${UNITS[t].train}s`));
         });
-      else if (eng) card.innerHTML = '<div class="grp"><div class="hd">Build</div><div class="cards">' + BUILDABLE.filter(k => k !== 'supplycache' || ctx.logistics().enabled).map((k) =>
+      else if (eng) card.innerHTML = '<div class="grp"><div class="hd">Build</div><div class="cards">' + BUILDABLE.filter(k => (k !== 'supplycache' || ctx.logistics().enabled) && (k !== 'armory' || s.tech)).map((k) =>
         `<button class="uc wide" data-build="${k}" title="${esc(`${UNITS[k].name}${BUILD_KEYS[k] ? ` (${BUILD_KEYS[k]})` : ''}: ${BUILD_ROLE[k] ?? ''}. ${UNITS[k].cost} MP, ${UNITS[k].buildTime}s`)}">` +
         `<span class="nm">${esc(UNITS[k].name)} <kbd>${BUILD_KEYS[k] ?? ''}</kbd></span>${cardSymbol(k)}<span class="cost">${UNITS[k].cost} MP, ${UNITS[k].buildTime}s</span>` +
         `<span class="sub" data-note></span></button>`).join('') + '</div></div>';
@@ -643,11 +650,48 @@ export function createHud(ctx) {
       if (['classic', 'world'].includes(s.mode?.kind)) drawClassicCard(s, pop, cap, sel); else drawRecruit(s, pop, cap);
     }
     drawLogistics(sel);
+    drawTech(s, sel);
     drawSelection(sel);
     drawOrders(s, sel);
     drawAir(s);
     quietBadges();
     tooltips.update();
+  }
+
+  // HQ tiers and the Armory (shared/tech.js): a selected finished HQ offers the next tier, an Armory its three lines.
+  // Finished research is announced once.
+  let techKey = '', techSeen = null;
+  function drawTech(s, sel) {
+    const card = $('buy'), t = s.tech;
+    if (t && techSeen) {
+      if (t.tier > techSeen.tier) ctx.explain(`${TIER_NAMES[t.tier]} ready`);
+      for (const k of Object.keys(TECH.lines)) if (t.armory[k] > techSeen.armory[k]) ctx.explain(`${TECH.lines[k]} ${t.armory[k]} researched`);
+    }
+    techSeen = t && { tier: t.tier, armory: { ...t.armory } };
+    const bld = t && sel.length === 1 && ['hq', 'armory'].includes(sel[0].type) && sel[0].owner === ctx.me && sel[0].built >= 1 ? sel[0] : null;
+    const kinds = !bld ? [] : bld.type === 'hq' ? ['tier'] : Object.keys(TECH.lines);
+    let panel = card.querySelector('[data-tech]');
+    if (!kinds.length) { panel?.remove(); techKey = ''; return; }
+    if (!panel || techKey !== bld.type) {
+      techKey = bld.type; panel?.remove();
+      panel = document.createElement('div'); panel.dataset.tech = '';
+      Object.assign(panel.style, { position: 'absolute', left: '8px', bottom: 'calc(100% + 40px)', display: 'flex', gap: '6px', alignItems: 'center', background: 'var(--strip)', padding: '4px 8px', font: '13px var(--type)' });
+      panel.innerHTML = `<b data-tier></b>` + kinds.map(k => `<button data-research="${k}"></button>`).join('');
+      panel.querySelectorAll('[data-research]').forEach(b => { b.onclick = (e) => { const action = { t: 'tech', kind: b.dataset.research }; attempt(action, () => { ctx.send(action); ctx.blip('recruit'); }); e.currentTarget.blur(); }; });
+      card.append(panel);
+    }
+    card.classList.remove('hidden');
+    setText(panel.querySelector('[data-tier]'), TIER_NAMES[t.tier]);
+    const classic = s.mun !== undefined;
+    for (const b of panel.querySelectorAll('[data-research]')) {
+      const k = b.dataset.research, cost = techCost(t, k, classic), job = t.lab.find(([kind]) => kind === k);
+      const what = k === 'tier' ? `Upgrade to ${TIER_NAMES[t.tier + 1]}` : `${TECH.lines[k]} ${t.armory[k] + 1}`;
+      setText(b, !cost ? (k === 'tier' ? 'Top tier' : `${TECH.lines[k]} 3/3`) : job ? `${what}: ${Math.round(job[1] * 100)}%`
+        : `${what}: ${cost.mp} MP${cost.mun ? ` + ${cost.mun} Mun` : ''}, ${cost.time}s`);
+      b.title = k === 'tier' ? 'The next HQ tier unlocks new buildings and units. Research pauses while you have no finished HQ'
+        : `${k === 'armor' ? `${TECH.step * 100}% less damage taken by vehicles` : `+${TECH.step * 100}% damage for ${k === 'guns' ? 'vehicles, planes and boats' : 'infantry and their guns'}`} per level, for units already in the field too`;
+      setAvailability(b, check({ t: 'tech', kind: k }));
+    }
   }
 
   let truckCard = false;

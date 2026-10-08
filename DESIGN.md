@@ -60,6 +60,34 @@ Implementation sequence: separate production access from Classic economics, test
 
 Verification lives in `test-skirmish-bases.js`, `test-skirmish-client.js` and `test-skirmish-ai.js`, registered in `test.js`. Legacy combat fixtures use `test-fixtures.js` to supply temporary producers solely while assembling isolated armies; all new production tests use the authoritative, unwrapped command. No combat stats, income or victory thresholds were retuned. Competitive balance still needs human playtesting.
 
+## HQ tiers and Armory (decided 2026-10-07, built 2026-10-08)
+
+Classic-RTS progression for the skirmish base modes (Conquest, Assault, Annihilation, Horde) and Classic.
+World Conquest and the Tutorial stay unchanged. Tech is open: variety comes from what a player can afford
+first, not from exclusive doctrines.
+
+- Tier belongs to the player, not the building. A rebuilt HQ keeps the tier reached. The HQ keeps recruiting while it upgrades.
+- T1 Platoon HQ (start): Barracks with rifle, conscript, flamer, MG, medic, sniper, faction infantry except elites.
+- T2 Company HQ (250 MP, 60s): Motor Pool with halftrack, armored car, light tank, mobile flak, AT gun, mortar; flak gun at the Barracks; Armory; Shipyard with landing craft and gunboat. The light tank sits at T2 so the Motor Pool has an answer to massed infantry before T3.
+- T3 Battalion HQ (400 MP, 90s): medium tank, tank destroyer, rocket, howitzer, Tiger, Churchill, Airfield, rangers, commandos, destroyer.
+- Pacing target: T2 around 3 minutes, T3 around 8 minutes into a Conquest match. The AI starts Company HQ at 2:00 and Battalion HQ at 6:30, and hides the saved MP from every other spender until it can pay.
+- Classic pays tier-ups and research in MP + Munitions; skirmish modes stay MP-only.
+- Horde defenders start at T2. Assault attackers and defenders both start at T1.
+- Armory: a T2 building (150 MP, 30s) put up by builders. Three lines: infantry weapons, vehicle armor, vehicle guns, three levels each. Each level is +10% damage, or 0.9x damage taken, stacking. Levels cost 100/175/250 MP and take 30/45/60s. Level 2 needs T2, level 3 needs T3. One research at a time per Armory. Losing the Armory pauses research; finished levels stay. Upgrades apply to units already in the field.
+- Vehicle Guns covers every non-infantry shooter (tanks, cars, planes, boats); Infantry Weapons covers infantry and crewed guns (MG, AT gun, mortar, howitzer crews are infantry). Vehicle Armor covers every non-infantry unit that is not a structure. Blasts count for the weapon's unit; off-map support gets no bonus.
+- Classic costs in Munitions: tiers 50/100, Armory levels 25/50/75.
+
+Implementation: `shared/tech.js` holds the tier table, costs and the damage multiplier. Matches opt in with
+`opts.tech` (the server always does), so headless fixtures and older tests keep every unit. The `tech` command
+researches; `stepLab` advances research while a finished HQ (tier) or Armory (one line per Armory) stands.
+Selecting a finished HQ or Armory shows the research buttons above the command card. Test: `test-tech.js`.
+
+AI 1v1 with tiers on (same seeds, before/after where noted). Conquest, default map, 8 matches: 6/2, about 6.5
+minutes a match (7.5 without tiers), Company HQ at 3:20 to 4:10, Battalion HQ never (matches end first).
+Prokhorovka, 6 matches: 3/3, 5.8 minutes. Hill 112 Assault, 4 matches: defender 4/4 at the 15-minute clock,
+Battalion HQ at 8:50 to 10:30 and most Armory lines at 2 or 3. Classic, default map, 3 matches: 1/2 (3/0
+without tiers, same seeds), Battalion HQ around 9 minutes. Armies stay infantry-heavy until T2.
+
 ## Physical logistics (2026-10-05)
 
 Live Conquest, Classic, Annihilation and World Conquest matches enable physical logistics. Headless fixtures

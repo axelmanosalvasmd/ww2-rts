@@ -433,6 +433,15 @@ export function buildModel(v, root, f, fac, def) {
       v.body.add(part(GEO.box, f.color, 0.95, 0.65, 0.08, 0, 2.08, 1.82));
     }
     root.add(bake(v.body, key, true, 'structure')); v.models.push(root);
+  } else if (type === 'armory') {
+    // a brick workshop with a gun barrel on trestles and a stack of shells out front
+    const post = skin('darkwood', 0x5a4a34);
+    v.body = new THREE.Group();
+    v.body.add(part(GEO.box, skin('brick', 0x7c5a48), 5.4, 2.8, 4, 0, 1.4, -0.8), part(ROOF, f.vehicle, 1, 1, 1, 0, 2.8, -0.8).rotateY(Math.PI / 2),
+      part(GEO.box, skin('darkwood', 0x3a2e20), 2, 2, 0.2, 0, 1, 1.22), part(GEO.box, post, 0.3, 0.8, 1.6, -1.6, 0.4, 2.3), part(GEO.box, post, 0.3, 0.8, 1.6, 0.6, 0.4, 2.3),
+      part(GEO.cyl, DARK, 0.18, 3.4, 0.18, -0.5, 0.95, 2.3).rotateZ(Math.PI / 2));
+    for (let i = 0; i < 4; i++) v.body.add(part(GEO.cyl, 0x9a7a3a, 0.16, 0.7, 0.16, 1.7 + (i % 2) * 0.4, 0.35, 2 + (i >> 1) * 0.4));
+    root.add(bake(v.body, key, true, 'structure')); v.models.push(root);
   } else if (type === 'shipyard') {
     // a timber slipway running down to the water, a shed over its head and a crane
     const post = skin('darkwood', 0x5a4a34);

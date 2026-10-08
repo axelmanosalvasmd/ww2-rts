@@ -153,7 +153,7 @@ export function viewFor(g, slot, memory = {}, cache) {
   if (world) view.players[-1] = { slot: -1, name: 'Local defenders', team: -1, faction: 0, spawn: null, out: false };
   const me = view.players[slot];
   if (world && snap.home) me.spawn = { x: snap.home[0], z: snap.home[1] };
-  Object.assign(me, { mp: snap.mp, mun: snap.mun, fuel: snap.fuel, inc: snap.inc, fuelInc: snap.fuelInc,
+  Object.assign(me, { mp: snap.mp, mun: snap.mun, fuel: snap.fuel, tech: copy(snap.tech), inc: snap.inc, fuelInc: snap.fuelInc,
     upkeep: snap.upkeep, sup: { ...snap.sup }, rally: snap.rally ? { x: snap.rally[0], z: snap.rally[1] } : null,
     visible: new Set([...view.units.values()].filter(u => view.players[u.owner].team !== me.team).map(u => u.id)) });
   decodeOwn(view, snap);

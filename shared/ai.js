@@ -3,6 +3,7 @@
 // and keeps that operation while the reason for it still holds.
 import { UNITS, CELL, CFG, COVER, MOVE, TRENCH, FORTS, command, spoiled, SUPPORT, abCost, canBuild, allied, supCost, siteNear, priceOf, alive, los, isSkirmishBaseMode, productionAccess, productionBuildings, placementCheck } from './sim.js';
 import { viewFor } from './ai-view.js';
+import { tierOf, techCost, TECH } from './tech.js';
 import { beginMind, knownSince, pointReady, lesson, pointExtra, dropEmptyGround, liveSightings, operationHolds, planAssault, clearAssault, ARMOR, ANTI_ARMOR } from './ai-mind.js';
 import { gridFor, rebuildGrid } from './grid.js';
 import { aiCaution } from './weather.js';
@@ -263,6 +264,7 @@ function plan(observation, slot, opts, mem, send) {
     if (cmd.t === 'buy') { const price = priceOf(view, cmd.unit); me.mp -= price.mp; if (price.fuel) me.fuel -= price.fuel; }
     else if (cmd.t === 'support') { const { cur, cost } = supCost(view, cmd.kind); me[cur] -= cost; me.sup[cmd.kind] = SUPPORT[cmd.kind].cd; }
     else if (cmd.t === 'build') me.mp -= UNITS[cmd.kind].cost;
+    else if (cmd.t === 'tech') { const c = techCost(me.tech, cmd.kind, ['classic', 'world'].includes(view.mode?.kind)); me.mp -= c.mp; if (c.mun) me.mun -= c.mun; }
     else if (cmd.t === 'dig') me.mp -= FORTS[cmd.kind ?? 'trench']?.cost ?? CFG.digCost;
     for (const id of cmd.ids ?? []) {
       const u = view.units.get(id);
@@ -322,9 +324,10 @@ function plan(observation, slot, opts, mem, send) {
   const rush = rule(2) && now < 240 ? recent.filter(e => now - e.t < 5 && ownB.some(b => d(b, e) < 35)) : [];
   // rule 1, counters: tanks seen lately push the Motor Pool (for AT guns) up the build order
   const seenArmor = recent.filter(e => HEAVY.has(e.type)).length, seenInf = recent.filter(e => UNITS[e.type].infantry).length;
-  const reserve = classic ? (rush.length ? 0 : 1) * buildEconomy(view, slot, all.filter(u => u.type === 'engineer'), counters && seenArmor > 0, mem, submit) : skirmish ? buildSkirmishBase(view, slot, all, submit) : 0;
-  // Classic: only what my finished buildings can train
-  const trains = (t) => skirmish ? productionBuildings(view, slot, t).length > 0 : !classic || grid.ownedBy(slot).some(b => b.built >= 1 && UNITS[b.type].makes?.includes(t));
+  me.mp -= research(view, slot, classic, submit); // MP saved for the next HQ tier is hidden from every other spender
+  const reserve = (classic ? (rush.length ? 0 : 1) * buildEconomy(view, slot, all.filter(u => u.type === 'engineer'), counters && seenArmor > 0, mem, submit) : skirmish ? buildSkirmishBase(view, slot, all, submit) : 0);
+  // Classic: only what my finished buildings can train (and, with HQ tiers, what my tier allows)
+  const trains = (t) => (!me.tech || tierOf(t) <= me.tech.tier) && (skirmish ? productionBuildings(view, slot, t).length > 0 : !classic || grid.ownedBy(slot).some(b => b.built >= 1 && UNITS[b.type].makes?.includes(t)));
   const mine = all.filter(u => u.type !== 'engineer' && !(skirmish && u.build)); // Engineers build; everyone else fights
   // The horde is a wave, not a player: it still arms every squad. A seat commander arms squads when it
   // sends them into a fight, or once that fight has been watched, not the whole army at the first look.
@@ -418,7 +421,8 @@ function plan(observation, slot, opts, mem, send) {
   }
   // Classic: keep an Engineer while there are nodes to build on
   // Classic: no building for it, or no Fuel for a vehicle: infantry instead
-  if (!trains(buy) || !canBuild(buy, me.faction) || priceOf(view, buy).fuel > (me.fuel ?? 0)) buy = trains('conscript') && canBuild('conscript', me.faction) ? 'conscript' : 'rifle';
+  // (with HQ tiers, an MG for every two rifle squads, so a low tier still fields a mixed army)
+  if (!trains(buy) || !canBuild(buy, me.faction) || priceOf(view, buy).fuel > (me.fuel ?? 0)) buy = me.tech && count('mg') * 2 < count('rifle') + count('conscript') && trains('mg') ? 'mg' : trains('conscript') && canBuild('conscript', me.faction) ? 'conscript' : 'rifle';
   if (world && (!count('engineer') || !ownB.some(b => b.type === 'hq'))) submit({ t: 'recover' });
   if (classic && count('engineer') < (view.nodes.some((_, i) => !view.claimedNodes.has(i)) ? 2 : 1)) buy = 'engineer';
   // Classic: save up for the next building, unless the army is nearly gone
@@ -836,7 +840,8 @@ function plan(observation, slot, opts, mem, send) {
 function buildSkirmishBase(view, slot, squads, submit) {
   const me = view.players[slot], own = [...view.units.values()].filter(b => UNITS[b.type].building && b.hp > 0 && productionAccess(view, b, slot));
   const has = (t, done = false) => own.some(b => b.type === t && (!done || b.built >= 1));
-  const next = !has('hq') ? 'hq' : !has('barracks') ? 'barracks' : has('barracks', true) && !has('motorpool') ? 'motorpool' : has('motorpool', true) && !has('airfield') ? 'airfield' : view.naval && !has('shipyard') ? 'shipyard' : null;
+  let next = !has('hq') ? 'hq' : !has('barracks') ? 'barracks' : has('barracks', true) && !has('motorpool') ? 'motorpool' : has('motorpool', true) && !has('airfield') ? 'airfield' : view.naval && !has('shipyard') ? 'shipyard' : null;
+  next = techBuild(me.tech, next, has, null);
   const free = squads.filter(u => CFG.fortBuilders.includes(u.type) && !u.retreating && !u.build && !u.targetId && !u.dig && !u.entrench && u.garrison < 0).sort((a,b) => d(a,me.spawn)-d(b,me.spawn));
   const working = squads.some(u => u.build);
   const u = free[0];
@@ -854,6 +859,27 @@ function buildSkirmishBase(view, slot, squads, submit) {
   return UNITS[next].cost;
 }
 
+// HQ tiers: a building above my tier waits (`instead` goes up meanwhile); at Company HQ an Armory joins the build order
+function techBuild(tech, next, has, instead) {
+  if (!tech) return next;
+  if (next && tierOf(next) > tech.tier) next = instead;
+  return next ?? (tech.tier >= 2 && !has('armory') ? 'armory' : null);
+}
+// HQ tiers: Company HQ from 2 minutes and Battalion HQ from 6:30 (they finish near 3 and 8 minutes), then the Armory
+// lines in turn, Infantry Weapons first. Returns the MP to keep for the next one.
+const TIER_AT = { 2: 120, 3: 390 };
+function research(view, slot, classic, submit) {
+  const me = view.players[slot], tech = me.tech;
+  if (!tech || (view.mode?.kind === 'horde' && slot === view.mode.slot)) return 0;
+  const busy = new Set(tech.lab.map(([kind]) => kind));
+  const lines = Object.keys(TECH.lines).filter(k => !busy.has(k) && tech.armory[k] < tech.tier).sort((a, b) => tech.armory[a] - tech.armory[b]);
+  const kind = !busy.has('tier') && tech.tier < 3 && view.tick / 20 >= TIER_AT[tech.tier + 1] ? 'tier' : lines[0];
+  const cost = kind && techCost(tech, kind, classic);
+  if (!cost) return 0;
+  if (me.mp >= cost.mp && !(cost.mun > (me.mun ?? 0)) && submit({ t: 'tech', kind }) === undefined) return 0;
+  return kind === 'tier' ? cost.mp : 0; // the Armory only gets spare MP
+}
+
 // a Fuel node (tanks) is worth about as much to the AI as a 2.5 MP/s node
 const worthOf = (n) => (n.fuel ? 2.5 : n.rate);
 // Classic build order for idle Engineers: two depots, a Barracks, a Motor Pool, then the remaining nodes.
@@ -864,8 +890,9 @@ function buildEconomy(view, slot, engineers, needArmor, mem, submit) {
   const hq = own.find(b => b.type === 'hq') ?? me.spawn, cx = view.w * CELL / 2, cz = view.h * CELL / 2;
   const depots = own.filter(b => b.type === 'depot').length, free = view.nodes.filter((n, i) => !view.claimedNodes.has(i) && ownedGround(view, me.team, n));
   const planesNear = gridFor(view).radius(hq, 60).some(e => me.visible.has(e.id) && e.air && !allied(view, e.owner, slot) && d(e, hq) < 60);
-  const next = view.mode?.kind === 'world' && !has('hq') ? 'hq' : depots < 2 && free.length && !(needArmor && has('barracks', true) && !has('motorpool')) ? 'depot' : !has('barracks') ? 'barracks' : has('barracks', true) && !has('motorpool') ? 'motorpool'
+  let next = view.mode?.kind === 'world' && !has('hq') ? 'hq' : depots < 2 && free.length && !(needArmor && has('barracks', true) && !has('motorpool')) ? 'depot' : !has('barracks') ? 'barracks' : has('barracks', true) && !has('motorpool') ? 'motorpool'
     : planesNear && own.filter(b => b.type === 'flakpos').length < 2 ? 'flakpos' : free.length ? 'depot' : has('motorpool', true) && !has('airfield') && depots >= 3 ? 'airfield' : null;
+  next = techBuild(me.tech, next, has, free.length ? 'depot' : null);
   const ids = new Set(engineers.map(u => u.id));
   for (const id of mem.node.keys()) if (!ids.has(id)) mem.node.delete(id);
   const taken = new Set(engineers.map(u => mem.node.get(u.id)).filter(n => n !== undefined));

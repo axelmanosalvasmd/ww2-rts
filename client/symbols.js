@@ -313,6 +313,9 @@ const DEFS = {
     poly([83, 37], [90, 37], [90, 84], [83, 84]) + wrench(60, 52, 12, -45, 28, 9)],
   airfield: ['Airfield', 'building', 'Airfield: an arched hangar with its doors open',
     poly(...arc(50, 84, 44, 50, 180, 360, 36), [75, 84], [75, 58], [25, 58], [25, 84]) + band(arc(50, 84, 36, 42, 233, 307, 12), 4)],
+  armory: ['Armory', 'building', 'Armory: a workshop with two shells standing in front of it',
+    poly([6, 46], [50, 18], [94, 46]) + poly([12, 49], [88, 49], [88, 84], [12, 84]) +
+    poly([30, 84], [30, 64], [33, 58], [36, 64], [36, 84]) + poly([64, 84], [64, 64], [67, 58], [70, 64], [70, 84])],
   shipyard: ['Shipyard', 'building', 'Shipyard: a slipway running down into the water under a crane',
     poly([6, 84], [6, 70], [60, 58], [60, 84]) + poly([66, 84], [66, 18], [72, 18], [72, 84]) + poly([72, 18], [94, 18], [94, 23], [72, 23]) +
     poly([90, 23], [92, 23], [92, 40], [90, 40]) + poly([4, 80], [96, 80], [96, 84], [4, 84])],

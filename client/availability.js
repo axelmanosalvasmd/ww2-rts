@@ -1,4 +1,5 @@
 import { worldLayers, composeWorldCell } from '../shared/world-layers.js';
+import { tierOf, techCost, TIER_NAMES } from '../shared/tech.js';
 import { UNITS, FORTS, CFG, TERRAIN, CELL, RIDING_FLAG, priceOf, supCost, popCap, popUse, dropPop, abCost, levelOf, teamSees, buildKinds, builderTypes, isSkirmishBaseMode, productionAccess, productionBuildings } from '../shared/sim.js';
 
 // Server denials deliberately contain no target details.
@@ -14,7 +15,7 @@ export const DENY_SENTENCES = Object.freeze({
   notWaiting: 'That recruit is no longer waiting',
   scenario: 'This scenario cannot start with the selected sides, factions or mode',
   territory: 'Build inside territory your team owns',
-  coast: 'A Shipyard needs open water beside it', shore: 'Too far from the shore to land',
+  coast: 'A Shipyard needs open water beside it', tier: 'Needs a higher HQ tier', shore: 'Too far from the shore to land',
 });
 // The server answers queueFull for both a full training queue (buy) and a full order queue (every other command).
 export const denySentence = (code, cmd) =>
@@ -61,6 +62,7 @@ export function availability(s, cfg = CFG, action = {}) {
     const def = UNITS[action.unit];
     if (!def || def.structure || (def.classic && !classic)) return no('Unavailable in this mode');
     if (def.naval && !action.naval) return no('Needs a map with a sea');
+    if (s.tech && tierOf(action.unit) > s.tech.tier) return no(`Needs ${TIER_NAMES[tierOf(action.unit)]}`);
     const price = priceOf(s, action.unit), money = resources(s, price.mp, price.fuel);
     if (!money.ok) return money;
     const pop = population(action.unit); if (!pop.ok) return pop;
@@ -85,7 +87,8 @@ export function availability(s, cfg = CFG, action = {}) {
     return action.kind === 'para' ? population(null, dropPop('para')) : yes();
   }
   if (action.t === 'build') {
-    if (!buildKinds(classic, skirmish).includes(action.kind)) return no('Unavailable in this mode');
+    if (!buildKinds(classic, skirmish).includes(action.kind) || (action.kind === 'armory' && !s.tech)) return no('Unavailable in this mode');
+    if (s.tech && tierOf(action.kind) > s.tech.tier) return no(`Needs ${TIER_NAMES[tierOf(action.kind)]}`);
     if (sudden) return no(DENY_SENTENCES.suddenDeath);
     const crew = selected.filter((v) => builderTypes(classic).includes(v.type));
     if (!crew.length) return no(DENY_SENTENCES.noBuilders);
@@ -93,6 +96,18 @@ export function availability(s, cfg = CFG, action = {}) {
     const def = UNITS[action.kind], money = resources(s, def.cost); if (!money.ok) return money;
     if (def.needs && !facilities.some((v) => v.type === def.needs && v.built >= 1 && v.hp > 0)) return no(`Needs a ${UNITS[def.needs].name}`);
     return yes();
+  }
+  if (action.t === 'tech') {
+    const t = s.tech, cost = t && techCost(t, action.kind, classic), armory = action.kind !== 'tier';
+    if (!t) return no('Unavailable in this mode');
+    if (sudden) return no(DENY_SENTENCES.suddenDeath);
+    if (!cost) return no('Fully researched');
+    if (t.lab.some(([k]) => k === action.kind)) return no('Already researching');
+    if (armory && t.armory[action.kind] >= t.tier) return no(`Needs ${TIER_NAMES[t.tier + 1]}`);
+    const labs = facilities.filter(v => v.type === (armory ? 'armory' : 'hq') && v.built >= 1 && v.hp > 0).length;
+    if (!labs) return no(`Needs a finished ${armory ? 'Armory' : 'HQ'}`);
+    if (armory && t.lab.filter(([k]) => k !== 'tier').length >= labs) return no('Each Armory researches one line at a time');
+    return resources(s, cost.mp, 0, cost.mun);
   }
   if (action.t === 'dig') {
     const crew = selected.filter((v) => cfg.fortBuilders.includes(v.type));

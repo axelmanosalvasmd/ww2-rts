@@ -12,6 +12,7 @@ import { worldLayers, validateWorldLayers, composeWorldCell, defaultMaterial, MA
 import { supportedSections, validateStructures, STRUCTURE_LIMITS } from './structures.js';
 import { DEBRIS_LIMITS, SECTION_MASS, wreckMass, debrisBody, stepDebris, settleDebris, debrisRow } from './debris-motion.js';
 import { navigationLeg } from './navigation.js';
+import { tierOf, techCost, techMul, TECH } from './tech.js';
 import { isGroundVehicle, movementProfile, bodyRadius, vehiclePositionClear, sweptVehicleClear, vehicleStep, vehicleNavigationView, vehicleDestinationClear, segmentCliffClear } from './vehicle-motion.js';
 import { trafficStep, rememberTrafficPosition, trafficWins, TRAFFIC } from './local-traffic.js';
 import { initializeUnit, tickReserves, consumeDrivingFuel, consumeAmmo, canFire, shortageRate, recoveryRate } from './logistics.js';
@@ -330,11 +331,13 @@ UNITS.shipyard = building({ name: 'Shipyard', cost: 150, hpPer: 1500, radius: 3,
 UNITS.flakpos = building({ name: 'Flak Emplacement', cost: 100, hpPer: 1500, radius: 2, vision: 40, size: 2, buildTime: 20, aa: { range: 55, dps: 40, chance: 0.45 } });
 UNITS.worldbase = building({ name: 'Regional Military Base', cost: 0, hpPer: 600, radius: 3, vision: 18, size: 3, produces: true, classic: true });
 UNITS.truck = { name: 'Supply Truck', faction: -1, logisticsTruck: true, classic: true, cost: 0, pop: 0, models: 1, hpPer: 120, speed: 7.5, radius: 1.8, vision: 12, infantry: false, w: { range: 0, interval: 1, inf: 0, veh: 0, accInf: 0, accVeh: 0, supp: 0, moveFire: 0 }, ab: { id: 'none', name: '', cd: 1e9 } };
+// HQ tiers: researches the Armory upgrades (shared/tech.js); only matches with tech on can build it
+UNITS.armory = building({ name: 'Armory', cost: 150, hpPer: 1200, radius: 3, vision: 20, size: 3, buildTime: 30 });
 UNITS.supplycache = building({ name: 'Supply Cache', cost: 60, hpPer: 400, radius: 2, vision: 12, size: 2, buildTime: 12, logisticsCache: true });
-export const BUILDABLE = ['supplycache', 'depot', 'barracks', 'motorpool', 'airfield', 'flakpos', 'shipyard'];
+export const BUILDABLE = ['supplycache', 'depot', 'barracks', 'motorpool', 'airfield', 'armory', 'flakpos', 'shipyard'];
 // outside Classic the fort builder squads can still put up anti-air: what they build, and who builds what where
 export const FIELD_BUILDS = ['flakpos', 'supplycache'];
-export const SKIRMISH_BUILDS = ['hq', 'barracks', 'motorpool', 'airfield', 'shipyard', 'flakpos', 'supplycache'];
+export const SKIRMISH_BUILDS = ['hq', 'barracks', 'motorpool', 'airfield', 'shipyard', 'armory', 'flakpos', 'supplycache'];
 export const buildKinds = (classic, skirmish = false) => (classic ? BUILDABLE : skirmish ? SKIRMISH_BUILDS : FIELD_BUILDS);
 export const builderTypes = (classic) => (classic ? ['engineer'] : CFG.fortBuilders);
 // Classic: seconds to train each unit at its building
@@ -731,6 +734,9 @@ export function createGame(map, names, shuffle = true, teams = names.map((_, i) 
     for (const u of g.units.values()) if (u.type === 'bunker') g.mode.bunkers[g.players[u.owner].team]++;
   }
   if (isSkirmishBaseMode(g)) setupSkirmishBases(g);
+  // HQ tiers and the Armory (shared/tech.js): Horde defenders start at Company HQ, and the scripted horde has it all
+  g.tech = opts.tech === true && ['conquest', 'assault', 'annihilation', 'horde', 'classic'].includes(opts.mode ?? 'conquest');
+  if (g.tech) for (const p of g.players) Object.assign(p, { tier: !horde ? 1 : p.team === 0 ? 2 : 3, armory: { inf: 0, guns: 0, armor: 0 }, lab: [] });
   g.army = typeof opts.army === 'string' && Object.hasOwn(CFG.armies, opts.army) ? CFG.armies[opts.army] : CFG.armies.standard;
   for (const p of g.players) p.mp *= g.army.income;
   // weather (shared/weather.js): the lobby's pick ('map' by default), the same plan for the same seed
@@ -979,6 +985,19 @@ function queueProduction(g, b, type, charge) {
 }
 const productionRow = b => [b.id, (b.productionJobs ?? []).flatMap((job, i) => job.type === b.queue[i] ? [{ ...job, status: i ? 'waiting' : 'active' }] : [])];
 // a building works through its queue; each finished unit steps out on the side facing its rally point
+// finished HQs ('tier') or Armories (an Armory line) a player can research at
+const techLabs = (g, slot, kind) => [...g.units.values()].filter(b => b.type === (kind === 'tier' ? 'hq' : 'armory') && b.hp > 0 && b.built >= 1 && productionAccess(g, b, slot)).length;
+// research runs while its building stands and pauses (keeping its progress) while there is none
+function stepLab(g, p, dt) {
+  const hq = techLabs(g, p.slot, 'tier');
+  let armories = techLabs(g, p.slot, 'inf');
+  for (const j of [...p.lab]) {
+    if (j.kind === 'tier' ? !hq : armories-- <= 0) continue;
+    if ((j.prog += dt) < j.time) continue;
+    p.lab.splice(p.lab.indexOf(j), 1);
+    if (j.kind === 'tier') p.tier++; else p.armory[j.kind]++;
+  }
+}
 function train(g, b, dt) {
   const jobs = productionJobs(g, b), type = b.queue[0];
   if ((b.prog += dt) < UNITS[type].train) return;
@@ -3075,6 +3094,8 @@ export function command(g, slot, cmd, auto = false) {
     const crew = engineers.filter(u => cmd.queue !== true || (u.orders?.length ?? 0) < 8);
     if (!crew.length || x === null || z === null || p.mp < def.cost) return !crew.length ? (engineers.length ? 'queueFull' : ids.map(mine).some(u => can.includes(u?.type) && u.retreating) ? 'retreating' : 'noBuilders') : x === null || z === null ? 'blocked' : 'mp';
     if (def.needs && ![...g.units.values()].some(b => productionAccess(g, b, slot) && b.type === def.needs && b.hp > 0 && b.built >= 1)) return 'needs';
+    if (cmd.kind === 'armory' && !g.tech) return 'blocked';
+    if (g.tech && tierOf(cmd.kind) > p.tier) return 'tier';
     const place = placementCheck(g, { kind: cmd.kind, x, z, team: p.team }, at => teamSees(g, p.team, at));
     if (!place.ok) return place.reason;
     const { c, node } = place;
@@ -3098,6 +3119,20 @@ export function command(g, slot, cmd, auto = false) {
       exitBuilding(g, u); Object.assign(u, { traffic: null, trafficWait: 0, moveOutcome: 'interrupted', moveOutcomeTick: g.tick, worldGoal: null, orders: [], entrench: null, face: null, build: b.id, attackId: 0, nade: null, dig: null, enter: -1, board: 0, amove: null, fireAt: -1, repath: 0, path: findPath(g, u, b) });
     }
     if (!assigned) return 'queueFull';
+  } else if (cmd.t === 'tech') {
+    // research the next HQ tier (at a finished HQ) or the next level of an Armory line (one at a time per Armory)
+    const p = g.players[slot], kind = cmd.kind;
+    if (!g.tech || (kind !== 'tier' && !Object.hasOwn(TECH.lines, kind))) return 'blocked';
+    if (g.mode?.suddenDeath) return 'suddenDeath';
+    const cost = techCost(p, kind, isConstructionMode(g));
+    if (!cost || p.lab.some(j => j.kind === kind)) return 'max';
+    if (kind !== 'tier' && p.armory[kind] >= p.tier) return 'tier'; // level 2 needs Company HQ, level 3 Battalion HQ
+    const labs = techLabs(g, slot, kind);
+    if (!labs) return 'needs';
+    if (kind !== 'tier' && p.lab.filter(j => j.kind !== 'tier').length >= labs) return 'queueFull';
+    if (p.mp < cost.mp || (cost.mun && !(p.mun >= cost.mun))) return p.mp < cost.mp ? 'mp' : 'mun';
+    p.mp -= cost.mp; if (cost.mun) p.mun -= cost.mun; tally(g, slot, 'mpSpent', cost.mp);
+    p.lab.push({ kind, prog: 0, time: cost.time });
   } else if (cmd.t === 'cancelProduction') {
     if (!isConstructionMode(g)) return 'needs';
     if (g.mode?.suddenDeath) return 'suddenDeath';
@@ -3146,6 +3181,7 @@ export function command(g, slot, cmd, auto = false) {
     const p = g.players[slot], def = UNITS[cmd.unit], classic = isConstructionMode(g);
     if (def.classic && !classic) return 'needs'; // Engineers exist only in Classic
     if (def.naval && !g.naval) return 'needs'; // boats only where the map has a sea for them
+    if (g.tech && tierOf(cmd.unit) > p.tier) return 'tier';
     const own = [...g.units.values()].filter(u => u.owner === slot);
     // Classic: training queues count toward the pop cap and the unit limit
     const queued = own.flatMap(b => b.queue ?? []);
@@ -3561,6 +3597,7 @@ function flightDamage(g, p, t, at, direction) {
   if (def.building) dmg = (w.veh >= 20 ? w.veh : w.inf * CFG.classic.smallArms) * (p.damageScale ?? 1) * p.energy;
   else if (def.structure) dmg *= CFG.assault.directMul * bunkerMul(g, t);
   else if (!inf) dmg *= armorMul(t, { x: at.x - direction.x, z: at.z - direction.z }) * bunkerMul(g, t);
+  if (g.tech) dmg *= techMul(g.players[p.owner], UNITS[p.source.type], g.players[t.owner], def);
   const before = t.hp;
   t.hp -= dmg;
   if (dmg > 0) { t.lastHit = p.owner; t.deathImpulse = { dir: Math.atan2(direction.z, direction.x), impulse: Math.max(0.25, Math.min(4, dmg / 100)) }; }
@@ -4035,6 +4072,7 @@ function intercepted(g, s, list) {
   return true;
 }
 
+const WEAPON_UNIT = new Map(Object.values(UNITS).filter(d => d.w).map(d => [d.w, d])); // whose weapon a blast came from (Armory)
 function hurt(g, t, src, fall, owner) {
   if (owner >= 0) t.lastHit = owner;
   const inf = UNITS[t.type].infantry;
@@ -4043,7 +4081,8 @@ function hurt(g, t, src, fall, owner) {
   // the bunker is built to take a bombardment: off-map strikes barely touch it, it has to be taken on the ground
   const shrug = (t.type === 'bunker' && SUPPORT_SRC.has(src) ? CFG.assault.supportMul : 1) * bunkerMul(g, t)
     * (t.type === 'bunker' && src === UNITS.howitzer.w && g.mode?.kind === 'annihilation' ? CFG.assault.howitzerMul : 1);
-  t.hp -= base * shrug * fall * (retreatProtected(t) ? CFG.retreatDamage : 1) * (t.garrison >= 0 ? src.antiGarrison ?? CFG.trenchBlastMul : inTrench(g, t) ? CFG.trenchBlastMul : 1) * (1 - CFG.vetArmor * vet(t));
+  t.hp -= base * shrug * fall * (retreatProtected(t) ? CFG.retreatDamage : 1) * (t.garrison >= 0 ? src.antiGarrison ?? CFG.trenchBlastMul : inTrench(g, t) ? CFG.trenchBlastMul : 1) * (1 - CFG.vetArmor * vet(t))
+    * (g.tech ? techMul(g.players[owner], WEAPON_UNIT.get(src), g.players[t.owner], UNITS[t.type]) : 1);
   if (inf) t.supp = Math.min(100, t.supp + src.supp * (1 - CFG.vetSupp * vet(t)));
   g.shots.push({ t: t.id, fo: owner, to: t.owner, x: t.x, z: t.z, k: 'hurt', kill: t.hp <= 0 });
 }
@@ -4499,6 +4538,7 @@ export function step(g) {
   if (g.winner === null && (g.tick === 1 || g.tick % SAMPLE_EVERY === 0)) sample(g, isStructure(g));
   stepWeather(g);
   if (g.tick % 4 === 1) updateVision(g);
+  if (g.tech) for (const p of g.players) if (p.lab.length && !p.out) stepLab(g, p, dt);
   // Recount paid segments so cancelled work and dead diggers no longer hold up a project.
   if (g.projects?.size) {
     for (const p of g.projects.values()) p.active = 0;
@@ -5311,6 +5351,7 @@ export function snapshotFor(g, slot, shots, cells = [], cache) {
   return {
     t: 's', tick: g.tick, logistics: logisticsSnapshot(g, slot),
     movement: [...g.units.values()].filter(u => u.owner === slot && u.moveOutcome).map(u => [u.id, u.moveOutcome, u.moveOutcomeTick ?? g.tick, ...(u.moveResult ?? [])]), winner: g.winner, end: g.winner === null ? undefined : { reason: g.endReason, x: g.endAt.x, z: g.endAt.z }, mp: Math.floor(p.mp), inc: r(p.inc), mun: p.mun === undefined ? undefined : Math.floor(p.mun), fuel: p.fuel === undefined ? undefined : Math.floor(p.fuel), fuelInc: p.fuelInc === undefined ? undefined : r(p.fuelInc),
+    tech: g.tech ? { tier: p.tier, armory: p.armory, lab: p.lab.map(j => [j.kind, r(j.prog / j.time)]) } : undefined,
     nodes: g.mode?.kind === 'world' ? worldNodesFor(g, slot) : cache ? cache.nodes : g.nodes?.map(n => [r(n.x), r(n.z), n.rate, n.fuel ? 1 : 0]), upkeep: p.upkeep === undefined ? undefined : r(p.upkeep), out: cache ? cache.out : g.players.map(q => !!q.out),
     // your own units' orders, for drawing when selected: [id, kind, target x, target z, ...remaining waypoints x, z]
     // your Production Buildings: [id, training progress 0-1, rally x, rally z (or -1), ...queued unit types]
