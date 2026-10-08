@@ -49,8 +49,8 @@ const slot = colorArg === null ? fac : /^\d$/.test(colorArg) && +colorArg < COLO
 const color = slot !== null ? COLORS[slot] : hex(colorArg) ?? COLORS[fac];
 const f = { ...FACTIONS[fac], color }; // main.js look(slot)
 const type = q.get('type') ?? 'medium';
-const posture = int(q.get('posture'), 0, 3, 0);
-const POSTURES = ['standing', 'crouched', 'prone', 'retreating'];
+const posture = int(q.get('posture'), 0, 4, 0);
+const POSTURES = ['standing', 'crouched', 'prone', 'retreating', 'digging'];
 const bg = hex(q.get('bg')) ?? HAZE;
 const aim = (Number(q.get('aim')) || 0) * Math.PI / 180;
 const farLod = q.get('far') === '1', showGrid = q.get('grid') !== '0', lineup = q.get('all') === '1', textures = q.get('tex') !== '0';
@@ -145,7 +145,7 @@ const nearEye = (v) => new THREE.Vector3(v.x, 30, v.z + 30);
 const farEye = (v) => new THREE.Vector3(v.x, 160, v.z + 160); // past LOD.high
 // the posture main.js gets from suppression and retreat; a long dt snaps the blend to it
 function pose(v) {
-  v.supp = [0, 50, 90, 0][posture]; v.flags = posture === 3 ? 1 : 0;
+  v.supp = [0, 50, 90, 0, 0][posture]; v.flags = posture === 3 ? 1 : posture === 4 ? 16 : 0;
   if (v.turret) { const a = -(v.aim - v.rot); v.turret.rotation.y = v.traverse ? Math.max(-v.traverse, Math.min(v.traverse, Math.atan2(Math.sin(a), Math.cos(a)))) : a; } // a casemate gun turns only so far
   animate(v, 10, farLod ? farEye(v) : nearEye(v));
 }

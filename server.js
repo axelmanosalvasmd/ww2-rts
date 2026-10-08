@@ -305,7 +305,7 @@ async function lobby(room) {
     listed: !!room.listed,
     hordeMaps: horde, hordeBest: room.mode === 'horde' ? recordOf(room) : null,
     t: 'lobby', code: room.code, state: room.state, you: i, host: hostOf(room), maps, mapName: room.mode === 'world' ? 'world' : room.mapName, spawns: seats(room), publicUrl: PUBLIC_URL,
-    mode: room.mode, worldSize: room.worldSize ?? 'huge', defenderTeam: room.defenderTeam, army: room.army ?? 'standard', weather: room.weather ?? 'map',
+    mode: room.mode, worldSize: room.worldSize ?? 'huge', defenderTeam: room.defenderTeam, army: room.army ?? 'standard', weather: room.weather ?? 'map', sandbox: !!room.sandbox,
     // a finished match's result carries this player's own outcome (you); a match the host ended has none
     result: room.result ? { ...room.result, you: room.result.story && i >= 0 ? p.lastMatch ?? null : null } : null,
     players: room.players.map(q => ({ name: q.name, connected: connected(q) || !!q.ai, ai: !!q.ai, team: q.team, faction: q.faction, level: q.ai ? q.level ?? 'normal' : null })),
@@ -338,7 +338,7 @@ async function startMatch(room) {
   }
   let game;
   try {
-    game = createGame(map, room.players.map(p => p.name), true, room.players.map(p => p.team), room.players.map(p => p.faction), { mode: room.mode, worldSize: room.worldSize ?? 'huge', defenderTeam: room.defenderTeam, army: room.army,
+    game = createGame(map, room.players.map(p => p.name), true, room.players.map(p => p.team), room.players.map(p => p.faction), { mode: room.mode, worldSize: room.worldSize ?? 'huge', defenderTeam: room.defenderTeam, army: room.army, sandbox: !!room.sandbox,
       weather: room.weather ?? 'map', mapKey: room.mapName, weatherSeed: Math.floor(Math.random() * 2 ** 31), logistics: room.logistics !== false && logisticsEnabledFor(room.mode, map), tech: room.tech !== false });
   } catch {
     Object.assign(room, previous);
@@ -378,7 +378,7 @@ function sendStart(room, i, watcher) {
   send(ws, { t: 'start', matchId: room.matchId, map: world ? worldMapFor(g, i) : mapForClient(room.map), you: i,
     spawn: room.game.players[i].spawn, spawns: players.map(p => !world || p.team === team ? p.spawn : null),
     cells: terrainFor(g, i, true), fog: watcher && !world ? undefined : fogFor(g, i, true),
-    names: players.map((p, k) => room.players[k]?.name ?? p.name), teams: players.map(p => p.team), factions: players.map(p => p.faction), weather: weatherRow(room.game) });
+    names: players.map((p, k) => room.players[k]?.name ?? p.name), teams: players.map(p => p.team), factions: players.map(p => p.faction), weather: weatherRow(room.game), sandbox: room.game.sandbox });
   if (room.pause) send(ws, pauseMessage(room));
 }
 
@@ -585,6 +585,8 @@ wss.on('connection', (ws, req) => {
       room.worldSize = msg.v ?? msg.size; lobby(room);
     } else if (msg.t === 'army' && host && room.state !== 'play' && ['standard', 'large', 'massive', 'endless'].includes(msg.v) && !(room.mode === 'horde' && msg.v === 'endless')) {
       room.army = msg.v; lobby(room);
+    } else if (msg.t === 'sandbox' && host && room.state !== 'play') {
+      room.sandbox = !!msg.v; lobby(room);
     } else if (msg.t === 'weather' && host && room.state !== 'play' && WEATHER_CHOICES.includes(msg.v)) {
       room.weather = msg.v; lobby(room);
     } else if (msg.t === 'defender' && host && room.state !== 'play' && Number.isInteger(msg.v) && msg.v >= 0 && msg.v < MAX_PLAYERS) {
@@ -659,7 +661,7 @@ function holdEnding(room) {
   }
   if (g.held < HOLD_TICKS) return true;
   room.players.forEach((p, i) => (p.lastMatch = { outcome: g.winner === -1 ? 'draw' : g.winner === g.players[i].team ? 'victory' : 'defeat', team: g.players[i].team }));
-  finishMatch(room, { winner: g.winner, teams: g.players.map(p => p.team), names: g.players.map((p, k) => room.players[k]?.name ?? p.name), ...storyResult(g), ...(g.mode?.kind === 'horde' && { horde: hordeResult(room, g) }) });
+  finishMatch(room, { winner: g.winner, teams: g.players.map(p => p.team), names: g.players.map((p, k) => room.players[k]?.name ?? p.name), ...storyResult(g), ...(g.mode?.kind === 'horde' && !g.sandbox && { horde: hordeResult(room, g) }) });
   return true;
 }
 

@@ -125,11 +125,17 @@ flat.push(flat[FIELD]);
 const DIRS = [[0, -1], [1, 0], [0, 1], [-1, 0]];
 // ploughed fields: some 10x8 blocks of open ground (from the map file, so they never move) get a crop field
 // fieldCells: per cell 0 (no field), 1 (a field) or 2 (a field ploughed at right angles); client/props.js grows crops on some
-export function fieldCells(map) { return fieldsOf(map).map(v => (v === FIELD ? 1 : v === FIELD_V ? 2 : 0)); }
-function fieldsOf(map) {
+function finishBatches(work) { let batch; do { batch = work.next(); } while (!batch.done); return batch.value; }
+export function fieldCells(map) { return finishBatches(fieldCellBatches(map)); }
+export function* fieldCellBatches(map) {
+  const fields = yield* fieldBatches(map);
+  return fields.map(v => (v === FIELD ? 1 : v === FIELD_V ? 2 : 0));
+}
+function fieldsOf(map) { return finishBatches(fieldBatches(map)); }
+function* fieldBatches(map) {
   const { w, h, rows } = map, f = new Uint8Array(w * h), BW = 10, BH = 8;
   const keep = [...(map.spawns || []).filter(Boolean).map(p => ({ ...p, r: 9 })), ...(map.points || []).map(p => ({ ...p, r: 5 }))]; // clear of HQ rings and points
-  for (let by = 0; by * BH < h; by++) for (let bx = 0; bx * BW < w; bx++) {
+  for (let by = 0; by * BH < h; by++) { yield; for (let bx = 0; bx * BW < w; bx++) {
     if (rnd(bx, by, 7) > 0.24) continue;
     const x0 = bx * BW + 1, y0 = by * BH + 1, x1 = Math.min(w - 1, bx * BW + BW - 1), y1 = Math.min(h - 1, by * BH + BH - 1);
     if (x1 - x0 < 4 || y1 - y0 < 3) continue;
@@ -139,19 +145,24 @@ function fieldsOf(map) {
     if (!ok) continue;
     const dir = rnd(bx, by, 8) < 0.5 ? FIELD : FIELD_V;
     for (let y = y0; y < y1; y++) for (let x = x0; x < x1; x++) f[y * w + x] = dir;
-  }
+  } }
   return f;
 }
 
 // S.state: per cell, what the server says besides the type (wear in quarters, burnt, damage stage); a map cell the
 // server has not mentioned is in its starting state
-function cellAttrs(S, grid) {
+function* cellIndices(n) { for (let i = 0; i < n; i++) yield i; }
+
+function cellAttrs(S, grid, changed = null) {
   const { w, h, map, fields } = S, rows = map.rows, n = w * h;
-  const prim = new Uint8Array(n), sec = new Uint8Array(n), amt = new Float32Array(n), lev = new Float32Array(n), ov = new Uint8Array(n), key = new Uint8Array(n);
-  const scar = new Uint8Array(n); // 0 none, 1 shell or burnt, 2 rubble. The base material stays ordinary ground.
+  const { prim, sec, amt, lev, ov, key, scar } = changed ? S.attrs : {
+    prim: new Uint8Array(n), sec: new Uint8Array(n), amt: new Float32Array(n), lev: new Float32Array(n),
+    ov: new Uint8Array(n), key: new Uint8Array(n), scar: new Uint8Array(n),
+  }; // scar: 0 none, 1 shell or burnt, 2 rubble. The base material stays ordinary ground.
   const at = (x, y) => grid[y]?.[x];
-  for (let y = 0; y < h; y++) for (let x = 0; x < w; x++) {
-    const i = y * w + x, object = grid[y][x], ch = object === 'N' ? S.objectGrid?.[y]?.[x] && S.objectGrid[y][x] !== '.' ? S.objectGrid[y][x] : S.groundGrid?.[y]?.[x] ?? '.' : object, L = levelOf(map.heights?.[y]?.[x] ?? '0');
+  for (const i of changed ?? cellIndices(n)) {
+    const x = i % w, y = Math.floor(i / w), object = grid[y][x], ch = object === 'N' ? S.objectGrid?.[y]?.[x] && S.objectGrid[y][x] !== '.' ? S.objectGrid[y][x] : S.groundGrid?.[y]?.[x] ?? '.' : object, L = levelOf(map.heights?.[y]?.[x] ?? '0');
+    ov[i] = scar[i] = 0;
     const st = S.state ? S.state[i] : startState(ch, i), worn = st & 3;
     lev[i] = L;
     let p = GRASS, s = DIRT, a = 0;
@@ -194,8 +205,14 @@ function cellAttrs(S, grid) {
   }
   // pixels this far from a scar run the blast-mark pass; everyone else stays on the fast material blend.
   // The mark itself can reach almost two cells past a scar, so the pass covers three.
-  const near = new Uint8Array(n);
-  for (let y = 0; y < h; y++) for (let x = 0; x < w; x++) {
+  const near = changed ? S.attrs.near : new Uint8Array(n);
+  if (changed) for (const i of changed) {
+    const x = i % w, y = Math.floor(i / w);
+    near[i] = 0;
+    for (let ny = Math.max(0, y - 3); ny <= Math.min(h - 1, y + 3) && !near[i]; ny++)
+      for (let nx = Math.max(0, x - 3); nx <= Math.min(w - 1, x + 3); nx++) if (scar[ny * w + nx]) { near[i] = 1; break; }
+  }
+  else for (let y = 0; y < h; y++) for (let x = 0; x < w; x++) {
     if (!scar[y * w + x]) continue;
     for (let dy = -3; dy <= 3; dy++) {
       const ny = y + dy;
@@ -208,9 +225,11 @@ function cellAttrs(S, grid) {
     }
   }
   // How many cells of scar sit between this cell and open ground. A lone hit is 1. The middle of a wide blast is more.
-  const depth = new Float32Array(n);
-  for (let y = 0; y < h; y++) for (let x = 0; x < w; x++) {
-    if (!scar[y * w + x]) continue;
+  const depth = changed ? S.attrs.depth : new Float32Array(n);
+  for (const i of changed ?? cellIndices(n)) {
+    const x = i % w, y = Math.floor(i / w);
+    depth[i] = 0;
+    if (!scar[i]) continue;
     let best = 8;
     for (let dy = -6; dy <= 6; dy++) {
       const ny = y + dy;
@@ -221,7 +240,7 @@ function cellAttrs(S, grid) {
         if (d < best) best = d;
       }
     }
-    depth[y * w + x] = best;
+    depth[i] = best;
   }
   return { prim, sec, amt, lev, ov, key, scar, near, depth };
 }
@@ -662,17 +681,30 @@ function queuePaint(S, dirty) {
 }
 
 // Repaint whatever changed since the last call (everything the first time).
-function paint(S, grid) {
+function paint(S, grid, cells) {
   const prev = S.attrs;
-  S.attrs = cellAttrs(S, grid);
+  let affected = null, before = null;
+  if (prev && cells) {
+    affected = new Set(); before = new Map();
+    // Material neighbors extend one cell; scar depth looks six cells beyond them.
+    for (const entry of cells) {
+      const c = typeof entry === 'number' ? entry : entry[0], x = c % S.w, y = Math.floor(c / S.w);
+      for (let ny = Math.max(0, y - 7); ny <= Math.min(S.h - 1, y + 7); ny++)
+        for (let nx = Math.max(0, x - 7); nx <= Math.min(S.w - 1, x + 7); nx++) affected.add(ny * S.w + nx);
+    }
+    for (const i of affected) before.set(i, [prev.prim[i], prev.sec[i], prev.amt[i], prev.lev[i], prev.ov[i], prev.scar[i], prev.near[i], prev.depth[i]]);
+  }
+  S.attrs = cellAttrs(S, grid, affected);
   S.sampleScar = createScarSampler(S.attrs.scar, S.attrs.depth, S.w, S.h, S.scarNoise ??= createCellNoise());
   S.version = (S.version ?? 0) + 1;
   const want = ready ? 'textured' : 'flat';
   if (!prev || S.painted !== want) return fullPaint(S);
   const { w, h } = S, n = w * h, tw = Math.ceil(w / TILE), dirty = new Set(), R = 3;
   const A = S.attrs;
-  for (let i = 0; i < n; i++) {
-    if (A.prim[i] === prev.prim[i] && A.sec[i] === prev.sec[i] && A.amt[i] === prev.amt[i] && A.lev[i] === prev.lev[i] && A.ov[i] === prev.ov[i] && A.scar[i] === prev.scar[i] && A.near[i] === prev.near[i]) continue;
+  for (const i of affected ?? cellIndices(n)) {
+    const old = before?.get(i);
+    if (old ? A.prim[i] === old[0] && A.sec[i] === old[1] && A.amt[i] === old[2] && A.lev[i] === old[3] && A.ov[i] === old[4] && A.scar[i] === old[5] && A.near[i] === old[6] && A.depth[i] === old[7]
+      : A.prim[i] === prev.prim[i] && A.sec[i] === prev.sec[i] && A.amt[i] === prev.amt[i] && A.lev[i] === prev.lev[i] && A.ov[i] === prev.ov[i] && A.scar[i] === prev.scar[i] && A.near[i] === prev.near[i] && A.depth[i] === prev.depth[i]) continue;
     const x = i % w, y = (i / w) | 0;
     for (let ty = Math.max(0, y - R) / TILE | 0; ty <= (Math.min(h - 1, y + R) / TILE | 0); ty++)
       for (let tx = Math.max(0, x - R) / TILE | 0; tx <= (Math.min(w - 1, x + R) / TILE | 0); tx++) dirty.add(ty * tw + tx);
@@ -715,7 +747,7 @@ export function createGround(map, renderer, { frames = null, budgetMs = 8, tiles
   S.map = map; S.renderer = renderer; S.fields = fieldsOf(map);
   S.repaint = () => fullPaint(S);
   if (typeof window !== 'undefined') window.__ground = S; // debug handle, like window.__game
-  return { canvas: S.canvas, ctx: S.ctx, tex: S.tex, px: P, material: S.material, paint: (grid, state, groundGrid, objectGrid) => { S.state = state; S.groundGrid = groundGrid; S.objectGrid = objectGrid; paint(S, grid); },
+  return { canvas: S.canvas, ctx: S.ctx, tex: S.tex, px: P, material: S.material, paint: (grid, state, groundGrid, objectGrid, cells) => { S.state = state; S.groundGrid = groundGrid; S.objectGrid = objectGrid; paint(S, grid, cells); },
     isRoad: (x, y) => x >= 0 && y >= 0 && x < S.w && y < S.h && S.attrs?.prim[y * S.w + x] === ROAD, loading,
     cells: () => S.attrs, version: () => S.version ?? 0, dispose: () => { if (S.owner === owner) { cancelPaint(S); S.attrs = null; } } };
 }

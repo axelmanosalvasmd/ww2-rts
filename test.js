@@ -6,6 +6,7 @@ const shardedExit = await runShards(import.meta.filename, ['test-performance.mjs
 if (shardedExit !== null) process.exit(shardedExit);
 await check('test-horde-navigation.mjs', () => import('./test-horde-navigation.mjs'));
 await check('test-cliff-relief.mjs', () => import('./test-cliff-relief.mjs'));
+await check('test-bridge-groups.mjs', () => import('./test-bridge-groups.mjs'));
 import assert from 'node:assert/strict';
 import { createHash } from 'node:crypto';
 import { readFileSync, readdirSync, writeFileSync } from 'node:fs';
@@ -7118,6 +7119,11 @@ await check("Horde", async () => {
     assert.ok(cost(w1) <= H.budget * 2 && cost(w1) > H.budget * 2 - 100 && w1.every(t => t === 'rifle' || t === 'conscript'), 'wave 1 spends its budget on rifles and conscripts');
     assert.ok(cost(w9) <= budget9 && cost(w9) > budget9 - 100 && !w9.includes('tiger') && !w9.includes('sniper'), 'wave 9 scales with defenders and army size and holds no Tiger or sniper');
   }
+  // late waves: the newer units join, the mix leans on dear units, and every unit walks on veteran
+  const w18 = sim.hordeWave(18, 4, 3), avg = (list) => cost(list) / list.length;
+  for (const t of ['medic', 'howitzer', 'sniper', 'churchill']) assert.ok(w18.includes(t), `wave 18 fields ${t}`);
+  assert.ok(avg(w18) > avg(sim.hordeWave(9, 4, 3)) * 1.3, 'late waves lean on dearer units');
+  assert.deepEqual([1, 9, 10, 14, 18, 40].map(sim.hordeStars), [0, 0, 1, 2, 3, 3], 'horde veterancy grows from wave 10 to 3 stars at 18');
   // the horde's AI neither shops nor retreats
   const count = g.units.size; g.players[2].mp = 5000;
   const hurtOne = horde()[0]; hurtOne.hp = 1;
@@ -7227,6 +7233,23 @@ await check("One Kaiju breath damages each trench cell once despite overlapping 
   massiveInternals.breathe(g, k, target);
   assert.equal(g.chars[c], 'T', 'one breath does not collapse a pristine 400 HP trench');
   assert.ok(g.wear[c] > 0 && g.wear[c] <= UNITS.kaiju.w.terrain / CFG.trench.hp, 'overlapping samples damage each trench cell only once');
+});
+
+// Sandbox: spawn any unit for either side; refused outside a sandbox match and for buildings
+await check("Sandbox spawns any unit for either side", async () => {
+  const map = { name: 'Sandbox fixture', w: 60, h: 60, rows: Array(60).fill('.'.repeat(60)), spawns: [{ x: 30, y: 5 }, { x: 10, y: 54 }, { x: 50, y: 54 }], defend: [0], points: [{ x: 30, y: 30 }] };
+  const plain = createGame(map, ['a', 'b'], false, [0, 1], [0, 1], { mode: 'horde' });
+  assert.equal(command(plain, 0, { t: 'spawn', unit: 'kaiju', enemy: true, x: 60, z: 60 }), 'blocked', 'no spawning outside a sandbox match');
+  const g = createGame(map, ['a', 'b'], false, [0, 1], [0, 1], { mode: 'horde', sandbox: true }), m = g.mode, n = g.units.size;
+  assert.equal(command(g, 0, { t: 'spawn', unit: 'bunker', x: 60, z: 60 }), 'blocked', 'no spawning structures');
+  command(g, 0, { t: 'spawn', unit: 'kaiju', enemy: true, x: 60, z: 60 });
+  command(g, 1, { t: 'spawn', unit: 'tiger', x: 40, z: 40 });
+  const k = [...g.units.values()].find(u => u.type === 'kaiju'), t = [...g.units.values()].find(u => u.type === 'tiger');
+  assert.ok(g.units.size === n + 2 && k.owner === m.slot && t.owner === 1, 'spawns go to the Horde (enemy) or the player');
+  assert.ok(Math.hypot(k.x - 60, k.z - 60) < 4 && k.amove && m.active, 'an enemy spawn stands where clicked, attack-moves on the bunker and counts as a Wave');
+  step(g);
+  const bar = snapshotFor(g, 0, []).mode.boss;
+  assert.ok(bar[1] === UNITS.kaiju.hpPer && bar[0] > 0, 'a spawned Kaiju gets the boss bar');
 });
 
 // Horde start and restart refuse a freshly edited map without defender spawns.

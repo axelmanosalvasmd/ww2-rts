@@ -850,6 +850,7 @@ function buildSkirmishBase(view, slot, squads, submit) {
   if (!u || working) return next ? UNITS[next].cost : 0;
   const fix = own.filter(b => b.built < 1 || b.hp < UNITS[b.type].hpPer * .8).sort((a,b) => (a.built < 1 ? 0 : 1)-(b.built < 1 ? 0 : 1) || d(u,a)-d(u,b))[0];
   if (fix) { submit({ t:'assist', ids:[u.id], id:fix.id }); return next ? UNITS[next].cost : 0; }
+  if (forwardHQ(view, slot, own, squads, submit)) return 0;
   if (!next || me.mp < UNITS[next].cost) return next ? UNITS[next].cost : 0;
   const home = own.find(b => b.type === 'hq') ?? me.spawn;
   // Try visible nearby sites, including a coast for naval production. Never inspect hidden ground.
@@ -938,6 +939,31 @@ function research(view, slot, classic, submit) {
   if (!cost) return 0;
   if (me.mp >= cost.mp && !(cost.mun > (me.mun ?? 0)) && submit({ t: 'tech', kind }) === undefined) return 0;
   return kind === 'tier' ? cost.mp : 0; // the Armory only gets spare MP
+}
+
+// A forward HQ, the way players push: once the army stands far from every HQ of ours, put one up behind it, so hurt
+// squads retreat and refill there instead of walking home. Not for an Assault defender (home is the front) or the horde.
+const FORWARD = { far: 70, back: 20, clear: 30, max: 3 };
+function forwardHQ(view, slot, own, squads, submit) {
+  const me = view.players[slot], m = view.mode;
+  if ((m?.kind === 'assault' && me.team === m.defenderTeam) || (m?.kind === 'horde' && slot === m.slot)) return false;
+  const hqs = own.filter(b => b.type === 'hq');
+  if (!hqs.length || hqs.length >= FORWARD.max || hqs.some(b => b.built < 1) || me.mp < UNITS.hq.cost) return false;
+  const army = squads.filter(u => !u.air && !UNITS[u.type].structure && !u.retreating);
+  if (army.length < 3) return false;
+  const front = { x: army.reduce((a, u) => a + u.x, 0) / army.length, z: army.reduce((a, u) => a + u.z, 0) / army.length };
+  const near = hqs.sort((a, b) => d(a, front) - d(b, front))[0], far = d(near, front);
+  if (far < FORWARD.far) return false;
+  const k = FORWARD.back / far, aim = { x: front.x + (near.x - front.x) * k, z: front.z + (near.z - front.z) * k };
+  const enemyNear = (p) => [...view.units.values()].some(e => e.hp > 0 && !allied(view, e.owner, slot) && me.visible.has(e.id) && d(e, p) < FORWARD.clear);
+  const crew = squads.filter(u => CFG.fortBuilders.includes(u.type) && !u.retreating && !u.build && !u.targetId && !u.dig && !u.entrench && u.garrison < 0);
+  for (const r of [0, 8, 16]) for (let i = 0; i < (r ? 8 : 1); i++) {
+    const at = siteNear(view, aim.x + Math.cos(i * Math.PI / 4) * r, aim.z + Math.sin(i * Math.PI / 4) * r, UNITS.hq.size);
+    if (!at || enemyNear(at) || !placementCheck(view, { kind: 'hq', ...at, team: me.team }, p => view.sees(p)).ok) continue;
+    const u = crew.sort((a, b) => d(a, at) - d(b, at))[0];
+    return !!u && submit({ t: 'build', ids: [u.id], kind: 'hq', ...at }) === undefined;
+  }
+  return false;
 }
 
 // a Fuel node (tanks) is worth about as much to the AI as a 2.5 MP/s node

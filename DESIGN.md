@@ -241,6 +241,26 @@ with infantry. Any reachable region can be claimed. Teams own land together, sha
 benefits, and retain separate units, resources and queues. Construction uses the normal costs and prerequisites
 and must fit on owned ground. A paid recovery action preserves a route back to production while land survives.
 
+Building previews resolve ownership from the discovered region runs sent in snapshots, using the same membership
+helper as the territory display. Every footprint cell must be currently visible and owned by the player's team.
+The server continues to validate against its complete region membership map; undiscovered geometry stays private.
+
+Discovery ground painting reuses material buffers and recomputes only changed cells plus a seven-cell neighborhood,
+covering adjacent terrain blending and scar depth. Scenery candidates retain their seeded order and caps, but
+World Conquest prepares them between rows with a 3 ms frame budget. Preparation uses a copy of discovered rows
+and membership; reveals arriving during preparation request a follow-up pass. Instance placement also yields
+between batches, while the existing scenery stays visible until the replacement is ready. Late terrain and node
+changes receive a final local refresh before publication. Instance storage skips unused identity matrices,
+and unchanged resource-node positions do not refresh scenery. Finished props use live terrain and known resource
+nodes. Terrain geometry and structures still use their existing update paths.
+
+Browser discovery fixture (Edge, 160 newly revealed cells): ground attribute processing fell from about 60 ms
+on Huge and 230 ms on Massive to about 3 ms. With 75% of a flat Massive map explored (76,179 scenery props),
+replacement setup takes about 4 ms and placement runs in roughly 3 ms slices, versus a 163 ms synchronous rebuild.
+Queued ground uploads match full rebuild pixels exactly. Terrain geometry still takes about 13 ms on Huge
+and 23 ms on Massive in that fixture; spreading those mesh updates remains for later. These are isolated CPU
+measurements, not an in-match frame-rate guarantee. Gameplay costs and balance are unchanged.
+
 Terrain, regions, resources and enemy homes are unknown until scouted. Explored ground is remembered; current
 enemy activity needs current shared vision. Starts, reconnects, AI observations and spectators receive filtered
 world information. The server keeps the generation seed and full map private during the match.
@@ -540,6 +560,16 @@ every look. The horde wave is unchanged: it still attack-moves the bunker and st
   some under 500 hp); a 40 min clock gave 2/21, not worth the length.
   Baseline on the same code: Hill 112 4/14, The Great Bridge 2/14, Seawall 1/14. The AI attacker has weakened since
   the numbers above were measured; fix that before tuning these two maps further.
+- Forward HQs for the AI (2026-10-07, `forwardHQ` in shared/ai.js, `FORWARD`): retreat and refills go to the nearest
+  own HQ, and the AI only ever built one at its spawn, so on long assault maps every hurt squad walked all the way
+  back. Now a builder puts up another HQ 20 m behind the army once the army's middle is 70+ m from every own HQ
+  (no visible enemy within 30 m, at most 3, not for an Assault defender or the horde). AI 1v1 Assault attacker wins
+  over 20, same seeds, before / after: Hill 112 5 / 10, El Alamein 0 / 2, Seelow 1 / 4. Conquest default: 12/20,
+  7.2 min, both before and after. Attackers average 2.1-2.5 HQs a match. El Alamein attackers still lose about 38
+  units a match, most of them in the minefields.
+- Retreat strength check (2026-10-07, AI 1v1, 20 each, default Conquest / Hill 112 Assault): current (25% damage while
+  retreating, auto at 35%) 4.7 units lost a match, attacker 5/20; 50% damage 6.7, 8/20; auto-retreat off 7.7, 5/20.
+  Retreat saves squads but doesn't decide matches; kept.
 - Assault-only spawns (`"assault": true` on a spawn): for maps whose defenders start inside a fortress in the middle
   (Stalingrad Factory). Other modes skip them, so nobody starts surrounded; the lobby seats players per mode.
 - The map editor previews each mode by running createGame for it and drawing the result (cells, bunkers, nodes, which
@@ -601,9 +631,15 @@ the result is the Wave the bunker fell on. Terms are in CONTEXT.md, knobs in `CF
   host can send the next Wave early (`{t:'nextwave'}`, host only, handled by the server). With 3 or fewer left they
   are revealed through the fog until they die.
 - Escalation: a Wave is an MP budget, 300 x 1.25^(wave - 1) x defenders x the army size's income factor, spent at
-  random by weight on the normal roster at normal prices (`hordeWave`). No stat buffs. Unlocks: rifles and
-  conscripts from 1, MG and mortar at 3, armored car, light tank and AT gun at 5, medium tank and rockets at 8, Tiger
-  at 12 (the Horde ignores factions and the Tiger's limit of one). Never snipers.
+  random by weight on the normal roster at normal prices (`hordeWave`). Unlocks: rifles and conscripts from 1, MG
+  and mortar at 3, medic at 4, armored car, light tank and AT gun at 5, flamer and halftrack at 6, medium tank, tank
+  destroyer and rockets at 8, Rangers at 9, sniper and howitzer at 10, Commandos at 11, Tiger at 12, Churchill at 14
+  (the Horde ignores factions and the Tiger's limit of one).
+- Late Waves (2026-10-07, `CFG.horde.heavyWave`, `vetWave`, `vetEvery`, `hordeStars`): the field cap means a bigger
+  budget alone only makes a longer Wave, so late Waves get better instead. From Wave 12 each unit's weight is
+  multiplied by (cost / 200)^((wave - 12) / 6), so the mix leans on dear units. From Wave 10 every Horde unit walks
+  on with a veterancy star, one more every 4 Waves (3 at most, from Wave 18). Not yet re-measured with
+  `tools/horde.mjs`; the survival numbers in the balance log predate it.
 - Big Waves: the Horde fields at most 60 units per defender (240 in all); the rest waits in the Reserve and enters as
   units die. Buy at most 32 reserve units per tick and buffer at most 240; keep the remaining MP budget as a number.
   Purchases keep the normal affordability and random weights. Budgets above `Number.MAX_SAFE_INTEGER` are capped
@@ -653,6 +689,10 @@ the result is the Wave the bunker fell on. Terms are in CONTEXT.md, knobs in `CF
   Balance survival runs need refreshing after correcting projectile scaling and overlapping terrain hits.
   Deferred: tank traps and rubble still stop it; more bosses (an ape that throws tanks, an angel with a shield only
   heavy guns get through).
+- Sandbox (2026-10-02): a lobby switch (`room.sandbox`, `opts.sandbox`, `g.sandbox`) for testing. The `spawn`
+  command (`sandboxSpawn`) puts any non-structure unit at a spot for the sender or, with `enemy`, for the Horde (or
+  the first player on another team outside Horde). An enemy spawn in Horde attack-moves on the bunker and makes the
+  Wave active, so the boss bar and "wave dead" work as usual. Horde records skip sandbox runs.
 - Deferred: difficulty levels, a hand-built horde map, paid repair, a Horde that takes points.
 
 ## Command & readability (slice after destruction)
@@ -1550,6 +1590,20 @@ walking on and not fighting: Stalingrad Factory 91% to 1%, Bastogne 24% to 1%, H
 ghost 27 to 29%, without the slide 5 to 8%. Holding units at a full gate, stopping only the hull that drives into
 another (instead of both) and shorter back-up moves made no difference and were dropped. All ghosting (spawn, traffic,
 bodies) is between allies (`allied`, your own units included), never enemies.
+
+Bridge group recovery (2026-10-05): same-direction infantry on or beside a bridge or ford keep lateral soft
+separation without letting it undo their attempted forward steps. Infantry within 1 m of an intermediate
+waypoint may continue to the next one only when its complete segment clears remembered terrain and wire.
+Required terrain corners and the exact final destination remain. Infantry progress is measured after separation,
+since a crowd can cancel a squad's attempted step or push it beyond a retained waypoint. After 0.75 seconds
+without useful progress, refresh its route from its actual position using the existing one-second retry limit,
+remembered terrain, and the per-tick search budget and FIFO. Failed recovery keeps the current order.
+Deliberate traffic waiting and yielding retain their maneuvers. A manual move awaiting a route retry
+does not run idle spacing or cover reactions, which could otherwise overwrite its accepted destination and
+complete the order on the starting bank. Regression groups contain 18 rifles, support guns, MGs, mortars and
+medics crossing 2, 4 and 6 m decks. All widths cover shared pace, queued moves, attack-move, the opposite
+direction and temporarily deferred searches. Units retain their movement speeds, open-ground spacing,
+protected positions and terrain collision rules. No balance numbers changed.
 
 Movement lab fixes (2026-10-04): braking reserves a discrete tick of stopping distance, and acceleration from rest
 uses the forward or reverse profile instead of the braking rate. An exact vehicle destination must have the same

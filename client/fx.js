@@ -920,6 +920,16 @@ export function createEffects({ scene, camera, cam, hAt, units, airAlt = 20, map
       emit(FX.roadDust, x, hAt(x, z) + 0.3, z, rr(-0.3, 0.3), rr(0.3, 0.8), rr(-0.3, 0.3), rr(0.7, 1.2), rr(1.4, 2.4));
     }
   }
+  // squads at work: diggers (flag 16) toss up clods of earth, builders (flag 128) raise a little dust
+  function workDirt(rows, seen) {
+    for (const r of rows ?? []) {
+      const dig = r[12] & 16;
+      if (!(dig || r[12] & 128) || !seen.has(r[0]) || rand() > (low() ? 0.2 : 0.45)) continue;
+      const x = r[3] + rr(-1.2, 1.2), z = r[4] + rr(-1.2, 1.2), gy = hAt(x, z);
+      if (dig) for (let i = 0; i < (low() ? 1 : 3); i++) emit(FX.clod, x, gy + 0.3, z, rr(-1.2, 1.2), rr(2.5, 4), rr(-1.2, 1.2), rr(0.03, 0.06), rr(0.5, 0.8));
+      emit(dig ? FX.kick : FX.dust, x, gy - 0.05, z, rr(-0.2, 0.2), rr(0.1, 0.4), rr(-0.2, 0.2), rr(0.3, 0.5), rr(0.6, 1));
+    }
+  }
   function updateClouds(dt) {
     const lo = low();
     for (const c of clouds.values()) {
@@ -1107,6 +1117,7 @@ export function createEffects({ scene, camera, cam, hAt, units, airAlt = 20, map
     syncFires(s.fires ?? []); // before the clouds: a new cloud over a new fire is its smoke
     syncClouds(s.smokes ?? []);
     dustTrails(s.units, seen);
+    workDirt(s.units, seen);
   }
 
   function salvo(sh, from) {

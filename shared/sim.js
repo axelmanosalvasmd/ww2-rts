@@ -6,7 +6,7 @@ import { gridFor, rebuildGrid, updateGrid, SpatialGrid, setHeavy } from './grid.
 import { planWeather, stepWeather, sightMul, weatherSpeed, weatherRow } from './weather.js';
 import { normalizeFace, slotSize, facingSpots } from './formation.js';
 import { menAt, menDrawn } from './squad-men.js';
-import { knownTerritoryRuns } from './world-territories.js';
+import { knownTerritoryRuns, insideKnownRegion } from './world-territories.js';
 import { generateWorldMap, WORLD_TUNING } from './world-conquest.js';
 import { validateScenario, setupScenario, stepScenario, scenarioFor, scenarioShotFor } from './scenarios.js';
 import { worldLayers, validateWorldLayers, composeWorldCell, defaultMaterial, MATERIALS, BASE_SURFACES } from './world-layers.js';
@@ -36,10 +36,14 @@ export const CFG = {
   // x defending players x the army size's income. field: the most horde units on the map per defender (fieldMax in
   // all); the rest of the wave waits in reserve. heal: bunker hp share restored per cleared wave. reveal: with this few
   // horde units left they show through the fog. support: MP of off-map support per wave from supportWave; planes from
-  // airWave. boss: every this many waves a Kaiju per ten waves joins the wave.
-  // unlock: [unit, first wave, weight in the mix]
+  // airWave. boss: every this many waves a Kaiju per ten waves walks on with the wave (see UNITS.kaiju).
+  // unlock: [unit, first wave, weight in the mix]. The field cap means a bigger budget alone only makes a longer
+  // wave, so late waves get better instead: from heavyWave the mix leans on dear units (weight x (cost/200)^((n-heavyWave)/6)),
+  // and from vetWave every horde unit walks on with a veterancy star, one more each vetEvery waves (3 at most)
   horde: { boss: 10, budget: 300, growth: 1.25, field: 60, fieldMax: 240, break: 45, heal: 0.1, reveal: 3, supportWave: 6, support: 150, airWave: 10,
-    unlock: [['rifle', 1, 4], ['conscript', 1, 4], ['mg', 3, 2], ['mortar', 3, 1], ['armoredcar', 5, 1], ['tank', 5, 2], ['at', 5, 1], ['flamer', 6, 1], ['medium', 8, 2], ['tankdestroyer', 8, 1], ['rocket', 8, 1], ['tiger', 12, 1]] },
+    heavyWave: 12, vetWave: 10, vetEvery: 4,
+    unlock: [['rifle', 1, 4], ['conscript', 1, 4], ['mg', 3, 2], ['mortar', 3, 1], ['medic', 4, 1], ['armoredcar', 5, 1], ['tank', 5, 2], ['at', 5, 1], ['flamer', 6, 1], ['halftrack', 6, 1],
+      ['medium', 8, 2], ['tankdestroyer', 8, 1], ['rocket', 8, 1], ['ranger', 9, 1], ['sniper', 10, 1], ['howitzer', 10, 1], ['commando', 11, 1], ['tiger', 12, 1], ['churchill', 14, 1]] },
   // flat income does most of the work; points add a little and trailing players catch up
   mpBase: 4, catchupMax: 6, catchupPer: 60,
   captureTime: 8, pointRadius: 8, popCap: 12,
@@ -711,6 +715,7 @@ export function createGame(map, names, shuffle = true, teams = names.map((_, i) 
   g.aid = new Map(); // Field Hospital cell -> the slot that put it up
   // supply lines (not in Horde, whose waves would cut every point): opts.supply === false turns them off
   g.supply = opts.supply !== false && !horde && !tutorial && opts.mode !== 'world';
+  g.sandbox = !!opts.sandbox; // a test match: any player may spawn any unit for either side (the 'spawn' command)
   g.house = houseKinds(g.ground.map((_, c) => physicalWorldCell(g, c)), map.w, map.buildings);
   // stone bridges: every cell of the span the entry sits on takes CFG.stoneBridge times the hits
   for (const b of map.buildings ?? []) {
@@ -845,9 +850,10 @@ export function hordeProfile(n, budget, seed = 1, history = [], requested = null
   const recent = history.slice(-2), can = eligible.filter(key => !(recent.length === 2 && recent.every(p => p === key)));
   return can[Math.floor(hordeRandom({ seed }) * can.length)] ?? 'mixed';
 }
-function hordePool(n, profile) {
-  return CFG.horde.unlock.filter(([, from]) => n >= from).map(([t, from, weight]) => [t, from,
-    weight * (HORDE_PROFILES[profile].types.includes(t) ? 5 : 1)]);
+export function hordePool(n, profile = 'mixed') {
+  const H = CFG.horde, lean = Math.max(0, n - H.heavyWave) / 6;
+  return H.unlock.filter(([, from]) => n >= from).map(([t, from, weight]) => [t, from,
+    weight * (UNITS[t].cost / 200) ** lean * (HORDE_PROFILES[profile].types.includes(t) ? 5 : 1)]);
 }
 function hordePick(pool, left, random = Math.random) {
   const can = pool.filter(([t]) => UNITS[t].cost <= left), total = can.reduce((a, c) => a + c[2], 0);
@@ -855,6 +861,8 @@ function hordePick(pool, left, random = Math.random) {
   let r = random() * total;
   return (can.find(c => (r -= c[2]) < 0) ?? can[0])[0];
 }
+// veterancy stars a wave-n horde unit walks on with
+export const hordeStars = (n) => (n < CFG.horde.vetWave ? 0 : Math.min(3, 1 + Math.floor((n - CFG.horde.vetWave) / CFG.horde.vetEvery)));
 function profilePurchase(pool, state, profile, random) {
   const definition = HORDE_PROFILES[profile], defining = pool.filter(([t]) => definition.types.includes(t));
   const want = state.profileSpent < state.totalBudget * definition.share;
@@ -903,7 +911,7 @@ function stepHorde(g, dt) {
     }
     if (m.wave >= H.airWave) for (let i = 0, n = Math.min(8, (1 + Math.floor((m.wave - H.airWave) / 3)) * Math.ceil(m.defenders / 2)); i < n; i++) spawnUnit(g, m.slot, i % 3 === 2 ? 'fighter' : 'attacker');
   }
-  const pool = hordePool(m.wave, m.profile);
+  const pool = hordePool(m.wave, m.profile), stars = hordeStars(m.wave);
   // Buy at most 32 units per tick into a fixed buffer; the rest of the wave remains a budget.
   for (let i = 0; i < 32 && m.budget > 0 && m.reserve.length < H.fieldMax; i++) {
     const type = profilePurchase(pool, m, m.profile, () => hordeRandom(m.purchaseRandom));
@@ -920,6 +928,7 @@ function stepHorde(g, dt) {
   if (g.tick % 10 === 0) for (const gate of m.gates) {
     if (!m.reserve.length || field >= Math.min(H.fieldMax, H.field * m.defenders)) break;
     const u = spawnUnit(g, m.slot, m.reserve.pop());
+    if (stars) u.xp = CFG.vetXp[stars - 1] * UNITS[u.type].cost;
     stepOut(g, u, gate, 3, Math.atan2(bunker.z - gate.z, bunker.x - gate.x), gate); field++;
     command(g, m.slot, { t: 'amove', orders: [[u.id, bunker.x, bunker.z]] });
   }
@@ -1090,7 +1099,7 @@ function worldRegionAt(g, at) {
     const x=Math.floor(at.x/CELL), y=Math.floor(at.z/CELL);
     return x>=0&&y>=0&&x<g.w&&y<g.h ? g.world.regions[g.world.regionMap[y*g.w+x]] ?? null : null;
   }
-  if (!g.world.regionCells) return g.world.regions.find(r => r.bounds && at.x >= r.bounds[0] && at.z >= r.bounds[1] && at.x < r.bounds[2] && at.z < r.bounds[3]) ?? null;
+  if (!g.world.regionCells) return g.world.regions.find(r => insideKnownRegion(r, at, CELL)) ?? null;
   const span = g.world.regionCells * CELL, cols = g.w / g.world.regionCells;
   const x = Math.floor(at.x / span), y = Math.floor(at.z / span);
   return x >= 0 && y >= 0 && x < cols && y < g.h / g.world.regionCells ? g.world.regions[y * cols + x] : null;
@@ -2865,11 +2874,16 @@ export function findPath(g, from, to) {
   return out;
 }
 
+// seconds a squad takes per cell of its dig, and how far along the whole dig it is (0..1, sent to the client's bar)
+const digSpan = (u) => (FORTS[u.dig.kind]?.time ?? CFG.digTime) * (u.type === 'engineer' ? 0.5 : 1);
+const digProgress = (u) => (u.dig.n ? Math.min(1, (u.dig.n - u.dig.cells.length + u.dig.t / digSpan(u)) / u.dig.n) : 0);
 // where a squad walks to for its dig: the spot itself, or for a bridge a point on its own bank just inside reach
 // (the middle of the river has no nearest bank, and the far one cannot be walked to)
 const digGoal = (u) => (!u.dig.reach ? u.dig : (u.dig.from ??= (() => { const k = (u.dig.reach - 2) / (dist(u, u.dig) || 1); return { x: u.dig.x + (u.x - u.dig.x) * k, z: u.dig.z + (u.z - u.dig.z) * k }; })()));
 function currentPathGoal(g, u, kind) {
   if (u.hp <= 0) return null;
+  if (kind === 'recovery') return u.path.length && u.stuck > 0.75 && !u.traffic
+    ? u.worldGoal ?? u.amove ?? u.path.at(-1) : null;
   if (kind === 'world') return u.worldGoal && !u.path.length && dist(u,u.worldGoal) > 0.25 ? u.worldGoal : null;
   if (u.retreating) return null;
   const def = UNITS[u.type];
@@ -2896,7 +2910,9 @@ const pathGoalKey = (kind, to) => `${kind}:${to.x}:${to.z}`;
 function performStepPath(g, u, to, kind, work) {
   const key = pathGoalKey(kind, to), previous = pathFailures.get(u), stats = pathStatsFor(g), failures = stats.failed;
   work.used++;
-  u.path = findPath(g, u, to); u.repath = 1;
+  const route = findPath(g, u, to); u.repath = 1;
+  if (kind === 'recovery') { if (route.length) u.path = route; return; }
+  u.path = route;
   if (stats.failed === failures) return;
   const version = g.mode?.kind === 'world' ? worldTerrainMemory(g, g.players[u.owner].team).version : observedPathView(g, u.owner).navigationKnowledgeVersion;
   const count = previous?.key === key && previous.version === version ? previous.count + 1 : 1;
@@ -3090,6 +3106,7 @@ export function command(g, slot, cmd, auto = false) {
   for(const id of controlledIds) {const u=g.units.get(id);if(u?.owner===slot&&u.logistics?.forced) {if(cmd.t==='stop')u.supplyHold=true;else if(['move','retreat'].includes(cmd.t))u.supplyHold=false;} }
   if (cmd.t === 'recover' && g.mode?.kind === 'world') return recoverWorld(g, slot);
   if (cmd.t === 'orders' && Array.isArray(cmd.commands)) return dispatchOrderGroups(g, slot, cmd);
+  if (cmd.t === 'spawn') return sandboxSpawn(g, slot, cmd);
   // a squad riding in a carrier takes no orders: its carrier does (unload)
   const mine = (id) => { const u = g.units.get(id); if (!(u && u.owner === slot && !u.operative && !UNITS[u.type].structure && !u.riding && (!u.logistics?.forced || ['move', 'stop', 'retreat', 'holdFire', 'holdPos', 'autoRetreat'].includes(cmd.t) || u.logistics.stranded && ['attack', 'ability'].includes(cmd.t)))) return null; u.follow = 0; return u; }; // an order takes a squad back from the operative leading it
   const limit = Math.max(50, g.units.size), ids = Array.isArray(cmd.ids) ? cmd.ids.slice(0, limit) : [];
@@ -3727,6 +3744,8 @@ function turnHull(g, u, to, dt) {
 function react(g, u, def) {
   const B = CFG.behavior;
   if (u.holdPos || u.orders.length || u.entrench || u.retreating || u.garrison >= 0 || u.attackId || u.amove || u.nade || u.dig || u.build || u.enter >= 0 || u.board || u.riding || u.fireAt >= 0) return;
+  // A pending manual route is not idle while a blocked bank step waits for its retry.
+  if (u.worldGoal && !u.path.length) return;
   if (g.tick - u.hitAt > B.threatTime / TICK || !u.hitFrom) { if (!u.path.length && def.infantry) keepSpacing(g, u); return; }
   const shooter = g.units.get(u.hitBy), answer = !u.holdFire && !!shooter && canShoot(g, u, shooter);
   if (u.path.length) {
@@ -3975,6 +3994,22 @@ function stepFlights(g, prior) {
   }
 }
 
+// Sandbox: spawn a unit (anything but buildings and the bunker) at a spot, for yourself or, with enemy, for the Horde
+// in Horde and otherwise the first player on another team. A horde unit attack-moves on the bunker like a Wave's.
+// ponytail: no unit cap, it is a test tool; the 2000-unit guard only keeps the sim from being flooded
+function sandboxSpawn(g, slot, cmd) {
+  const def = Object.hasOwn(UNITS, cmd.unit) ? UNITS[cmd.unit] : null;
+  if (!g.sandbox || !def || def.structure || !Number.isFinite(cmd.x) || !Number.isFinite(cmd.z) || g.units.size > 2000) return 'blocked';
+  const horde = g.mode?.kind === 'horde', owner = !cmd.enemy ? slot : horde ? g.mode.slot : g.players.findIndex(p => !allied(g, p.slot, slot));
+  if (owner < 0) return 'blocked';
+  const u = spawnUnit(g, owner, cmd.unit);
+  if (!def.air) { Object.assign(u, cellCenter(g, nearestFree(g, cmd.x, cmd.z, blockOf(def)))); updateGrid(g, u); }
+  if (horde && owner === g.mode.slot) {
+    const b = g.units.get(g.mode.bunker);
+    if (b && !def.air) command(g, owner, { t: 'amove', orders: [[u.id, b.x, b.z]] });
+    if (!g.mode.active) { g.mode.active = true; g.mode.timeLeft = 0; } // a spawned enemy counts as a Wave on the map
+  }
+}
 // the Kaiju's breath: a beam from its mouth through the target out to full range. Each enemy within w.beam of the line
 // is hit once (hurt() at full strength); the cells along it take terrain damage and catch fire.
 function breathe(g, u, t) {
@@ -4820,6 +4855,7 @@ export function step(g) {
   g.claims = new Map();
   for (const u of g.units.values()) if (u.targetId && u.hp > 0) claim(g, u, u.targetId, 1);
   const crews = new Map(); // construction site id -> engineers working on it this tick
+  const infantryProgress = new Map();
   for (const u of g.units.values()) {
     if (u.hp <= 0) continue;
     if (u.operative) { stepOperative(g, u); continue; }
@@ -4865,7 +4901,7 @@ export function step(g) {
     // digging: walk to the spot, then turn one cell into trench every digTime seconds
     if (u.dig) {
       if (dist(u, u.dig) > (u.dig.reach ?? 3)) { if (u.repath <= 0 && !u.path.length) requestStepPath(g, u, digGoal(u), 'dig'); }
-      else if ((u.dig.t += dt) >= (FORTS[u.dig.kind]?.time ?? CFG.digTime) * (u.type === 'engineer' ? 0.5 : 1)) {
+      else if ((u.dig.n ??= u.dig.cells.length, u.dig.t += dt) >= digSpan(u)) {
         u.dig.t = 0;
         const [c, ch] = u.dig.cells.shift();
         // ground can change while building; tank traps never go down under a vehicle
@@ -4973,9 +5009,13 @@ export function step(g) {
       clear: (a, b) => walkable(trafficView(), a, b, blockOf(def), groundVehicle ? bodyRadius(def) : 0.9),
       coverRank: at => def.infantry ? coverRank(trafficView(), at, u.hitFrom) : 3,
     });
-    if (!(u.convoy && !u.convoy.manual) && (traffic.replan || groundVehicle && u.stuck > 0.75) && u.repath <= 0) {
+    const stalledRoute = (groundVehicle || def.infantry && !traffic.blocked && !traffic.yielding) && u.stuck > 0.75;
+    if (!(u.convoy && !u.convoy.manual) && (traffic.replan || stalledRoute) && u.repath <= 0) {
       const goal = u.worldGoal ?? u.amove ?? u.path.at(-1);
-      if (goal) { const route = findPath(g, u, goal); if (route.length) u.path = route; u.repath = 1; }
+      if (goal) {
+        if (def.infantry && !traffic.replan) requestStepPath(g, u, goal, 'recovery');
+        else { const route = findPath(g, u, goal); if (route.length) u.path = route; u.repath = 1; }
+      }
     }
     const route = traffic.goal ? (traffic.yielding ? [traffic.goal] : u.path) : [];
     if (groundVehicle) {
@@ -5029,6 +5069,10 @@ export function step(g) {
       if (route.length && dist(u, route[0]) < (straightLeg ? Math.max(0.12, Math.abs(u.moveSpeed) * dt * 1.5) : 0.12) && (straightLeg || Math.abs(u.moveSpeed) < 1.5) && !traffic.yielding && !u.motionClearance) u.path.shift();
     } else {
       // Infantry responds on the command tick. Naval motion keeps its original class rules.
+      if (def.infantry && !traffic.yielding) {
+        // Crowded squads can pass beside a waypoint. Keep required terrain corners and the exact final spot.
+        while (route.length > 1 && dist(u, route[0]) < 1 && walkable(trafficView(), u, route[1], blockOf(def) | WIRE)) route.shift();
+      }
       let budget = speed * dt * (back ? CFG.behavior.reverseSpeed : 1);
       while (budget > 0 && route.length) {
         const wp = route[0], d = dist(u, wp), advance = Math.min(d, budget), next = { x: u.x + (wp.x - u.x) / (d || 1) * advance, z: u.z + (wp.z - u.z) / (d || 1) * advance };
@@ -5071,8 +5115,11 @@ export function step(g) {
     if (u.retreating && !u.path.length && !u.worldGoal) u.retreating = false;
     const turningInPlace = groundVehicle && Math.abs(Math.atan2(Math.sin(u.rot - before.rot), Math.cos(u.rot - before.rot))) > 1e-4;
     const progressSpeed = u.motionClearance ? Math.min(speed, 1.2) * (u.motionClearance.reverse ? movementProfile(u.type, def).reverseSpeed : 1) : speed;
-    if (u.path.length && moved < progressSpeed * dt * 0.3 && !turningInPlace) { u.stuck += dt; }
-    else u.stuck = 0;
+    if (def.infantry) infantryProgress.set(u, speed);
+    else {
+      if (u.path.length && moved < progressSpeed * dt * 0.3 && !turningInPlace) { u.stuck += dt; }
+      else u.stuck = 0;
+    }
     if (u.logistics?.forced && u.path.length && !u.supplyHold) { u.logistics.stranded=u.stuck>1; u.retreating=!u.logistics.stranded; }
     keepFacing(u);
 
@@ -5138,6 +5185,13 @@ export function step(g) {
   const list = [...g.units.values()];
   const order = new Map(list.map((u, i) => [u.id, i])), maxRadius = Math.max(0, ...list.map(u => UNITS[u.type].radius));
   const sep = new SpatialGrid(g.units, 4); // fine 4 m cells: this query is tiny and runs for every unit
+  const nearCrossing = u => {
+    const c = cellOf(g, u.x, u.z), x = c % g.w, y = Math.floor(c / g.w);
+    for (let ny = Math.max(0, y - 1); ny <= Math.min(g.h - 1, y + 1); ny++)
+      for (let nx = Math.max(0, x - 1); nx <= Math.min(g.w - 1, x + 1); nx++)
+        if (g.chars[ny * g.w + nx] === '=' || g.flags[ny * g.w + nx] & FORD) return true;
+    return false;
+  };
   for (let i = 0; i < list.length; i++) {
     const a = list[i], radius = (UNITS[a.type].radius + maxRadius) * 0.8;
     if (a.garrison >= 0 || a.air || a.riding) continue;
@@ -5154,10 +5208,22 @@ export function step(g) {
       if (sa && sb) continue;
       const solidContact = !UNITS[a.type].infantry && !UNITS[b.type].infantry && (isGroundVehicle(UNITS[a.type]) || isGroundVehicle(UNITS[b.type])) && !ghostPair(g, a, b);
       const push = (min - d) / 2 * (solidContact ? sa || sb ? 2 : 1 : sa || sb ? 1 : 0.5), px = dx / d * push, pz = dz / d * push;
+      let apx = px, apz = pz, bpx = px, bpz = pz;
+      if (UNITS[a.type].infantry && UNITS[b.type].infantry && allied(g, a.owner, b.owner) && a.path.length && b.path.length && nearCrossing(a) && nearCrossing(b)) {
+        const ga = a.worldGoal ?? a.amove ?? a.path.at(-1), gb = b.worldGoal ?? b.amove ?? b.path.at(-1);
+        const ax = ga.x - a.x, az = ga.z - a.z, bx = gb.x - b.x, bz = gb.z - b.z;
+        if (ax * bx + az * bz > Math.hypot(ax, az) * Math.hypot(bx, bz) * 0.5) {
+          // Same-way bridge traffic keeps lateral spacing without undoing either squad's forward step.
+          const againstA = Math.max(0, (px * a.vx + pz * a.vz) / (a.vx * a.vx + a.vz * a.vz || 1));
+          const againstB = Math.min(0, (px * b.vx + pz * b.vz) / (b.vx * b.vx + b.vz * b.vz || 1));
+          apx -= againstA * a.vx; apz -= againstA * a.vz;
+          bpx -= againstB * b.vx; bpz -= againstB * b.vz;
+        }
+      }
       // a squad holding its cover is not pushed off it, and does not push back at a friend walking past
-      const ha = !sa && (a.holdPos || a.build || a.dig || a.entrench || shovedFromCover(g, a, a.x - px, a.z - pz)), hb = !sb && (b.holdPos || b.build || b.dig || b.entrench || shovedFromCover(g, b, b.x + px, b.z + pz));
-      if (!sa && !ha && !(hb && a.path.length) && !(flagsAt(g, a.x - px, a.z - pz) & blockOf(UNITS[a.type])) && (!isGroundVehicle(UNITS[a.type]) || sweptVehicleClear(g, a, { ...a, x: a.x - px, z: a.z - pz }, UNITS[a.type], blockOf(UNITS[a.type]))) && Math.abs(levelAt(g, a.x - px, a.z - pz) - levelAt(g, a.x, a.z)) <= 1) { a.x -= px; a.z -= pz; }
-      if (!sb && !hb && !(ha && b.path.length) && !(flagsAt(g, b.x + px, b.z + pz) & blockOf(UNITS[b.type])) && (!isGroundVehicle(UNITS[b.type]) || sweptVehicleClear(g, b, { ...b, x: b.x + px, z: b.z + pz }, UNITS[b.type], blockOf(UNITS[b.type]))) && Math.abs(levelAt(g, b.x + px, b.z + pz) - levelAt(g, b.x, b.z)) <= 1) { b.x += px; b.z += pz; }
+      const ha = !sa && (a.holdPos || a.build || a.dig || a.entrench || shovedFromCover(g, a, a.x - apx, a.z - apz)), hb = !sb && (b.holdPos || b.build || b.dig || b.entrench || shovedFromCover(g, b, b.x + bpx, b.z + bpz));
+      if (!sa && !ha && !(hb && a.path.length) && !(flagsAt(g, a.x - apx, a.z - apz) & blockOf(UNITS[a.type])) && (!isGroundVehicle(UNITS[a.type]) || sweptVehicleClear(g, a, { ...a, x: a.x - apx, z: a.z - apz }, UNITS[a.type], blockOf(UNITS[a.type]))) && Math.abs(levelAt(g, a.x - apx, a.z - apz) - levelAt(g, a.x, a.z)) <= 1) { a.x -= apx; a.z -= apz; }
+      if (!sb && !hb && !(ha && b.path.length) && !(flagsAt(g, b.x + bpx, b.z + bpz) & blockOf(UNITS[b.type])) && (!isGroundVehicle(UNITS[b.type]) || sweptVehicleClear(g, b, { ...b, x: b.x + bpx, z: b.z + bpz }, UNITS[b.type], blockOf(UNITS[b.type]))) && Math.abs(levelAt(g, b.x + bpx, b.z + bpz) - levelAt(g, b.x, b.z)) <= 1) { b.x += bpx; b.z += bpz; }
       if (solidContact) { a.moveSpeed = b.moveSpeed = 0; a.vx = a.vz = b.vx = b.vz = 0; }
       updateGrid(g, a); updateGrid(g, b); sep.update(a); sep.update(b);
       // Unvisited units have not moved during this i pass. The candidate cells remain
@@ -5168,6 +5234,12 @@ export function step(g) {
         candidates = grid.candidates(a, radius, true, next => order.get(next.id) > j); k = -1;
       }
     }
+  }
+
+  // Measure infantry progress after crowd separation, which can undo its attempted step.
+  for (const [u, speed] of infantryProgress) if (u.hp > 0 && !u.riding && u.garrison < 0) {
+    if (u.path.length && dist(u, u.motionBefore) < speed * dt * 0.3) u.stuck += dt;
+    else u.stuck = 0;
   }
 
   stepFlights(g, flightPrior);
@@ -5502,10 +5574,12 @@ export const OPERATIVE_FLAG = 131072; // a first-person operative: one man, draw
 export const AUTO_FLAG = 16384; // a unit's autocast is on; only its owner is told (1024 marks a mass entrenchment)
 export const RIDING_FLAG = 262144, CARGO_FLAG = 524288; // inside a carrier (its side sees that); a carrier with a squad in it
 const unitFlags = (g, u) => (u.operative ? OPERATIVE_FLAG : 0) | (u.riding ? RIDING_FLAG : 0) | (u.cargo ? CARGO_FLAG : 0) | (u.retreating ? 1 : 0) | (u.buff > 0 ? 2 : 0) | (u.ap ? 4 : 0) | (u.reinf > 0 || g.tick - (u.healAt ?? -1e9) < 12 ? 8 : 0) | (u.dig ? 16 : 0) | (u.garrison >= 0 ? 32 | g.house[u.garrison] << 20 : 0) | (u.amove ? 64 : 0) | (u.build ? 128 : 0) | (UNITS[u.type].camo && u.still >= 3 && g.tick - (u.shotAt ?? -1e9) >= 80 ? 256 : 0) | (u.air && !airborne(u) ? 512 : 0) | (u.entrench ? 1024 : 0) | (dusty(g, u) ? 32768 : 0) | (u.open ? GATE_OPEN_FLAG : 0);
+// after how far built: a ground vehicle's motion [speed, vx, vz, travel direction], or a digging squad's progress (0-1)
+const rowTail = (u) => (isGroundVehicle(UNITS[u.type]) ? [rounded(u.moveSpeed ?? 0), rounded(u.vx ?? 0), rounded(u.vz ?? 0), rounded(u.travelDir ?? u.rot)] : u.dig ? [Math.round(digProgress(u) * 100) / 100] : []);
 function unitRow(g, u) {
   const r = rounded;
   return [u.id, u.type, u.owner, r(u.x), r(u.z), r(u.rot), r(u.aim), Math.ceil(u.hp), Math.round(u.supp), u.targetId || 0, inTrench(g, u) ? 2 : inCover(g, u) ? 1 : UNITS[u.type].infantry && nearCover(g, u) ? 3 : 0,
-    Math.max(0, Math.ceil(u.cd)), unitFlags(g, u) | stanceBits(u) | (u.auto ? AUTO_FLAG : 0), vet(u), u.built ?? 1, ...(isGroundVehicle(UNITS[u.type]) ? [r(u.moveSpeed ?? 0), r(u.vx ?? 0), r(u.vz ?? 0), r(u.travelDir ?? u.rot)] : [])];
+    Math.max(0, Math.ceil(u.cd)), unitFlags(g, u) | stanceBits(u) | (u.auto ? AUTO_FLAG : 0), vet(u), u.built ?? 1, ...rowTail(u)];
 }
 // a unit's waiting orders as its owner sees them: [id, count, kind, x, z, ...]
 function ordersRow(g, u) { return [u.id, u.orders.length, ...u.orders.flatMap(o => queuedPlan(g, u.owner, o).map(rounded))]; }
@@ -5655,10 +5729,10 @@ export function snapshotFor(g, slot, shots, cells = [], cache) {
     // flags: 1 retreating, 2 ability active, 4 AP loaded, 8 reinforcing, 16 digging, 32 garrisoned, 64 attack-moving.
     // 128 building a site, 256 hidden sniper, 512 plane at base, 1024 on a mass entrenchment; own units only: 2048
     // holding fire, 4096 holding position, 8192 auto-retreat, 16384 autocast on; bits 20-22: the type of house a garrison is in (CFG.houses). Then veterancy stars, then how far a
-    // building is built (0-1). Cooldowns only for your own units.
+    // building is built (0-1), then rowTail. Cooldowns only for your own units.
     units: cache ? cache.units.filter(row => seen(row[0])).map(row => playerRow(row, slot, seen)) : [...g.units.values()].filter(u => seen(u.id))
       .map(u => [u.id, u.type, u.owner, r(u.x), r(u.z), r(u.rot), r(u.aim), Math.ceil(u.hp), Math.round(u.supp), u.targetId && seen(u.targetId) ? u.targetId : 0, inTrench(g, u) ? 2 : inCover(g, u) ? 1 : UNITS[u.type].infantry && nearCover(g, u) ? 3 : 0,
-        u.owner === slot ? Math.max(0, Math.ceil(u.cd)) : 0, unitFlags(g, u) | (u.owner === slot ? stanceBits(u) | (u.auto ? AUTO_FLAG : 0) : 0), vet(u), u.built ?? 1, ...(isGroundVehicle(UNITS[u.type]) ? [r(u.moveSpeed ?? 0), r(u.vx ?? 0), r(u.vz ?? 0), r(u.travelDir ?? u.rot)] : [])]),
+        u.owner === slot ? Math.max(0, Math.ceil(u.cd)) : 0, unitFlags(g, u) | (u.owner === slot ? stanceBits(u) | (u.auto ? AUTO_FLAG : 0) : 0), vet(u), u.built ?? 1, ...rowTail(u)]),
     smokes: g.smokes.filter(q => teamSees(g, p.team, q) || g.reveal || g.skipFog).map(q => [r(q.x),r(q.z),q.r,q.id]),
 
     // burnt-out vehicles, for everyone (they are part of the ground now): [id, type, owner, x, z, facing]

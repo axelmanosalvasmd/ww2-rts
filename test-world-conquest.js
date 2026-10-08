@@ -2,7 +2,8 @@ import { sendsReadBy } from './test-socket.js';
 // World Conquest acceptance checks use the same WebSocket messages as the browser.
 import assert from 'node:assert/strict';
 import WebSocket from 'ws';
-import { UNITS } from './shared/sim.js';
+import { placementState } from './client/availability.js';
+import { UNITS, placementCheck, teamSees, worldMapFor } from './shared/sim.js';
 
 Object.assign(process.env, { PORT: '0', EDIT_PASSWORD: 'test', PUBLIC_URL: 'http://test' });
 const server = await import('./server.js');
@@ -111,6 +112,15 @@ try {
   game.players[0].mp = 1000;
   await tick(4);
   const funds = host.latest('s').mp;
+  const buildOrder = { kind: 'barracks', x: region.x + 5, z: region.z - 8, team: game.players[0].team };
+  const serverPlace = placementCheck(game, buildOrder, at => teamSees(game, buildOrder.team, at));
+  assert.equal(placementCheck(game, { ...buildOrder, kind: 'hq' }, at => teamSees(game, buildOrder.team, at)).ok, true, 'engineers can raise a forward HQ on conquered land');
+  assert.equal(serverPlace.ok, true, 'the conquered construction site is visible and owned on the server');
+  const clientMap = worldMapFor(game, 0);
+  const preview = placementState(host.latest('s'), clientMap, clientMap.rows.map(row => [...row]), game.players.map(p => p.team));
+  const clientPlace = placementCheck(preview.game, buildOrder, at => preview.sees(0, at));
+  assert.deepEqual({ ok: clientPlace.ok, reason: clientPlace.reason }, { ok: true, reason: undefined },
+    'the browser must accept a valid site inside discovered irregular conquered territory');
   await host.send({ t: 'build', ids: [engineer.id], kind: 'barracks', x: region.x + 5, z: region.z - 8 });
   await tick(4);
   const site = host.latest('s').units.find(u => u[1] === 'barracks' && u[2] === 0);
