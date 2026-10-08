@@ -5,47 +5,6 @@ AI-vs-AI runs (see DESIGN.md for the balance log). Add new entries under **Unrel
 
 ## Unreleased
 
-- Finished work left uncommitted on master by an earlier session (its Horde, sandbox, dig-bar and bridge-crossing
-  changes were named as left out of the supply truck entry below). The stale changelog and DESIGN.md edits that
-  came with it (older wording of already committed entries) were dropped. Files that had been saved with Windows
-  line endings were put back to the repository's plain line endings.
-- The AI now pushes the way players do: once its army stands 70 m or more from every HQ it owns, a builder squad puts
-  up a forward HQ 20 m behind the army (never with an enemy in sight within 30 m, at most 3 HQs). Hurt squads then
-  retreat to it and refill there instead of walking home. An Assault defender doesn't do it (its home is the front).
-  AI 1v1 Assault, attacker wins over 20 matches before and after (same seeds): Hill 112 5 to 10, El Alamein 0 to 2,
-  Seelow Heights 1 to 4. Conquest is unchanged: 12/20 and about 7 min a match.
-- Measured whether retreat is too strong (taking 25% damage while retreating, 1.5x speed, auto-retreat at 35%
-  strength). It isn't, for the AI at least: with 50% damage while retreating, or auto-retreat off, Conquest losses go
-  up from 4.7 to 6.7 or 7.7 units a match, but winners and match length barely move (Hill 112 attacker wins 5, 8 and
-  5 of 20). Left as is.
-- Late Horde Waves get better instead of only longer. More units join the Horde: medics (Wave 4), halftracks (6),
-  Rangers (9), snipers and howitzers (10), Commandos (11) and the Churchill (14). From Wave 12 the mix leans more and
-  more on dear units, and from Wave 10 every Horde unit walks on with a veterancy star, one more every 4 Waves (3
-  stars from Wave 18). Not measured yet: Horde survival runs need redoing before the balance log's Wave numbers
-  hold again.
-- Sandbox matches for testing. The host ticks Sandbox in the lobby; in the match a Sandbox bar lets anyone pick
-  any unit (the Kaiju included) and a side, press Spawn, then click the map once per unit (right-click stops).
-  Enemies go to the Horde in Horde (they attack-move on the bunker and count as a Wave on the map) and to the first
-  player on another team otherwise. Horde records do not count in a sandbox match. Found and left for later: the
-  Spanish translation shows the Spawn button as "Punto de inicio" (spawn point); it needs its own entry in
-  client/es.js.
-- Digging and building are easier to spot. A gold work bar under the health bar fills as a squad digs its trench (or
-  other field work) and as a construction site goes up. Diggers throw up clods of earth and builders raise a little
-  dust, and the dig and build sounds play about twice as often, louder and from further away (110 m, was 70 m).
-- Fixed selected infantry and support teams piling up at bridges and fords instead of marching across. Squads now
-  keep their forward steps through friendly crowds going the same way, pass nearby waypoints when the way on is
-  clear, and refresh stalled routes within the search budget. Waiting movement orders keep their original
-  destination. New check: `test-bridge-groups.mjs` (18 rifles, support guns, MGs, mortars and medics over 2, 4 and
-  6 m decks).
-- Fixed World Conquest refusing building placement inside controlled territory. The preview now recognizes
-  discovered irregular region borders (and so does the server's region lookup) and still requires the whole building
-  to fit on visible ground your team owns.
-- Reduced pauses while exploring World Conquest. Ground updates now process changed cells and their neighbors, and
-  scenery preparation runs in small steps across frames instead of rebuilding the continent in one frame. In a
-  browser fixture, ground processing for 160 newly revealed cells fell from about 60 ms (Huge) and 230 ms (Massive)
-  to about 3 ms, and a 163 ms scenery rebuild became 3 ms slices. Left for later: terrain geometry updates still
-  take about 13 to 23 ms. `tools/profile-world-discovery.mjs` measures it; `test-world-discovery.js` checks it.
-
 - Drills (no game change): small authored scenes for AI behaviour questions, played on the server's AI schedule.
   `drills/drill.js` places a drill's units on a small map, runs its timed script and returns its measure;
   `node tools/drill.mjs drills/<name>.js --seeds 200` runs one across seeds. The first drill, `drills/flank-answer.js`,
@@ -109,6 +68,49 @@ AI-vs-AI runs (see DESIGN.md for the balance log). Add new entries under **Unrel
 - Fixed trenches and MG nests dug during a match showing only as a flat dirt strip, with no cut, walls or sandbags. The server dropped the change for any player who had a unit on the move at that moment (the movement code read the terrain first and used up the update), so the client never learned the cell became a trench. Reconnecting showed them. Older than the ping fix below.
 - Fixed pings climbing to 10 s and beyond late in big fights. The server tick grew with the battle (3 ms at 66 units to 70 ms at 268 in a 2v2 Annihilation), and once it overran, snapshots piled up 3 MB deep per socket with pongs stuck behind them. Now a player whose connection is 256 KB behind skips snapshots and gets one fresh snapshot when it catches up, so a slow server or connection costs smoothness, not a minute of lag.
 - The server does about 44% less work in large battles (CPU 119 s to 67 s over a 6000-tick Massive 2v2 Annihilation with the same result): remembered terrain no longer rechecks every pending crater for every player each tick, team sight checks no longer copy the whole unit list per cell, and vehicle traffic skips a sort it never needed. Path searches and crowd separation are the next biggest costs, left for later.
+
+### 2026-10-08: AI forward HQs, Horde late waves, sandbox, dig bar, bridge crossings, World discovery (`2ce5843`)
+
+- Finished work left uncommitted on master by an earlier session (its Horde, sandbox, dig-bar and bridge-crossing
+  changes were named as left out of the supply truck entry below). The stale changelog and DESIGN.md edits that
+  came with it (older wording of already committed entries) were dropped. Files that had been saved with Windows
+  line endings were put back to the repository's plain line endings.
+- The AI now pushes the way players do: once its army stands 70 m or more from every HQ it owns, a builder squad puts
+  up a forward HQ 20 m behind the army (never with an enemy in sight within 30 m, at most 3 HQs). Hurt squads then
+  retreat to it and refill there instead of walking home. An Assault defender doesn't do it (its home is the front).
+  AI 1v1 Assault, attacker wins over 20 matches before and after (same seeds): Hill 112 5 to 10, El Alamein 0 to 2,
+  Seelow Heights 1 to 4. Conquest is unchanged: 12/20 and about 7 min a match.
+- Measured whether retreat is too strong (taking 25% damage while retreating, 1.5x speed, auto-retreat at 35%
+  strength). It isn't, for the AI at least: with 50% damage while retreating, or auto-retreat off, Conquest losses go
+  up from 4.7 to 6.7 or 7.7 units a match, but winners and match length barely move (Hill 112 attacker wins 5, 8 and
+  5 of 20). Left as is.
+- Late Horde Waves get better instead of only longer. More units join the Horde: medics (Wave 4), halftracks (6),
+  Rangers (9), snipers and howitzers (10), Commandos (11) and the Churchill (14). From Wave 12 the mix leans more and
+  more on dear units, and from Wave 10 every Horde unit walks on with a veterancy star, one more every 4 Waves (3
+  stars from Wave 18). Not measured yet: Horde survival runs need redoing before the balance log's Wave numbers
+  hold again.
+- Sandbox matches for testing. The host ticks Sandbox in the lobby; in the match a Sandbox bar lets anyone pick
+  any unit (the Kaiju included) and a side, press Spawn, then click the map once per unit (right-click stops).
+  Enemies go to the Horde in Horde (they attack-move on the bunker and count as a Wave on the map) and to the first
+  player on another team otherwise. Horde records do not count in a sandbox match. Found and left for later: the
+  Spanish translation shows the Spawn button as "Punto de inicio" (spawn point); it needs its own entry in
+  client/es.js.
+- Digging and building are easier to spot. A gold work bar under the health bar fills as a squad digs its trench (or
+  other field work) and as a construction site goes up. Diggers throw up clods of earth and builders raise a little
+  dust, and the dig and build sounds play about twice as often, louder and from further away (110 m, was 70 m).
+- Fixed selected infantry and support teams piling up at bridges and fords instead of marching across. Squads now
+  keep their forward steps through friendly crowds going the same way, pass nearby waypoints when the way on is
+  clear, and refresh stalled routes within the search budget. Waiting movement orders keep their original
+  destination. New check: `test-bridge-groups.mjs` (18 rifles, support guns, MGs, mortars and medics over 2, 4 and
+  6 m decks).
+- Fixed World Conquest refusing building placement inside controlled territory. The preview now recognizes
+  discovered irregular region borders (and so does the server's region lookup) and still requires the whole building
+  to fit on visible ground your team owns.
+- Reduced pauses while exploring World Conquest. Ground updates now process changed cells and their neighbors, and
+  scenery preparation runs in small steps across frames instead of rebuilding the continent in one frame. In a
+  browser fixture, ground processing for 160 newly revealed cells fell from about 60 ms (Huge) and 230 ms (Massive)
+  to about 3 ms, and a 163 ms scenery rebuild became 3 ms slices. Left for later: terrain geometry updates still
+  take about 13 to 23 ms. `tools/profile-world-discovery.mjs` measures it; `test-world-discovery.js` checks it.
 
 ### 2026-10-08: Fortress buildings (`9a35da4`)
 
