@@ -1515,6 +1515,22 @@ export function teamSees(g, team, at, units = g.units.values()) {
     && (u.air ? airborne(u) : UNITS[u.type].building || los(g, u, at))) return true;
   return false;
 }
+// A team's units, filtered once and bucketed by the longest sight. eyesFor(g, team)(at) lists only the units that could
+// reach at, for teamSees: snapshots ask about many spots (burning cells, smoke, unseen craters) each tick.
+function eyesFor(g, team) {
+  let eyes;
+  return (at) => {
+    if (!eyes) {
+      const units = [...g.units.values()].filter(u => g.players[u.owner].team === team);
+      const reach = Math.max(1, ...units.map(u => visionOf(g, u))), buckets = new Map();
+      for (const u of units) { const k = `${Math.floor(u.x / reach)},${Math.floor(u.z / reach)}`; if (!buckets.has(k)) buckets.set(k, []); buckets.get(k).push(u); }
+      eyes = { reach, buckets };
+    }
+    const bx = Math.floor(at.x / eyes.reach), bz = Math.floor(at.z / eyes.reach), near = [];
+    for (let z = bz - 1; z <= bz + 1; z++) for (let x = bx - 1; x <= bx + 1; x++) { const list = eyes.buckets.get(`${x},${z}`); if (list) near.push(...list); }
+    return near;
+  };
+}
 
 function spawnUnit(g, owner, type, n = g.units.size) {
   const s = g.players[owner].spawn, a = n * 2.4;
@@ -5189,20 +5205,8 @@ export function terrainFor(g, slot, full = false) {
   if (!pending.size || pending.key === key) return full ? [...memory.values()] : take();
   pending.key = key;
   const visible = new Map();
-  // The team's units, filtered once and bucketed by the longest sight, so a cell asks only the units that could reach
-  // it: unseen craters pile up pending in a long battle, and each asked every unit of the team every vision pass.
-  let eyes;
-  const eyesNear = (at) => {
-    if (!eyes) {
-      const team = [...g.units.values()].filter(u => g.players[u.owner].team === p.team);
-      const reach = Math.max(1, ...team.map(u => visionOf(g, u))), buckets = new Map();
-      for (const u of team) { const k = `${Math.floor(u.x / reach)},${Math.floor(u.z / reach)}`; if (!buckets.has(k)) buckets.set(k, []); buckets.get(k).push(u); }
-      eyes = { reach, buckets };
-    }
-    const bx = Math.floor(at.x / eyes.reach), bz = Math.floor(at.z / eyes.reach), near = [];
-    for (let z = bz - 1; z <= bz + 1; z++) for (let x = bx - 1; x <= bx + 1; x++) { const list = eyes.buckets.get(`${x},${z}`); if (list) near.push(...list); }
-    return near;
-  };
+  // Unseen craters pile up pending in a long battle: each cell asks only the units that could reach it.
+  const eyesNear = eyesFor(g, p.team);
   // Unseen footprints stay pending. Replay order also preserves remembered terrain order.
   for (const index of [...pending].sort((a, b) => a - b)) {
     const stored = g.cellLog[index], c = stored[0], cell = seenWorldCell(g, c, p.team), old = memory.get(c);
@@ -5352,7 +5356,7 @@ function flightEventFor(g, slot, event) {
 export function snapshotFor(g, slot, shots, cells = [], cache) {
   if (!cache) rebuildGrid(g);
   const p = g.players[slot], r = (v) => Math.round(v * 10) / 10;
-  const seen = (id) => seenBy(g, slot, id);
+  const seen = (id) => seenBy(g, slot, id), eyes = eyesFor(g, p.team);
   return {
     t: 's', tick: g.tick, logistics: logisticsSnapshot(g, slot),
     movement: [...g.units.values()].filter(u => u.owner === slot && u.moveOutcome).map(u => [u.id, u.moveOutcome, u.moveOutcomeTick ?? g.tick, ...(u.moveResult ?? [])]), winner: g.winner, end: g.winner === null ? undefined : { reason: g.endReason, x: g.endAt.x, z: g.endAt.z }, mp: Math.floor(p.mp), inc: r(p.inc), mun: p.mun === undefined ? undefined : Math.floor(p.mun), fuel: p.fuel === undefined ? undefined : Math.floor(p.fuel), fuelInc: p.fuelInc === undefined ? undefined : r(p.fuelInc),
@@ -5383,12 +5387,12 @@ export function snapshotFor(g, slot, shots, cells = [], cache) {
     units: cache ? cache.units.filter(row => seen(row[0])).map(row => playerRow(row, slot, seen)) : [...g.units.values()].filter(u => seen(u.id))
       .map(u => [u.id, u.type, u.owner, r(u.x), r(u.z), r(u.rot), r(u.aim), Math.ceil(u.hp), Math.round(u.supp), u.targetId && seen(u.targetId) ? u.targetId : 0, inTrench(g, u) ? 2 : inCover(g, u) ? 1 : UNITS[u.type].infantry && nearCover(g, u) ? 3 : 0,
         u.owner === slot ? Math.max(0, Math.ceil(u.cd)) : 0, unitFlags(g, u) | (u.owner === slot ? stanceBits(u) | (u.auto ? AUTO_FLAG : 0) : 0), vet(u), u.built ?? 1, ...(isGroundVehicle(UNITS[u.type]) ? [r(u.moveSpeed ?? 0), r(u.vx ?? 0), r(u.vz ?? 0), r(u.travelDir ?? u.rot)] : [])]),
-    smokes: g.smokes.filter(q => teamSees(g, p.team, q) || g.reveal || g.skipFog).map(q => [r(q.x),r(q.z),q.r,q.id]),
+    smokes: g.smokes.filter(q => g.reveal || g.skipFog || teamSees(g, p.team, q, eyes(q))).map(q => [r(q.x),r(q.z),q.r,q.id]),
 
     // burnt-out vehicles, for everyone (they are part of the ground now): [id, type, owner, x, z, facing]
     wrecks: rememberedWrecksFor(g, slot),
     // burning cells, and the weather: [rain 0-1, how wet the ground is 0-1, wind direction, wind strength 0-1]
-    fires: [...g.fires.keys()].filter(c => teamSees(g, p.team, cellCenter(g, c)) || g.reveal || g.skipFog), wx: cache ? cache.wx : wxRow(g),
+    fires: [...g.fires.keys()].filter(c => g.reveal || g.skipFog || teamSees(g, p.team, cellCenter(g, c), eyes(cellCenter(g, c)))), wx: cache ? cache.wx : wxRow(g),
     // incoming and active strikes are public: that's the counterplay
     strikes: g.mode?.kind === 'world' ? g.strikes.filter(q => allied(g,q.owner,slot) || teamSees(g,p.team,q) || g.reveal).map(q=>[q.kind,r(q.x),r(q.z),r(q.dir),Math.max(0,r(q.t)),q.owner]) : cache ? cache.strikes : g.strikes.map(q => [q.kind, r(q.x), r(q.z), r(q.dir), Math.max(0, r(q.t)), q.owner]),
     // your planes: [id, state (0 at base, 1 out, 2 on station, 3 heading home, 4 rearming), fuel s, ammo, rearm s]

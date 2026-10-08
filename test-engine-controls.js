@@ -1,7 +1,6 @@
-import { sendsReadBy } from './test-socket.js';
+import { memoryConnect, sendsReadBy } from './test-socket.js';
 // Queue acceptance uses normal room commands and recipient-filtered WebSocket payloads.
 import assert from 'node:assert/strict';
-import WebSocket from 'ws';
 import { readFileSync } from 'node:fs';
 import { createGame, command, step, snapshotFor, snapshotCache, priceOf, popOf, popUse, UNITS } from './shared/sim.js';
 import { storyResult } from './shared/story.js';
@@ -202,10 +201,9 @@ let clockNow = Date.now(); server.clock.now = () => clockNow;
 const clients = [], settle = () => new Promise(resolve => setTimeout(resolve, 15));
 async function waitFor(fn) { for (let n = 0; n < 500; n++) { const result = fn(); if (result) return result; await settle(); } assert.fail('missing server message'); }
 async function connect(token) {
-  const ws = new WebSocket(`ws://127.0.0.1:${server.server.address().port}/ws?room=jobtest`), messages = [], rows = new Map();
+  const ws = memoryConnect(server.wss, `/ws?room=jobtest`), messages = [], rows = new Map();
   const c = { ws, messages, latest: t => messages.filter(m => m.t === t).at(-1), async send(m) { await sendRead(ws, m); await settle(); } }; clients.push(c);
   ws.on('message', raw => { const m = JSON.parse(raw); if (m.t === 'start' || m.all) rows.clear(); if (m.t === 's') { for (const id of m.gone ?? []) rows.delete(id); for (const row of m.units) rows.set(row[0], row); m.units = [...rows.values()]; } messages.push(m); });
-  await new Promise((resolve, reject) => { ws.once('open', resolve); ws.once('error', reject); });
   await c.send({ t: 'hello', name: token, token }); await waitFor(() => c.latest('lobby')); return c;
 }
 // Steps the server, then waits until every started client holds the snapshot for the new tick.

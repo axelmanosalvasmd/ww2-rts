@@ -28,7 +28,8 @@ Tests and CI exist to move the game where we want it to go, not to keep old beha
 - `WW2_TEST_SLOW=1 node test.js` adds the full-length proofs (CI runs them nightly).
 - A failed check is reported and the run goes on; the summary lists every failure.
 - New test files: wrap each case in `check(name, fn)`, or add the file to the child list in `test.js`. Room tests
-  send through `sendsReadBy` (`test-socket.js`) and wait for the snapshot of the tick they stepped, never a fixed sleep.
+  connect through `memoryConnect` (`test-socket.js`), which delivers each message at once, and never sleep. Only the
+  checks about the real transport (public lobby, compressed snapshots, backpressure) open real WebSockets.
 
 ## Asking the AI a question fast
 

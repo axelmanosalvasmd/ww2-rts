@@ -17,16 +17,20 @@ export function sendsReadBy(wss, timeoutMs = 15000) {
 // In-memory sockets at the room seam: a test client connects to server.js without a network. Each message crosses
 // at once in both directions, so a test that sends an order or steps the server reads exactly what the clients got,
 // with no sleeps. The server side offers what server.js uses of a ws socket: readyState (a getter, as on ws),
-// send(data, callback), close(), terminate() and the message and close events.
+// send(data, callback), close(), terminate() and the message and close events; pause() and resume() as on ws.
 import { EventEmitter } from 'node:events';
 class MemorySocket extends EventEmitter {
   constructor(state) { super(); this.state = state; }
   get readyState() { return this.state.open ? 1 : 3; }
   send(data, callback) {
     if (!this.state.open) { callback?.(new Error('socket closed')); return; }
-    this.peer.emit('message', Buffer.from(String(data)), false);
+    const message = Buffer.from(String(data));
+    if (this.peer.held) this.peer.held.push(message); else this.peer.emit('message', message, false);
     callback?.();
   }
+  // As on ws: a paused socket stops reading; what arrives meanwhile is delivered in order on resume.
+  pause() { this.held ??= []; }
+  resume() { const held = this.held ?? []; this.held = null; for (const message of held) if (this.state.open) this.emit('message', message, false); }
   close(code, reason) {
     if (!this.state.open) return;
     this.state.open = false;
