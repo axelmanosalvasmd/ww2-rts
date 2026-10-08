@@ -5,6 +5,11 @@ AI-vs-AI runs (see DESIGN.md for the balance log). Add new entries under **Unrel
 
 ## Unreleased
 
+- Fixed an intermittent CI failure in the engine acceptance checks. The test client sent an order, waited a fixed
+  8 ms and then stepped the server 800 ticks; on a slow runner the second side's order arrived after the clock ran,
+  so its AT gun stayed parked on the tank's destination and the tank stopped 7 m short. Each test send now waits
+  until the server has read the message. No game change.
+
 ### 2026-10-06: Destroy your own units, roomier bases, tanks no longer stuck at spawn (`257d357`)
 
 - Select your own units or buildings and press Delete to destroy them. No refund, and the enemy earns no kill bounty.
