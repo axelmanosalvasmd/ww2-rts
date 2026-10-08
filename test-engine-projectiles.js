@@ -1,6 +1,7 @@
 // Physical flight checks use normal attack, fire-at and ability commands after arranging a controlled fixture.
 import assert from 'node:assert/strict';
 import * as sim from './shared/sim.js';
+import { fixtureCommand, clearFixtureUnits } from './test-fixtures.js';
 import { createGame, command, step, snapshotFor, UNITS, TICK } from './shared/sim.js';
 import { sweepBody, contactResponse, CONTACT_MATERIALS } from './shared/projectiles.js';
 import { createProjectileView } from './client/projectiles.js';
@@ -8,12 +9,12 @@ import { createProjectileView } from './client/projectiles.js';
 const map = { w: 64, h: 64, rows: Array(64).fill('.'.repeat(64)), spawns: [{ x: 2, y: 2 }, { x: 60, y: 60 }, { x: 60, y: 2 }], points: [] };
 function fresh(rows = map.rows, structures) {
   const g = createGame({ ...map, rows, ...(structures ? { structures } : {}) }, ['a', 'b', 'c'], false);
-  g.units.clear();
+  clearFixtureUnits(g);
   g.players.forEach(p => { p.mp = 10000; p.spawn = { x: -1000, z: -1000 }; });
   return g;
 }
 function put(g, owner, type, x, z) {
-  assert.equal(command(g, owner, { t: 'buy', unit: type }), undefined);
+  assert.equal(fixtureCommand(g, owner, { t: 'buy', unit: type }), undefined);
   const u = [...g.units.values()].at(-1);
   Object.assign(u, { x, z, still: 5, auto: false, holdFire: true, holdPos: true, cooldown: 1e9, path: [], orders: [] });
   return u;

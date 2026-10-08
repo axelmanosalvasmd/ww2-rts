@@ -170,12 +170,15 @@ const settleTicks = Math.ceil(DEBRIS_LIMITS.lifetime / TICK) + 2;
   const m = map();
   for (let y = 30; y < 38; y++) for (let x = 20; x < 36; x++) write(m, x, y, 'B');
   const g = make(m);
-  for (const section of g.structuralCells.values()) damageWorldSection(g, section.c, Infinity);
+  // Starting HQ/Barracks also have sections. Stress the 128 authored walls only.
+  const sections = [...g.structuralCells.values()].filter(s => s.c % g.w >= 20 && s.c % g.w < 36 && Math.floor(s.c / g.w) >= 30 && Math.floor(s.c / g.w) < 38);
+  assert.equal(sections.length, 128);
+  for (const section of sections) damageWorldSection(g, section.c, Infinity);
   assert.equal(g.fallingSections.length, DEBRIS_LIMITS.active, 'active falling state has a fixed server limit');
-  assert.equal([...g.structuralCells.values()].filter(section => section.state === 'failed').length, 128, 'overflow retains all failures');
+  assert.equal(sections.filter(section => section.state === 'failed').length, 128, 'overflow retains all failures');
   ticks(g, settleTicks);
   assert.equal(g.fallingSections.length, 0);
-  assert.ok([...g.structuralCells.values()].every(section => section.settledAt !== undefined), 'overflow and moving sections settle through the same bounded solver');
+  assert.ok(sections.every(section => section.settledAt !== undefined), 'overflow and moving sections settle through the same bounded solver');
 }
 
 

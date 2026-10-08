@@ -342,6 +342,7 @@
   body.observing #econ, body.observing #buy, body.observing #lowerleft { display: none; }
 </style>
 <link rel="stylesheet" href="/client/alerts.css">
+<link rel="stylesheet" href="/client/operative.css">
 <link rel="stylesheet" href="/client/connection.css">
 <link rel="stylesheet" href="/client/stats.css">
 <script type="importmap">{ "imports": { "three": "/vendor/three.module.js" } }</script>
@@ -359,6 +360,8 @@
         <div id="roster"></div>
         <button id="addAi" title="Fill an open slot with an AI player">+ Add AI player</button>
         <button id="watchBtn" title="Spectators see the whole map and command nothing. With only AI players seated, a spectator hosts"></button>
+        <div id="operativeJoin" class="row"><select id="commanderSel" aria-label="Operative commander"></select><button id="joinOperative">Join as infantry operative</button></div>
+        <div id="operativeRoster" class="muted"></div><p id="operativeHint" class="muted"></p>
         <h3 class="sec">Invite</h3>
         <div class="muted">Send this link to friends. It always opens this room.</div>
         <div class="row"><input id="link" readonly><button id="copy" title="Copy the invite link">Copy</button></div>
@@ -385,6 +388,7 @@
 <div id="roomBanners" aria-live="polite"><div id="connectionBanner" class="hidden"></div><div id="pauseBanner" class="hidden"></div></div>
 <div id="replacedSeat" class="hidden"><div class="seatCard"><h2>Open in another tab</h2><button id="useSeatHere">Use it here</button></div></div>
 
+<button id="openOperative" class="panel" title="Open a separate infantry operative tab for your army">Open teammate FPS</button>
 <div id="hud" class="hidden">
   <div id="util" class="panel">
     <button id="menuBtn" title="Menu: restart, end or leave the match" aria-label="Menu"><svg class="ico" viewBox="0 0 100 100" aria-hidden="true"><path fill-rule="evenodd" fill="currentColor" d="M14 22L86 22L86 32L14 32ZM14 45L86 45L86 55L14 55ZM14 68L86 68L86 78L14 78Z"/></svg></button>

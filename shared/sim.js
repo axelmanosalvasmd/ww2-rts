@@ -1401,6 +1401,78 @@ function spawnUnit(g, owner, type, n = g.units.size) {
   updateGrid(g, u);
   return u;
 }
+// Companions share their commander's army and fog, never an army seat or spectator view.
+export function joinOperative(g, key, owner) {
+  if (!g.players[owner] || g.players[owner].out || g.winner !== null) return null;
+  g.operatives ??= new Map();
+  if (g.operatives.has(key)) return g.operatives.get(key);
+  const op = { key, owner, unitId: 0, respawnAt: 0, online: true, input: null, lastInput: -100, lastSeq: -1, shots: 0, hits: 0 };
+  g.operatives.set(key, op);
+  spawnOperative(g, op);
+  return op;
+}
+export function operativeInput(g, key, input) {
+  const op = g.operatives?.get(key);
+  if (!op?.online || g.winner !== null || g.players[op.owner].out || !input ||
+      !Number.isSafeInteger(input.seq) || input.seq <= op.lastSeq ||
+      ![input.forward, input.strafe, input.yaw, input.pitch].every(Number.isFinite) ||
+      Math.abs(input.forward) > 1 || Math.abs(input.strafe) > 1 || Math.abs(input.yaw) > 1e4 || Math.abs(input.pitch) > 1.45) return false;
+  op.lastSeq = input.seq;
+  op.input = { forward: input.forward, strafe: input.strafe, yaw: input.yaw, pitch: input.pitch, fire: input.fire === true };
+  op.lastInput = g.tick;
+  return true;
+}
+export const OPERATIVE = Object.freeze({ hp: 20, eye: 1.65, range: 36, interval: 0.65, damage: 6, respawn: 8, cost: 10 });
+function fireOperative(g, u, op, input) {
+  u.cooldown = OPERATIVE.interval; op.shots++;
+  const originY = (g.height ? heightAt(g, u.x, u.z) : 0) + OPERATIVE.eye;
+  const cp = Math.cos(input.pitch), dx = Math.cos(input.yaw) * cp, dz = Math.sin(input.yaw) * cp, dy = Math.sin(input.pitch);
+  const targets = [...g.units.values()].filter(t => t !== u && t.hp > 0 && !t.air && !t.riding && g.players[u.owner].visible.has(t.id));
+  let hit = null, end = { x: u.x, y: originY, z: u.z };
+  // Fixed-distance ray, never a target ID from the client, and never nearest-enemy aim assist.
+  for (let d = 0.4; d <= OPERATIVE.range; d += 0.2) {
+    end = { x: u.x + dx * d, y: originY + dy * d, z: u.z + dz * d };
+    const c = cellOf(g, end.x, end.z), ground = g.height ? heightAt(g, end.x, end.z) : 0;
+    if (c < 0 || end.y < ground || !los(g, u, end)) break;
+    hit = targets.find(t => {
+      const def = UNITS[t.type], floor = g.height ? heightAt(g, t.x, t.z) : 0;
+      const radius = t.operative ? 0.4 : def.infantry ? 1.2 : def.radius;
+      const top = def.infantry ? 1.85 : def.structure ? 5 : 3;
+      return Math.hypot(end.x - t.x, end.z - t.z) <= radius && end.y >= floor && end.y <= floor + top;
+    });
+    if (hit) break;
+  }
+  if (hit && !allied(g, u.owner, hit.owner)) {
+    hurt(g, hit, { inf: OPERATIVE.damage, veh: 0.5, supp: 4 }, 1, u.owner);
+    hit.hitBy = u.id; hit.hitAt = g.tick; hit.hitFrom = { x: u.x, z: u.z };
+    op.hits++;
+  }
+  g.shots.push({ k: 'operative', f: u.id, fo: u.owner, x: end.x, y: end.y, z: end.z, ...(hit && !allied(g, u.owner, hit.owner) ? { t: hit.id, to: hit.owner } : {}) });
+}
+function stepOperative(g, u) {
+  const op = g.operatives.get(u.operative), input = op.online && g.tick - op.lastInput <= 5 ? op.input : null;
+  u.cooldown = Math.max(0, u.cooldown - TICK);
+  u.supp = Math.max(0, u.supp - 8 * TICK);
+  u.moveSpeed = 0;
+  if (!input || g.winner !== null || g.players[u.owner].out) return;
+  u.rot = u.aim = input.yaw;
+  if (input.fire && u.cooldown <= 0) fireOperative(g, u, op, input);
+  const len = Math.max(1, Math.hypot(input.forward, input.strafe));
+  const speed = UNITS.rifle.speed * TICK / len;
+  const dx = (Math.cos(input.yaw) * input.forward - Math.sin(input.yaw) * input.strafe) * speed;
+  const dz = (Math.sin(input.yaw) * input.forward + Math.cos(input.yaw) * input.strafe) * speed;
+  const next = { x: u.x + dx, z: u.z + dz };
+  if (next.x >= 0.4 && next.z >= 0.4 && next.x < g.w * CELL - 0.4 && next.z < g.h * CELL - 0.4 && walkable(g, u, next, MOVE, 0.35)) {
+    u.x = next.x; u.z = next.z; u.moveSpeed = Math.hypot(dx, dz) / TICK;
+    updateGrid(g, u);
+  }
+}
+function spawnOperative(g, op) {
+  const u = spawnUnit(g, op.owner, 'rifle');
+  Object.assign(u, { hp: UNITS.rifle.hpPer, operative: op.key, auto: false, autoRetreat: false, holdFire: true, holdPos: true });
+  op.unitId = u.id; op.input = null;
+  return u;
+}
 // ---------- planes ----------
 export const airborne = (u) => !!u.air && (u.air.state === 'out' || u.air.state === 'station' || u.air.state === 'home');
 // where a plane takes off and rearms: in Classic its owner's nearest finished Airfield, otherwise (or with none) an
@@ -2497,7 +2569,7 @@ export function command(g, slot, cmd, auto = false) {
   if (cmd.t === 'recover' && g.mode?.kind === 'world') return recoverWorld(g, slot);
   if (cmd.t === 'orders' && Array.isArray(cmd.commands)) return dispatchOrderGroups(g, slot, cmd);
   // a squad riding in a carrier takes no orders: its carrier does (unload)
-  const mine = (id) => { const u = g.units.get(id); return u && u.owner === slot && !UNITS[u.type].structure && !u.riding ? u : null; };
+  const mine = (id) => { const u = g.units.get(id); return u && u.owner === slot && !u.operative && !UNITS[u.type].structure && !u.riding ? u : null; };
   const limit = Math.max(50, g.units.size), ids = Array.isArray(cmd.ids) ? cmd.ids.slice(0, limit) : [];
   if ((cmd.t === 'move' || cmd.t === 'amove') && Array.isArray(cmd.orders)) {
     const face = cmd.face === undefined ? null : normalizeFace(cmd.face);
@@ -3871,7 +3943,7 @@ function healWounded(g, list, dt) {
     let best = null, worst = 1, far = null, farWorst = A.hurt;
     for (const u of gridFor(g).candidates(m, idle ? A.seek : A.medic, false)) {
       const def = UNITS[u.type], frac = u.hp / (def.models * def.hpPer);
-      if (u === m || !def.infantry || u.hp <= 0 || u.riding || u.retreating || !allied(g, u.owner, m.owner)) continue;
+      if (u === m || u.operative || !def.infantry || u.hp <= 0 || u.riding || u.retreating || !allied(g, u.owner, m.owner)) continue;
       const d = dist(u, m);
       if (d <= A.medic && frac < worst) { best = u; worst = frac; }
       else if (d <= A.seek && frac < farWorst) { far = u; farWorst = frac; }
@@ -3996,6 +4068,12 @@ export function step(g) {
   rebuildGrid(g);
   const flightPrior = new Map([...g.units.values()].map(u => [u.id, { x: u.x, z: u.z, rot: u.rot }]));
   g.tick++;
+  for (const op of g.operatives?.values() ?? []) {
+    if (!op.unitId && op.online && g.tick >= op.respawnAt && g.winner === null && !g.players[op.owner].out && g.players[op.owner].mp >= OPERATIVE.cost) {
+      g.players[op.owner].mp -= OPERATIVE.cost;
+      spawnOperative(g, op);
+    }
+  }
   stepWorldDebris(g, TICK);
   if (g.winner === null && (g.tick === 1 || g.tick % SAMPLE_EVERY === 0)) sample(g, isStructure(g));
   stepWeather(g);
@@ -4021,6 +4099,7 @@ export function step(g) {
   const crews = new Map(); // construction site id -> engineers working on it this tick
   for (const u of g.units.values()) {
     if (u.hp <= 0) continue;
+    if (u.operative) { stepOperative(g, u); continue; }
     const def = UNITS[u.type], w = def.w, sm = suppMul(u);
     if (u.guardHome && dist(u, u.guardHome) > 16) { Object.assign(u, u.guardHome); u.path = []; u.attackId = 0; }
     if (u.worldGoal && (u.retreating && g.mode?.kind === 'world' ? dist(u, u.worldGoal) <= CFG.reinforceRadius : dist(u, u.routeEnd ?? u.worldGoal) <= 0.25 && !u.path.length && Math.abs(u.moveSpeed ?? 0) < 0.1)) { u.worldGoal = null; u.moveOutcome = 'completed'; u.moveOutcomeTick = g.tick; u.moveResult = ['completed', g.tick]; if (u.retreating) { u.path = []; u.retreating = false; } }
@@ -4427,6 +4506,7 @@ export function step(g) {
   if (g.tick % 10 === 0) { healWounded(g, list, dt * 10); if (g.mines.size) sweepMines(g, list); }
   if (g.supply && g.tick % CFG.supply.every === 1) supplyLines(g, list);
   for (const u of list) {
+    if (u.operative) continue;
     const def = UNITS[u.type], p = g.players[u.owner], full = def.models * def.hpPer;
     const home = !(def.structure || def.air || u.hp <= 0 || u.hp >= full || u.owner === g.mode?.slot) && atBase(u);
     if (!home && !(u.hp > 0 && u.hp < full && u.owner !== g.mode?.slot && atAid(u))) { u.reinf = 0; continue; }
@@ -4440,6 +4520,10 @@ export function step(g) {
   }
 
   for (const u of list) if (u.hp <= 0) {
+    if (u.operative) {
+      const op = g.operatives.get(u.operative);
+      op.unitId = 0; op.input = null; op.respawnAt = g.tick + Math.ceil(OPERATIVE.respawn / TICK);
+    }
     g.units.delete(u.id); if (UNITS[u.type].building) wreckBuilding(g, u);
     // A knocked-out vehicle stays where it stopped (not one that went into the river with its bridge). On open ground,
     // a crater, a road or mud its cell becomes a wreck (Q): vehicles go around, infantry take cover, explosions clear
@@ -4625,7 +4709,7 @@ export function terrainFor(g, slot, full = false) {
 const rounded = (v) => Math.round(v * 10) / 10;
 export const AUTO_FLAG = 16384; // a unit's autocast is on; only its owner is told (1024 marks a mass entrenchment)
 export const RIDING_FLAG = 262144, CARGO_FLAG = 524288; // inside a carrier (its side sees that); a carrier with a squad in it
-const unitFlags = (g, u) => (u.riding ? RIDING_FLAG : 0) | (u.cargo ? CARGO_FLAG : 0) | (u.retreating ? 1 : 0) | (u.buff > 0 ? 2 : 0) | (u.ap ? 4 : 0) | (u.reinf > 0 || g.tick - (u.healAt ?? -1e9) < 12 ? 8 : 0) | (u.dig ? 16 : 0) | (u.garrison >= 0 ? 32 | g.house[u.garrison] << 20 : 0) | (u.amove ? 64 : 0) | (u.build ? 128 : 0) | (UNITS[u.type].camo && u.still >= 3 && g.tick - (u.shotAt ?? -1e9) >= 80 ? 256 : 0) | (u.air && !airborne(u) ? 512 : 0) | (u.entrench ? 1024 : 0) | (dusty(g, u) ? 32768 : 0);
+const unitFlags = (g, u) => (u.operative ? 65536 : 0) | (u.riding ? RIDING_FLAG : 0) | (u.cargo ? CARGO_FLAG : 0) | (u.retreating ? 1 : 0) | (u.buff > 0 ? 2 : 0) | (u.ap ? 4 : 0) | (u.reinf > 0 || g.tick - (u.healAt ?? -1e9) < 12 ? 8 : 0) | (u.dig ? 16 : 0) | (u.garrison >= 0 ? 32 | g.house[u.garrison] << 20 : 0) | (u.amove ? 64 : 0) | (u.build ? 128 : 0) | (UNITS[u.type].camo && u.still >= 3 && g.tick - (u.shotAt ?? -1e9) >= 80 ? 256 : 0) | (u.air && !airborne(u) ? 512 : 0) | (u.entrench ? 1024 : 0) | (dusty(g, u) ? 32768 : 0);
 function unitRow(g, u) {
   const r = rounded;
   return [u.id, u.type, u.owner, r(u.x), r(u.z), r(u.rot), r(u.aim), Math.ceil(u.hp), Math.round(u.supp), u.targetId || 0, inTrench(g, u) ? 2 : inCover(g, u) ? 1 : UNITS[u.type].infantry && nearCover(g, u) ? 3 : 0,

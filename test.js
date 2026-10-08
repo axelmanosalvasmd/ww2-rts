@@ -9,6 +9,8 @@ import { fixtureCommand as command, clearFixtureUnits } from './test-fixtures.js
 await import('./test-skirmish-bases.js');
 await import('./test-skirmish-client.js');
 await import('./test-skirmish-ai.js');
+await import('./test-operative.mjs');
+await import('./test-operative-client.mjs');
 import { createGame, step, los, findPath, validateMap, snapshotFor, snapshotCache, inTrench, vet, spawnSlots, popOf, popCap, CFG, CELL, SUPPORT, UNITS, teamSees, levelOf } from './shared/sim.js';
 import { SpatialGrid, updateGrid } from './shared/grid.js';
 import { DEBRIS_LIMITS } from './shared/debris-motion.js';
@@ -39,7 +41,7 @@ const settledRubble = (g, cells, message) => {
 // The large-world checks use real clients and a fresh authoritative server.
 {
   const { execFileSync } = await import('node:child_process');
-  for (const file of process.env.CORE_ONLY ? [] : ['test-world-waterways.js', 'test-world-multiple-rivers.js', 'test-world-generation.js', 'test-world-territories.js',
+  for (const file of process.env.CORE_ONLY ? [] : ['test-operative-server.mjs', 'test-world-waterways.js', 'test-world-multiple-rivers.js', 'test-world-generation.js', 'test-world-territories.js',
     'test-world-conquest.js', 'test-world-teams.js', 'test-world-acceptance.js', 'test-world-observation.js', 'test-world-movement.js', 'test-world-river.js',
     'test-engine-controls.js', 'test-engine-world.js', 'test-engine-movement.js', 'test-movement-lab.js', 'test-engine-projectiles.js', 'test-engine-scenarios.js', 'test-engine-ai.js', 'test-engine-acceptance.js', 'test-engine-presentation.mjs',
     'test-engine-spectators.js', 'test-engine-scenario-start.js', 'test-engine-breaches.mjs', 'test-engine-authoring.js', 'test-engine-vehicle-pose.mjs', 'test-engine-ai-privacy.js', 'test-engine-localization.mjs',
@@ -4238,11 +4240,15 @@ const aiMap = () => ({ w: 80, h: 80, rows: Array(80).fill('.'.repeat(80)),
   assert.ok(!defending.commands.some(c => (c.t === 'amove' || c.t === 'move') && c.orders?.some(([, x]) => x > 100)), 'that look does not open the other enemy point');
 
   const siren = createGame(aiMap(), ['AI', 'enemy'], false, [0, 1]);
-  siren.units.clear(); siren.players[0].mp = 1000;
+  clearFixtureUnits(siren); siren.players[0].mp = 1000;
+  // Fighter-cover response is a combat fixture, not missing-base reconstruction.
+  for (const [i,type] of ['hq','barracks','motorpool','airfield'].entries()) massiveInternals.placeBuilding(siren,0,type,12*siren.w+8+i*10,true);
   const watcher = massiveInternals.spawnUnit(siren, 0, 'rifle');
   Object.assign(watcher, { x: 40, z: 40, cd: 999 });
   const freshTank = massiveInternals.spawnUnit(siren, 1, 'tank');
   Object.assign(freshTank, { x: 140, z: 140 });
+  // Relocated eyes must refresh terrain fog before checking a visible air-strike siren.
+  massiveInternals.updateVision(siren);
   siren.players[0].visible.add(freshTank.id);
   siren.strikes.push({ kind: 'bombing', owner: 1, x: 42, z: 40, dir: 0, t: 4, live: false, left: 1, next: 0 });
   const cover = aiCommands(siren, 0, {}, 7, { level: 'normal' });
@@ -4252,7 +4258,9 @@ const aiMap = () => ({ w: 80, h: 80, rows: Array(80).fill('.'.repeat(80)),
   // A player who will not walk rifles into a tank still takes the other point.
   const split = { w: 80, h: 80, rows: Array(80).fill('.'.repeat(80)), spawns: [{ x: 4, y: 40 }, { x: 75, y: 40 }], points: [{ x: 20, y: 40 }, { x: 60, y: 40 }] };
   const board = createGame(split, ['AI', 'enemy'], false, [0, 1]);
-  board.units.clear(); board.players[0].mp = 1000;
+  clearFixtureUnits(board); board.players[0].mp = 1000;
+  // This counter-purchase fixture tests combat choices, not missing-base reconstruction.
+  for (const [i,type] of ['hq','barracks','motorpool','airfield'].entries()) massiveInternals.placeBuilding(board,0,type,12*board.w+8+i*10,true);
   // Far enough that losing the tank does not count as seeing that ground empty (rifle vision is 36 m).
   const foot = [0, 1].map(i => { const u = massiveInternals.spawnUnit(board, 0, 'rifle'); Object.assign(u, { x: 12 + i, z: 20, cd: 999 }); return u; });
   const armor = massiveInternals.spawnUnit(board, 1, 'tank');
@@ -4624,7 +4632,12 @@ const aiMap = () => ({ w: 80, h: 80, rows: Array(80).fill('.'.repeat(80)),
 // Real map loads for 3 players, all spawns start with their force.
 {
   const g = createGame(JSON.parse(readFileSync('maps/default.json', 'utf8')), ['a', 'b', 'c']);
-  assert.equal(g.units.size, 9);
+  assert.equal(g.units.size, 15, 'three armies include nine combat units plus six starting facilities');
+  for(const p of g.players){
+    const army=[...g.units.values()].filter(u=>u.owner===p.slot);
+    assert.deepEqual(army.map(u=>u.type).sort(), ['barracks','hq','mg','rifle','rifle'], 'each seat keeps its original force plus HQ and Barracks');
+    assert.ok(army.filter(u=>UNITS[u.type].building).every(u=>u.built===1 && u.hp===UNITS[u.type].hpPer), 'starting facilities are completed and undamaged');
+  }
   run(g, 5);
 }
 // Three AIs play a full match on the real map: they must capture, fight, and finish.

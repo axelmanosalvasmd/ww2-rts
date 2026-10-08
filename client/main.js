@@ -1,4 +1,5 @@
 import * as THREE from 'three';
+import { createOperativeView } from './operative-view.js';
 import { worldLayers, composeWorldCell } from '/shared/world-layers.js';
 import { createRubbleDecals } from './rubble-decals.js';
 import { createHud } from './hud.js';
@@ -130,8 +131,11 @@ controlsSheet.addEventListener('close', () => {
   delete controlsSheet.dataset.onboarding;
 });
 const entry = new URLSearchParams(location.search);
+const requestedRole = entry.get('role') === 'operative' ? 'operative' : 'commander';
+const requestedCommander = Math.max(0, Math.min(5, Number(entry.get('commander')) || 0));
+let operative = requestedRole === 'operative';
 const listing = { public: entry.get('public') === 'true', title: entry.get('title') || 'Open skirmish', tutorial: entry.get('tutorial') === '1' };
-const token = roomToken({ room, seat, local, session, create: () => Array.from(crypto.getRandomValues(new Uint8Array(20)), n => n.toString(16).padStart(2, '0')).join('') });
+const token = roomToken({ room, seat: operative ? (seat || 'fps') + '-' + requestedCommander : seat, local, session, create: () => Array.from(crypto.getRandomValues(new Uint8Array(20)), n => n.toString(16).padStart(2, '0')).join('') });
 const matchMemory = matchStorage(token, local, session);
 $('name').value = entry.get('name')?.slice(0, 16) || tryStore(() => localStorage.getItem('ww2-name')) || 'Soldier' + Math.floor(Math.random() * 90 + 10);
 $('link').value = roomLink(location.origin);
@@ -139,6 +143,8 @@ $('roomCode').value = room;
 // Room box: type a code to join (or make) that room; New room makes a private one
 const goRoom = (code) => { code = code.trim().toLowerCase(); if (!/^[a-z0-9]{3,12}$/.test(code)) { $('roomCode').value = room; return; } location.assign('/play#' + code + (seat ? '&seat=' + seat : '')); };
 $('joinRoom').onclick = () => goRoom($('roomCode').value);
+$('joinOperative').onclick = () => location.assign('/play?role=operative&commander=' + $('commanderSel').value + '#'+room);
+$('openOperative').onclick = () => window.open('/play?role=operative&commander=' + Math.max(0,me) + '#'+room, '_blank');
 $('roomCode').addEventListener('keydown', (e) => e.key === 'Enter' && goRoom($('roomCode').value));
 $('newRoom').onclick = () => goRoom(Math.random().toString(36).slice(2, 7));
 
@@ -152,15 +158,16 @@ positionRoomBanners();
 
 let me = -1, names = [], lobbyState = null, lastSnap = null, rtt = null, paused = false, seatActive = true;
 let watching = false; // a spectator: no seat, the whole map, no orders (the server sends the first seat's view with the fog lifted)
-const observing = () => watching || !!lastSnap?.out?.[me];
-const observerControls = new Set(['ping', 'resync', 'name', 'pause', 'resume', 'restart', 'end', 'leave', 'handAi']);
+const observing = () => operative || watching || !!lastSnap?.out?.[me];
+const observerControls = new Set(['fps', 'ping', 'resync', 'name', 'pause', 'resume', 'restart', 'end', 'leave', 'handAi']);
 let snapshotAt = 0, snapshotGap = 100;
 const connection = createConnection({
   url: `${location.protocol === 'https:' ? 'wss' : 'ws'}://${location.host}/ws?room=${room}`,
-  hello: () => ({ t: 'hello', name: $('name').value, token, spectate: watching, listing }), // a spectator who reconnects keeps watching
+  hello: () => ({ t: 'hello', name: $('name').value, token, role: requestedRole, commander: requestedCommander, spectate: watching, listing }), // a spectator who reconnects keeps watching
 });
 setInterval(() => { const c = performance.now(); if (sendCmd({ t: 'ping', c, rtt, d: perf.diag() })) perf.pinged(c); }, 2000); // client/perf.js counts the unanswered ones as loss
 const sendCmd = (m) => {
+  if (operative && lobbyState?.state === 'play' && !['fps', 'ping', 'resync', 'name'].includes(m.t)) return false;
   if (lobbyState?.state === 'play' && observing() && !observerControls.has(m.t)) return false;
   return connection.send(m);
 };
@@ -208,8 +215,11 @@ document.addEventListener('visibilitychange', () => { if (!document.hidden) stop
 function receiveStart(m) {
   const saved = m.matchId != null && lastStart?.matchId === m.matchId ? matchView() : matchMemory.read();
   const resume = m.matchId != null && saved?.matchId === m.matchId;
-  startGame({ ...m, resume }, resume ? saved : null);
-  if (tryStore(() => localStorage.getItem('ww2-controls-seen')) !== '1') openControls(true);
+  operative = m.role === 'operative';
+  startGame({ ...m, resume }, operative ? null : resume ? saved : null);
+  fps.start(m);
+  if (operative) { selected.clear(); rig.skipIntro(); rig.cancelFollow(); }
+  if (!operative && tryStore(() => localStorage.getItem('ww2-controls-seen')) !== '1') openControls(true);
   saveMatchView();
   if (document.hidden && !resume) { // a new match, not the same one coming back after a drop
     stopTitleFlash(); document.title = tr('Match started');
@@ -337,7 +347,7 @@ async function previewMap(name, mode) {
 }
 
 function renderLobby(m) {
-  lobbyState = m; watching = !!m.spectator; document.body.classList.toggle('watching', watching);
+  lobbyState = m; operative = m.role === 'operative'; fps.setRole(operative); watching = !!m.spectator; document.body.classList.toggle('watching', watching);
   document.body.classList.toggle('observing', watching || (m.state === 'play' && !!lastSnap?.out?.[me]));
   if (!(watching && m.state === 'play')) me = m.you; // a spectator's match view stays on the seat the start message named
   renderMatchMenu();
@@ -346,6 +356,10 @@ function renderLobby(m) {
   $('link').value = roomLink(local && m.publicUrl ? m.publicUrl : location.origin);
   $('overlay').classList.toggle('hidden', m.state === 'play');
   const n = m.players.length, host = !!m.amHost, lobby = m.state === 'lobby';
+  $('operativeRoster').textContent = (m.operatives ?? []).map(o => `${o.name}: operative for ${m.players[o.commander]?.name ?? 'departed commander'}${o.online ? '' : ' (offline)'}`).join(' · ');
+  $('operativeJoin').classList.toggle('hidden', operative || m.mode === 'world' || !m.players.some(p => !p.ai));
+  $('commanderSel').innerHTML = m.players.map((p,i) => !p.ai ? `<option value="${i}">${esc(p.name)}</option>` : '').join('');
+  $('operativeHint').textContent = operative ? `Infantry operative for ${m.players[m.commander]?.name ?? 'commander'}. Wait for the commander to start. Desktop mouse and keyboard required.` : 'Commander: control your entire army. Invite a teammate as an infantry operative, including after the battle starts.';
   const seatLimit = m.mode === 'world' ? COLORS.length : m.listed ? Math.min(COLORS.length, m.spawns ?? 3) : COLORS.length;
   // host sets teams (and the AIs' factions), everyone picks their own faction
   const pick = (kind, i, v, opts, can) => `<select data-kind="${kind}" data-slot="${i}" ${can && lobby ? '' : 'disabled'}>${opts.map((o, k) => `<option value="${k}" ${k === v ? 'selected' : ''}>${o}</option>`).join('')}</select>`;
@@ -358,7 +372,7 @@ function renderLobby(m) {
   }).join('') + (n < seatLimit ? '<div class="slot muted">open slot</div>' : '') + (m.spectators?.length ? `<div class="slot muted">Watching: ${m.spectators.map(esc).join(', ')}</div>` : '');
   $('watchBtn').textContent = watching ? 'Take a seat' : 'Watch as a spectator';
   $('watchBtn').title = m.mode === 'world' ? "Spectators share one team's explored world and command nothing" : 'Spectators see the whole map and command nothing. With only AI players seated, a spectator hosts';
-  $('watchBtn').classList.toggle('hidden', !lobby || (watching && n >= seatLimit));
+  $('watchBtn').classList.toggle('hidden', operative || !lobby || (watching && n >= seatLimit));
   $('roster').querySelectorAll('.kick').forEach(b => (b.onclick = () => sendCmd({ t: 'kick', slot: +b.dataset.slot })));
   $('roster').querySelectorAll('select').forEach(el => (el.onchange = () => sendCmd({ t: el.dataset.kind, slot: +el.dataset.slot, v: el.dataset.kind === 'level' ? AI_LEVELS[+el.value] : +el.value })));
   $('start').classList.toggle('hidden', !host || m.state === 'play');
@@ -439,6 +453,7 @@ const SHARED_GEOS = new Set(Object.values(GEO));
 let relief = null, mapView = null, worldRegions = null;
 function hAt(x, z) { return relief?.hAt(x, z) ?? 0; }
 const units = new Map(), selected = new Set(), groups = {}, fx = [];
+const fps = createOperativeView({ camera, scene, renderer, units, ground: hAt, send: sendCmd, playing: () => lobbyState?.state === 'play', paused: () => paused });
 
 let lastStart = null;
 function startGame(m, restored = null) {
@@ -816,13 +831,13 @@ function applySnapshot(s) {
     // inside a building: the squad disappears into it; its bars float above the roof
     setOwnerRing(v.base, flags & 1 ? 0xffffff : look(owner).color);
     // men drawn, not men counted: a squad may be drawn as a bigger block (client/unit-models.js), so health maps onto it
-    const def = UNITS[type], alive = Math.ceil(hp * v.models.length / (def.models * def.hpPer));
+    const def = UNITS[type], alive = flags & 65536 ? 1 : Math.ceil(hp * v.models.length / (def.models * def.hpPer));
     if (!isVeh(type)) { while (v.alive > alive) corpse(v, v.models[--v.alive]); v.alive = alive; } // reinforced men come back
     if (!isVeh(type)) v.models.forEach((man, i) => { man.position.y = cover === 2 ? -0.6 : 0; man.visible = i < v.alive && !v.garr; });
     if (v.squad) manTrench(v);
     v.base.visible = !v.garr;
     // riding in a halftrack: not drawn, not selectable; it comes back when it gets out
-    if (!isAir(type)) { const riding = !!(flags & RIDING_FLAG); v.root.visible = v.bars.visible = !riding; if (riding) selected.delete(id); }
+    if (!isAir(type)) { const riding = !!(flags & RIDING_FLAG); v.root.visible = !riding && !(fps.active && id === s.operative?.id); v.bars.visible = !riding && !fps.active; if (riding) selected.delete(id); }
     if (UNITS[type].camo && v.camo !== (flags & 256)) { v.camo = flags & 256; v.models.forEach(man => man.traverse(o => { if (o.isMesh && !o.material.userData.camo) { o.material = o.material.clone(); o.material.userData.camo = true; o.material.transparent = true; } if (o.isMesh) o.material.opacity = flags & 256 ? 0.45 : 1; })); }
     const frac = Math.max(0, hp / (def.models * def.hpPer));
     v.hpBar.scale.x = 2.3 * frac; v.hpBar.position.x = -1.15 * (1 - frac);
@@ -832,7 +847,7 @@ function applySnapshot(s) {
     v.suppBar.scale.x = 2.3 * supp / 100; v.suppBar.position.x = -1.15 * (1 - supp / 100);
     if (v.suppColor !== suppColor) v.suppBar.material.color.set(v.suppColor = suppColor);
   }
-  autocast.adopt(s.units, me, classicMode()); // new units of a type take the player's remembered autocast choice
+  if (!operative) autocast.adopt(s.units, me, classicMode()); // new units of a type take the player's remembered autocast choice
   for (const sh of s.shots) {
     if (sh.kill && units.get(sh.t)) units.get(sh.t).killed = true;
     if (!airShot(sh)) continue;
@@ -900,16 +915,17 @@ function applySnapshot(s) {
   const ending = !epilogue.active();
   epilogue.snapshot(s, teams[me] ?? me); // the first one with a winner starts the ending (client/epilogue.js)
   if (ending && epilogue.active()) { rig.skipIntro(); rig.cancelFollow(); } // the ending's camera glide takes over the camera
-  if (!watching && !s.out?.[me]) alerts.snapshot(s, lastSnap); // the alerts are a commander's, a spectator has no army
+  if (!operative && !watching && !s.out?.[me]) alerts.snapshot(s, lastSnap); // the alerts are a commander's, a spectator has no army
   if (s.out?.[me] && !lastSnap?.out?.[me]) {
     selected.clear(); selection.reset(); cancelInput(); cancelAim(); hud.setRecruit(false);
   }
   lastSnap = s;
+  fps.snapshot(s);
   if (s.home ?? s.world?.home) { const p = s.home ?? s.world.home; home = { x: p[0], z: p[1] }; }
   worldRegions?.snapshot(s.world?.regions ?? []);
   drawWorks(s.works);
   document.body.classList.toggle('observing', observing());
-  updateHud(s);
+  if (!operative) updateHud(s);
   wx.snapshot(s);
   endgame.snapshot(s);
 }
@@ -1684,7 +1700,7 @@ renderer.setAnimationLoop(() => {
   const sdt = epilogue.frame(dt, cam); // screen time: slower once the match is decided, and the camera glides there
   water?.tick(now);
   // camera
-  rig.update(dt);
+  if (!fps.active) rig.update(dt);
 
   // units: smooth toward the latest server state
   const k = 1 - Math.exp(-sdt * 1000 / snapshotGap), ranges = rangeRings(), interested = animationInterest(camera);
@@ -1729,7 +1745,7 @@ renderer.setAnimationLoop(() => {
   alerts.frame();
   pings.frame();
   endgame.frame();
-  if (!EDIT && (mmTimer -= dt) <= 0) { mmTimer = alerts.pinging() || pings.active() ? 0.05 : 0.15; drawMinimap(); }
+  if (!EDIT && !fps.active && (mmTimer -= dt) <= 0) { mmTimer = alerts.pinging() || pings.active() ? 0.05 : 0.15; drawMinimap(); }
   // aim preview follows the mouse while targeting
   if (facingGesture) { updateFacing(mouse.x, mouse.y); showFacing(); }
   if (targeting && world && !Number.isFinite(facingGesture?.face)) {
@@ -1756,8 +1772,9 @@ renderer.setAnimationLoop(() => {
   if (cursor !== lastCursor) renderer.domElement.style.cursor = lastCursor = cursor;
   terrainFrame(dt);
   apron?.update();
-  if (mapView) { mapView.frame(dt, cam.dist / rig.wide); fadeLabels(1 - Math.min(1, mapView.fade * 2)); }
-  const mapRender = mapView?.renderObject;
+  fps.frame(now, cam);
+  if (mapView && !fps.active) { mapView.frame(dt, cam.dist / rig.wide); fadeLabels(1 - Math.min(1, mapView.fade * 2)); }
+  const mapRender = fps.active ? null : mapView?.renderObject;
   if (!mapRender) drawSoldiers(units.values(), camera);
   renderFrame(cam, groundMesh, mapRender); // shadows and haze follow the view when the battlefield is visible
   perf.frame(renderer, now, { units: units.size, fx: effects.count, corpses: bodies.count });
@@ -1766,7 +1783,7 @@ renderer.setAnimationLoop(() => {
 if (EDIT) { $('overlay').classList.add('hidden'); import('./editor.js').then(m => m.start({ startGame, cam, groundAt, renderer, scene, hAt })); }
 
 // debug handle for poking at the game from devtools
-window.__game = { renderer, scene, camera, cam, units, selected, sendCmd, makeUnit, hAt, groundAt, rig, pointer, pings, alerts, epilogue, effects, bodies, atmos, aviation, objectives, endgame, coverPreview, get gesture() { return facingGesture ? { button: facingGesture.button, face: facingGesture.face ?? null, reach: facingGesture.reach ?? 0 } : null; }, get groundMesh() { return groundMesh; }, get fog() { return fogOfWar; }, get me() { return me; }, get water() { return water; }, get relief() { return relief; }, get apron() { return apron; }, get snapshot() { return lastSnap; }, get mapView() { return mapView; }, get points() { return points; } };
+window.__game = { fps, renderer, scene, camera, cam, units, selected, sendCmd, makeUnit, hAt, groundAt, rig, pointer, pings, alerts, epilogue, effects, bodies, atmos, aviation, objectives, endgame, coverPreview, get gesture() { return facingGesture ? { button: facingGesture.button, face: facingGesture.face ?? null, reach: facingGesture.reach ?? 0 } : null; }, get groundMesh() { return groundMesh; }, get fog() { return fogOfWar; }, get me() { return me; }, get water() { return water; }, get relief() { return relief; }, get apron() { return apron; }, get snapshot() { return lastSnap; }, get mapView() { return mapView; }, get points() { return points; } };
 // the alerts list above the minimap (client/alerts.js) sees the match through these
 alerts.init({ me: () => me, team: () => teams[me] ?? me, friend: (slot) => !foe(slot), unitName: (type, owner) => look(owner).names[type] ?? UNITS[type].name, playerName: (slot) => names[slot] ?? 'An ally',
   matchTime: () => (lastSnap?.tick ?? 0) / 20, resetPings: pings.reset, pointPos: (i) => points[i]?.g.position, home: () => home, jump: (x, z) => { rig.cancelFollow(); cam.x = x; cam.z = z; },

@@ -1,15 +1,16 @@
 // Focused operation and Horde contracts: node test-engine-ai.js.
 import assert from 'node:assert/strict';
-import { createGame, command, step, snapshotFor, CFG, CELL, UNITS, MOVE, COVER, hordeWave, hordeProfile, HORDE_PROFILES } from './shared/sim.js';
+import {fixtureCommand,fixtureCommand as command,clearFixtureUnits} from './test-fixtures.js';
+import { createGame, step, snapshotFor, CFG, CELL, UNITS, MOVE, COVER, hordeWave, hordeProfile, HORDE_PROFILES } from './shared/sim.js';
 import { beginMind, planAssault, operationPosition, ASSAULT_TUNING } from './shared/ai-mind.js';
 import { viewFor } from './shared/ai-view.js';
 import { think, resetAI } from './shared/ai.js';
 const map = { w: 80, h: 80, rows: Array(80).fill('.'.repeat(80)), spawns: [{ x: 5, y: 40 }, { x: 75, y: 40 }], points: [{ x: 55, y: 40 }] };
 const level = { notice: 1.25, wave: 3, firstAssault: 0 };
 const fixture = () => {
-  const g = createGame(map, ['AI', 'enemy'], false, [0,1], [0,1]); g.units.clear();
+  const g = createGame(map, ['AI', 'enemy'], false, [0,1], [0,1]); clearFixtureUnits(g);
   for (const slot of [0,1]) g.players[slot].mp = 5000;
-  for (const type of ['rifle','rifle','mg']) assert.equal(command(g, 0, { t: 'buy', unit: type }), undefined);
+  for (const type of ['rifle','rifle','mg']) assert.equal(fixtureCommand(g, 0, { t: 'buy', unit: type }), undefined);
   [...g.units.values()].forEach((u,i) => Object.assign(u,{x:50+i*3,z:80}));
   g.points[0].owner=1;
   const mem = {}, view = viewFor(g,0,mem), mind = beginMind(view,0,mem,1);

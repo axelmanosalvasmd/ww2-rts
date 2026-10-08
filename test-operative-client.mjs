@@ -1,0 +1,10 @@
+import assert from 'node:assert/strict';
+import * as fps from './client/operative-controls.js';
+assert.equal(typeof fps.inputFor,'function','FPS input maps desktop controls explicitly');
+const held=new Set(['KeyW','KeyD']);
+assert.deepEqual(fps.inputFor(held,0,0,true,9),{t:'fps',seq:9,forward:1,strafe:1,yaw:0,pitch:0,fire:true});
+assert.equal(fps.inputFor(new Set(['KeyW','KeyS']),0,0,false,10).forward,0);
+const look=fps.lookDelta(0,0,100, -10000);
+assert.ok(look.yaw>0);assert.equal(look.pitch,1.45,'vertical aim is bounded');
+assert.equal(fps.cameraYaw(0),-Math.PI/2,'Three forward points along positive world X at yaw zero');
+console.log('PASS desktop FPS input, mouse aim limits and camera/ray coordinate agreement');
