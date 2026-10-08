@@ -5,6 +5,16 @@ AI-vs-AI runs (see DESIGN.md for the balance log). Add new entries under **Unrel
 
 ## Unreleased
 
+- Enemy commanders now play like a person at a keyboard (issue #48). Each AI seat has its own camera and only plans
+  against enemies it has looked at, notices damage on screen after a reaction time and off screen after an alert,
+  and gives orders through timed clicks and keys, at most one command per tick, under per-difficulty input caps.
+  Difficulty changes speed and attention only. Measured reaction, APM and first-order times meet every band in issue
+  #48 (DESIGN.md). Conquest balance over 60 matches: USA 28%, Germany 33%, USSR 38%. New Hard wins 19 of 40 duels
+  against the old Easy AI, short of the 14 of 20 target: the input caps limit it. The Horde wave director keeps the
+  scripted planner. Replaces PRs #49 and #50 with a smaller design: `shared/ai-human.js` plus one test file.
+- `tools/ai-balance.mjs`: an `old:` seat plays the scripted planner. `tools/ai-human-report.mjs` measures the
+  commander's timing. Found and left for later: Classic free-for-alls run past the balance tool's 20-minute limit.
+
 - Room checks in `test.js` no longer use the network or wall-clock sleeps (no game change). Their clients connect
   through in-memory sockets (`memoryConnect` in `test-socket.js`) that deliver each message at once in both
   directions, and the harness serves map files from already-resolved promises, so a reply is there as soon as the

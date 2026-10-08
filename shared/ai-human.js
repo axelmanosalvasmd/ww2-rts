@@ -19,9 +19,9 @@ export const SCREEN_MEMORY = 30;
 // opening seconds spent looking at the base before the first decision
 // peak, minute  input caps per 10 s and per 60 s
 export const HUMAN_SKILLS = {
-  easy: { react: 0.65, notice: 3.4, input: 0.62, scan: 3.6, opening: 4.6, peak: 10, minute: 34 },
-  normal: { react: 0.45, notice: 1.7, input: 0.32, scan: 1.7, opening: 3.2, peak: 20, minute: 68 },
-  hard: { react: 0.21, notice: 0.9, input: 0.14, scan: 0.6, opening: 2.1, peak: 33, minute: 118 },
+  easy: { react: 0.8, notice: 3.4, input: 0.62, scan: 3.6, opening: 4.6, peak: 10, minute: 34 },
+  normal: { react: 0.5, notice: 1.7, input: 0.32, scan: 1.4, opening: 3.2, peak: 20, minute: 68 },
+  hard: { react: 0.23, notice: 0.9, input: 0.14, scan: 0.45, opening: 2.1, peak: 33, minute: 118 },
 };
 const REACTION_FLOOR = 0.2, LOCAL_GAP = 5; // ticks between orders more than a screen apart
 // A new fight is one damage alert per 30 m area per 20 s, the client's rule for its "under attack" line.
@@ -141,7 +141,9 @@ function scanLook(s, view, slot, now) {
     if (me.spawn) places.push(me.spawn);
     target = places[s.scan++ % Math.max(1, places.length)];
   }
-  return { at: now + ticks(sample(s, s.skill.scan, 0.5)), target: target ? { x: target.x, z: target.z } : null, causes: [] };
+  // Busy hands scan less: the closer the last 10 s came to the input cap, the longer the next idle look waits.
+  const load = s.recent.filter(t => now - t < 10 * TPS).length / s.skill.peak;
+  return { at: now + ticks(sample(s, s.skill.scan, 0.5) * (1 + 3 * load)), target: target ? { x: target.x, z: target.z } : null, causes: [] };
 }
 
 // A due look moves the camera if it has to, then plans. An urgent look drops what the hands were still doing.
@@ -167,7 +169,7 @@ function planNow(g, slot, s, opts, { causes, resume }) {
   for (const alert of causes ?? []) if (onScreen(s.camera, alert)) { const answer = fightResponse(view, slot, alert, opts.level, orders); if (answer) orders.push(answer); }
   const cursor = { camera: s.camera, selection: s.selection };
   const start = s.inputs.length;
-  for (const cmd of orders) for (const input of inputsFor(cursor, cmd, opts.view)) s.inputs.push({ ...input, origin: g.tick });
+  for (const cmd of formationMoves(orders.map(cmd => news(cmd, opts.view)).filter(Boolean), opts.view)) for (const input of inputsFor(cursor, cmd, opts.view)) s.inputs.push({ ...input, origin: g.tick });
   if (s.inputs.length > start) s.inputs[start].causes = causes;
   // Interrupted orders for units the new decision did not touch go back on the queue.
   const ordered = new Set(orders.flatMap(unitsOf));
@@ -203,6 +205,40 @@ function fightResponse(view, slot, alert, level, orders) {
     && !ordered.has(o.id) && distance(o, u) <= SCREEN.x);
   return idle.length ? { t: 'attack', ids: idle.map(o => o.id), target: foe.id } : null;
 }
+
+// A player does not click an order that is already in force: a unit already moving to (or attack-moving on) that spot,
+// already firing at that target, or already retreating gets no new input. Returns the order without them, or null.
+const SAME_SPOT = 3;
+function news(cmd, view) {
+  const unit = id => view.units.get(id);
+  if (cmd.t === 'move' || cmd.t === 'amove') {
+    if (!Array.isArray(cmd.orders) || Object.keys(cmd).some(k => k !== 't' && k !== 'orders')) return cmd;
+    const goal = u => cmd.t === 'move' ? u.worldGoal : u.amove;
+    const left = cmd.orders.filter(([id, x, z]) => { const u = unit(id), at = u && goal(u); return !(at && distance(at, { x, z }) <= SAME_SPOT); });
+    return left.length ? { ...cmd, orders: left } : null;
+  }
+  if ((cmd.t === 'attack' || cmd.t === 'retreat') && Array.isArray(cmd.ids)) {
+    const left = cmd.ids.filter(id => { const u = unit(id); return !(u && (cmd.t === 'attack' ? u.targetId === cmd.target : u.retreating)); });
+    return left.length ? { ...cmd, ids: left } : null;
+  }
+  return cmd;
+}
+
+// A player sends squads that stand together and head for the same spot with one selection and one right-click:
+// plain moves (or attack-moves) whose units fit one screen and whose targets lie within 15 m merge into one order.
+const MERGE = 15;
+function formationMoves(orders, view) {
+  const out = [];
+  for (const cmd of orders) {
+    const plain = (cmd.t === 'move' || cmd.t === 'amove') && Array.isArray(cmd.orders) && Object.keys(cmd).every(k => k === 't' || k === 'orders');
+    const into = plain && out.find(o => o.formation && o.t === cmd.t && distance(placeOf(o, view), placeOf(cmd, view)) <= MERGE
+      && fitsScreen([...unitsOf(o), ...unitsOf(cmd)].map(id => view.units.get(id)).filter(Boolean)));
+    if (into) into.orders.push(...cmd.orders);
+    else out.push(plain ? { t: cmd.t, orders: [...cmd.orders], formation: true } : cmd);
+  }
+  return out.map(cmd => cmd.formation ? { t: cmd.t, orders: cmd.orders } : cmd);
+}
+const fitsScreen = units => { const c = centroid(units); return !c || units.every(u => onScreen(c, u)); };
 
 const unitsOf = cmd => cmd.ids ?? (Array.isArray(cmd.orders) ? cmd.orders.map(o => o[0]) : []);
 const centroid = points => points.length ? { x: points.reduce((a, p) => a + p.x, 0) / points.length, z: points.reduce((a, p) => a + p.z, 0) / points.length } : null;

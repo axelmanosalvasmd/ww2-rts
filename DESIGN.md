@@ -2231,6 +2231,53 @@ samples. Per-match seeds, outcomes and simulation lengths are saved in
 `docs/ai-difficulty-balance.json`. The current-master comparison uses the AI from
 `41eefe8`. Both controllers used the same `41eefe8` simulation, map and observation delivery.
 
+## Human-like commander (2026-10-08, issue 48)
+
+Seat AIs play like a person at a keyboard. `shared/ai-human.js` sits between the planner in `shared/ai.js` and
+`command()`: the planner still decides what to do, the commander decides when it may look and how fast orders land.
+It is one of two brains behind `shared/ai-schedule.js`; the Horde wave director keeps the scripted planner.
+
+- **Camera.** Each seat has a private camera, a box of 110 by 80 m around its focus (the default battle view). The
+  planner sees its own side whole, but an enemy unit only after this camera has shown it; shown enemies stay known for
+  30 s while the fog still shows them, as a minimap dot would. Enemy buildings stay known as before.
+- **Alerts.** Damage to an own unit is an alert, one per 30 m area per 20 s (the client's "under attack" rule). On
+  screen it is noticed after the reaction time; off screen it is noticed later and answered by moving the camera there.
+- **Looks.** With nothing to answer, the camera visits unidentified enemy dots near the army, then each army group and
+  the base in turn; busy hands look less often. A look plans from a view delivered after it began.
+- **Hands.** Every order becomes the inputs a player makes: a camera move when its units or its target are off screen
+  (moves may go by minimap), a selection when it changes, a key, a click. At most one input, so one command, per tick;
+  log-normal motor times; caps per 10 s and per 60 s; no two orders more than a screen apart within 0.25 s. Squads
+  that stand together and head for the same spot move with one selection and click, and orders already in force are
+  not clicked again. An alert interrupts the queue; the interrupted orders resume after the answer.
+- **Fights in view.** When the planner leaves a new fight on screen alone, the commander pulls back a unit below the
+  difficulty's retreat health, or sends the units on that screen that are not fighting at the nearest enemy it has seen.
+- **Difficulty** sets only speed and attention (`HUMAN_SKILLS`): reaction, alert notice, input time, scan interval,
+  opening look and input caps. View, economy and command rules are the same at every level; the planner's per-level
+  judgement (`AI_LEVELS`) is unchanged.
+
+Measured with `tools/ai-human-report.mjs` (reactions are Kaplan-Meier medians, so unanswered alerts count against the
+median) over 6 Conquest and 3 Classic 15-minute matches per level, 27 seats each:
+
+| Measure (target) | Easy | Normal | Hard |
+| --- | --- | --- | --- |
+| On-screen reaction (0.9-1.4 / 0.5-0.8 / 0.3-0.45 s) | 1.15 s | 0.65 s | 0.35 s |
+| Off-screen alert (3-6 / 1.5-3 / 0.8-1.6 s) | 4.2 s | 1.95 s | 0.95 s |
+| Average APM (20-35 / 40-70 / 80-120) | 24.2 | 44.2 | 85.8 |
+| Peak APM over 10 s (60 / 120 / 200 at most) | 60 | 120 | 198 |
+| First order (4-8 / 3-6 / 2-4 s) | 5.3 s | 3.55 s | 2.2 s |
+
+No answer came sooner than 0.2 s and no seat sent more than one command in a tick.
+
+Balance with `tools/ai-balance.mjs` (an `old:` seat plays the scripted planner):
+- Conquest free-for-all, 60 matches, seed 1: USA 17, Germany 20, USSR 23 wins (28 / 33 / 38%), no draws or timeouts,
+  median 621 s.
+- New Hard against old Easy, Conquest duels with rotated seats: 11 of 20 (seed 1) and 8 of 20 (seed 2), 19 of 40.
+  The target was 14 of 20: the commander is about as strong as the old Easy AI. Removing the input caps alone made
+  Hard win 15 of 20 and instant inputs 16 of 20, while giving it the full fog view did not help (9 of 20), so the
+  hands, not the information, limit it. The caps come from the 200 peak APM rule.
+- Classic free-for-alls run past the tool's 20-minute limit with both the old and the new AI (29 of 30 timeouts each,
+  seed 1), so Classic balance needs a longer limit before it can be compared.
+
 ## Individual infantry movement (2026-10-01)
 
 - Each squad remains one server unit. Its rendered men follow the authoritative center in world space, with different stride phases, response times and turning rates. A small separation pass keeps shoulders apart during corners. Visual offsets stay within the formation's footprint and a 0.65 m allowance.

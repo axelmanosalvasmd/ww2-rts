@@ -51,7 +51,7 @@ const settledRubble = (g, cells, message) => {
 const childFiles = runFiles(['test-audit-commands.mjs', 'test-audit-combat.mjs', 'test-audit-logistics.mjs', 'test-audit-client.mjs', 'test-audit-ai.mjs', 'test-audit-world.mjs', 'test-audit-server.mjs', 'test-infantry-dig.mjs', 'test-snapshot-backpressure.mjs',
     'test-logistics.mjs', 'test-convoy-scheduler.mjs', 'test-world-supply.mjs', 'test-territory-supply.mjs', 'test-logistics-server.mjs', 'test-world-waterways.js', 'test-world-multiple-rivers.js', 'test-world-generation.js', 'test-world-territories.js',
     'test-world-conquest.js', 'test-world-teams.js', 'test-world-acceptance.js', 'test-world-observation.js', 'test-world-movement.js', 'test-world-river.js',
-    'test-engine-controls.js', 'test-engine-world.js', 'test-engine-movement.js', 'test-movement-lab.js', 'test-engine-projectiles.js', 'test-engine-scenarios.js', 'test-engine-ai.js', 'test-engine-acceptance.js', 'test-engine-presentation.mjs',
+    'test-engine-controls.js', 'test-engine-world.js', 'test-engine-movement.js', 'test-movement-lab.js', 'test-engine-projectiles.js', 'test-engine-scenarios.js', 'test-engine-ai.js', 'test-ai-human.js', 'test-engine-acceptance.js', 'test-engine-presentation.mjs',
     'test-engine-spectators.js', 'test-engine-scenario-start.js', 'test-engine-breaches.mjs', 'test-engine-authoring.js', 'test-engine-vehicle-pose.mjs', 'test-engine-ai-privacy.js', 'test-engine-localization.mjs',
     'test-engine-debris.js', 'test-engine-traffic-privacy.js', 'test-engine-horde-queue.js'], { cwd: import.meta.dirname });
 
@@ -5108,11 +5108,11 @@ await check("The server's side of the end, in-process", async () => {
   // win and loss: Ann (team 0) against Ben and an AI (team 1)
   {
     const { room, g, people: [ann, ben] } = await setUp('endwin', ['Ann', 'Ben']);
-    // Count AI command attempts. Observation refreshes can also run while thinking is idle.
+    // Count AI command attempts (the commander's hands send them from runInput). Observation refreshes do not count.
     let thinks = 0;
     let aiMp = g.players[2].mp;
-    Object.defineProperty(g.players[2], 'mp', { get() { if (/at (\w+\.)?think /.test(new Error().stack)) thinks++; return aiMp; }, set(value) { aiMp = value; }, configurable: true, enumerable: true });
-    await ticksUntil(() => thinks > 0, 'the AI thinks during the match');
+    Object.defineProperty(g.players[2], 'mp', { get() { if (/at (\w+\.)?(think|runInput) /.test(new Error().stack)) thinks++; return aiMp; }, set(value) { aiMp = value; }, configurable: true, enumerable: true });
+    await ticksUntil(() => thinks > 0, 'the AI acts during the match');
     const mine = () => [...g.units.values()].filter(u => u.owner === 0).length, before = mine();
     await ann.send({ t: 'buy', unit: 'rifle' }); assert.equal(mine(), before + 1, 'orders work during the match');
     await h.tick(3);

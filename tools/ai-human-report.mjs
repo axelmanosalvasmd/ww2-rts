@@ -10,7 +10,7 @@ import { isMainThread, parentPort, Worker, workerData } from 'node:worker_thread
 
 const script = fileURLToPath(import.meta.url), root = resolve(dirname(script), '..');
 const TPS = 20;
-// The original acceptance bands (docs/human-like-ai.md). Reaction medians are in seconds.
+// The acceptance bands from issue #48. Reaction medians are in seconds.
 export const TARGETS = {
   easy: { screen: [0.9, 1.4], alert: [3, 6], apm: [20, 35], peak: 60, first: [4, 8] },
   normal: { screen: [0.5, 0.8], alert: [1.5, 3], apm: [40, 70], peak: 120, first: [3, 6] },
