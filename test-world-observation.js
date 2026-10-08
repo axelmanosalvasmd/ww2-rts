@@ -1,8 +1,7 @@
-import { sendsReadBy } from './test-socket.js';
+import { memoryConnect, sendsReadBy } from './test-socket.js';
 // World observation regressions. Socket messages and the public AI planning boundary carry assertions.
 import assert from 'node:assert/strict';
 import { pathToFileURL } from 'node:url';
-import WebSocket from 'ws';
 const source = process.env.WORLD_SOURCE_ROOT ? pathToFileURL(`${process.env.WORLD_SOURCE_ROOT}/`) : new URL('./', import.meta.url);
 const { createGame, teamFog, CELL, UNITS } = await import(new URL('shared/sim.js', source));
 const { generateWorldMap } = await import(new URL('shared/world-conquest.js', source));
@@ -20,7 +19,7 @@ async function waitFor(fn, label) {
   assert.fail(label);
 }
 async function connect(token) {
-  const ws = new WebSocket(`ws://127.0.0.1:${server.server.address().port}/ws?room=obscheck`, { perMessageDeflate: false });
+  const ws = memoryConnect(server.wss, `/ws?room=obscheck`);
   const messages = [], rows = new Map();
   const c = { ws, latest: t => messages.filter(m => m.t === t).at(-1), async send(m) { await sendRead(ws, m); await settle(); } };
   clients.push(c);
@@ -34,7 +33,6 @@ async function connect(token) {
     }
     messages.push(m);
   });
-  await new Promise((resolve, reject) => { ws.once('open', resolve); ws.once('error', reject); });
   await c.send({ t: 'hello', token, name: token });
   await waitFor(() => c.latest('lobby'), 'socket joins the lobby');
   return c;

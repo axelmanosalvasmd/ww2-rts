@@ -2308,9 +2308,9 @@ matches with rotated seats:
 - Hard was tuned against this: scanning every 0.35 s instead of 0.45 s raised its APM but dropped it to 26 of 60,
   because more looks from partial views churn its orders.
 - Conquest free-for-all, 60 matches: USA 17, Germany 20, USSR 23 (28 / 33 / 38%), median 621 s.
-- Classic free-for-all, 30 matches, 40-minute limit: USA 12, Germany 8, USSR 8 of 28 decisive (43 / 29 / 29%), two
-  draws, median 1,509 s. The old AI on the same seeds: 10 / 13 / 7 of 30 (33 / 43 / 23%). USA sits one point over
-  the band; at 30 matches that is within noise, and the old AI misses the band on two factions.
+- Classic free-for-all, 60 matches, 40-minute limit: USA 21, Germany 20, USSR 16 of 57 decisive (37 / 35 / 28%),
+  three draws, no timeouts, median 1,509 s. (A first 30-match run read 43 / 29 / 29%: noise at that size. The old AI
+  on those 30 seeds read 33 / 43 / 23%.)
 
 Performance, server loop, six 10-minute Conquest matches with three Normal seats: AI cost per tick mean 0.10 ms and
 95th percentile 0.71 ms (scripted planner 0.22 and 1.30 ms); ticks over 40 ms 0 (planner 2); worst whole tick 21.5 ms

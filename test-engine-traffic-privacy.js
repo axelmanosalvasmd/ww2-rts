@@ -1,4 +1,4 @@
-import { sendsReadBy } from './test-socket.js';
+import { memoryConnect, sendsReadBy } from './test-socket.js';
 // Fixture placement is internal. Orders and trajectory observations use real WebSockets.
 import assert from 'node:assert/strict';
 import { registerHooks } from 'node:module';
@@ -47,7 +47,7 @@ async function until(fn, message) {
   assert.fail(message);
 }
 async function connect(room, token) {
-  const ws = new WebSocket(`ws://127.0.0.1:${server.server.address().port}/ws?room=${room}`, { perMessageDeflate: true });
+  const ws = memoryConnect(server.wss, `/ws?room=${room}`);
   const messages = [], rows = new Map(), terrain = new Map();
   const client = { ws, token, messages, terrain, wrecks: [], latest: type => messages.filter(message => message.t === type).at(-1),
     async send(message) { await sendRead(ws, message); await settle(); },
@@ -65,7 +65,6 @@ async function connect(room, token) {
     }
     messages.push(message);
   });
-  await new Promise((resolve, reject) => { ws.once('open', resolve); ws.once('error', reject); });
   await client.send({ t: 'hello', token, name: token }); await client.wait('lobby');
   return client;
 }
