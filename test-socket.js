@@ -13,3 +13,31 @@ export function sendsReadBy(wss, timeoutMs = 15000) {
     }
   };
 }
+
+// In-memory sockets at the room seam: a test client connects to server.js without a network. Each message crosses
+// at once in both directions, so a test that sends an order or steps the server reads exactly what the clients got,
+// with no sleeps. The server side offers what server.js uses of a ws socket: readyState (a getter, as on ws),
+// send(data, callback), close(), terminate() and the message and close events.
+import { EventEmitter } from 'node:events';
+class MemorySocket extends EventEmitter {
+  constructor(state) { super(); this.state = state; }
+  get readyState() { return this.state.open ? 1 : 3; }
+  send(data, callback) {
+    if (!this.state.open) { callback?.(new Error('socket closed')); return; }
+    this.peer.emit('message', Buffer.from(String(data)), false);
+    callback?.();
+  }
+  close(code, reason) {
+    if (!this.state.open) return;
+    this.state.open = false;
+    this.emit('close', code, reason); this.peer.emit('close', code, reason);
+  }
+  terminate() { this.close(1006); }
+}
+// Opens a connection to the server's WebSocketServer (wss) for url (for example /ws?room=abc). Returns the client side.
+export function memoryConnect(wss, url) {
+  const state = { open: true }, client = new MemorySocket(state), server = new MemorySocket(state);
+  client.peer = server; server.peer = client;
+  wss.emit('connection', server, { url, headers: {} });
+  return client;
+}

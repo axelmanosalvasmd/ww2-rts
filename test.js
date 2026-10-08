@@ -1,5 +1,6 @@
 // Headless sim checks: `node test.js`. Each check is named; see test-check.js to run one by name or split the run.
 import { check, runFiles, runShards } from './test-check.js';
+import { memoryConnect } from './test-socket.js';
 // Started plainly, the suite splits itself into shard processes and runs the performance budgets alone at the end.
 const shardedExit = await runShards(import.meta.filename, ['test-performance.mjs']);
 if (shardedExit !== null) process.exit(shardedExit);
@@ -4819,16 +4820,18 @@ async function serverHarness() {
     return { module, accepting, originalClock: { ...module.clock }, originalMaps: { ...module.mapFiles } };
   })();
   const { module, accepting, originalMaps } = await serverModule;
-  const { default: WebSocket } = await import('ws');
   const clock = fakeClock(), clients = [];
   Object.assign(module.clock, clock);
-  Object.assign(module.mapFiles, originalMaps);
-  let mapGate = null;
-  const settleServer = async () => {
-    await new Promise(resolve => setImmediate(resolve));
-    await new Promise(resolve => setTimeout(resolve, 4));
-    await new Promise(resolve => setImmediate(resolve));
+  // Map files are read synchronously into already-resolved promises, so the server's lobby and start replies need
+  // only a few event-loop turns, never a disk wait.
+  const instantMaps = {
+    list: () => Promise.resolve(readdirSync('maps')),
+    read: name => { try { return Promise.resolve(readFileSync(`maps/${name}.json`, 'utf8')); } catch (error) { return Promise.reject(error); } },
   };
+  Object.assign(module.mapFiles, instantMaps);
+  let mapGate = null;
+  // Clients use in-memory sockets (test-socket.js): replies arrive as soon as the server's handler finishes.
+  const settleServer = async () => { for (let i = 0; i < 4; i++) await new Promise(resolve => setImmediate(resolve)); };
   // real-time limit: generous because starting a Massive six-army match can take seconds on a loaded machine
   const waitFor = async (predicate, label) => {
     const until = Date.now() + (+process.env.WW2_TEST_WAIT_MS || 15000);
@@ -4841,8 +4844,7 @@ async function serverHarness() {
   };
   const connect = async (code, { token = 'token-' + clients.length, name = 'Soldier', hello = true } = {}) => {
     const serverSide = new Promise(resolve => accepting.push(resolve));
-    // no compression: zlib runs off the main thread, and settleServer's few milliseconds assume a message is sent at once
-    const ws = new WebSocket(`ws://127.0.0.1:${module.server.address().port}/ws?room=${code}`, { perMessageDeflate: false });
+    const ws = memoryConnect(module.wss, `/ws?room=${code}`);
     const messages = [], errors = [];
     const client = {
       code, token, ws, messages, log: messages, errors, closed: false, serverSide,
@@ -4866,8 +4868,7 @@ async function serverHarness() {
       messages.push(m);
     });
     ws.on('close', () => { client.closed = true; });
-    ws.on('error', error => errors.push(error)); clients.push(client);
-    await new Promise((resolve, reject) => { ws.once('open', resolve); ws.once('error', reject); });
+    clients.push(client);
     if (!hello) return client;
     await client.send({ t: 'hello', token, name });
     await waitFor(() => messages.find(message => ['lobby', 'full'].includes(message.t)), 'hello is answered');
@@ -4887,7 +4888,7 @@ async function serverHarness() {
     useMap(json) { module.mapFiles.read = async () => json; },
     async clear(code) { await Promise.all(clients.filter(client => client.code === code && !client.closed).map(client => client.close())); module.rooms.delete(code); },
     async close() {
-      mapGate?.open(); mapGate = null; Object.assign(module.mapFiles, originalMaps);
+      mapGate?.open(); mapGate = null; Object.assign(module.mapFiles, instantMaps);
       await Promise.all(clients.filter(client => !client.closed).map(client => client.close()));
       for (const code of new Set(clients.map(client => client.code))) module.rooms.delete(code);
     },
