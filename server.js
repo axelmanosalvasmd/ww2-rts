@@ -256,14 +256,18 @@ function operativeStatus(g, person) {
   const op = g.operatives?.get(person.token), u = op && g.units.get(op.unitId);
   return { id: u?.id ?? 0, hp: Math.max(0, Math.ceil(u?.hp ?? 0)), maxHp: OPERATIVE.hp,
     respawn: op ? Math.max(0, Math.ceil((op.respawnAt - g.tick) * TICK)) : 0, cost: OPERATIVE.cost,
-    waiting: !u && (g.players[op?.owner]?.mp ?? 0) < OPERATIVE.cost, seq: op?.lastSeq ?? -1, shots: op?.shots ?? 0, hits: op?.hits ?? 0 };
+    waiting: !u && (g.players[op?.owner]?.mp ?? 0) < OPERATIVE.cost, seq: op?.lastSeq ?? -1, shots: op?.shots ?? 0, hits: op?.hits ?? 0, kills: op?.kills ?? 0,
+    // exact position and motion for the client's prediction, and the loadout the HUD shows
+    ...(u && { x: Math.round(u.x * 100) / 100, z: Math.round(u.z * 100) / 100, vx: Math.round(u.vx * 100) / 100, vz: Math.round(u.vz * 100) / 100, jy: Math.round(u.jy * 100) / 100,
+      crouch: u.crouch, weapon: u.weapon, mags: u.mags, reload: Math.round(u.reloadT * 10) / 10, nades: u.nades,
+      from: g.tick - u.hitAt <= 10 && u.hitFrom ? [Math.round(u.hitFrom.x), Math.round(u.hitFrom.z)] : null }) };
 }
 function sendOperativeStart(room, person) {
   const i = room.players.indexOf(person.commander);
   if (i < 0 || room.mode === 'world') return;
   const op = joinOperative(room.game, person.token, i);
   if (!op) return;
-  op.online = connected(person); op.lastSeq = -1; op.input = null;
+  op.online = connected(person); op.lastSeq = -1; op.input = null; op.seen = {}; op.want = {};
   person.inputAt = 0; person.net = { sent: new Map(), full: true }; person.view = null;
   const g = operativeView(room, person);
   send(person.ws, { t: 'start', role: 'operative', operative: operativeStatus(g, person), matchId: room.matchId,

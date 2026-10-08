@@ -1406,11 +1406,14 @@ export function joinOperative(g, key, owner) {
   if (!g.players[owner] || g.players[owner].out || g.winner !== null) return null;
   g.operatives ??= new Map();
   if (g.operatives.has(key)) return g.operatives.get(key);
-  const op = { key, owner, unitId: 0, respawnAt: 0, online: true, input: null, lastInput: -100, lastSeq: -1, shots: 0, hits: 0 };
+  const op = { key, owner, unitId: 0, respawnAt: 0, online: true, input: null, lastInput: -100, lastSeq: -1, shots: 0, hits: 0, kills: 0, seen: {}, want: {} };
   g.operatives.set(key, op);
   spawnOperative(g, op);
   return op;
 }
+// Jump, reload and grenade arrive as running counts, so a lost or repeated packet never drops or doubles a press.
+// The first count after a (re)connect is only a baseline.
+const EDGES = ['jump', 'reload', 'nade'];
 export function operativeInput(g, key, input) {
   const op = g.operatives?.get(key);
   if (!op?.online || g.winner !== null || g.players[op.owner].out || !input ||
@@ -1418,58 +1421,119 @@ export function operativeInput(g, key, input) {
       ![input.forward, input.strafe, input.yaw, input.pitch].every(Number.isFinite) ||
       Math.abs(input.forward) > 1 || Math.abs(input.strafe) > 1 || Math.abs(input.yaw) > 1e4 || Math.abs(input.pitch) > 1.45) return false;
   op.lastSeq = input.seq;
-  op.input = { forward: input.forward, strafe: input.strafe, yaw: input.yaw, pitch: input.pitch, fire: input.fire === true };
+  const weapon = Number.isInteger(input.weapon) && OPERATIVE_WEAPONS[input.weapon] ? input.weapon : op.input?.weapon ?? 0;
+  op.input = { forward: input.forward, strafe: input.strafe, yaw: input.yaw, pitch: input.pitch, fire: input.fire === true,
+    ads: input.ads === true, crouch: input.crouch === true, sprint: input.sprint === true, weapon };
+  op.seen ??= {}; op.want ??= {};
+  for (const k of EDGES) {
+    const n = input[k];
+    if (!Number.isSafeInteger(n) || n < 0) continue;
+    if (op.seen[k] != null && n > op.seen[k]) op.want[k] = true;
+    op.seen[k] = n;
+  }
   op.lastInput = g.tick;
   return true;
 }
-export const OPERATIVE = Object.freeze({ hp: 20, eye: 1.65, range: 36, interval: 0.65, damage: 6, respawn: 8, cost: 10 });
-function fireOperative(g, u, op, input) {
-  u.cooldown = OPERATIVE.interval; op.shots++;
-  const originY = (g.height ? heightAt(g, u.x, u.z) : 0) + OPERATIVE.eye;
-  const cp = Math.cos(input.pitch), dx = Math.cos(input.yaw) * cp, dz = Math.sin(input.yaw) * cp, dy = Math.sin(input.pitch);
-  const targets = [...g.units.values()].filter(t => t !== u && t.hp > 0 && !t.air && !t.riding && g.players[u.owner].visible.has(t.id));
-  let hit = null, end = { x: u.x, y: originY, z: u.z };
-  // Fixed-distance ray, never a target ID from the client, and never nearest-enemy aim assist.
-  for (let d = 0.4; d <= OPERATIVE.range; d += 0.2) {
-    end = { x: u.x + dx * d, y: originY + dy * d, z: u.z + dz * d };
-    const c = cellOf(g, end.x, end.z), ground = g.height ? heightAt(g, end.x, end.z) : 0;
-    if (c < 0 || end.y < ground || !los(g, u, end)) break;
-    hit = targets.find(t => {
-      const def = UNITS[t.type], floor = g.height ? heightAt(g, t.x, t.z) : 0;
-      const radius = t.operative ? 0.4 : def.infantry ? 1.2 : def.radius;
-      const top = def.infantry ? 1.85 : def.structure ? 5 : 3;
+// walk equals a rifleman's speed. Spread is in radians (hip fire, aimed down the sights).
+export const OPERATIVE = Object.freeze({ hp: 20, eye: 1.65, crouchEye: 1.1, respawn: 8, cost: 10, nades: 3, nadeCd: 1, swap: 0.45,
+  walk: UNITS.rifle.speed, sprint: 7, crouch: 2.3, ads: 2.8, accel: 30, airAccel: 6, jump: 4.6, gravity: 15 });
+export const OPERATIVE_WEAPONS = Object.freeze([
+  Object.freeze({ id: 'rifle', name: 'Rifle', mag: 8, interval: 0.32, reload: 2.4, range: 60, damage: 8, veh: 0.5, supp: 6, hip: 0.02, ads: 0.003, fx: 'sniper' }),
+  Object.freeze({ id: 'smg', name: 'SMG', mag: 32, interval: 0.1, reload: 2.1, range: 32, damage: 3.5, veh: 0.2, supp: 3, hip: 0.05, ads: 0.022, fx: 'commando' }),
+]);
+const operativeTop = (t) => (t.crouch ? 1.25 : 1.85);
+function fireOperative(g, u, op, input, moving) {
+  const w = OPERATIVE_WEAPONS[u.weapon];
+  u.cooldown = w.interval; u.mags[u.weapon]--; op.shots++; u.shotAt = g.tick;
+  const eye = (g.height ? heightAt(g, u.x, u.z) : 0) + u.jy + (u.crouch ? OPERATIVE.crouchEye : OPERATIVE.eye);
+  // Spread grows with speed and in the air, shrinks crouched. The server rolls it; the client only draws its guess.
+  const spread = (input.ads ? w.ads : w.hip) * (1 + Math.min(1.5, moving / OPERATIVE.walk)) * (u.jy > 0 ? 3 : 1) * (u.crouch ? 0.6 : 1);
+  const r = spread * Math.sqrt(Math.random()), a = Math.random() * Math.PI * 2;
+  const yaw = input.yaw + Math.cos(a) * r, pitch = Math.max(-1.5, Math.min(1.5, input.pitch + Math.sin(a) * r));
+  const hx = Math.cos(yaw), hz = Math.sin(yaw), cp = Math.cos(pitch), dy = Math.sin(pitch);
+  // Only bodies near the ray's line are tested at each step.
+  const targets = [];
+  for (const t of g.units.values()) {
+    if (t === u || !(t.hp > 0) || t.air || t.riding || !g.players[u.owner].visible.has(t.id)) continue;
+    const def = UNITS[t.type], radius = t.operative ? 0.4 : def.infantry ? 1.2 : def.radius;
+    const rx = t.x - u.x, rz = t.z - u.z, along = rx * hx + rz * hz;
+    if (along > -radius && along < w.range + radius && Math.abs(rx * hz - rz * hx) <= radius) targets.push([t, radius, def]);
+  }
+  let hit = null, end = { x: u.x, y: eye, z: u.z };
+  // A fixed-distance ray, never a target ID from the client, and never nearest-enemy aim assist.
+  for (let i = 2, steps = Math.round(w.range * 5); i <= steps; i++) {
+    const d = i * 0.2;
+    end = { x: u.x + hx * cp * d, y: eye + dy * d, z: u.z + hz * cp * d };
+    if (cellOf(g, end.x, end.z) < 0 || end.y < (g.height ? heightAt(g, end.x, end.z) : 0)) break;
+    if (i % 5 === 0 && !los(g, u, end)) break;
+    const found = targets.find(([t, radius, def]) => {
+      const floor = (g.height ? heightAt(g, t.x, t.z) : 0) + (t.jy ?? 0);
+      const top = t.operative ? operativeTop(t) : def.infantry ? 1.85 : def.structure ? 5 : 3;
       return Math.hypot(end.x - t.x, end.z - t.z) <= radius && end.y >= floor && end.y <= floor + top;
     });
-    if (hit) break;
+    if (found) { if (los(g, u, end)) hit = found[0]; break; }
   }
-  if (hit && !allied(g, u.owner, hit.owner)) {
-    hurt(g, hit, { inf: OPERATIVE.damage, veh: 0.5, supp: 4 }, 1, u.owner);
+  const enemy = hit && !allied(g, u.owner, hit.owner);
+  if (enemy) {
+    hurt(g, hit, { inf: w.damage, veh: w.veh, terrain: w.veh, supp: w.supp }, 1, u.owner);
     hit.hitBy = u.id; hit.hitAt = g.tick; hit.hitFrom = { x: u.x, z: u.z };
-    op.hits++;
+    op.hits++; if (hit.hp <= 0) op.kills++;
   }
-  g.shots.push({ k: 'operative', f: u.id, fo: u.owner, x: end.x, y: end.y, z: end.z, ...(hit && !allied(g, u.owner, hit.owner) ? { t: hit.id, to: hit.owner } : {}) });
+  // Others see the operative's fire as an ordinary small-arms shot from that soldier.
+  g.shots.push({ k: w.fx, f: u.id, fo: u.owner, x: end.x, y: end.y, z: end.z, ...(enemy ? { t: hit.id, to: hit.owner, hit: true } : {}) });
 }
+function throwOperative(g, u, input) {
+  const ab = UNITS.rifle.ab, d = Math.max(3, Math.min(24, 13 + input.pitch * 16));
+  const x = Math.max(0.5, Math.min(g.w * CELL - 0.5, u.x + Math.cos(input.yaw) * d)), z = Math.max(0.5, Math.min(g.h * CELL - 0.5, u.z + Math.sin(input.yaw) * d));
+  const at = { x, z, y: levelAt(g, x, z) * CFG.levelHeight + 0.02 }, duration = 0.45 + d / 20;
+  const flight = addFlight(g, u, at, PROJECTILE_PROFILES.grenade, { duration, explosive: true, blastSource: ab, blastRadius: ab.radius, effect: 'boom' });
+  g.nades.push({ x, z, t: duration, owner: u.owner, ab, flight: flight.id });
+  g.shots.push({ f: u.id, fo: u.owner, x, z, k: 'throw', physical: true, local: true });
+  u.nades--; u.nadeT = OPERATIVE.nadeCd;
+}
+// Inside the map and walkable for a narrow body.
+const operativeCanStand = (g, u, x, z) => x >= 0.4 && z >= 0.4 && x < g.w * CELL - 0.4 && z < g.h * CELL - 0.4 && walkable(g, u, { x, z }, MOVE, 0.35);
 function stepOperative(g, u) {
   const op = g.operatives.get(u.operative), input = op.online && g.tick - op.lastInput <= 5 ? op.input : null;
+  const live = !!input && g.winner === null && !g.players[u.owner].out, want = live ? op.want ?? {} : {};
+  op.want = {};
   u.cooldown = Math.max(0, u.cooldown - TICK);
+  u.nadeT = Math.max(0, u.nadeT - TICK);
   u.supp = Math.max(0, u.supp - 8 * TICK);
-  u.moveSpeed = 0;
-  if (!input || g.winner !== null || g.players[u.owner].out) return;
-  u.rot = u.aim = input.yaw;
-  if (input.fire && u.cooldown <= 0) fireOperative(g, u, op, input);
-  const len = Math.max(1, Math.hypot(input.forward, input.strafe));
-  const speed = UNITS.rifle.speed * TICK / len;
-  const dx = (Math.cos(input.yaw) * input.forward - Math.sin(input.yaw) * input.strafe) * speed;
-  const dz = (Math.sin(input.yaw) * input.forward + Math.cos(input.yaw) * input.strafe) * speed;
-  const next = { x: u.x + dx, z: u.z + dz };
-  if (next.x >= 0.4 && next.z >= 0.4 && next.x < g.w * CELL - 0.4 && next.z < g.h * CELL - 0.4 && walkable(g, u, next, MOVE, 0.35)) {
-    u.x = next.x; u.z = next.z; u.moveSpeed = Math.hypot(dx, dz) / TICK;
-    updateGrid(g, u);
+  const grounded = u.jy <= 0 && u.vy <= 0;
+  if (live) {
+    u.rot = u.aim = input.yaw;
+    if (want.jump && grounded) { u.vy = OPERATIVE.jump; u.crouch = false; }
+    else u.crouch = input.crouch && (grounded || u.crouch);
   }
+  if (u.jy > 0 || u.vy > 0) { u.vy -= OPERATIVE.gravity * TICK; u.jy = Math.max(0, u.jy + u.vy * TICK); if (!u.jy) u.vy = 0; }
+  // Velocity eases toward what the keys ask for: quick on the ground, little control in the air.
+  const f = live ? input.forward : 0, s = live ? input.strafe : 0;
+  const sprinting = live && input.sprint && f > 0 && !input.ads && !u.crouch;
+  const cap = sprinting ? OPERATIVE.sprint : u.crouch ? OPERATIVE.crouch : live && input.ads ? OPERATIVE.ads : OPERATIVE.walk;
+  const len = Math.max(1, Math.hypot(f, s)), yaw = live ? input.yaw : u.rot;
+  const tx = (Math.cos(yaw) * f - Math.sin(yaw) * s) / len * cap, tz = (Math.sin(yaw) * f + Math.cos(yaw) * s) / len * cap;
+  const step = (grounded ? OPERATIVE.accel : OPERATIVE.airAccel) * TICK, ddx = tx - u.vx, ddz = tz - u.vz, dl = Math.hypot(ddx, ddz);
+  if (dl <= step) { u.vx = tx; u.vz = tz; } else { u.vx += ddx / dl * step; u.vz += ddz / dl * step; }
+  // Each axis on its own, so a wall met at an angle is slid along instead of stopping the soldier dead.
+  const x0 = u.x, z0 = u.z;
+  if (u.vx && operativeCanStand(g, u, u.x + u.vx * TICK, u.z)) u.x += u.vx * TICK; else u.vx = 0;
+  if (u.vz && operativeCanStand(g, u, u.x, u.z + u.vz * TICK)) u.z += u.vz * TICK; else u.vz = 0;
+  u.moveSpeed = Math.hypot(u.x - x0, u.z - z0) / TICK;
+  if (u.moveSpeed) updateGrid(g, u);
+  if (!live) return;
+  // weapons: switching drops a reload in progress; an empty magazine reloads on the trigger
+  const w = OPERATIVE_WEAPONS[u.weapon];
+  if (input.weapon !== u.weapon) { u.weapon = input.weapon; u.reloadT = 0; u.cooldown = Math.max(u.cooldown, OPERATIVE.swap); }
+  else if (u.reloadT > 0) { if ((u.reloadT -= TICK) <= 0) { u.reloadT = 0; u.mags[u.weapon] = w.mag; } }
+  else if ((want.reload || (input.fire && !u.mags[u.weapon])) && u.mags[u.weapon] < w.mag) u.reloadT = w.reload;
+  if (want.nade && u.nades > 0 && !u.nadeT && !sprinting) throwOperative(g, u, input);
+  else if (input.fire && !sprinting && !u.reloadT && u.cooldown <= 0 && u.mags[u.weapon] > 0) fireOperative(g, u, op, input, u.moveSpeed);
 }
 function spawnOperative(g, op) {
   const u = spawnUnit(g, op.owner, 'rifle');
-  Object.assign(u, { hp: UNITS.rifle.hpPer, operative: op.key, auto: false, autoRetreat: false, holdFire: true, holdPos: true });
+  Object.assign(u, { hp: UNITS.rifle.hpPer, operative: op.key, auto: false, autoRetreat: false, holdFire: true, holdPos: true,
+    vx: 0, vz: 0, vy: 0, jy: 0, crouch: false, weapon: op.input?.weapon ?? 0, mags: OPERATIVE_WEAPONS.map(w => w.mag), reloadT: 0, nades: OPERATIVE.nades, nadeT: 0 });
   op.unitId = u.id; op.input = null;
   return u;
 }

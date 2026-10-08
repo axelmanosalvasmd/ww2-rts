@@ -453,7 +453,7 @@ const SHARED_GEOS = new Set(Object.values(GEO));
 let relief = null, mapView = null, worldRegions = null;
 function hAt(x, z) { return relief?.hAt(x, z) ?? 0; }
 const units = new Map(), selected = new Set(), groups = {}, fx = [];
-const fps = createOperativeView({ camera, scene, renderer, units, ground: hAt, send: sendCmd, playing: () => lobbyState?.state === 'play', paused: () => paused });
+const fps = createOperativeView({ camera, scene, renderer, units, ground: hAt, send: sendCmd, playing: () => lobbyState?.state === 'play', paused: () => paused, effects: () => effects, rtt: () => rtt });
 
 let lastStart = null;
 function startGame(m, restored = null) {
@@ -869,7 +869,7 @@ function applySnapshot(s) {
   if (s.wx) { setWind(s.wx[2], s.wx[3]); atmos.setRain(s.wx[0], s.wx[1]); } // showers and wet ground (the line: wx.snapshot)
   const fires = (s.fires ?? []).map(c => [(c % terrain.w + 0.5) * CELL, (Math.floor(c / terrain.w) + 0.5) * CELL, terrain.physicalGrid[Math.floor(c / terrain.w)]?.[c % terrain.w]]);
   projectiles.snapshot(s);
-  effects.snapshot({ ...s, fires, shots: s.shots.filter(sh => !airShot(sh)), strikes: (s.strikes ?? []).filter(([k]) => !SUPPORT_PLANES[k]) }, seen);
+  effects.snapshot({ ...s, fires, shots: s.shots.filter(sh => !airShot(sh) && !fps.ownShot(sh)), strikes: (s.strikes ?? []).filter(([k]) => !SUPPORT_PLANES[k]) }, seen);
   objectives.snapshot(s); // capture point rings, flips, building smoke and collapse banners (client/objectives.js)
   for (const v of [...units.values()]) if (!seen.has(v.id)) removeUnit(v);
   // burnt-out vehicles stay on the field as cover until the sim clears the oldest away
@@ -1774,6 +1774,7 @@ renderer.setAnimationLoop(() => {
   apron?.update();
   fps.frame(now, cam);
   if (mapView && !fps.active) { mapView.frame(dt, cam.dist / rig.wide); fadeLabels(1 - Math.min(1, mapView.fade * 2)); }
+  else if (fps.active) fadeLabels(0); // the commander's floating map labels are not in a soldier's world
   const mapRender = fps.active ? null : mapView?.renderObject;
   if (!mapRender) drawSoldiers(units.values(), camera);
   renderFrame(cam, groundMesh, mapRender); // shadows and haze follow the view when the battlefield is visible

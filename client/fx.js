@@ -1207,5 +1207,7 @@ export function createEffects({ scene, camera, cam, hAt, units, airAlt = 20, map
   }
 
   const aaFire = (sh, from, to) => antiAir(sh, from, to, false);
-  return { update, snapshot, projectileTrail, projectileRemove, projectileLaunch, projectileContact, vehicleDamage, sectionPose, sectionRemove, worldContact, wreck, downPlane, aaFire, reset, explode, scorch, collapse, plume, air, blastNear, gore, get count() { return n; }, get shown() { return shown; } };
+  // a bullet strike the first-person view predicts for its own shot (client/operative-view.js)
+  const impactAt = (x, y, z, body) => impact(x, y, z, SMALL, body ? 1 : 0);
+  return { update, snapshot, impactAt, projectileTrail, projectileRemove, projectileLaunch, projectileContact, vehicleDamage, sectionPose, sectionRemove, worldContact, wreck, downPlane, aaFire, reset, explode, scorch, collapse, plume, air, blastNear, gore, get count() { return n; }, get shown() { return shown; } };
 }
