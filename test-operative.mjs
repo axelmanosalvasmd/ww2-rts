@@ -114,3 +114,49 @@ assert.equal(me.nades, sim.OPERATIVE.nades - 1, 'one press, one grenade');
 assert.equal(kit.nades.length, before + 1);
 hold({ weapon: 0, reload: 1, nade: 1 }, 60);
 console.log('PASS jump, sprint, crouch, weapon swap, magazine, reload and grenade');
+// Per-man hits: a squad in the open is its drawn men (shared/squad-men.js), not one wide body.
+{
+  const m = sim.createGame(map, ['commander','enemy'], true, [0,1]);
+  const mop = sim.joinOperative(m, 'aimer', 0), gun = m.units.get(mop.unitId);
+  const foe = [...m.units.values()].find(v => v.owner === 1 && v.type === 'rifle');
+  for (const v of [...m.units.values()]) if (v !== foe && v !== gun) m.units.delete(v.id);
+  Object.assign(gun, { x: 40, z: 60 }); Object.assign(foe, { x: 50, z: 60, rot: 0, auto: false, autoRetreat: false, holdFire: true, holdPos: true });
+  let seq = 0;
+  const shoot = (z) => { foe.z = z; foe.vx = foe.vz = 0; sim.operativeInput(m, 'aimer', { seq: seq++, forward: 0, strafe: 0, yaw: 0, pitch: 0, fire: true, ads: true, crouch: true }); sim.step(m); sim.operativeInput(m, 'aimer', { seq: seq++, forward: 0, strafe: 0, yaw: 0, pitch: 0, fire: false, ads: true, crouch: true }); for (let i = 0; i < 15; i++) sim.step(m); return m.shots.filter(s => s.f === gun.id).at(-1); };
+  for (let i = 0; i < 5; i++) sim.step(m);
+  const hp = foe.hp;
+  // the end man of the block stands 1.69 m off the squad centre, outside the old 1.2 m body
+  const edge = shoot(60 - 1.69);
+  assert.ok(foe.hp < hp && edge.m >= 0, 'a shot at the end man of the rank hits him and names him');
+  const left = foe.hp;
+  assert.equal(shoot(60 - 2.3).hit, undefined, 'a shot past the last man misses');
+  assert.equal(foe.hp, left);
+  console.log('PASS per-man hits on drawn squad men');
+}
+// Leading a squad: F picks the nearest own squad, it follows, a commander order takes it back, and a new soldier
+// comes out of it instead of the HQ.
+{
+  const m = sim.createGame(map, ['commander','enemy'], true, [0,1]);
+  const lop = sim.joinOperative(m, 'lead', 0), me = m.units.get(lop.unitId);
+  const mine = [...m.units.values()].find(v => v.owner === 0 && v.type === 'rifle' && !v.operative);
+  for (const v of [...m.units.values()]) if (v !== mine && v !== me) m.units.delete(v.id);
+  Object.assign(me, { x: 20, z: 30 }); Object.assign(mine, { x: 20, z: 34 });
+  let seq = 0;
+  const go = (extra, ticks = 1) => { for (let i = 0; i < ticks; i++) { sim.operativeInput(m, 'lead', { seq: seq++, forward: 0, strafe: 0, yaw: 0, pitch: 0, squad: 0, ...extra }); sim.step(m); } };
+  go({}, 2); go({ squad: 1 }, 2);
+  assert.equal(lop.squadId, mine.id, 'F picks the squad within 8 m');
+  go({ squad: 1, forward: 1 }, 80);
+  assert.ok(mine.x > 28, `the squad follows the operative (squad at ${mine.x.toFixed(1)}, operative at ${me.x.toFixed(1)})`);
+  sim.command(m, 0, { t: 'move', orders: [[mine.id, 10, 10]] });
+  go({ squad: 1 }, 1);
+  assert.equal(lop.squadId, 0, 'a commander order takes the squad back');
+  Object.assign(mine, { x: me.x, z: me.z + 3 }); go({ squad: 2 }, 2);
+  assert.equal(lop.squadId, mine.id, 'F leads it again');
+  me.hp = 0; sim.step(m);
+  m.players[0].mp = 0; m.tick = lop.respawnAt;
+  const men = mine.hp; sim.step(m);
+  const next = m.units.get(lop.unitId);
+  assert.ok(next && Math.hypot(next.x - mine.x, next.z - mine.z) < 0.5, 'the new soldier comes from the led squad, free of MP');
+  assert.equal(mine.hp, men - sim.UNITS.rifle.hpPer, 'and the squad gives up one man for him');
+  console.log('PASS leading a squad, commander takes it back, respawn from the squad');
+}

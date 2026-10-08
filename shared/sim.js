@@ -5,6 +5,7 @@ import { setupTutorial, stepTutorial } from './tutorial.js';
 import { gridFor, rebuildGrid, updateGrid, SpatialGrid } from './grid.js';
 import { planWeather, stepWeather, sightMul, weatherSpeed, weatherRow } from './weather.js';
 import { normalizeFace, slotSize, facingSpots } from './formation.js';
+import { menAt, menDrawn } from './squad-men.js';
 import { knownTerritoryRuns } from './world-territories.js';
 import { generateWorldMap, WORLD_TUNING } from './world-conquest.js';
 import { validateScenario, setupScenario, stepScenario, scenarioFor, scenarioShotFor } from './scenarios.js';
@@ -1406,14 +1407,14 @@ export function joinOperative(g, key, owner) {
   if (!g.players[owner] || g.players[owner].out || g.winner !== null) return null;
   g.operatives ??= new Map();
   if (g.operatives.has(key)) return g.operatives.get(key);
-  const op = { key, owner, unitId: 0, respawnAt: 0, online: true, input: null, lastInput: -100, lastSeq: -1, shots: 0, hits: 0, kills: 0, seen: {}, want: {} };
+  const op = { key, owner, unitId: 0, squadId: 0, respawnAt: 0, online: true, input: null, lastInput: -100, lastSeq: -1, shots: 0, hits: 0, kills: 0, seen: {}, want: {} };
   g.operatives.set(key, op);
   spawnOperative(g, op);
   return op;
 }
 // Jump, reload and grenade arrive as running counts, so a lost or repeated packet never drops or doubles a press.
 // The first count after a (re)connect is only a baseline.
-const EDGES = ['jump', 'reload', 'nade'];
+const EDGES = ['jump', 'reload', 'nade', 'squad'];
 export function operativeInput(g, key, input) {
   const op = g.operatives?.get(key);
   if (!op?.online || g.winner !== null || g.players[op.owner].out || !input ||
@@ -1451,27 +1452,35 @@ function fireOperative(g, u, op, input, moving) {
   const r = spread * Math.sqrt(Math.random()), a = Math.random() * Math.PI * 2;
   const yaw = input.yaw + Math.cos(a) * r, pitch = Math.max(-1.5, Math.min(1.5, input.pitch + Math.sin(a) * r));
   const hx = Math.cos(yaw), hz = Math.sin(yaw), cp = Math.cos(pitch), dy = Math.sin(pitch);
-  // Only bodies near the ray's line are tested at each step.
-  const targets = [];
+  // Only bodies near the ray's line are tested at each step. A squad in the open is its drawn men (shared/squad-men.js),
+  // each a body of his own: miss the man and the shot goes past him.
+  // ponytail: squads in a trench or a house stay one 1.2 m body; the client seats trench men itself (main.js manTrench)
+  const targets = [], near = (x, z, radius, add) => {
+    const rx = x - u.x, rz = z - u.z, along = rx * hx + rz * hz;
+    if (along > -radius && along < w.range + radius && Math.abs(rx * hz - rz * hx) <= radius) targets.push(add);
+  };
   for (const t of g.units.values()) {
     if (t === u || !(t.hp > 0) || t.air || t.riding || !g.players[u.owner].visible.has(t.id)) continue;
-    const def = UNITS[t.type], radius = t.operative ? 0.4 : def.infantry ? 1.2 : def.radius;
-    const rx = t.x - u.x, rz = t.z - u.z, along = rx * hx + rz * hz;
-    if (along > -radius && along < w.range + radius && Math.abs(rx * hz - rz * hx) <= radius) targets.push([t, radius, def]);
+    const def = UNITS[t.type], top = t.operative ? operativeTop(t) : def.infantry ? 1.85 : def.structure ? 5 : 3;
+    if (def.infantry && !t.operative && t.garrison < 0 && !inTrench(g, t)) {
+      menAt(t, menDrawn(t.type, t.hp, def.models * def.hpPer)).forEach((p, m) => near(p.x, p.z, 0.45, { t, x: p.x, z: p.z, radius: 0.45, top, m }));
+    } else {
+      const radius = t.operative ? 0.4 : def.infantry ? 1.2 : def.radius;
+      near(t.x, t.z, radius, { t, x: t.x, z: t.z, radius, top });
+    }
   }
-  let hit = null, end = { x: u.x, y: eye, z: u.z };
+  let hit = null, man, end = { x: u.x, y: eye, z: u.z };
   // A fixed-distance ray, never a target ID from the client, and never nearest-enemy aim assist.
   for (let i = 2, steps = Math.round(w.range * 5); i <= steps; i++) {
     const d = i * 0.2;
     end = { x: u.x + hx * cp * d, y: eye + dy * d, z: u.z + hz * cp * d };
     if (cellOf(g, end.x, end.z) < 0 || end.y < (g.height ? heightAt(g, end.x, end.z) : 0)) break;
     if (i % 5 === 0 && !los(g, u, end)) break;
-    const found = targets.find(([t, radius, def]) => {
-      const floor = (g.height ? heightAt(g, t.x, t.z) : 0) + (t.jy ?? 0);
-      const top = t.operative ? operativeTop(t) : def.infantry ? 1.85 : def.structure ? 5 : 3;
-      return Math.hypot(end.x - t.x, end.z - t.z) <= radius && end.y >= floor && end.y <= floor + top;
+    const found = targets.find((b) => {
+      const floor = (g.height ? heightAt(g, b.x, b.z) : 0) + (b.t.jy ?? 0);
+      return Math.hypot(end.x - b.x, end.z - b.z) <= b.radius && end.y >= floor && end.y <= floor + b.top;
     });
-    if (found) { if (los(g, u, end)) hit = found[0]; break; }
+    if (found) { if (los(g, u, end)) { hit = found.t; man = found.m; } break; }
   }
   const enemy = hit && !allied(g, u.owner, hit.owner);
   if (enemy) {
@@ -1480,7 +1489,8 @@ function fireOperative(g, u, op, input, moving) {
     op.hits++; if (hit.hp <= 0) op.kills++;
   }
   // Others see the operative's fire as an ordinary small-arms shot from that soldier.
-  g.shots.push({ k: w.fx, f: u.id, fo: u.owner, x: end.x, y: end.y, z: end.z, ...(enemy ? { t: hit.id, to: hit.owner, hit: true } : {}) });
+  // m: the drawn man hit, so the client drops that one if the squad loses a man (client/main.js)
+  g.shots.push({ k: w.fx, f: u.id, fo: u.owner, x: end.x, y: end.y, z: end.z, ...(enemy ? { t: hit.id, to: hit.owner, hit: true, ...(man !== undefined && { m: man }) } : {}) });
 }
 function throwOperative(g, u, input) {
   const ab = UNITS.rifle.ab, d = Math.max(3, Math.min(24, 13 + input.pitch * 16));
@@ -1527,11 +1537,38 @@ function stepOperative(g, u) {
   if (input.weapon !== u.weapon) { u.weapon = input.weapon; u.reloadT = 0; u.cooldown = Math.max(u.cooldown, OPERATIVE.swap); }
   else if (u.reloadT > 0) { if ((u.reloadT -= TICK) <= 0) { u.reloadT = 0; u.mags[u.weapon] = w.mag; } }
   else if ((want.reload || (input.fire && !u.mags[u.weapon])) && u.mags[u.weapon] < w.mag) u.reloadT = w.reload;
+  if (want.squad) pickSquad(g, u, op);
+  leadSquad(g, u, op);
   if (want.nade && u.nades > 0 && !u.nadeT && !sprinting) throwOperative(g, u, input);
   else if (input.fire && !sprinting && !u.reloadT && u.cooldown <= 0 && u.mags[u.weapon] > 0) fireOperative(g, u, op, input, u.moveSpeed);
 }
-function spawnOperative(g, op) {
+// F: the nearest of the commander's squads within 8 m falls in behind the operative; F again lets it go. Any order
+// from the commander takes it back too (command() clears u.follow).
+const ledSquad = (g, op) => { const s = g.units.get(op.squadId); return s && s.hp > 0 && s.follow === op.key ? s : null; };
+function pickSquad(g, u, op) {
+  const led = ledSquad(g, op);
+  if (led) { led.follow = 0; op.squadId = 0; return; }
+  let best = null, bd = 8;
+  for (const s of g.units.values()) {
+    const d = Math.hypot(s.x - u.x, s.z - u.z);
+    if (d < bd && s.owner === u.owner && s.hp > 0 && UNITS[s.type].infantry && !s.operative && !s.riding && !s.follow) { best = s; bd = d; }
+  }
+  if (best) { best.follow = op.key; op.squadId = best.id; }
+}
+// The squad attack-moves to a spot 4 m behind the operative whenever he has moved off its last one. A retreat runs its course.
+function leadSquad(g, u, op) {
+  const s = ledSquad(g, op);
+  if (!s) { op.squadId = 0; return; }
+  if (g.tick % 5 || s.retreating) return;
+  const x = Math.max(1, Math.min(g.w * CELL - 1, u.x - Math.cos(u.rot) * 4)), z = Math.max(1, Math.min(g.h * CELL - 1, u.z - Math.sin(u.rot) * 4));
+  if (s.amove ? Math.hypot(s.amove.x - x, s.amove.z - z) < 3 : Math.hypot(s.x - x, s.z - z) < 5) return;
+  command(g, s.owner, { t: 'amove', orders: [[s.id, x, z]] });
+  s.follow = op.key;
+}
+// A new soldier is one of the led squad's men while it has two or more; otherwise he comes from the HQ for MP.
+function spawnOperative(g, op, from = null) {
   const u = spawnUnit(g, op.owner, 'rifle');
+  if (from) { from.hp -= UNITS[from.type].hpPer; u.x = from.x; u.z = from.z; updateGrid(g, u); }
   Object.assign(u, { hp: UNITS.rifle.hpPer, operative: op.key, auto: false, autoRetreat: false, holdFire: true, holdPos: true,
     vx: 0, vz: 0, vy: 0, jy: 0, crouch: false, weapon: op.input?.weapon ?? 0, mags: OPERATIVE_WEAPONS.map(w => w.mag), reloadT: 0, nades: OPERATIVE.nades, nadeT: 0 });
   op.unitId = u.id; op.input = null;
@@ -2633,7 +2670,7 @@ export function command(g, slot, cmd, auto = false) {
   if (cmd.t === 'recover' && g.mode?.kind === 'world') return recoverWorld(g, slot);
   if (cmd.t === 'orders' && Array.isArray(cmd.commands)) return dispatchOrderGroups(g, slot, cmd);
   // a squad riding in a carrier takes no orders: its carrier does (unload)
-  const mine = (id) => { const u = g.units.get(id); return u && u.owner === slot && !u.operative && !UNITS[u.type].structure && !u.riding ? u : null; };
+  const mine = (id) => { const u = g.units.get(id); if (!(u && u.owner === slot && !u.operative && !UNITS[u.type].structure && !u.riding)) return null; u.follow = 0; return u; }; // an order takes a squad back from the operative leading it
   const limit = Math.max(50, g.units.size), ids = Array.isArray(cmd.ids) ? cmd.ids.slice(0, limit) : [];
   if ((cmd.t === 'move' || cmd.t === 'amove') && Array.isArray(cmd.orders)) {
     const face = cmd.face === undefined ? null : normalizeFace(cmd.face);
@@ -4133,10 +4170,10 @@ export function step(g) {
   const flightPrior = new Map([...g.units.values()].map(u => [u.id, { x: u.x, z: u.z, rot: u.rot }]));
   g.tick++;
   for (const op of g.operatives?.values() ?? []) {
-    if (!op.unitId && op.online && g.tick >= op.respawnAt && g.winner === null && !g.players[op.owner].out && g.players[op.owner].mp >= OPERATIVE.cost) {
-      g.players[op.owner].mp -= OPERATIVE.cost;
-      spawnOperative(g, op);
-    }
+    if (op.unitId || !op.online || g.tick < op.respawnAt || g.winner !== null || g.players[op.owner].out) continue;
+    const s = ledSquad(g, op);
+    if (s && s.garrison < 0 && !s.riding && s.hp > UNITS[s.type].hpPer) spawnOperative(g, op, s);
+    else if (g.players[op.owner].mp >= OPERATIVE.cost) { g.players[op.owner].mp -= OPERATIVE.cost; spawnOperative(g, op); }
   }
   stepWorldDebris(g, TICK);
   if (g.winner === null && (g.tick === 1 || g.tick % SAMPLE_EVERY === 0)) sample(g, isStructure(g));

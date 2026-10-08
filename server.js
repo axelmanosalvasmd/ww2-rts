@@ -6,7 +6,7 @@ import { randomBytes, createHash, timingSafeEqual } from 'node:crypto';
 import { execFile } from 'node:child_process';
 import { join, normalize, extname } from 'node:path';
 import { WebSocketServer } from 'ws';
-import { createGame, step, command, snapshotFor, snapshotCache, unitDelta, terrainFor, fogFor, validateMap, spawnsFor, worldMapFor, joinOperative, operativeInput, OPERATIVE, TICK, MAX_PLAYERS, FACTION_COUNT } from './shared/sim.js';
+import { createGame, step, command, snapshotFor, snapshotCache, unitDelta, terrainFor, fogFor, validateMap, spawnsFor, worldMapFor, joinOperative, operativeInput, OPERATIVE, UNITS, TICK, MAX_PLAYERS, FACTION_COUNT } from './shared/sim.js';
 import { generateWorldMap } from './shared/world-conquest.js';
 import { mapForClient } from './shared/world-layers.js';
 import { WEATHER_CHOICES, weatherRow } from './shared/weather.js';
@@ -253,10 +253,13 @@ function operativeView(room, person) {
   return { ...g, players };
 }
 function operativeStatus(g, person) {
-  const op = g.operatives?.get(person.token), u = op && g.units.get(op.unitId);
+  const op = g.operatives?.get(person.token), u = op && g.units.get(op.unitId), sq = op && g.units.get(op.squadId);
+  // the squad he leads: its name and the men the sim counts
+  const squad = sq && sq.follow === op.key && sq.hp > 0 ? { id: sq.id, name: UNITS[sq.type].name, men: Math.ceil(sq.hp / UNITS[sq.type].hpPer) } : null;
+  const squadSpawn = !!squad && sq.garrison < 0 && !sq.riding && sq.hp > UNITS[sq.type].hpPer; // the next soldier is one of its men (shared/sim.js spawnOperative)
   return { id: u?.id ?? 0, hp: Math.max(0, Math.ceil(u?.hp ?? 0)), maxHp: OPERATIVE.hp,
-    respawn: op ? Math.max(0, Math.ceil((op.respawnAt - g.tick) * TICK)) : 0, cost: OPERATIVE.cost,
-    waiting: !u && (g.players[op?.owner]?.mp ?? 0) < OPERATIVE.cost, seq: op?.lastSeq ?? -1, shots: op?.shots ?? 0, hits: op?.hits ?? 0, kills: op?.kills ?? 0,
+    respawn: op ? Math.max(0, Math.ceil((op.respawnAt - g.tick) * TICK)) : 0, cost: OPERATIVE.cost, squad, squadSpawn,
+    waiting: !u && !squadSpawn && (g.players[op?.owner]?.mp ?? 0) < OPERATIVE.cost, seq: op?.lastSeq ?? -1, shots: op?.shots ?? 0, hits: op?.hits ?? 0, kills: op?.kills ?? 0,
     // exact position and motion for the client's prediction, and the loadout the HUD shows
     ...(u && { x: Math.round(u.x * 100) / 100, z: Math.round(u.z * 100) / 100, vx: Math.round(u.vx * 100) / 100, vz: Math.round(u.vz * 100) / 100, jy: Math.round(u.jy * 100) / 100,
       crouch: u.crouch, weapon: u.weapon, mags: u.mags, reload: Math.round(u.reloadT * 10) / 10, nades: u.nades,

@@ -817,6 +817,8 @@ function applySnapshot(s) {
   snapshotAt = arrived;
   const seen = new Set();
   trenchTaken.clear();
+  const shotMen = new Map(); // squad id -> the drawn man an operative's bullet hit this snapshot (shared/sim.js fireOperative)
+  for (const sh of s.shots) if (sh.m !== undefined) shotMen.set(sh.t, sh.m);
   for (const [id, type, owner, x, z, rot, aim, hp, supp, tgt, cover, cd, flags, stars, built, moveSpeed, vx, vz, travelDir] of s.units) {
     seen.add(id);
     let v = units.get(id);
@@ -832,6 +834,16 @@ function applySnapshot(s) {
     setOwnerRing(v.base, flags & 1 ? 0xffffff : look(owner).color);
     // men drawn, not men counted: a squad may be drawn as a bigger block (client/unit-models.js), so health maps onto it
     const def = UNITS[type], alive = flags & 65536 ? 1 : Math.ceil(hp * v.models.length / (def.models * def.hpPer));
+    // the operative is one man standing on his own spot, where the server tests hits on him
+    if (flags & 65536 && !v.solo) { v.solo = true; const u = v.models[0].userData; u.slot = [0, 0]; u.home = [0, 0]; v.models[0].position.set(0, 0, 0); }
+    // The man an operative shot falls, not the last in the block: he trades slots with the last living man, who steps
+    // up into the gap. Model k always stands on slot k, as the server counts them (shared/squad-men.js menAt).
+    const shot = shotMen.get(id);
+    if (shot !== undefined && alive < v.alive && shot < v.alive - 1) {
+      const a = v.models[shot], b = v.models[v.alive - 1], ua = a.userData, ub = b.userData;
+      [ua.slot, ub.slot] = [ub.slot, ua.slot]; [ua.home, ub.home] = [ub.home, ua.home];
+      v.models[shot] = b; v.models[v.alive - 1] = a;
+    }
     if (!isVeh(type)) { while (v.alive > alive) corpse(v, v.models[--v.alive]); v.alive = alive; } // reinforced men come back
     if (!isVeh(type)) v.models.forEach((man, i) => { man.position.y = cover === 2 ? -0.6 : 0; man.visible = i < v.alive && !v.garr; });
     if (v.squad) manTrench(v);

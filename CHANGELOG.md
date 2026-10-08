@@ -5,6 +5,20 @@ AI-vs-AI runs (see DESIGN.md for the balance log). Add new entries under **Unrel
 
 ## Unreleased
 
+- Operative shots hit the soldiers you see. A squad in the open is now its drawn men, each a 0.45 m body on the
+  formation slot the client draws (slots moved to `shared/squad-men.js`, shared by client and server, with a lag
+  of speed/9 for marching men). Before, a squad was one 1.2 m cylinder at its centre, so the end men of a rifle
+  block could not be hit and shots into empty ground inside it could. The man you hit is the one who falls; the
+  last man of the block steps up into his place. Damage numbers are unchanged. Squads in a trench or a house
+  still use the old single body (the client seats trench men itself). The operative is now drawn on his own
+  position instead of the front-left slot of a rifle block, 1.9 m off his hitbox.
+- Operatives can lead a squad: F picks the commander's nearest infantry squad within 8 m, which attack-moves to
+  4 m behind the operative as he goes. F again, or any order from the commander, lets it go. While it has two or
+  more men, a dead operative comes back after the usual 8 s as one of its men (the squad loses a man, no MP)
+  instead of walking up from the HQ. The HUD shows the squad and its men.
+- Left for later: the man a squad gives up for the operative drops as a corpse on the client; the per-man body
+  ignores kneeling and prone poses (a pinned squad is as tall as a standing one).
+
 - WIP branch publication: FPS simulation, multiplayer, native-browser death/respawn/reconnect and public HTTPS/WSS acceptance checks pass. The full `node test.js` gate is not passing: AI full-match story and seeded capture assertions remain unresolved. Published as a user-authorized WIP exception, not a release or approval to merge.
 
 - Added an isolated commander plus first-person infantry MVP. Teammates attach to a human commander's army without taking an army seat. Desktop WASD, native mouse aim, hold-click rifle fire, crosshair, HP, hit/damage feedback and a ground-level rifle view use the same terrain and authoritative battle as the RTS.

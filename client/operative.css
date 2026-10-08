@@ -38,6 +38,7 @@ body.operative #hud, body.operative #menu, body.operative #openOperative { displ
 #fpsHpBar i { display:block;height:100%;width:100%;background:linear-gradient(90deg,#8e9b5f,#b8c27f);transition:width .2s; }
 #fpsHud.low #fpsHpBar i { background:#c8483b; }
 #fpsHealth { font:700 26px/1 var(--type); }
+#fpsSquad { font:600 11px/1 var(--type);letter-spacing:1.5px;color:#d8d2bccc;text-transform:uppercase; }
 #fpsLoadout { position:absolute;right:28px;bottom:24px;text-align:right; }
 #fpsWeapons { font:600 11px/1 var(--type);letter-spacing:1.5px;color:#d8d2bccc;white-space:pre;text-transform:uppercase; }
 #fpsAmmo { margin-top:6px; }

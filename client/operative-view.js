@@ -5,13 +5,13 @@ import { audio } from './audio.js';
 
 // First person for the infantry operative: input, movement prediction, the weapon in hand and its feedback.
 // The server decides positions, hits and ammunition; everything drawn here is the client's best guess of it.
-const HELP = 'WASD move · Shift sprint · Space jump · C crouch · Mouse aim · Left click fire · Right click aim down sights · R reload · G grenade · 1/2 or wheel switch weapon · Esc release mouse';
+const HELP = 'WASD move · Shift sprint · Space jump · C crouch · Mouse aim · Left click fire · Right click aim down sights · R reload · G grenade · F lead the nearest squad · 1/2 or wheel switch weapon · Esc release mouse';
 const FOV = { base: 75, sprint: 82, ads: [50, 62] };
 const clamp = (v, lo, hi) => Math.max(lo, Math.min(hi, v));
 const damp = (a, b, k, dt) => a + (b - a) * (1 - Math.exp(-k * dt));
 
 export function createOperativeView({ camera, scene, renderer, units, ground, send, playing, paused, effects = () => null, rtt = () => null }) {
-  const aim = { yaw: 0, pitch: 0 }, keys = new Set(), counts = { jump: 0, reload: 0, nade: 0 };
+  const aim = { yaw: 0, pitch: 0 }, keys = new Set(), counts = { jump: 0, reload: 0, nade: 0, squad: 0 };
   let enabled = false, status = null, seq = 0, fire = false, ads = false, crouch = false, weapon = 0, lastWeapon = 1;
   let jumpQueued = false, localShots = 0, lastLocalShot = 0, cooldownUntil = 0, reloadUntil = 0, swapUntil = 0, throwUntil = 0;
   let hitUntil = 0, killUntil = 0, hurtUntil = 0, hurtAngle = 0, deadAt = 0, lastFrame = performance.now();
@@ -24,7 +24,7 @@ export function createOperativeView({ camera, scene, renderer, units, ground, se
   hud.innerHTML = `<div id="fpsVignette"></div><div id="fpsDamage"></div><div id="fpsDir"><i></i></div>
     <div id="fpsCross"><i class="t"></i><i class="b"></i><i class="l"></i><i class="r"></i><b></b></div>
     <div id="fpsHit"><i></i><i></i><i></i><i></i></div><div id="fpsKill"></div>
-    <div id="fpsVitals"><div id="fpsHpBar"><i></i></div><span id="fpsHealth"></span></div>
+    <div id="fpsVitals"><div id="fpsHpBar"><i></i></div><span id="fpsHealth"></span><span id="fpsSquad"></span></div>
     <div id="fpsLoadout"><div id="fpsWeapons"></div><div id="fpsAmmo"><b></b><span></span></div><div id="fpsReload"><i></i></div><div id="fpsNades"></div></div>
     <div id="fpsDead" class="hidden"><h2>Killed in action</h2><p id="fpsRespawn"></p></div>
     <div id="fpsPanel" class="panel"><b>INFANTRY OPERATIVE</b><div id="fpsStatus"></div><div class="muted">${HELP}<br>Desktop keyboard and mouse required.</div><button id="fpsCapture">Click to enter first person</button><a href="/">Leave battlefield</a></div>`;
@@ -70,7 +70,7 @@ export function createOperativeView({ camera, scene, renderer, units, ground, se
   const transmit = () => {
     if (!active()) return;
     send(inputFor(keys, aim.yaw, aim.pitch, fire && locked() && !paused(), seq++,
-      { sprint: sprinting(), crouch, ads: ads && locked(), weapon, jump: counts.jump, reload: counts.reload, nade: counts.nade }));
+      { sprint: sprinting(), crouch, ads: ads && locked(), weapon, jump: counts.jump, reload: counts.reload, nade: counts.nade, squad: counts.squad }));
   };
   // Input is independent of rendering. A slow GPU must not swallow a short key press.
   setInterval(transmit, 50);
@@ -101,6 +101,7 @@ export function createOperativeView({ camera, scene, renderer, units, ground, se
       const now = performance.now();
       if ((status?.nades ?? 0) > 0 && throwUntil < now - 400 && !sprinting()) { counts.nade++; throwUntil = now + 650; sfx.pin(); }
     }
+    else if (e.code === 'KeyF') counts.squad++;
     else if (e.code === 'KeyC') crouch = !crouch;
     else if (e.code === 'Digit1') pickWeapon(0);
     else if (e.code === 'Digit2') pickWeapon(1);
@@ -513,7 +514,10 @@ export function createOperativeView({ camera, scene, renderer, units, ground, se
     $('fpsPanel').classList.toggle('hidden', locked() || !alive());
     $('fpsCapture').classList.toggle('hidden', locked() || !alive());
     $('fpsDead').classList.toggle('hidden', alive());
-    if (!alive()) text('fpsRespawn', status?.waiting ? `Waiting for ${status?.cost ?? 10} commander manpower to send a new soldier.` : `New soldier in ${status?.respawn ?? 0}s. Costs ${status?.cost ?? 10} commander manpower.`);
+    const sq = status?.squad;
+    text('fpsSquad', sq ? `${sq.name} · ${sq.men} men · F lets go` : 'F: lead a squad within 8 m');
+    if (!alive() && sq && !status.waiting && status.squadSpawn) text('fpsRespawn', `Back in ${status.respawn ?? 0}s as one of your ${sq.name}'s men.`);
+    else if (!alive()) text('fpsRespawn', status?.waiting ? `Waiting for ${status?.cost ?? 10} commander manpower to send a new soldier.` : `New soldier in ${status?.respawn ?? 0}s. Costs ${status?.cost ?? 10} commander manpower.`);
     text('fpsWeapons', WEAPONS.map((x, i) => `${i + 1} ${x.name}`).join('   '));
     $('fpsWeapons').dataset.on = weapon;
     $('fpsAmmo').firstChild.textContent = reloading(now) ? '--' : String(ammo());
