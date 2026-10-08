@@ -38,6 +38,10 @@ AI-vs-AI runs (see DESIGN.md for the balance log). Add new entries under **Unrel
 - World AI remembers bridges discovered later in the match and can repair them. Enemy troops can blockade supply in the source region itself. Losing every player's final region at once ends the match in a draw.
 - A Horde map still loading in the lobby cannot change the mode or map of a match that has started, or overwrite a newer mode selection.
 - Squads visibly dig and build with spades. Distant shovels stay within the existing 150-triangle limit (maximum 149, down from 169).
+- Fixed an intermittent CI failure in the engine acceptance checks. The test client sent an order, waited a fixed
+  8 ms and then stepped the server 800 ticks; on a slow runner the second side's order arrived after the clock ran,
+  so its AT gun stayed parked on the tank's destination and the tank stopped 7 m short. Each test send now waits
+  until the server has read the message. No game change.
 
 ### 2026-10-06: Destroy your own units, roomier bases, tanks no longer stuck at spawn (`257d357`)
 
