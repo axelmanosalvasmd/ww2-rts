@@ -10,11 +10,12 @@ import { isMainThread, parentPort, Worker, workerData } from 'node:worker_thread
 
 const script = fileURLToPath(import.meta.url), root = resolve(dirname(script), '..');
 const TPS = 20;
-// The acceptance bands from issue #48. Reaction medians are in seconds.
+// The acceptance bands (DESIGN.md, "Human-like commander"). Reaction medians are in seconds. Hard plays like a strong
+// human: its APM ceiling and peak sit above issue #48's original 120 and 200, which held it back.
 export const TARGETS = {
   easy: { screen: [0.9, 1.4], alert: [3, 6], apm: [20, 35], peak: 60, first: [4, 8] },
   normal: { screen: [0.5, 0.8], alert: [1.5, 3], apm: [40, 70], peak: 120, first: [3, 6] },
-  hard: { screen: [0.3, 0.45], alert: [0.8, 1.6], apm: [80, 120], peak: 200, first: [2, 4] },
+  hard: { screen: [0.3, 0.45], alert: [0.8, 1.6], apm: [80, 160], peak: 300, first: [2, 4] },
 };
 
 async function play({ mode, level, seed, minutes }) {

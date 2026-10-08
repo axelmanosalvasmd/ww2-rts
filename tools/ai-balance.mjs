@@ -37,7 +37,8 @@ async function runMatches(options, indices) {
   const map = JSON.parse(await readFile(resolve(options.root, `maps/${options.map}.json`), 'utf8'));
   // without --seats: one Normal AI per spawn the mode can use, every one for itself, factions cycling
   const ffa = sim.spawnsFor(map, options.mode).map(() => 'normal');
-  const maxSeconds = options.seats ? (options.mode === 'classic' ? 2400 : 1800) : 1200;
+  // Classic matches run long: free-for-alls get 40 minutes there, the same as Classic duels.
+  const maxSeconds = options.mode === 'classic' ? 2400 : options.seats ? 1800 : 1200;
   const maxTicks = Math.round(maxSeconds / sim.TICK), originalRandom = Math.random;
   try {
     for (const index of indices) {
@@ -134,7 +135,7 @@ if (!isMainThread) {
   const ratios = results.map(r => r.runnerUpVpRatio).filter(r => r !== null);
   const result = {
     root: options.root, mode: options.mode, map: options.map, players: results[0].spawns.length, seats: options.seats, rotate: options.rotate, alt: options.alt, winsBySeat: options.seats?.map((_, i) => wins.filter(r => r.winnerSeat === i).length) ?? null, army: options.army, seed: options.seed,
-    matches: options.matches, workers: options.workers, maxSeconds: options.seats ? (options.mode === 'classic' ? 2400 : 1800) : 1200,
+    matches: options.matches, workers: options.workers, maxSeconds: options.mode === 'classic' ? 2400 : options.seats ? 1800 : 1200,
     winsByFaction: byFaction, winsBySpawn: bySpawn,
     ended: ended.length, draws: ended.length - wins.length, timeouts: options.matches - ended.length,
     medianSeconds: median(results.map(r => r.seconds)), medianEndedSeconds: median(ended.map(r => r.seconds)),

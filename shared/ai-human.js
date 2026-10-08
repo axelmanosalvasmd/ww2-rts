@@ -21,7 +21,7 @@ export const SCREEN_MEMORY = 30;
 export const HUMAN_SKILLS = {
   easy: { react: 0.8, notice: 3.4, input: 0.62, scan: 3.6, opening: 4.6, peak: 10, minute: 34 },
   normal: { react: 0.5, notice: 1.7, input: 0.32, scan: 1.4, opening: 3.2, peak: 20, minute: 68 },
-  hard: { react: 0.23, notice: 0.9, input: 0.14, scan: 0.45, opening: 2.1, peak: 33, minute: 118 },
+  hard: { react: 0.26, notice: 1.0, input: 0.14, scan: 0.45, opening: 2.1, peak: 50, minute: 160 },
 };
 const REACTION_FLOOR = 0.2, LOCAL_GAP = 5; // ticks between orders more than a screen apart
 // A new fight is one damage alert per 30 m area per 20 s, the client's rule for its "under attack" line.

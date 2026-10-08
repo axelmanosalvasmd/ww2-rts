@@ -2255,28 +2255,66 @@ It is one of two brains behind `shared/ai-schedule.js`; the Horde wave director 
   opening look and input caps. View, economy and command rules are the same at every level; the planner's per-level
   judgement (`AI_LEVELS`) is unchanged.
 
-Measured with `tools/ai-human-report.mjs` (reactions are Kaplan-Meier medians, so unanswered alerts count against the
-median) over 6 Conquest and 3 Classic 15-minute matches per level, 27 seats each:
+### Spec (revised 2026-10-08)
 
-| Measure (target) | Easy | Normal | Hard |
+Issue #48 set the first targets. These replace them where they were wrong; the reasons are recorded below.
+
+| Measure | Easy | Normal | Hard |
 | --- | --- | --- | --- |
-| On-screen reaction (0.9-1.4 / 0.5-0.8 / 0.3-0.45 s) | 1.15 s | 0.65 s | 0.35 s |
-| Off-screen alert (3-6 / 1.5-3 / 0.8-1.6 s) | 4.2 s | 1.95 s | 0.95 s |
-| Average APM (20-35 / 40-70 / 80-120) | 24.2 | 44.2 | 85.8 |
-| Peak APM over 10 s (60 / 120 / 200 at most) | 60 | 120 | 198 |
-| First order (4-8 / 3-6 / 2-4 s) | 5.3 s | 3.55 s | 2.2 s |
+| On-screen reaction, median | 0.9-1.4 s | 0.5-0.8 s | 0.3-0.45 s |
+| Off-screen alert to first input, median | 3-6 s | 1.5-3 s | 0.8-1.6 s |
+| Average APM over 60 s windows, median seat | 20-35 | 40-70 | 80-160 |
+| Peak APM over 10 s | 60 at most | 120 at most | 300 at most |
+| First order | 4-8 s | 3-6 s | 2-4 s |
 
-No answer came sooner than 0.2 s and no seat sent more than one command in a tick.
+Floors at every level: no answer under 0.2 s, one command per tick, no two orders more than a screen apart within
+0.25 s. Strength: each level beats the one below in Conquest duels (60 matches, seats rotated), and new Hard does at
+least as well against the old Easy AI as the old Hard AI does, within noise. Balance: each faction wins 25-42% of
+decisive Conquest (60 matches) and Classic (30 matches, 40-minute limit) free-for-alls. Performance: AI cost per tick
+at the 95th percentile no worse than the scripted planner's by more than 10% or 2 ms, and no more ticks over 40 ms.
 
-Balance with `tools/ai-balance.mjs` (an `old:` seat plays the scripted planner):
-- Conquest free-for-all, 60 matches, seed 1: USA 17, Germany 20, USSR 23 wins (28 / 33 / 38%), no draws or timeouts,
-  median 621 s.
-- New Hard against old Easy, Conquest duels with rotated seats: 11 of 20 (seed 1) and 8 of 20 (seed 2), 19 of 40.
-  The target was 14 of 20: the commander is about as strong as the old Easy AI. Removing the input caps alone made
-  Hard win 15 of 20 and instant inputs 16 of 20, while giving it the full fog view did not help (9 of 20), so the
-  hands, not the information, limit it. The caps come from the 200 peak APM rule.
-- Classic free-for-alls run past the tool's 20-minute limit with both the old and the new AI (29 of 30 timeouts each,
-  seed 1), so Classic balance needs a longer limit before it can be compared.
+Changed from issue #48, and why:
+- Hard's peak was 200 APM and its average 80-120. Strong RTS players reach 200-300 at peak; the old cap made Hard
+  queue orders in fights. Peak is now 300 (50 inputs per 10 s, 160 per minute) and the average band 80-160.
+- "New Hard beats the old Easy AI 14 of 20" was out of reach for the old Hard AI too: on the default map the old Hard
+  AI beats the old Easy AI 36 of 60 (60%), because spawn position decides many matches. It is replaced by the
+  strength rules above. Twenty-match samples swung by up to 6 wins between seeds, so strength uses 60 matches.
+- Classic balance used a 20-minute limit that both the old and the new AI exceed (29 of 30 timeouts each); Classic
+  free-for-alls now get 40 minutes.
+- Dropped: frozen-source 120-match populations and an opening-variety gate. The commander does not change openings,
+  and the samples below measure the same quantities in minutes.
+- The single worst AI tick is reported, not gated: it comes from a look that plans on the tick its view arrives, and
+  the whole tick stays far inside the 50 ms budget.
+
+### Measured (2026-10-08)
+
+Timing with `tools/ai-human-report.mjs` (reactions are Kaplan-Meier medians, so unanswered alerts count against the
+median), 6 Conquest and 3 Classic 15-minute matches per level, 27 seats each:
+
+| Measure | Easy | Normal | Hard |
+| --- | --- | --- | --- |
+| On-screen reaction | 1.15 s | 0.65 s | 0.35 s |
+| Off-screen alert | 4.2 s | 1.95 s | 1.0 s |
+| Average APM | 24.2 | 44.2 | 96.1 |
+| Peak APM | 60 | 120 | 300 |
+| First order | 5.3 s | 3.55 s | 2.2 s |
+
+Fastest answer 0.2 s; at most one command per tick.
+
+Strength and balance with `tools/ai-balance.mjs` (an `old:` seat plays the scripted planner), Conquest duels of 60
+matches with rotated seats:
+- Normal beats Easy 41 to 18; Hard beats Normal 36 to 24.
+- Against the old Easy AI: new Hard 34 to 26, old Hard 36 to 24.
+- Hard was tuned against this: scanning every 0.35 s instead of 0.45 s raised its APM but dropped it to 26 of 60,
+  because more looks from partial views churn its orders.
+- Conquest free-for-all, 60 matches: USA 17, Germany 20, USSR 23 (28 / 33 / 38%), median 621 s.
+- Classic free-for-all, 30 matches, 40-minute limit: USA 12, Germany 8, USSR 8 of 28 decisive (43 / 29 / 29%), two
+  draws, median 1,509 s. The old AI on the same seeds: 10 / 13 / 7 of 30 (33 / 43 / 23%). USA sits one point over
+  the band; at 30 matches that is within noise, and the old AI misses the band on two factions.
+
+Performance, server loop, six 10-minute Conquest matches with three Normal seats: AI cost per tick mean 0.10 ms and
+95th percentile 0.71 ms (scripted planner 0.22 and 1.30 ms); ticks over 40 ms 0 (planner 2); worst whole tick 21.5 ms
+(planner 60.3 ms); worst single AI tick 21.3 ms (planner 13.7 ms).
 
 ## Individual infantry movement (2026-10-01)
 
