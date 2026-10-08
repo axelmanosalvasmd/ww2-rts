@@ -7,6 +7,7 @@ import { resolve, dirname } from 'node:path';
 import { fileURLToPath, pathToFileURL } from 'node:url';
 import { Worker, isMainThread, parentPort, workerData } from 'node:worker_threads';
 import { availableParallelism } from 'node:os';
+import { aiTick } from '../shared/ai-schedule.js';
 
 const here = fileURLToPath(import.meta.url);
 
@@ -22,7 +23,7 @@ function seededRandom(initial) {
 
 async function playMatches({ root, mode, map: mapName, seeds }) {
   const sim = await import(pathToFileURL(resolve(root, 'shared/sim.js')).href);
-  const { think, observe } = await import(pathToFileURL(resolve(root, 'shared/ai.js')).href);
+  const { think, observe, thinkEvery } = await import(pathToFileURL(resolve(root, 'shared/ai.js')).href);
   const { UNITS, CELL, COVER, TRENCH } = sim;
   // Use the current graded cover rule, including woods, house corners and wrecks.
   const sheltered = (g, t, f) => {
@@ -37,8 +38,8 @@ async function playMatches({ root, mode, map: mapName, seeds }) {
     try {
       const names = ['AI 1', 'AI 2', 'AI 3'];
       const g = sim.createGame(map, names, true, [0, 1, 2], [0, 1, 2], { mode });
-      const initialCache = observe ? sim.snapshotCache?.(g) : undefined;
-      const views = observe ? g.players.map((_, slot) => observe(g, slot, initialCache)) : null;
+      const initialCache = sim.snapshotCache(g), ai = { think, observe, thinkEvery };
+      const views = g.players.map((_, slot) => observe(g, slot, initialCache)), seats = g.players.map((_, slot) => ({ slot, level: 'normal', ai }));
       const vehicle = t => t && !UNITS[t.type].infantry && !UNITS[t.type].structure && !t.air;
       // Behavior counters, read from the shots each tick reports (the same feed the clients get).
       const m = { vehHits: 0, rearHits: 0, frontHits: 0, infHits: 0, infHitsCovered: 0, infHitsSheltered: 0, atShots: 0, atOnVehicles: 0,
@@ -46,11 +47,8 @@ async function playMatches({ root, mode, map: mapName, seeds }) {
       let leader = -1, leadChanges = 0;
       while (g.winner === null && g.tick < capTicks) {
         sim.step(g);
-        if (observe && (g.tick % 2 === 0 || g.winner !== null)) {
-          const cache = sim.snapshotCache?.(g);
-          g.players.forEach((_, slot) => { views[slot] = observe(g, slot, cache); });
-        }
-        g.players.forEach((p, i) => { if ((g.tick + i * 13) % 40 === 0) think(g, i, views ? { view: views[i] } : undefined); });
+        // The server's AI schedule (shared/ai-schedule.js) with this root's AI.
+        aiTick(g, seats, views, { sim });
         for (const s of g.shots) {
           if (s.kill) m.kills++;
           if (!s.f || !s.t || s.k === 'hurt' || s.k === 'aa') continue;
@@ -98,7 +96,7 @@ async function playMatches({ root, mode, map: mapName, seeds }) {
 if (!isMainThread) {
   await playMatches(workerData);
 } else {
-  const options = { root: resolve(dirname(here), '..'), mode: 'conquest', map: 'default', n: 60, seed: 1, workers: Math.max(1, Math.min(2, availableParallelism() - 2)), json: null };
+  const options = { root: resolve(dirname(here), '..'), mode: 'conquest', map: 'default', n: 60, seed: 1, workers: Math.max(1, availableParallelism() - 1), json: null };
   for (let i = 2; i < process.argv.length; i++) {
     const key = process.argv[i];
     if (!['--root', '--mode', '--map', '--n', '--seed', '--workers', '--json'].includes(key) || i + 1 >= process.argv.length) {

@@ -10,7 +10,8 @@ import { createGame, step, command, snapshotFor, snapshotCache, unitDelta, terra
 import { generateWorldMap } from './shared/world-conquest.js';
 import { mapForClient } from './shared/world-layers.js';
 import { WEATHER_CHOICES, weatherRow } from './shared/weather.js';
-import { think, observe, resetAI, thinkEvery, AI_LEVEL_NAMES } from './shared/ai.js';
+import { observe, resetAI, AI_LEVEL_NAMES } from './shared/ai.js';
+import { aiTick } from './shared/ai-schedule.js';
 import { mapPing } from './server/map-pings.js';
 import { allowDeny } from './shared/command-feedback.js';
 import { storyResult } from './shared/story.js';
@@ -607,18 +608,9 @@ function timedRoomTick(room) {
   // The seats the server plays: the room's AIs and, in Horde, the horde itself (nobody's seat, but it gets the same view).
   const seats = [...room.players.keys()].filter(i => room.players[i].ai);
   if (g.mode?.kind === 'horde') seats.push(g.mode.slot);
-  // AI observations refresh only when human snapshots are due, so an AI never plans from fresher news than the
-  // players got. Only seats that think before the next send (at most 4 ticks away) observe: building a view copies
-  // the whole terrain memory, and a Normal AI thinks every 40 ticks. The Horde observes every send (it drips out
-  // its queued orders there).
+  // The AI schedule lives in shared/ai-schedule.js, so the balance and bench tools play the same AI as this room.
   room.aiViews ??= [];
-  let built = null; // the cache is built once per send tick; human snapshots reuse it (AI orders this tick show next send)
-  for (const i of seats) {
-    const every = thinkEvery(room.players[i]?.level), wait = (every - (g.tick + i * 13) % every) % every;
-    if (sent && (wait < 4 || (g.mode?.kind === 'horde' && i === g.mode.slot))) room.aiViews[i] = observe(g, i, built ??= snapshotCache(g));
-  }
-  // AI decisions follow the selected difficulty, staggered by seat. The Horde and human handovers use Normal.
-  for (const i of seats) if (room.aiViews[i] && (g.tick + i * 13) % thinkEvery(room.players[i]?.level) === 0) think(g, i, { view: room.aiViews[i], level: room.players[i]?.level });
+  const built = aiTick(g, seats.map(slot => ({ slot, level: room.players[slot]?.level })), room.aiViews, { sent }); // human snapshots reuse its cache
   const snapshotAt = process.hrtime.bigint();
   let snapshotBuild = 0, snapshotStringify = 0;
   if (sent) {

@@ -18,6 +18,7 @@ import { createGame, step, los, findPath, validateMap, snapshotFor, snapshotCach
 import { SpatialGrid, updateGrid } from './shared/grid.js';
 import { DEBRIS_LIMITS } from './shared/debris-motion.js';
 import { think, thinkEvery, AI_LEVEL_NAMES } from './shared/ai.js';
+import { playMatch, aiTick } from './shared/ai-schedule.js';
 import { viewFor } from './shared/ai-view.js';
 import { unitRole } from './client/unit-roles.js';
 import { createRelief, TRENCH_DEPTH } from './client/relief.js';
@@ -4425,11 +4426,13 @@ await check("Exercise the real room tick's delivery ordering without opening a s
   const body = source.slice(source.indexOf('function timedRoomTick(room)'), source.indexOf('export function tickRooms()'));
   for (const cadence of [2, 4]) {
     const decisions = [], deliveries = [];
-    const tick = new Function('thinkEvery', 'step', 'think', 'observe', 'snapshotCache', 'snapshotFor', 'createTickMeter', 'recordTick', 'tickStats', 'trimmed',
+    // The real schedule (shared/ai-schedule.js) with a recording AI in every seat.
+    const recording = { thinkEvery, observe: g => ({ tick: g.tick }), think: (g, slot, opts) => { decisions.push([g.tick, slot, opts.view.tick]); } };
+    const recordedTick = (g, seats, views, options) => aiTick(g, seats.map(seat => ({ ...seat, ai: recording })), views, { ...options, sim: { snapshotCache: () => ({}) } });
+    const tick = new Function('aiTick', 'step', 'snapshotCache', 'snapshotFor', 'createTickMeter', 'recordTick', 'tickStats', 'trimmed',
       body + '\nreturn timedRoomTick;')(
-      thinkEvery, g => { g.tick++; },
-      (g, slot, opts) => { decisions.push([g.tick, slot, opts.view.tick]); },
-      g => ({ tick: g.tick }), () => ({}), g => ({ tick: g.tick }), () => ({}), () => cadence, () => ({}), (room, net, msg) => msg);
+      recordedTick, g => { g.tick++; },
+      () => ({}), g => ({ tick: g.tick }), () => ({}), () => cadence, () => ({}), (room, net, msg) => msg);
     const game = { tick: 0, winner: null, shots: [], newCells: [] };
     const room = { game, snapEvery: cadence, aiViews: [{ tick: 0 }, { tick: 0 }, { tick: 0 }],
       players: [{ ws: { readyState: 1, send: raw => deliveries.push(JSON.parse(raw).tick) } }, { ai: true, level: 'easy' }, { ai: true, level: 'hard' }] };
@@ -4672,26 +4675,29 @@ await check("Real map loads for 3 players, all spawns start with their force", a
 });
 // Three AIs play a full match on the real map: they must capture, fight, and finish.
 await check("Three AIs play a full match on the real map", async () => {
-  const originalRandom = Math.random;
-  Math.random = aiRandom(617);
-  try {
-    const g = createGame(JSON.parse(readFileSync('maps/default.json', 'utf8')), ['a', 'b', 'c']);
-    let spawned = g.nextId, t0 = performance.now(), capturedAt = 0, heldAt3 = 0;
-    for (let i = 0; i < 20 * 60 * 40 && g.winner === null; i++) {
-      for (let s = 0; s < 3; s++) if ((g.tick + s * 13) % 40 === 0) think(g, s);
-      step(g);
-      if (!capturedAt && g.points.every(p => p.owner >= 0)) capturedAt = g.tick / 20;
-      if (g.tick === 20 * 180) heldAt3 = g.points.filter(p => p.owner >= 0).length;
-    }
-    const secs = g.tick / 20, bought = g.nextId - spawned, dead = g.nextId - 1 - g.units.size;
-    console.log(`AI match: winner ${g.winner} after ${Math.round(secs)}s, all points taken at ${Math.round(capturedAt)}s, ${bought} bought, ${dead} killed, VP ${g.players.map(p => Math.floor(p.vp))}, sim ${Math.round((performance.now() - t0) / g.tick * 1000)}µs/tick`);
-    // Skirmish bases spend part of the opening on tech, so by 3 minutes the AIs hold most points but need not hold all.
-    assert.ok(heldAt3 >= Math.ceil(g.points.length / 2), `AIs hold at least half the points within 3 minutes (${heldAt3}/${g.points.length})`);
-    assert.ok(dead >= 5, 'AIs actually fight');
-    assert.notEqual(g.winner, null, 'match ends within 30 minutes');
-    assert.ok(g.story.every(s => s.mpSpent > 0) && g.story.some(s => s.kills > 0 && s.captures > 0), 'the story counts the match');
-    assert.ok(g.timeline.length >= secs / 10, 'and samples it every 10 s');
-  } finally { Math.random = originalRandom; }
+  // The server's AI schedule (shared/ai-schedule.js), seeded.
+  let spawned, t0 = performance.now(), capturedAt = 0, heldAt3 = 0;
+  const g = playMatch({ map: JSON.parse(readFileSync('maps/default.json', 'utf8')), names: ['a', 'b', 'c'], seed: 617, maxTicks: 20 * 60 * 40, onTick: g => {
+    spawned ??= g.nextId;
+    if (!capturedAt && g.points.every(p => p.owner >= 0)) capturedAt = g.tick / 20;
+    if (g.tick === 20 * 180) heldAt3 = g.points.filter(p => p.owner >= 0).length;
+  } });
+  const secs = g.tick / 20, bought = g.nextId - spawned, dead = g.nextId - 1 - g.units.size;
+  console.log(`AI match: winner ${g.winner} after ${Math.round(secs)}s, all points taken at ${Math.round(capturedAt)}s, ${bought} bought, ${dead} killed, VP ${g.players.map(p => Math.floor(p.vp))}, sim ${Math.round((performance.now() - t0) / g.tick * 1000)}µs/tick`);
+  // Skirmish bases spend part of the opening on tech, so by 3 minutes the AIs hold most points but need not hold all.
+  assert.ok(heldAt3 >= Math.ceil(g.points.length / 2), `AIs hold at least half the points within 3 minutes (${heldAt3}/${g.points.length})`);
+  assert.ok(dead >= 5, 'AIs actually fight');
+  assert.notEqual(g.winner, null, 'match ends within 30 minutes');
+  assert.ok(g.story.every(s => s.mpSpent > 0) && g.story.some(s => s.kills > 0 && s.captures > 0), 'the story counts the match');
+  assert.ok(g.timeline.length >= secs / 10, 'and samples it every 10 s');
+});
+
+// playMatch is the shared runner for tools and tests: the same seed plays the same match, another seed another one.
+await check("playMatch replays a seed exactly", async () => {
+  const map = JSON.parse(readFileSync('maps/default.json', 'utf8'));
+  const play = seed => { const g = playMatch({ map, names: ['a', 'b', 'c'], seed, maxTicks: 1200 }); return JSON.stringify([...g.units.values()].map(u => [u.id, u.type, u.x, u.z, u.hp])); };
+  assert.equal(play(5), play(5), 'the same seed plays the same minute');
+  assert.notEqual(play(5), play(6), 'another seed plays another one');
 });
 
 // The end of a match (shared/story.js, finish() in sim.js, holdEnding() in server.js): every win records why and where,
@@ -5104,7 +5110,7 @@ await check("The server's side of the end, in-process", async () => {
     // Count AI command attempts. Observation refreshes can also run while thinking is idle.
     let thinks = 0;
     let aiMp = g.players[2].mp;
-    Object.defineProperty(g.players[2], 'mp', { get() { if (/at think /.test(new Error().stack)) thinks++; return aiMp; }, set(value) { aiMp = value; }, configurable: true, enumerable: true });
+    Object.defineProperty(g.players[2], 'mp', { get() { if (/at (\w+\.)?think /.test(new Error().stack)) thinks++; return aiMp; }, set(value) { aiMp = value; }, configurable: true, enumerable: true });
     await ticksUntil(() => thinks > 0, 'the AI thinks during the match');
     const mine = () => [...g.units.values()].filter(u => u.owner === 0).length, before = mine();
     await ann.send({ t: 'buy', unit: 'rifle' }); assert.equal(mine(), before + 1, 'orders work during the match');

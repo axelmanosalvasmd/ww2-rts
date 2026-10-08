@@ -1,17 +1,13 @@
 // Web worker: plays N AI free-for-all matches (one AI per spawn) on a map and reports how often each spawn wins.
-import { createGame, step, CELL } from '/shared/sim.js';
-import { think } from '/shared/ai.js';
+import { CELL } from '/shared/sim.js';
+import { playMatch } from '/shared/ai-schedule.js';
 
 onmessage = ({ data: { map, n } }) => {
   const k = map.spawns.length, wins = Array(k).fill(0);
   let timeouts = 0, secs = 0, second = 0;
   for (let i = 0; i < n; i++) {
-    const g = createGame(map, Array.from({ length: k }, (_, i) => 'ai' + i));
-    while (g.winner === null && g.tick < 20 * 60 * 30) {
-      for (let s = 0; s < k; s++) if ((g.tick + s * 13) % 40 === 0) think(g, s);
-      step(g);
-      g.shots = []; g.newCells = [];
-    }
+    // The server's AI schedule, so the editor's verdict reflects the AI players meet.
+    const g = playMatch({ map, names: Array.from({ length: k }, (_, i) => 'ai' + i), maxTicks: 20 * 60 * 30 });
     if (g.winner === null) timeouts++;
     else {
       // spawns are shuffled per match: credit the spawn the winner actually had

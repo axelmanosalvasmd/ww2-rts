@@ -7,7 +7,8 @@ import { performance } from 'node:perf_hooks';
 import { Session } from 'node:inspector';
 import WebSocket from 'ws';
 import * as sim from '../shared/sim.js';
-import { observe, think, thinkEvery } from '../shared/ai.js';
+import { thinkEvery } from '../shared/ai.js';
+import { aiTick } from '../shared/ai-schedule.js';
 import { createTickMeter } from '../tickmeter.js';
 
 const args = process.argv.slice(2);
@@ -246,13 +247,9 @@ async function simulationCase(name) {
       let afterAi = afterStep;
       if (ai || horde) {
         const slots = horde ? [g.mode.slot] : names.map((_, i) => i);
-        if (g.tick % 2 === 0) {
-          const cache = sim.snapshotCache(g);
-          for (const i of slots) views[i] = observe(g, i, cache);
-        }
-        for (const i of slots) if (views[i] && (g.tick + i * 13) % thinkEvery('normal') === 0) {
-          think(g, i, { view: views[i], level: 'normal' }); aiThinkCalls++;
-        }
+        // The server's AI schedule (shared/ai-schedule.js).
+        for (const i of slots) if (views[i] && (g.tick + i * 13) % thinkEvery('normal') === 0) aiThinkCalls++;
+        aiTick(g, slots.map(slot => ({ slot, level: 'normal' })), views, { sent: g.tick % 2 === 0 });
         afterAi = now();
       }
       let afterSnapshot = afterAi;

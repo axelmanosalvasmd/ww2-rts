@@ -5,6 +5,16 @@ AI-vs-AI runs (see DESIGN.md for the balance log). Add new entries under **Unrel
 
 ## Unreleased
 
+- AI tools now play the AI that players face (no game change). The server's per-tick AI schedule moved into
+  `shared/ai-schedule.js` (`aiTick`), and `playMatch` runs a seeded headless match on it. The server, the balance,
+  bench and Horde tools, the skirmish scenario tool, the map editor's spawn fairness worker and the full-match test
+  all use it. Before, each kept its own copy: the balance tools observed every seat every 2 ticks (about 1.5 times
+  the per-tick cost, and different AI sighting memory than the server), the bench, Horde and skirmish tools thought
+  without a delivered view, and the Horde tool never ran the Horde seat's own AI. `tools/ai-balance.mjs` now plays
+  12 Conquest matches in 43 s instead of 147 s on 6 workers, and the balance tools default to all cores but one.
+  `tools/horde.mjs` runs are seeded (run r uses seed r). Balance numbers measured before this change came from the
+  old tool schedule; re-measure before comparing.
+
 - The test suite runs in about 2 minutes instead of about 15 (no game change). Its 270 inline blocks are now named
   checks (`test-check.js`): run one with `WW2_TEST_ONLY=<name>`, and a failure no longer stops the run, the summary
   lists every failure. `node test.js` splits itself across processes and runs child files in parallel, then runs
