@@ -68,7 +68,7 @@ export const epilogue = {
     if (end || s.winner == null || !s.end) return;
     const outcome = s.winner === -1 ? 'draw' : s.winner === team ? 'victory' : 'defeat';
     end = { x: s.end.x, z: s.end.z, outcome, t: 0, start: performance.now(), from: null };
-    stamp(outcome, s.mode?.kind === 'world' ? (outcome === 'victory' ? 'Your side controls every region of the continent.' : outcome === 'defeat' ? 'Another side controls the continent.' : 'No side controls the continent.') : s.mode?.kind === 'horde' ? `The bunker fell on wave ${s.mode.wave}.` : why(s.end.reason, outcome));
+    stamp(outcome, s.mode?.kind === 'world' ? (outcome === 'draw' ? 'No side controls the continent.' : s.end.reason === 'nations' ? (outcome === 'victory' ? 'Every rival nation has fallen.' : 'Your nation has fallen.') : outcome === 'victory' ? 'Your side controls the continent.' : 'Another side controls the continent.') : s.mode?.kind === 'horde' ? `The bunker fell on wave ${s.mode.wave}.` : why(s.end.reason, outcome));
     sound(outcome);
   },
   // real seconds in, screen seconds out (slowed once the match is decided); moves the camera during the glide.

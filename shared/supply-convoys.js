@@ -115,7 +115,7 @@ function syncStores(g, hooks) {
       const id = `support:${u.id}`, fresh = !s.stores.has(id);
       const store = ensure(id, u.owner, u, false, u.id, L.supportEquivalents);
       if (fresh) Object.assign(bucket(store, u.owner), { ammo: store.capacity.ammo, provisions: store.capacity.provisions });
-      store.support = true; store.active = u.still >= 2 || !!u.cargo;
+      store.support = true; store.active = u.still >= 2 || !!u.cargo?.length;
     }
   }
   for (const [c, owner] of g.aid ?? []) {

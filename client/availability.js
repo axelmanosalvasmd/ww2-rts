@@ -1,6 +1,6 @@
 import { worldLayers, composeWorldCell } from '../shared/world-layers.js';
 import { tierOf, techCost, TIER_NAMES } from '../shared/tech.js';
-import { UNITS, FORTS, CFG, TERRAIN, CELL, RIDING_FLAG, priceOf, supCost, popCap, popUse, dropPop, abCost, levelOf, teamSees, buildKinds, builderTypes, isSkirmishBaseMode, productionAccess, productionBuildings } from '../shared/sim.js';
+import { UNITS, FORTS, CFG, TERRAIN, CELL, RIDING_FLAG, railYard, priceOf, supCost, popCap, popUse, dropPop, abCost, levelOf, teamSees, buildKinds, builderTypes, isSkirmishBaseMode, productionAccess, productionBuildings } from '../shared/sim.js';
 
 // Server denials deliberately contain no target details.
 export const DENY_SENTENCES = Object.freeze({
@@ -15,7 +15,8 @@ export const DENY_SENTENCES = Object.freeze({
   notWaiting: 'That recruit is no longer waiting',
   scenario: 'This scenario cannot start with the selected sides, factions or mode',
   territory: 'Build inside territory your team owns',
-  coast: 'A Shipyard needs open water beside it', tier: 'Needs a higher HQ tier', shore: 'Too far from the shore to land',
+  coast: 'A Shipyard needs open water beside it', tier: 'Needs a higher HQ tier', rail: 'Too close to the railway or a station', save: 'The match could not be saved or loaded',
+  station: `Rail moves start within ${CFG.rail.reach} m of one of your stations and go to another station on your land`, railCut: 'No open line: every region on the way must be yours and its bridges standing', airfield: `Paratroopers fly from one of your finished Airfields, at most ${CFG.paraRange} m away`, shore: 'Too far from the shore to land',
 });
 // The server answers queueFull for both a full training queue (buy) and a full order queue (every other command).
 export const denySentence = (code, cmd) =>
@@ -84,6 +85,7 @@ export function availability(s, cfg = CFG, action = {}) {
     if (cd > 0) return no(`Cooldown ${cooldownSeconds(cd)} s`);
     const { cur, cost } = supCost(s, action.kind), money = resources(s, cur === 'mp' ? cost : 0, 0, cur === 'mun' ? cost : 0);
     if (!money.ok) return money;
+    if (action.kind === 'para' && s.mode?.kind === 'world' && !own.some(v => v.type === 'airfield' && v.built >= 1)) return no(DENY_SENTENCES.airfield);
     return action.kind === 'para' ? population(null, dropPop('para')) : yes();
   }
   if (action.t === 'build') {
@@ -173,6 +175,7 @@ export function rememberPlacementTerrain(map, cells = []) {
     placementTerrain.set(map, initial);
   }
   if (map.world) for (const [c, ch, lv, , data] of cells) {
+    if (data?.rail || data?.station !== undefined) for (const k of railYard(map.w, data.rail ? [c] : [], data.station !== undefined ? [c] : [])) (initial.railYard ??= new Set()).add(k);
     if (initial.chars[c] !== '?') continue;
     initial.chars[c] = data?.initial?.[0] ?? (ch === 'N' ? composeWorldCell(data?.ground ?? '.', data?.object ?? '.') : ch);
     initial.height[c] = data?.initial?.[1] ?? lv ?? 0;
@@ -182,7 +185,7 @@ export function rememberPlacementTerrain(map, cells = []) {
 
 export function placementState(s, map, grid, teams, layers) {
   const chars = grid.flat(), w = map.w, h = map.h, us = snapshotUnits(s), authored = worldLayers(map), ground = layers?.groundGrid?.flat() ?? authored.ground, objects = layers?.objectGrid?.flat() ?? authored.objects;
-  const g = { w, h, chars, ground, objects, mode: s.mode, logisticsEnabled: s.logistics?.enabled === true, logisticsEnabled: s.logistics?.enabled === true, world: s.world ? { regions: s.world.regions } : undefined, naval: map.naval === true, flags: chars.map((ch, c) => TERRAIN[ch === 'N' ? composeWorldCell(ground[c], objects[c]) : ch] ?? 0),
+  const g = { w, h, chars, ground, objects, mode: s.mode, logisticsEnabled: s.logistics?.enabled === true, logisticsEnabled: s.logistics?.enabled === true, world: s.world ? { regions: s.world.regions, railYard: rememberPlacementTerrain(map).railYard } : undefined, naval: map.naval === true, flags: chars.map((ch, c) => TERRAIN[ch === 'N' ? composeWorldCell(ground[c], objects[c]) : ch] ?? 0),
     height: Array.from({ length: w * h }, (_, c) => levelOf(map.heights?.[Math.floor(c / w)]?.[c % w] ?? '0')),
     smokes: (s.smokes ?? []).map(([x, z, r]) => ({ x, z, r })),
     units: new Map(us.map((v) => [v.id, v])), players: teams.map((team) => ({ team })),

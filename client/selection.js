@@ -5,7 +5,7 @@ export function createSelection({ units, selected, groups, owner, definitions, s
   const rows = () => [...selected].map(id => units.get(id)).filter(own);
   const replace = (list) => { selected.clear(); for (const v of list) selected.add(v.id); return list; };
   const mobileOwn = v => own(v) && definitions[v.type] && !definitions[v.type].structure && !(v.flags & (512 | 262144));
-  const armyUnit = (v) => own(v) && definitions[v.type] && !definitions[v.type].structure && v.type !== 'truck';
+  const armyUnit = (v) => own(v) && definitions[v.type] && !definitions[v.type].structure && !definitions[v.type].rail && v.type !== 'truck'; // trains run themselves
   const selectable = (v) => armyUnit(v) && mobileOwn(v); // not a plane at base, not a squad riding in a halftrack
   const selectableOwn = v => own(v) && definitions[v.type] && (mobileOwn(v) || definitions[v.type].building);
   const points = v => screenPointsOf(v).filter(p => p.front && Number.isFinite(p.x) && Number.isFinite(p.y));

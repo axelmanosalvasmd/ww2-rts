@@ -5,7 +5,7 @@
 // Each panel builds its HTML only when what it shows changes shape (the teams, the selection, the selected building)
 // and otherwise only updates text, widths and disabled states: rebuilding the buttons 10 times a second ate clicks.
 
-import { UNITS, UNIT_TYPES, CFG, SUPPORT, SUPPORT_TYPES, FORTS, lineFort, ENTRENCH, ENTRENCH_TYPES, BUILDABLE, buildKinds, isSkirmishBaseMode, canBuild, winVp, supCost, popCap, popUse, abCost, priceOf, AUTO_FLAG, RIDING_FLAG, CARGO_FLAG } from '/shared/sim.js';
+import { UNITS, UNIT_TYPES, CFG, SUPPORT, SUPPORT_TYPES, FORTS, lineFort, ENTRENCH, ENTRENCH_TYPES, BUILDABLE, buildKinds, isSkirmishBaseMode, canBuild, winVp, supCost, popCap, popUse, abCost, priceOf, AUTO_FLAG, RIDING_FLAG, CARGO_FLAG, CARGO_SHIFT } from '/shared/sim.js';
 import { symbolSVG, icon } from './symbols.js';
 import { portrait } from './portraits.js';
 import { unitRole } from './unit-roles.js';
@@ -52,7 +52,7 @@ const AIMED = new Set(['grenade', 'barrage', 'satchel']); // abilities that need
 const GROUPS = ['Infantry', 'Support weapons', 'Vehicles', 'Aircraft', 'Naval'];
 const GROUP_ICONS = ['rifle', 'mg', 'medium', 'fighter', 'destroyer']; // a silhouette before each group's name
 const SUPPORT_WEAPONS = new Set(['mg', 'mortar', 'at', 'flak', 'howitzer']);
-const ORDER = ['rifle', 'conscript', 'ranger', 'commando', 'flamer', 'sniper', 'medic', 'engineer', 'mg', 'mortar', 'at', 'howitzer', 'flak', 'halftrack', 'armoredcar', 'flaktrack', 'tank', 'medium', 'tankdestroyer', 'tiger', 'churchill', 'rocket', 'lcvp', 'gunboat', 'destroyer', 'fighter', 'attacker', 'bomber'];
+const ORDER = ['rifle', 'conscript', 'ranger', 'commando', 'flamer', 'sniper', 'medic', 'engineer', 'mg', 'mortar', 'at', 'howitzer', 'flak', 'halftrack', 'lorry', 'armoredcar', 'flaktrack', 'tank', 'medium', 'tankdestroyer', 'tiger', 'churchill', 'rocket', 'lcvp', 'gunboat', 'destroyer', 'fighter', 'attacker', 'bomber'];
 const groupOf = (t) => (UNITS[t].naval ? 4 : UNITS[t].air ? 3 : SUPPORT_WEAPONS.has(t) ? 1 : UNITS[t].infantry ? 0 : 2);
 const rank = (t) => { const i = ORDER.indexOf(t); return i < 0 ? ORDER.length + UNIT_TYPES.indexOf(t) : i; };
 // long one-word names get a soft hyphen so they break cleanly on a narrow card
@@ -198,8 +198,8 @@ export function createHud(ctx) {
       } else if (kind === 'tutorial') {
         setText(mode, 'Tutorial'); setText(clk, `${s.mode.step + 1} / ${s.mode.steps}`); score.lead.title = s.mode.goal ?? '';
       } else if (kind === 'world') {
-        setText(mode, 'World Conquest'); setText(clk, `${s.world?.owned ?? 0}/${s.world?.total ?? 0} regions`);
-        score.lead.title = 'Your team must own every region. Destroy military bases, then claim with infantry';
+        setText(mode, 'World Conquest'); setText(clk, `${s.world?.owned ?? 0}/${s.world?.goal ?? s.world?.total ?? 0} regions`);
+        score.lead.title = s.world?.goal < s.world?.total ? `Own ${s.world.goal} of the ${s.world.total} regions, or be the last nation standing. Destroy military bases, then claim with infantry` : 'Your team must own every region. Destroy military bases, then claim with infantry';
       } else if (kind === 'classic') {
         setText(mode, s.mode.suddenDeath ? 'Sudden death' : 'Sudden death in'); setText(clk, s.mode.suddenDeath ? '' : clock(s.mode.timeLeft));
         mode.classList.toggle('danger', !!s.mode.suddenDeath);
@@ -238,7 +238,7 @@ export function createHud(ctx) {
         if (own.length) { frac = hp / max; u0 = own.length > 1 ? `${own.length} bunkers` : 'Bunker'; num = `${Math.ceil(hp)} / ${max}`; } else { u0 = 'Out'; danger = true; }
       } else if (kind === 'world') {
         const count = tm.t === mine ? s.world?.owned ?? 0 : (s.world?.regions ?? []).filter(r => r.team === tm.t).length;
-        const total = s.world?.total ?? 0;
+        const total = s.world?.goal ?? s.world?.total ?? 0;
         frac = total ? count / total : 0; num = `${count} / ${total}`; u = 'regions';
         u0 = tm.t === mine ? 'Owned' : 'Discovered';
       } else if (kind === 'classic') {
@@ -261,7 +261,7 @@ export function createHud(ctx) {
     if (supply) t.push(['pin', supply]);
     if (v.flags & 256) t.push(['cov', 'Hidden']);
     if (v.flags & RIDING_FLAG) t.push(['cov', 'Riding']);
-    if (v.flags & CARGO_FLAG) t.push(['', 'Carrying a squad']);
+    if (v.flags & CARGO_FLAG) { const n = v.flags >> CARGO_SHIFT & 3, of = UNITS[v.type].carries; t.push(['', of > 1 && of <= 3 ? `Carrying ${n} of ${of} squads` : 'Carrying a squad']); }
     if (v.flags & 1) t.push(['', 'Retreating']);
     if (v.flags & 8) t.push(['cov', 'Reinforcing']);
     if (v.flags & 2) t.push(['sup', 'Suppressive fire']);
@@ -361,9 +361,10 @@ export function createHud(ctx) {
     }
     // Fort buttons whenever a squad that can build them is selected, including Engineers.
     const types = ctx.PRIORITY.filter((t) => sel.some((v) => v.type === t)), dig = sel.some((v) => CFG.fortBuilders.includes(v.type));
-    const inf = sel.some((v) => UNITS[v.type].infantry), carry = sel.some((v) => UNITS[v.type].carries), shell = sel.some((v) => UNITS[v.type].w?.salvo);
+    const inf = sel.some((v) => UNITS[v.type].infantry), carry = sel.some((v) => UNITS[v.type].carries), mount = inf && sel.some((v) => UNITS[v.type].carries && !UNITS[v.type].naval),
+      rail = s.mode?.kind === 'world' && sel.some((v) => !UNITS[v.type].air && !UNITS[v.type].naval && !UNITS[v.type].rail && !UNITS[v.type].structure), shell = sel.some((v) => UNITS[v.type].w?.salvo);
     if (menu && menu !== 'form' && !dig) menu = null;
-    const key = bld || !sel.length ? '' : `${types.join()}|${dig}|${inf}|${carry}|${shell}|${menu}|${buildTab}`;
+    const key = bld || !sel.length ? '' : `${types.join()}|${dig}|${inf}|${carry}|${mount}|${rail}|${shell}|${menu}|${buildTab}`;
     if (key !== ordKey) {
       ordKey = key;
       el.innerHTML = !key ? '' : '<div class="hd">Orders</div><div class="grid">' +
@@ -373,7 +374,9 @@ export function createHud(ctx) {
         (shell ? orderBtn('data-a="area"', 'barrage', badge('area'), `Shell area (${label('area')}): click any ground, seen or not; mortars, howitzers, rocket trucks and ships move into range and keep firing on it until given another order, bombers drop every stick on it. Shift+click queues it`) : '') +
         Object.entries(STANCE).map(([k, [, nm, tip]]) => orderBtn(`data-a="st:${k}"`, k, badge(`stance:${k}`), `${nm} (${label(`stance:${k}`)}): ${tip}. Click to switch it on or off for the selection`)).join('') +
         (inf ? orderBtn('data-a="cover"', 'takecover', badge('cover'), `Take cover (${label('cover')}): infantry run to the nearest trench, wall or rubble within ${CFG.coverSeek} m. Shift+click queues it`) : '') +
-        (carry ? orderBtn('data-a="unload"', 'unload', badge('unload'), `Unload (${label('unload')}): the squad inside gets out beside the halftrack. To board, right-click the halftrack with infantry selected`) : '') +
+        (rail ? orderBtn('data-a="rail"', 'train', badge('rail'), `Send by rail (${label('rail')}): click a destination. Units within ${CFG.rail.reach} m of one of your stations board a train (up to ${CFG.rail.cars}) to your station nearest the click; every region on the way must be yours and its bridges standing. Each station sends one train every ${CFG.rail.every} s`) : '') +
+        (mount ? orderBtn('data-a="mountup"', 'mountup', badge('mountUp'), `Mount up (${label('mountUp')}): each selected squad climbs into or onto the nearest selected truck, halftrack or tank with a free seat`) : '') +
+        (carry ? orderBtn('data-a="unload"', 'unload', badge('unload'), `Unload (${label('unload')}): every squad aboard gets out beside its carrier. To board, right-click your own truck, halftrack, boat or tank with infantry selected`) : '') +
         menuBtn('form', 'Formation: shape, spacing, marching together and snapping to trenches. Right-drag sets the facing and the width; double right-click turns to face a spot') +
         (dig ? menuBtn('build', 'Build: defenses, sandbags, wire, traps, mines, bridges and more') + menuBtn('trench', 'Trench patterns: lines, zigzags, rings and strongpoints the builder squads dig together') : '') +
         types.map((t) => { const ab = UNITS[t].ab; return orderBtn(`data-a="${t}"`, ab.id === 'smoke' ? 'smokeab' : ab.id, '', `${ab.name}: ${name(t)}${AIMED.has(ab.id) ? ', click where' : ''}. ${ab.cd}s cooldown. Right-click: autocast on/off`, t); }).join('') +
@@ -383,7 +386,7 @@ export function createHud(ctx) {
         const a = b.dataset.a;
         b.onclick = (e) => {
           if (a === 'retreat') ctx.retreat(); else if (a === 'amove') ctx.amove(); else if (a === 'stop') ctx.stop(); else if (a === 'area') ctx.area();
-          else if (a === 'unload') ctx.unload(); else if (a === 'cover') ctx.takeCover(e.shiftKey); else if (a.startsWith('st:')) ctx.stance(a.slice(3)); else if (a.startsWith('ent:')) ctx.entrench(a.slice(4));
+          else if (a === 'unload') ctx.unload(); else if (a === 'mountup') ctx.mountUp(); else if (a === 'rail') ctx.rail(); else if (a === 'cover') ctx.takeCover(e.shiftKey); else if (a.startsWith('st:')) ctx.stance(a.slice(3)); else if (a.startsWith('ent:')) ctx.entrench(a.slice(4));
           else if (a.startsWith('fort:')) ctx.dig(a.slice(5)); else if (a.startsWith('bld:')) ctx.build(a.slice(4)); else ctx.ability(a);
         };
         if (UNITS[a]) b.oncontextmenu = (e) => { e.preventDefault(); ctx.autocast(a); };
@@ -412,7 +415,11 @@ export function createHud(ctx) {
       if (a.startsWith('fort:')) { const kind = a.slice(5), f = FORTS[kind]; result = check({ t: 'dig', kind }); txt = `${f.cost} MP`; }
       else if (a.startsWith('bld:')) { const kind = a.slice(4); result = check({ t: 'build', kind }); txt = `${UNITS[kind].cost} MP`; }
       else if (a === 'cover') result = check({ t: 'cover' });
-      else if (a === 'unload') { const n = sel.filter((v) => v.flags & CARGO_FLAG).length; result = n ? result : { ok: false, reason: 'No squad on board' }; txt = n ? 'full' : 'empty'; }
+      else if (a === 'unload') { const n = sel.reduce((k, v) => k + (v.flags & CARGO_FLAG ? v.flags >> CARGO_SHIFT & 3 : 0), 0), of = sel.reduce((k, v) => k + (UNITS[v.type].carries ?? 0), 0); result = n ? result : { ok: false, reason: 'No squad on board' }; txt = `${n}/${of}`; }
+      else if (a === 'mountup') {
+        const seats = sel.reduce((k, v) => k + (UNITS[v.type].carries && !UNITS[v.type].naval ? UNITS[v.type].carries - (v.flags & CARGO_FLAG ? v.flags >> CARGO_SHIFT & 3 : 0) : 0), 0);
+        result = seats ? result : { ok: false, reason: 'No free seats' }; txt = `${seats} free`;
+      }
       else if (a.startsWith('st:')) {
         const bit = STANCE[a.slice(3)][0], on = sel.filter((v) => v.flags & bit).length;
         txt = !on ? 'Off' : on === sel.length ? 'On' : `${on}/${sel.length}`; b.classList.toggle('on', on > 0);

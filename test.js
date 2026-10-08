@@ -49,7 +49,7 @@ const settledRubble = (g, cells, message) => {
 // The large-world checks use real clients and a fresh authoritative server.
 // Child files (the large-world checks among them use real clients and a fresh authoritative server) run in
 // parallel with the checks below, each in its own process.
-const childFiles = runFiles(['test-audit-commands.mjs', 'test-audit-combat.mjs', 'test-audit-logistics.mjs', 'test-audit-client.mjs', 'test-audit-ai.mjs', 'test-audit-world.mjs', 'test-audit-server.mjs', 'test-infantry-dig.mjs', 'test-snapshot-backpressure.mjs',
+const childFiles = runFiles(['test-audit-commands.mjs', 'test-audit-combat.mjs', 'test-audit-logistics.mjs', 'test-audit-client.mjs', 'test-audit-ai.mjs', 'test-audit-world.mjs', 'test-world-rules.mjs', 'test-transport.mjs', 'test-saves.mjs', 'test-audit-server.mjs', 'test-infantry-dig.mjs', 'test-snapshot-backpressure.mjs',
     'test-logistics.mjs', 'test-convoy-scheduler.mjs', 'test-world-supply.mjs', 'test-territory-supply.mjs', 'test-logistics-server.mjs', 'test-world-waterways.js', 'test-world-multiple-rivers.js', 'test-world-generation.js', 'test-world-territories.js',
     'test-world-conquest.js', 'test-world-teams.js', 'test-world-acceptance.js', 'test-world-observation.js', 'test-world-movement.js', 'test-world-river.js',
     'test-engine-controls.js', 'test-engine-world.js', 'test-engine-movement.js', 'test-movement-lab.js', 'test-engine-projectiles.js', 'test-engine-scenarios.js', 'test-engine-ai.js', 'test-ai-human.js', 'test-engine-acceptance.js', 'test-engine-presentation.mjs',
@@ -7604,7 +7604,7 @@ await check("---------- woods, mine clearing, halftracks, medics, the Field Hosp
     const ht = add(g, 0, 'halftrack', 10, 10), rifle = place(g, unitOf(g, 0, 'rifle'), 13, 10), mg = place(g, unitOf(g, 0, 'mg'), 13, 12);
     assert.equal(command(g, 0, { t: 'board', ids: [rifle.id, mg.id], target: ht.id }), undefined);
     run(g, 100);
-    assert.equal(rifle.riding, ht.id, 'the nearest squad is in'); assert.equal(ht.cargo, rifle.id); assert.equal(mg.riding, 0, 'one squad only');
+    assert.equal(rifle.riding, ht.id, 'the nearest squad is in'); assert.deepEqual(ht.cargo, [rifle.id]); assert.equal(mg.riding, 0, 'one squad only');
     assert.equal(command(g, 0, { t: 'board', ids: [mg.id], target: ht.id }), 'max', 'a full carrier takes nobody');
     command(g, 0, { t: 'move', orders: [[ht.id, at(30, 10).x, at(30, 10).z], [rifle.id, 0, 0]] });
     run(g, 200);
@@ -7615,7 +7615,7 @@ await check("---------- woods, mine clearing, halftracks, medics, the Field Hosp
     assert.ok(g.players[1].visible.has(ht.id) && !g.players[1].visible.has(rifle.id), 'the enemy sees the halftrack, not the squad in it');
     place(g, foe, 38, 38);
     assert.equal(command(g, 0, { t: 'unload', ids: [ht.id] }), undefined);
-    assert.equal(rifle.riding, 0); assert.equal(ht.cargo, 0);
+    assert.equal(rifle.riding, 0); assert.deepEqual(ht.cargo, []);
     assert.equal(command(g, 0, { t: 'board', ids: [rifle.id], target: ht.id }), undefined);
     run(g, 100);
     assert.equal(rifle.riding, ht.id);

@@ -951,9 +951,155 @@ function supplyTruck(P, fac) {
   return { hull: finish(G.merge(h.list)), turret: null, turretAt: [0, 0, 0], tip: null };
 }
 
+// A troop truck: the GMC CCKW (USA, six wheels), the Opel Blitz (Germany), the ZiS-5 (USSR) and the forward-control
+// Bedford QL (UK). Unlike the supply truck's closed box, the canvas tilt has its side curtains rolled up: the bows
+// (hoops) stand bare along the sides and the two long troop benches show through, with the tail flap rolled up too.
+function troopTruck(P, fac) {
+  const h = parts(), qlCab = fac === 3, R = fac === 0 ? 0.44 : 0.47;
+  const axles = fac === 0 ? [1.75, -1.05, -2.1] : qlCab ? [1.75, -1.65] : [1.72, -1.6];
+  const bedFront = qlCab ? 0.95 : 0.12, bedBack = -2.75, bedLen = bedFront - bedBack, bedMid = (bedFront + bedBack) / 2;
+  const canvas = shade(P.canvas, 0.92), bow = shade(P.canvas, 0.62);
+  h.box(P.deep, 5.0, 0.16, 0.9, -0.15, 0.72, 0); // the frame rails
+  h.box(P.dark, 0.1, 0.14, 1.7, 2.66, 0.78, 0); // the front bumper
+  if (fac === 0) {
+    // GMC: a long bonnet with rounded shoulders, a closed cab with a rounded roof
+    h.mat(hullOf([[2.6, [0.46, 0.8], [0.5, 1.3], [0.36, 1.48]], [1.3, [0.5, 0.8], [0.56, 1.34], [0.4, 1.56]]]), P.base);
+    h.mat(hullOf([[1.3, [0.84, 0.84], [0.86, 1.34], [0.66, 1.66]], [1.1, [0.84, 0.84], [0.86, 1.34], [0.66, 2.1], [0.84, 1.98]], [0.22, [0.84, 0.84], [0.86, 1.34], [0.66, 2.12], [0.84, 2.0]]]), P.base);
+  } else if (fac === 1) {
+    // Opel Blitz: a narrower bonnet that drops toward the grille, a rounder cab
+    h.mat(hullOf([[2.6, [0.4, 0.82], [0.44, 1.22], [0.28, 1.36]], [1.32, [0.48, 0.8], [0.53, 1.36], [0.36, 1.56]]]), P.base);
+    h.mat(hullOf([[1.32, [0.82, 0.84], [0.85, 1.36], [0.6, 1.66]], [1.12, [0.82, 0.84], [0.86, 1.4], [0.58, 2.06], [0.8, 1.9]], [0.22, [0.82, 0.84], [0.86, 1.4], [0.58, 2.08], [0.8, 1.92]]]), P.base);
+  } else if (fac === 2) {
+    // ZiS-5: a square bonnet with flat side panels and a boxy cab under a flat, overhanging roof
+    h.box(P.base, 1.3, 0.62, 0.92, 1.95, 1.12, 0); h.box(P.mid, 1.32, 0.05, 0.96, 1.95, 1.45, 0);
+    h.box(P.base, 1.1, 1.2, 1.72, 0.72, 1.42, 0); h.box(P.dark, 1.24, 0.07, 1.82, 0.74, 2.05, 0);
+  } else {
+    // Bedford QL: the cab sits over the engine and front wheels, a flat face with a two-pane windscreen
+    h.box(P.base, 1.5, 0.75, 1.9, 1.85, 1.2, 0); h.box(P.base, 1.5, 0.62, 1.86, 1.85, 1.87, 0);
+    h.box(P.dark, 1.6, 0.07, 1.96, 1.85, 2.21, 0);
+    for (const s of [1, -1]) h.box(P.glass, 0.025, 0.42, 0.78, 2.61, 1.9, s * 0.44);
+    h.box(P.deep, 0.03, 0.36, 1.1, 2.61, 1.08, 0); for (let i = 0; i < 6; i++) h.box(P.mid, 0.03, 0.34, 0.04, 2.625, 1.08, (i - 2.5) * 0.18);
+  }
+  if (!qlCab) {
+    // the grille and the windscreen of a bonneted truck
+    const top = fac === 1 ? 1.32 : fac === 2 ? 1.42 : 1.44, half = fac === 1 ? 0.32 : 0.4;
+    h.box(P.deep, 0.035, top - 0.82, half * 2, 2.62, (top + 0.82) / 2, 0);
+    for (let i = 0; i < 7; i++) h.box(P.mid, 0.03, top - 0.86, 0.035, 2.64, (top + 0.82) / 2, (i - 3) * half / 3.4);
+    for (const s of [1, -1]) h.box(P.glass, 0.025, 0.38, 0.62, fac === 2 ? 1.28 : 1.17, 1.82, s * 0.36, 0, 0, fac === 2 ? 0 : 1.15 - Math.PI / 2);
+  }
+  const cabX = qlCab ? 1.85 : fac === 2 ? 0.72 : 0.7, cabW = qlCab ? 0.955 : fac === 2 ? 0.865 : 0.865;
+  for (const s of [1, -1]) {
+    h.box(P.glass, 0.5, 0.3, 0.02, cabX - 0.05, 1.8, s * (cabW - 0.005)); // the door window
+    h.box(P.dark, 0.012, 0.8, 0.012, cabX - 0.4, 1.38, s * cabW); h.box(P.steel, 0.08, 0.025, 0.025, cabX + 0.3, 1.5, s * (cabW + 0.005));
+    sideMark(h, P, fac, 0.15, cabX, 1.2, cabW, s, 0);
+    lamp(h, P, qlCab ? 2.6 : 2.36, qlCab ? 1.4 : 1.2, s * (qlCab ? 0.72 : 0.7), 0.075);
+    // front mudguards: swept round on the Opel, flat and angular on the ZiS, a curved arch on the GMC and the Bedford
+    if (fac === 2) { h.box(P.base, 1.1, 0.04, 0.34, 1.75, 1.02, s * 0.8); h.box(P.base, 0.04, 0.26, 0.34, 2.28, 0.9, s * 0.8, 0, 0, -0.5); }
+    else fender(h, P.base, axles[0], R, s * (qlCab ? 0.8 : 0.82), R, 0.4, fac === 1 ? -80 : -64, fac === 1 ? 84 : 70, fac === 1 ? 7 : 5);
+    h.box(P.base, qlCab ? 0.5 : 0.9, 0.04, 0.28, qlCab ? 0.9 : 0.75, 0.86, s * 0.94); // the running board and steps
+    // the rear mudguards under the bed
+    h.box(P.base, axles.length === 3 ? 2.0 : 1.2, 0.04, 0.4, (axles[1] + axles.at(-1)) / 2, 1.0, s * 0.82);
+    for (const x of axles) wheel(h, P, R, 0.3, x, R, s * 0.84, s, { seg: 16 });
+  }
+  // the bed: a plank floor and low dropsides with their plank lines, the tailgate up
+  h.box(P.wood, bedLen, 0.12, 1.9, bedMid, 1.06, 0);
+  for (const s of [1, -1]) {
+    h.box(P.base, bedLen, 0.46, 0.06, bedMid, 1.35, s * 0.95);
+    for (const y of [1.24, 1.4]) h.box(P.dark, bedLen, 0.02, 0.012, bedMid, y, s * 0.982);
+    for (const x of [bedBack + 0.1, bedMid, bedFront - 0.1]) h.box(P.steel, 0.06, 0.48, 0.03, x, 1.35, s * 0.99); // stake pockets
+    // the troop bench along each side, on its legs
+    h.box(P.wood, bedLen - 0.4, 0.06, 0.34, bedMid - 0.1, 1.5, s * 0.72);
+    for (const x of [bedBack + 0.35, bedMid, bedFront - 0.35]) h.box(P.dark, 0.05, 0.36, 0.05, x, 1.3, s * 0.62);
+  }
+  h.box(P.base, 0.06, 0.46, 1.9, bedBack + 0.03, 1.35, 0); h.box(P.base, 0.06, 0.66, 1.9, bedFront - 0.03, 1.45, 0);
+  h.box(P.owner, 0.02, 0.16, 0.6, bedBack - 0.005, 1.35, 0); // the unit's color on the tailgate
+  // the tilt: bows standing bare along the sides, the roof canvas with rounded shoulders, side curtains rolled up under
+  // the eaves, the front closed, the tail flap rolled up at the top
+  const top = 2.62, eave = 2.18, bows = Math.max(4, Math.round(bedLen / 0.75));
+  h.box(canvas, bedLen, 0.05, 1.66, bedMid, top, 0);
+  for (const s of [1, -1]) {
+    h.add(CYL8, canvas, bedMid, top - 0.12, s * 0.82, 0, 0, Math.PI / 2, 0.14, bedLen, 0.14); // the rounded shoulder
+    h.box(canvas, bedLen, 0.34, 0.035, bedMid, eave + 0.24, s * 0.94); // the eave strip of the side curtain
+    h.add(CYL8, shade(P.canvas, 0.8), bedMid, eave, s * 0.95, 0, 0, Math.PI / 2, 0.09, bedLen - 0.04, 0.09); // the rolled curtain
+  }
+  h.box(canvas, 0.04, top - 1.6, 1.88, bedFront - 0.02, (top + 1.6) / 2, 0);
+  h.add(CYL8, shade(P.canvas, 0.8), bedBack + 0.02, top - 0.14, 0, Math.PI / 2, 0, 0, 0.1, 1.7, 0.1);
+  for (let i = 0; i < bows; i++) {
+    const x = bedBack + 0.06 + (i * (bedLen - 0.16)) / (bows - 1);
+    for (const s of [1, -1]) h.box(bow, 0.05, top - 1.55, 0.04, x, (top + 1.55) / 2, s * 0.93);
+    h.box(bow, 0.06, 0.03, 1.7, x, top + 0.03, 0);
+  }
+  for (const s of [1, -1]) sideMark(h, P, fac, 0.2, bedMid, 1.36, 0.985, s, 0);
+  return { hull: finish(G.merge(h.list)), turret: null, turretAt: [0, 0, 0], tip: null };
+}
+
+// A World Conquest train, one rigid model centered on its middle: a black 2-8-0 steam locomotive with its tender, two
+// oxide-red box wagons and a flat wagon with a tarpaulin load between them. Faction-neutral: the owner's color is a
+// band on the cab and on each wagon. Rail wheels are plain steel discs on the track's 1.44 m gauge.
+function steamTrain(P) {
+  const h = parts(), black = col(0x23221f), soot = col(0x30302c), iron = col(0x3c3a35, 'gunmetal'), red = col(0x8a2c22);
+  const oxide = col(0x6b3a2b), oxideDark = shade(oxide, 0.7), brass = col(0x9a7a3a, 'gunmetal'), coal = col(0x151513, 'plain');
+  const gauge = 0.72, wheelsAt = (xs, R) => { for (const x of xs) for (const s of [1, -1]) { h.add(CYL8, iron, x, R, s * gauge, Math.PI / 2, 0, 0, R, 0.1, R); h.add(CYL8, black, x, R, s * (gauge + 0.06), Math.PI / 2, 0, 0, R * 0.35, 0.04, R * 0.35); } };
+  const coupler = (x) => h.box(iron, 0.4, 0.1, 0.1, x, 0.75, 0);
+  // the locomotive, x 3.3 .. 8.6: frame and buffer beam, boiler, smokebox, chimney, domes, cab, driving wheels and rods
+  const L = 3.3;
+  h.box(black, 5.1, 0.3, 1.5, L + 2.55, 0.85, 0);
+  h.box(red, 0.12, 0.34, 1.9, L + 5.2, 0.85, 0);
+  for (const s of [1, -1]) h.add(CYL8, iron, L + 5.36, 0.88, s * 0.62, 0, 0, Math.PI / 2, 0.1, 0.22, 0.1);
+  h.mat(G.tube([[L + 1.4, 1.62, 0], [L + 4.4, 1.62, 0]], 0.66, { radial: 16 }), black);
+  h.mat(G.tube([[L + 4.4, 1.62, 0], [L + 5.08, 1.62, 0]], 0.7, { radial: 16 }), soot);
+  h.add(CIRC8, soot, L + 5.09, 1.62, 0, 0, Math.PI / 2, 0, 0.66);
+  for (const x of [L + 2.0, L + 3.2, L + 4.38]) h.mat(G.tube([[x, 1.62, 0], [x + 0.05, 1.62, 0]], 0.69, { radial: 16 }), brass); // boiler bands
+  h.add(CYL8, soot, L + 4.75, 2.45, 0, 0, 0, 0, 0.17, 0.62, 0.17); h.add(CYL8, black, L + 4.75, 2.78, 0, 0, 0, 0, 0.22, 0.1, 0.22); // chimney
+  h.add(CYL8, black, L + 3.4, 2.35, 0, 0, 0, 0, 0.26, 0.3, 0.26); h.add(CYL8, black, L + 2.6, 2.32, 0, 0, 0, 0, 0.22, 0.26, 0.22); // domes
+  lamp(h, { dark: soot, lens: col(0xd8d2b0, 'plain') }, L + 5.15, 2.25, 0, 0.09, 0.14);
+  h.box(black, 1.4, 1.75, 1.95, L + 0.75, 1.85, 0); h.box(soot, 1.6, 0.08, 2.1, L + 0.72, 2.78, 0); // the cab and its roof
+  for (const s of [1, -1]) {
+    h.box(P.glass, 0.5, 0.42, 0.02, L + 0.9, 2.2, s * 0.985); h.box(P.owner, 1.3, 0.14, 0.02, L + 0.75, 1.45, s * 0.985);
+    h.box(black, 3.0, 0.62, 0.06, L + 2.9, 1.45, s * 0.66); // the side tanks under the running plate
+    h.box(soot, 3.6, 0.04, 0.3, L + 2.95, 1.12, s * 0.82); // the running plate
+    h.box(iron, 2.6, 0.06, 0.04, L + 2.6, 0.62, s * 0.86); // the coupling rod
+    h.add(CYL8, soot, L + 4.45, 0.95, s * 0.6, 0, 0, Math.PI / 2, 0.22, 0.6, 0.22); // the cylinder
+  }
+  wheelsAt([L + 1.45, L + 2.3, L + 3.15, L + 4.0], 0.56); wheelsAt([L + 4.85], 0.36);
+  // the tender, x 0.2 .. 3.0: tank, coal heap, wheels
+  coupler(3.15);
+  h.box(black, 2.8, 0.25, 1.6, 1.6, 0.8, 0); h.box(black, 2.7, 1.25, 1.85, 1.6, 1.55, 0);
+  h.mat(hullOf([[0.35, [0.8, 2.15], [0.8, 2.2], [0.4, 2.5]], [2.85, [0.8, 2.15], [0.8, 2.2], [0.4, 2.55]]]), coal);
+  for (const s of [1, -1]) h.box(P.owner, 2.4, 0.14, 0.02, 1.6, 1.55, s * 0.93);
+  wheelsAt([0.7, 1.6, 2.5], 0.4);
+  // a wagon from x0 to x1: frame, buffers, wheels, and a box body or a flat deck with a tarpaulin load
+  const wagon = (x0, x1, box) => {
+    const xm = (x0 + x1) / 2, len = x1 - x0;
+    coupler(x1 + 0.12);
+    h.box(black, len, 0.22, 1.6, xm, 0.8, 0);
+    wheelsAt([x0 + 0.6, x1 - 0.6], 0.4);
+    for (const s of [1, -1]) h.box(P.owner, len - 0.4, 0.12, 0.02, xm, 1.0, s * 0.92);
+    if (box) {
+      h.box(oxide, len - 0.1, 1.55, 1.85, xm, 1.7, 0);
+      h.mat(hullOf([[x0 + 0.02, [0.95, 2.45], [0.95, 2.5], [0.55, 2.7]], [x1 - 0.02, [0.95, 2.45], [0.95, 2.5], [0.55, 2.7]]]), shade(oxide, 0.55));
+      for (const s of [1, -1]) {
+        h.box(oxideDark, 1.1, 1.4, 0.03, xm, 1.65, s * 0.94); // the sliding door
+        for (const x of [x0 + 0.25, x1 - 0.25]) h.box(oxideDark, 0.08, 1.5, 0.03, x, 1.7, s * 0.94);
+        h.box(oxideDark, len - 0.2, 0.06, 0.03, xm, 2.36, s * 0.94);
+      }
+    } else {
+      h.box(P.wood, len, 0.12, 1.9, xm, 0.97, 0);
+      for (const s of [1, -1]) for (const x of [x0 + 0.2, xm, x1 - 0.2]) h.box(iron, 0.06, 0.7, 0.06, x, 1.35, s * 0.9);
+      h.box(P.canvas, len - 0.5, 0.75, 1.6, xm, 1.42, 0); h.box(shade(P.canvas, 0.85), len - 0.4, 0.1, 1.7, xm, 1.82, 0); // the load under its tarpaulin
+    }
+  };
+  wagon(-3.5, -0.05, true); wagon(-7.15, -3.7, false); wagon(-10.8, -7.35, true);
+  const geo = finish(G.merge(h.list));
+  geo.translate(1.1, 0, 0); // centered on the middle of the train, from the back wagon's tail to the buffer beam
+  return { hull: geo, turret: null, turretAt: [0, 0, 0], tip: null };
+}
+
 // each unit's builder and its paint scheme
 const BUILD = {
+  train: [[steamTrain, 'od'], [steamTrain, 'grey'], [steamTrain, 'green'], [steamTrain, 'scc15']],
   truck: [[supplyTruck, 'od'], [supplyTruck, 'grey'], [supplyTruck, 'green'], [supplyTruck, 'scc15']],
+  lorry: [[troopTruck, 'od'], [troopTruck, 'grey'], [troopTruck, 'green'], [troopTruck, 'scc15']],
   armoredcar: [[m8, 'od'], [sdkfz222, 'grey'], [ba64, 'green'], [daimler, 'scc15']],
   flaktrack: [[m16, 'od'], null, null],
   halftrack: [[m16, 'od'], [m16, 'grey'], [m16, 'green'], [carrier, 'scc15']], // ponytail: every faction's carrier borrows the M16 half-track until it gets its own

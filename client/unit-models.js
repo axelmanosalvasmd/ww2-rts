@@ -379,7 +379,7 @@ function wheeledUnit(v, root, f, fac, key) {
 // Builds the model of unit v under root: v.models (soldiers, or the root for vehicles and structures), v.turret,
 // v.body (structures and planes; it scales up while built), v.fxTip (barrel tip for client/fx.js).
 // f is the owner's look (uniform, vehicle and player colors), fac the faction, def the unit's stats.
-const UK_MODELS = new Set(['churchill', 'armoredcar', 'halftrack', 'medium', 'mg', 'at', 'mortar', 'flak', 'truck']);
+const UK_MODELS = new Set(['churchill', 'armoredcar', 'halftrack', 'medium', 'mg', 'at', 'mortar', 'flak', 'truck', 'lorry', 'train']);
 const UK_TANKS = { churchill, medium: cromwell };
 export function buildModel(v, root, f, fac, def) {
   const type = v.type, key = `${type}|${fac}|${f.color}`;
@@ -1061,4 +1061,62 @@ export function vehicleDamageAnchor(v, target) {
   }
   target.copy(v.damageAnchorLocal);
   return body.localToWorld(target);
+}
+
+// ---------- tank riders ----------
+// Squads riding on a tank's deck (UNITS[type].riders) show as RIDERS men a squad kneeling on the engine deck, in the
+// owner's uniform with the owner's band (the far figure), baked into one mesh per carrier type, look and squad count
+// and hung on the hull so they follow its heading, pitch and roll. The riding squads themselves stay hidden.
+export const RIDERS = 3;
+const kneelers = new Map(), decks = new Map();
+// the far rifleman's kneeling build as a still geometry (its colors and atlas from the standing one)
+function kneeler(fac, f, i) {
+  const key = `${fac}|${f.color}|${i}`;
+  let g = kneelers.get(key);
+  if (!g) {
+    loadInfantryTextures();
+    const body = soldier('rifle', fac, i, f).far.children[0].userData.geo, kneel = body.userData.poses[0];
+    g = new THREE.BufferGeometry();
+    for (const [name, a] of Object.entries(body.attributes)) g.setAttribute(name, a);
+    g.setAttribute('position', kneel.position); g.setAttribute('normal', kneel.normal); g.setIndex(body.index);
+    kneelers.set(key, g);
+  }
+  return g;
+}
+// Seats on the rear of the hull, in the body's space: [x, deck height, z, facing], rows from the back, each row a man
+// on either side facing out and one in the middle facing ahead. The deck height is the highest hull point (turret left
+// out) under each seat, so the men sit on engine decks, mudguards and stowage of any hull.
+function deckSeats(v, body) {
+  const pts = [], p = new THREE.Vector3();
+  const visit = (node) => {
+    if (node === v.turret || node === v.base || node === v.sel || node === v.riders || v.mounts?.includes(node)) return;
+    if (node.isMesh && node.geometry?.attributes.position) {
+      const P = node.geometry.attributes.position, m = relative(node, body);
+      for (let i = 0; i < P.count; i++) { p.fromBufferAttribute(P, i).applyMatrix4(m); pts.push(p.x, p.y, p.z); }
+    }
+    for (const c of node.children) visit(c);
+  };
+  for (const c of body.children) visit(c);
+  let x0 = Infinity, x1 = -Infinity, z0 = Infinity, z1 = -Infinity, top = 0;
+  for (let i = 0; i < pts.length; i += 3) { x0 = Math.min(x0, pts[i]); x1 = Math.max(x1, pts[i]); z0 = Math.min(z0, pts[i + 2]); z1 = Math.max(z1, pts[i + 2]); top = Math.max(top, pts[i + 1]); }
+  const L = x1 - x0, W = z1 - z0, cz = (z0 + z1) / 2, seats = [];
+  const deck = (x, z) => { let y = -Infinity; for (let i = 0; i < pts.length; i += 3) if (Math.abs(pts[i] - x) < 0.3 && Math.abs(pts[i + 2] - z) < 0.3) y = Math.max(y, pts[i + 1]); return Number.isFinite(y) ? y : top; };
+  for (const k of [0.13, 0.27, 0.41]) {
+    const x = x0 + L * k;
+    for (const [z, yaw] of [[cz + W * 0.3, -Math.PI / 2], [cz - W * 0.3, Math.PI / 2], [cz, 0]]) seats.push([x, deck(x, z), z, yaw]);
+  }
+  return seats;
+}
+// n: the squads on board (the carrier's flags >> CARGO_SHIFT & 3). fac: the owner's faction, f: the owner's look.
+export function setRiders(v, n, f, fac) {
+  if ((v.ridersShown ?? 0) === n) return;
+  v.ridersShown = n;
+  v.riders?.removeFromParent(); v.riders = null;
+  if (!n) return;
+  const body = v.visualBody ?? vehicleBody(v), deckKey = `${v.type}|${fac}`;
+  if (!decks.has(deckKey)) decks.set(deckKey, deckSeats(v, body));
+  const group = new THREE.Group();
+  decks.get(deckKey).slice(0, n * RIDERS).forEach(([x, y, z, yaw], i) => { const o = part(kneeler(fac, f, i % RIDERS), 0xffffff, 1.15, 1.15, 1.15, x, y - 0.03, z); o.rotation.y = yaw; group.add(o); });
+  bake(group, `${deckKey}|${f.color}|riders|${n}`, true, 'soldier');
+  body.add(group); v.riders = group;
 }

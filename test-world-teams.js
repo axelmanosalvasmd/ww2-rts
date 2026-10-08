@@ -90,15 +90,10 @@ try {
   assert.equal(host.latest('s').out[1], false, 'the allied nation remains active');
   for (const r of g.world.regions) if (r.team === 0) { r.team = 1; r.progress = 1; }
   await tick(4);
-  assert.equal(host.latest('s').out[0], true, 'loss of the last team region defeats the first teammate');
-  assert.equal(ally.latest('s').out[1], true, 'loss of the last team region defeats both teammates');
-  assert.equal(rival.latest('s').winner, null, 'defeating rival nations does not skip unclaimed territory');
-  for (const r of g.world.regions) { r.team = 1; r.progress = 1; }
-  await tick(4);
-  await waitFor(() => rival.latest('s')?.winner === 1, 'total-conquest result reaches the rival client');
-  assert.equal(rival.latest('s').winner, 1, 'owning every region produces the territorial winner');
-  assert.equal(rival.latest('s').world.owned, 128, 'victory snapshot reports the whole continent');
-  assert.equal(rival.latest('s').end.reason, 'world', 'result records total conquest');
+  // the rival is now the last nation with land: it wins without the land goal (the land-share win is in test-world-rules.mjs)
+  await waitFor(() => rival.latest('s')?.winner === 1, 'last-nation result reaches the rival client');
+  assert.deepEqual(rival.latest('s').out.slice(0, 2), [true, true], 'loss of the last team region defeats both teammates');
+  assert.equal(rival.latest('s').end.reason, 'nations', 'result records the last nation standing');
 
   // The completed Massive room has already proved its result. Keep its full-map
   // victory snapshots out of the separate active-room AI timing fixture.

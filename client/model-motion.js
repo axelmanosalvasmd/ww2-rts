@@ -1,6 +1,6 @@
 import * as THREE from 'three';
 
-const LAND = new Set(['tank', 'medium', 'tiger', 'churchill', 'tankdestroyer', 'armoredcar', 'halftrack', 'flaktrack', 'rocket', 'truck']);
+const LAND = new Set(['tank', 'medium', 'tiger', 'churchill', 'tankdestroyer', 'armoredcar', 'halftrack', 'flaktrack', 'rocket', 'truck', 'lorry']);
 const SEA = new Set(['lcvp', 'gunboat', 'destroyer']);
 const clamp = (x, limit) => Math.max(-limit, Math.min(limit, x));
 const angle = (a) => Math.atan2(Math.sin(a), Math.cos(a));
@@ -44,7 +44,7 @@ export function moveModel(v, elapsed) {
     roll = Math.sin(wave * 0.73 + 1.1) * (large ? 0.0025 : 0.014) - turn * Math.abs(speed) * 0.001;
     heave = Math.sin(wave * 1.07 + 0.4) * (large ? 0.025 : 0.045);
   } else {
-    const moving = Math.min(1, Math.abs(speed) / 1.5), wheel = v.type === 'armoredcar' || v.type === 'halftrack' || v.type === 'rocket';
+    const moving = Math.min(1, Math.abs(speed) / 1.5), wheel = v.type === 'armoredcar' || v.type === 'halftrack' || v.type === 'rocket' || v.type === 'lorry';
     pitch = acceleration * (wheel ? 0.002 : 0.0012) + Math.sin(m.travel * 5) * moving * 0.002;
     roll = -turn * Math.abs(speed) * (wheel ? 0.0025 : 0.0012);
   }

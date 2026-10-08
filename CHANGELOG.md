@@ -5,6 +5,39 @@ AI-vs-AI runs (see DESIGN.md for the balance log). Add new entries under **Unrel
 
 ## Unreleased
 
+- World Conquest polish: railways, transport, saved games and a reachable win.
+  - Victory: a side wins by owning 60% of all regions (`WORLD_TUNING.winShare`) or by being the last nation with
+    land. A match with only one team still needs every region. The score bar counts toward the goal, and the
+    epilogue says which way the match was won.
+  - Railways: the generator lays stations in every home, city and industrial region and joins them with track on
+    flat ground that crosses rivers only on bridges (`shared/world-rails.js`; a seed's terrain and regions are
+    unchanged). Send by rail (Shift+N) puts up to 8 ground units within 30 m of one of your stations on a train to
+    your station nearest the click. Every region on the way must be yours and its bridges standing; a train whose
+    line is cut (land lost, bridge blown) lets everyone off where it stands. One train per station every 20 s.
+    Nothing can be built on the track or in a station yard. Explored track and stations are drawn and shown on the
+    minimap. Home stations stand 32 to 46 m out and track avoids the ground around each HQ, so every home keeps the
+    same room to build (the World acceptance check caught rails taking 20 to 40 of 81 barracks spots near some HQs).
+    The AI sends units by train for trips over 250 m.
+  - Transport: new Troop Truck at the Motor Pool (110 MP, Classic 80 MP + 15 Fuel), unarmed, carries three
+    squads. Tanks carry riders on the deck (light, medium and tank destroyer 2, Tiger and Churchill 3), drawn
+    kneeling on the hull; riders take blast damage and jump down suppressed (60) as soon as the tank or a rider is
+    hit. Mount up (Shift+Q) spreads the selected squads over the selected carriers; Unload empties every seat.
+    `carries` is now a seat count; the halftrack's forward reinforcement moved to its own `reinforces` flag.
+    The World AI buys a truck per six squads (at most three) and loads squads that have far to go.
+    Measured over 2 all-AI Huge matches of 25 minutes (`tools/world-pacing.mjs`): first capture at 5.4 min, T2 at
+    5.5 min, T3 at 14 min, about 6 of 64 regions per side at minute 20, no match finished; the AI rode tanks (up to
+    6 squads at once) but took no train and bought no truck yet. Left for later: tune AI rail and truck use.
+  - Road march: in World Conquest a unit that has not fought for 10 s moves 1.5 times as fast on its own side's land.
+  - HQ tiers now apply in World Conquest too. World paratroopers need a finished Airfield within 300 m of the drop.
+  - Saved games: the host can save from the match menu, and World Conquest saves itself every 2 game minutes (3
+    autosaves and 10 manual saves kept per room, under `saves/`). The room's lobby lists its saves; loading one puts
+    every seat back (AIs with their memory, humans by token or the next free player) and opens paused.
+  - Tests rewritten for the new rules: `test-world-teams.js` now expects the last nation with land to win (it
+    pinned "no winner while unclaimed land remains"); halftrack checks in `test.js` and `test-audit-combat.mjs` read
+    `cargo` as a list. Test runs keep their autosaves in the temp folder (`test-check.js` sets `SAVES_DIR`).
+  - Tests: `test-world-rules.mjs`, `test-transport.mjs` and `test-saves.mjs` (one check per behavior above).
+    `tools/world-pacing.mjs` reports match length, tiers, land and transport use over seeded all-AI World matches.
+
 - Drills (no game change): small authored scenes for AI behaviour questions, played on the server's AI schedule.
   `drills/drill.js` places a drill's units on a small map, runs its timed script and returns its measure;
   `node tools/drill.mjs drills/<name>.js --seeds 200` runs one across seeds. The first drill, `drills/flank-answer.js`,
