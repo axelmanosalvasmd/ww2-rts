@@ -1,3 +1,4 @@
+import { sendsReadBy } from './test-socket.js';
 // Real room snapshots keep authored recipient policies and owner-only work off spectator sockets.
 import assert from 'node:assert/strict';
 import { readFileSync } from 'node:fs';
@@ -8,6 +9,7 @@ import { validateMap } from './shared/sim.js';
 
 Object.assign(process.env, { PORT: '0', EDIT_PASSWORD: 'test', PUBLIC_URL: 'http://test' });
 const server = await import('./server.js');
+const sendRead = sendsReadBy(server.wss);
 clearInterval(server.loop);
 if (!server.server.listening) await new Promise(resolve => server.server.once('listening', resolve));
 
@@ -56,7 +58,7 @@ async function waitFor(fn) {
 }
 async function connect(token, spectate = false, code = 'spectest') {
   const ws = new WebSocket(`ws://127.0.0.1:${server.server.address().port}/ws?room=${code}`, { perMessageDeflate: false });
-  const messages = [], c = { ws, messages, latest: kind => messages.filter(m => m.t === kind).at(-1), async send(m) { ws.send(JSON.stringify(m)); await settle(); } };
+  const messages = [], c = { ws, messages, latest: kind => messages.filter(m => m.t === kind).at(-1), async send(m) { await sendRead(ws, m); await settle(); } };
   clients.push(c);
   ws.on('message', raw => messages.push(JSON.parse(raw)));
   await new Promise((resolve, reject) => { ws.once('open', resolve); ws.once('error', reject); });

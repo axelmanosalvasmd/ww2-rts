@@ -1,3 +1,4 @@
+import { sendsReadBy } from './test-socket.js';
 // World observation regressions. Socket messages and the public AI planning boundary carry assertions.
 import assert from 'node:assert/strict';
 import { pathToFileURL } from 'node:url';
@@ -8,6 +9,7 @@ const { generateWorldMap } = await import(new URL('shared/world-conquest.js', so
 const { observe, think } = await import(new URL('shared/ai.js', source));
 Object.assign(process.env, { PORT: '0', EDIT_PASSWORD: 'test', PUBLIC_URL: 'http://test' });
 const server = await import(new URL('server.js', source));
+const sendRead = sendsReadBy(server.wss);
 clearInterval(server.loop);
 if (!server.server.listening) await new Promise(resolve => server.server.once('listening', resolve));
 const clients = [], failures = [];
@@ -20,7 +22,7 @@ async function waitFor(fn, label) {
 async function connect(token) {
   const ws = new WebSocket(`ws://127.0.0.1:${server.server.address().port}/ws?room=obscheck`, { perMessageDeflate: false });
   const messages = [], rows = new Map();
-  const c = { ws, latest: t => messages.filter(m => m.t === t).at(-1), async send(m) { ws.send(JSON.stringify(m)); await settle(); } };
+  const c = { ws, latest: t => messages.filter(m => m.t === t).at(-1), async send(m) { await sendRead(ws, m); await settle(); } };
   clients.push(c);
   ws.on('message', raw => {
     const m = JSON.parse(raw);

@@ -1,3 +1,4 @@
+import { sendsReadBy } from './test-socket.js';
 // Queue acceptance uses normal room commands and recipient-filtered WebSocket payloads.
 import assert from 'node:assert/strict';
 import WebSocket from 'ws';
@@ -195,18 +196,24 @@ const jobsOf = (s, id) => s.productionJobs.find(row => row[0] === id)?.[1] ?? []
 
 Object.assign(process.env, { PORT: '0', EDIT_PASSWORD: 'test', PUBLIC_URL: 'http://test' });
 const server = await import('./server.js'); clearInterval(server.loop);
+const sendRead = sendsReadBy(server.wss);
 if (!server.server.listening) await new Promise(resolve => server.server.once('listening', resolve));
 let clockNow = Date.now(); server.clock.now = () => clockNow;
 const clients = [], settle = () => new Promise(resolve => setTimeout(resolve, 15));
 async function waitFor(fn) { for (let n = 0; n < 500; n++) { const result = fn(); if (result) return result; await settle(); } assert.fail('missing server message'); }
 async function connect(token) {
   const ws = new WebSocket(`ws://127.0.0.1:${server.server.address().port}/ws?room=jobtest`), messages = [], rows = new Map();
-  const c = { ws, messages, latest: t => messages.filter(m => m.t === t).at(-1), async send(m) { ws.send(JSON.stringify(m)); await settle(); } }; clients.push(c);
+  const c = { ws, messages, latest: t => messages.filter(m => m.t === t).at(-1), async send(m) { await sendRead(ws, m); await settle(); } }; clients.push(c);
   ws.on('message', raw => { const m = JSON.parse(raw); if (m.t === 'start' || m.all) rows.clear(); if (m.t === 's') { for (const id of m.gone ?? []) rows.delete(id); for (const row of m.units) rows.set(row[0], row); m.units = [...rows.values()]; } messages.push(m); });
   await new Promise((resolve, reject) => { ws.once('open', resolve); ws.once('error', reject); });
   await c.send({ t: 'hello', name: token, token }); await waitFor(() => c.latest('lobby')); return c;
 }
-async function tick(n = 4) { for (let i = 0; i < n; i++) server.tickRooms(); await settle(); }
+// Steps the server, then waits until every started client holds the snapshot for the new tick.
+async function tick(n = 4) {
+  for (let i = 0; i < n; i++) server.tickRooms();
+  const room = server.rooms.get('jobtest'), target = room?.game ? room.game.tick - room.game.tick % (room.snapEvery ?? 2) : -1;
+  await waitFor(() => clients.every(c => c.ws.readyState !== 1 || !c.latest('start') || c.latest('s')?.tick >= target));
+}
 async function deny(c, command, reason) { clockNow += 1100; const before = c.messages.length; await c.send(command); assert.equal((await waitFor(() => c.messages.slice(before).find(m => m.t === 'deny'))).reason, reason); }
 try {
   let host = await connect('host'), rival = await connect('rival');

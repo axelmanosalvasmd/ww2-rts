@@ -1,3 +1,4 @@
+import { sendsReadBy } from './test-socket.js';
 // Fixture placement is internal. Orders and trajectory observations use real WebSockets.
 import assert from 'node:assert/strict';
 import { registerHooks } from 'node:module';
@@ -32,6 +33,7 @@ const projectRoot = process.env.WW2_TRAFFIC_ROOT ? pathToFileURL(`${process.env.
 const sim = await import(new URL('./shared/sim.js', projectRoot));
 Object.assign(process.env, { PORT: '0', EDIT_PASSWORD: 'test', PUBLIC_URL: 'http://test' });
 const server = await import(new URL('./server.js', projectRoot));
+const sendRead = sendsReadBy(server.wss);
 clearInterval(server.loop);
 if (!server.server.listening) await new Promise(resolve => server.server.once('listening', resolve));
 server.clock.setTimeout = () => null;
@@ -48,7 +50,7 @@ async function connect(room, token) {
   const ws = new WebSocket(`ws://127.0.0.1:${server.server.address().port}/ws?room=${room}`, { perMessageDeflate: true });
   const messages = [], rows = new Map(), terrain = new Map();
   const client = { ws, token, messages, terrain, wrecks: [], latest: type => messages.filter(message => message.t === type).at(-1),
-    async send(message) { ws.send(JSON.stringify(message)); await settle(); },
+    async send(message) { await sendRead(ws, message); await settle(); },
     wait: type => until(() => messages.find(message => message.t === type), `missing ${type}`) };
   clients.push(client);
   ws.on('message', data => {
@@ -70,7 +72,7 @@ async function connect(room, token) {
 async function tick(room, seats, count = 2) {
   for (let n = 0; n < count; n++) server.tickRooms();
   await settle();
-  const target = room.game.tick - (room.snapEvery ?? 2);
+  const target = room.game.tick - room.game.tick % (room.snapEvery ?? 2);
   for (const seat of seats) await until(() => seat.latest('s')?.tick >= target, 'WebSocket snapshot catches up');
 }
 function place(unit, x, z) {

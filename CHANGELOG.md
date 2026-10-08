@@ -5,6 +5,17 @@ AI-vs-AI runs (see DESIGN.md for the balance log). Add new entries under **Unrel
 
 ## Unreleased
 
+- The test suite runs in about 2 minutes instead of about 15 (no game change). Its 270 inline blocks are now named
+  checks (`test-check.js`): run one with `WW2_TEST_ONLY=<name>`, and a failure no longer stops the run, the summary
+  lists every failure. `node test.js` splits itself across processes and runs child files in parallel, then runs
+  the performance budgets alone. The AI fog proof, 8 of the 15 minutes, now plays one seed and compares every sixth
+  AI turn by default (375 paired turns); `WW2_TEST_SLOW=1` restores the full two-seed proof of every turn,
+  which CI runs nightly. CI runs three shards and a performance job in parallel.
+- Fixed three timing races in room tests that showed up when tests run side by side: a sent order could reach the
+  server after the clock was stepped (eight harnesses now use `sendsReadBy` from `test-socket.js`), and two harnesses
+  accepted a snapshot up to two ticks old, so a later read could sample a different tick. The room lifecycle check now waits for
+  the lobby reply it asserts on.
+
 - World Conquest: Engineers can now build extra HQs (200 MP) on land you own. Damaged squads retreat to the nearest HQ instead of marching home, and each HQ trains Engineers.
 - World Conquest: local defenders are no longer just two rifle squads everywhere. Rural regions add an MG, cities hold rifles, an MG, an AT gun and a mortar, industrial works field an AT gun and an armored car, and mines keep an MG and a mortar. About 3.5 guards per region instead of 2, so watch server tick on Massive.
 - World Conquest: regions have real place names (Falkburg, Dornburg Works, Brayford Mines) instead of "City 12" or "Province 3".

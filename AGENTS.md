@@ -9,6 +9,27 @@ Every change to the game must be recorded in `CHANGELOG.md` in the same commit a
 - Note bugs you fixed and anything you found but left for later.
 - When a set of changes is committed as a slice, give it a dated heading with the commit hash, like the entries below it.
 
+## Tests and CI serve the goal
+
+Tests and CI exist to move the game where we want it to go, not to keep old behavior alive.
+
+- When a deliberate change replaces a behavior, rewrite the tests that pinned the old behavior to check the new
+  intended one, or delete them, in the same commit. Say which in CHANGELOG.md.
+- Change CI when it stops measuring what matters.
+- Add tests only when they protect an improvement or a goal: roughly one focused test per stated behavior.
+  No versioned duplicates (v1/v2/v3) and no one-off proof scripts in the suite.
+- A flaky test (unseeded randomness, wall-clock timing) gets made deterministic or removed. Never just retried.
+
+## Running the suite
+
+`node test.js` splits itself into processes and takes about 2 minutes. Every check has a name (`test-check.js`):
+
+- `WW2_TEST_ONLY=crossing node test.js` runs only checks or child files whose name contains the text.
+- `WW2_TEST_SLOW=1 node test.js` adds the full-length proofs (CI runs them nightly).
+- A failed check is reported and the run goes on; the summary lists every failure.
+- New test files: wrap each case in `check(name, fn)`, or add the file to the child list in `test.js`. Room tests
+  send through `sendsReadBy` (`test-socket.js`) and wait for the snapshot of the tick they stepped, never a fixed sleep.
+
 ## Other rules
 
 - Never use em dashes, in code comments, docs, commit messages or chat. Use a period, comma, colon or parentheses.

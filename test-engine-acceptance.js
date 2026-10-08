@@ -1,3 +1,4 @@
+import { sendsReadBy } from './test-socket.js';
 // Controlled fixtures use internal placement. Acceptance actions and observations use real WebSockets.
 import assert from 'node:assert/strict';
 import WebSocket from 'ws';
@@ -20,9 +21,7 @@ const originalRead = server.mapFiles.read, originalList = server.mapFiles.list;
 server.mapFiles.list = async () => [...await originalList(), ...[...fixtures.keys()].map(name => `${name}.json`)];
 server.mapFiles.read = name => fixtures.has(name) ? Promise.resolve(JSON.stringify(fixtures.get(name))) : originalRead(name);
 const settle = () => new Promise(resolve => setTimeout(resolve, 8));
-// A send returns only after the server has read it: a fixed delay alone races the clock on a slow runner.
-let sentMessages = 0, readMessages = 0;
-server.wss.on('connection', socket => socket.on('message', () => { readMessages++; }));
+const sendRead = sendsReadBy(server.wss); // returns once the server has read the message
 async function until(fn, label) {
   const deadline = Date.now() + 10000;
   while (Date.now() < deadline) { const result = fn(); if (result) return result; await settle(); }
@@ -32,7 +31,7 @@ async function connect(room, token, spectate = false) {
   const ws = new WebSocket(`ws://127.0.0.1:${server.server.address().port}/ws?room=${room}`, { perMessageDeflate: true });
   const messages = [], rows = new Map(), terrain = new Map(), held = {};
   const client = { ws, token, messages, terrain, latest: type => messages.filter(m => m.t === type).at(-1),
-    async send(msg) { const n = ++sentMessages; ws.send(JSON.stringify(msg)); await until(() => readMessages >= n, `the server reads ${msg.t}`); await settle(); },
+    async send(msg) { await sendRead(ws, msg); await settle(); },
     wait: (type, after = 0) => until(() => messages.slice(after).find(m => m.t === type), `missing ${type} for ${token}`) };
   clients.push(client);
   ws.on('message', data => {
@@ -59,7 +58,7 @@ async function tick(count = 2) {
   for (let n = 0; n < count; n++) server.tickRooms();
   await settle();
   for (const room of server.rooms.values()) if (room.game) {
-    const target = room.game.tick - (room.snapEvery ?? 2);
+    const target = room.game.tick - room.game.tick % (room.snapEvery ?? 2);
     for (const peer of [...room.players, ...room.spectators]) {
       const client = clients.findLast(candidate => candidate.token === peer.token);
       if (client?.ws.readyState === WebSocket.OPEN) await until(() => client.latest('s')?.tick >= target, 'compressed snapshots catch up to the stepped server');

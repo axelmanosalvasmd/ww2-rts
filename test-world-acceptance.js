@@ -1,3 +1,4 @@
+import { sendsReadBy } from './test-socket.js';
 // Remaining World Conquest acceptance checks. Fixture setup is internal; orders and observations use real sockets.
 import assert from 'node:assert/strict';
 import WebSocket from 'ws';
@@ -6,6 +7,7 @@ import { generateWorldMap, WORLD_TUNING } from './shared/world-conquest.js';
 
 Object.assign(process.env, { PORT: '0', EDIT_PASSWORD: 'test', PUBLIC_URL: 'http://test' });
 const server = await import('./server.js');
+const sendRead = sendsReadBy(server.wss);
 clearInterval(server.loop);
 if (!server.server.listening) await new Promise(resolve => server.server.once('listening', resolve));
 const clients = [], failures = [];
@@ -19,7 +21,7 @@ async function connect(room, token) {
   const ws = new WebSocket(`ws://127.0.0.1:${server.server.address().port}/ws?room=${room}`, { perMessageDeflate: false });
   const messages = [], rows = new Map(), terrain = new Map(), lists = {};
   const c = { ws, messages, terrain, room, latest: t => messages.filter(m => m.t === t).at(-1),
-    async send(m) { ws.send(JSON.stringify(m)); await settle(); },
+    async send(m) { await sendRead(ws, m); await settle(); },
     wait: (t, after = 0) => waitFor(() => messages.slice(after).find(m => m.t === t), `missing ${t} for ${token}`) };
   clients.push(c);
   ws.on('message', raw => {
