@@ -1145,9 +1145,15 @@ smoke, fire and the planes. What did not, and what changed:
 
 Seen and left for later: wall and trench sections that blow apart fly as plain flat-colored slabs (fx.js
 `sectionMesh`, steel nearly black), so they read as black cut-outs; house and flag shadows have stepped edges at the
-game camera (shadow map resolution); the grass is one even yellow-olive with a visible repeat; dead soldiers lie pale
-grey. The model viewer takes `&ao=1` to judge the occlusion on one unit. Frame cost of the occlusion was not measured
+game camera (shadow map resolution); dead soldiers lie pale grey. Once, right after the camera jumped across the
+map, a wide dark band lay across the view; it did not come back in four more tries (with and without the occlusion).
+The model viewer takes `&ao=1` to judge the occlusion on one unit. Frame cost of the occlusion was not measured
 (the review browser throttles frames); check it on a typical machine before more is built on it.
+
+Meadows (2026-10-07): the grass was one even yellow-olive with its 9 m texture repeat showing. The terrain shader
+now tints grass between lusher green swales and drier yellow rises 10 to 50 m across, from two octaves of its value
+noise in world space (client/relief-material.js). Grass is told apart from dirt, roads and mud by how little blue it
+holds against its red and green, so bare ground keeps its color. Graphics Low skips it.
 
 ## Rooms, controls and match flow (round 3, 2026-10-01)
 - Pause: the host can pause and resume at any time. A human who drops mid-match auto-pauses the game for up to 30 s,

@@ -66,6 +66,19 @@ float reliefPatch = 0.5;
 float reliefHeight = smoothstep( -5.0, 10.0, vReliefPosition.y );
 vec3 reliefTint = mix( vec3( 1.01, 0.98, 0.92 ), vec3( 1.12, 1.05, 0.98 ), reliefHeight );
 diffuseColor.rgb *= reliefTint;
+#ifndef RELIEF_LOW
+	// Meadow variation: lusher, deeper green swales and drier, yellower rises, 10 to 50 m across, so a field is not one
+	// even color and the painted grass texture's 9 m repeat stops lining up. Grass is told apart from dirt, roads and
+	// mud by how little blue it holds against its red and green (linear grass about 0.75, bare ground about 0.3).
+	{
+		vec3 c = diffuseColor.rgb;
+		float reliefGrass = smoothstep( 0.45, 0.65, ( min( c.r, c.g ) - c.b ) / max( max( c.r, c.g ), 1e-4 ) );
+		float reliefMeadow = 0.65 * reliefNoise2( vReliefPosition.xz * 0.021 + 17.3 ) + 0.35 * reliefNoise2( vReliefPosition.xz * 0.075 - 4.1 );
+		reliefMeadow = smoothstep( 0.2, 0.8, reliefMeadow );
+		vec3 reliefLush = vec3( 0.74, 0.9, 0.62 ), reliefParched = vec3( 1.14, 1.04, 0.8 );
+		diffuseColor.rgb *= mix( vec3( 1.0 ), mix( reliefLush, reliefParched, reliefMeadow ), reliefGrass );
+	}
+#endif
 
 // At 45 degrees the dry earth reaches its full coverage; patches leave grass showing through.
 // Dug ground stays the paint colour. The tan slope mix was drawing a pale ring around each bomb.
@@ -179,7 +192,7 @@ export function createReliefMaterial(texture, { low = false } = {}) {
       .replace('#include <normal_fragment_maps>', `#include <normal_fragment_maps>\n${FRAG_NORMAL}`)
       .replace('#include <emissivemap_fragment>', `#include <emissivemap_fragment>\n${FRAG_FILL}`);
   };
-  material.customProgramCacheKey = () => `relief-painted-v12-${'RELIEF_LOW' in material.defines ? 'low' : 'high'}`;
+  material.customProgramCacheKey = () => `relief-painted-v13-${'RELIEF_LOW' in material.defines ? 'low' : 'high'}`;
   material.userData.setLow = (next) => {
     if (Boolean(next) === ('RELIEF_LOW' in material.defines)) return;
     if (next) material.defines.RELIEF_LOW = '';
