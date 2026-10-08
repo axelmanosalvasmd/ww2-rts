@@ -4,6 +4,7 @@ import { availableParallelism } from 'node:os';
 import { dirname, resolve } from 'node:path';
 import { fileURLToPath, pathToFileURL } from 'node:url';
 import { isMainThread, parentPort, Worker, workerData } from 'node:worker_threads';
+import { aiTick } from '../shared/ai-schedule.js';
 
 const script = fileURLToPath(import.meta.url);
 const usage = 'Usage: node tools/ai-balance.mjs [--root DIR] [--map NAME] [--mode conquest|classic] [--matches N] [--seed S] [--workers N] [--seats easy,normal|hard,normal|normal,alt:normal] [--alt FILE] [--rotate] [--army standard|large|massive|endless] [--factions 3|4]';
@@ -50,16 +51,14 @@ async function runMatches(options, indices) {
       const spawns = g.players.map(p => map.spawns.findIndex(s => (s.x + 0.5) * sim.CELL === p.spawn.x && (s.y + 0.5) * sim.CELL === p.spawn.z));
       const initialCache = sim.snapshotCache(g);
       const views = brains.map((b, slot) => b.mod.observe?.(g, slot, initialCache));
+      const aiSeats = brains.map((b, slot) => ({ slot, level: b.level, ai: b.mod }));
       for (let tick = 0; tick < maxTicks && g.winner === null; tick++) {
         sim.step(g);
-        // New AIs consume the latest view on the same two-tick delivery beat as humans.
-        if (g.tick % 2 === 0 || g.winner !== null) {
-          const cache = sim.snapshotCache?.(g);
-          brains.forEach((b, slot) => { views[slot] = b.mod.observe?.(g, slot, cache); });
-        }
-        brains.forEach((b, slot) => { if ((g.tick + slot * 13) % (b.mod.thinkEvery?.(b.level) ?? 40) === 0) b.mod.think(g, slot, { level: b.level, view: views[slot] }); });
+        // The server's schedule: views on the two-tick delivery beat, only for seats about to think.
+        const sent = g.tick % 2 === 0 || g.winner !== null;
+        aiTick(g, aiSeats, views, { sent, sim });
         // The all-AI server has no WebSocket recipients, but clears these transient lists on its snapshot beat.
-        if (g.tick % 2 === 0 || g.winner !== null) { g.shots = []; g.newCells = []; }
+        if (sent) { g.shots = []; g.newCells = []; }
       }
       const winnerSlot = g.players.findIndex(p => p.team === g.winner);
       const vp = g.players.map(p => p.vp);
@@ -81,7 +80,7 @@ async function runMatches(options, indices) {
 if (!isMainThread) {
   await runMatches(workerData.options, workerData.indices);
 } else {
-  const options = { root: resolve(dirname(script), '..'), map: 'default', mode: 'conquest', matches: null, seed: 1, workers: Math.min(2, availableParallelism()), seats: null, alt: null, rotate: false };
+  const options = { root: resolve(dirname(script), '..'), map: 'default', mode: 'conquest', matches: null, seed: 1, workers: Math.max(1, availableParallelism() - 1), seats: null, alt: null, rotate: false };
   for (let i = 2; i < process.argv.length; i++) {
     const key = process.argv[i];
     if (key === '--rotate') { options.rotate = true; continue; }

@@ -18,7 +18,8 @@ if (!Number.isSafeInteger(options.ticks) || options.ticks < 1) throw new Error('
 if (!['classic', 'conquest', 'all'].includes(options.scenario)) throw new Error('Unknown scenario');
 
 const sim = await import(pathToFileURL(resolve(options.root, 'shared/sim.js')).href);
-const { think } = await import(pathToFileURL(resolve(options.root, 'shared/ai.js')).href);
+const ai = await import(pathToFileURL(resolve(options.root, 'shared/ai.js')).href);
+const { aiTick } = await import('../shared/ai-schedule.js');
 const seed = 0x3c1055;
 function seededRandom(initial) {
   let value = initial;
@@ -56,14 +57,16 @@ async function run(scenario) {
     const samples = { tick: [], step: [], think: [], snapshotBuild: [], stringify: [], snapshotTotal: [], snapshotTick: [] };
     const bytes = names.map(() => []);
     let peakUnits = game.units.size;
+    const seats = names.map((_, slot) => ({ slot, level: 'normal', ai })), views = [], first = sim.snapshotCache(game);
+    for (const { slot } of seats) views[slot] = ai.observe(game, slot, first);
     for (let t = 0; t < options.ticks; t++) {
       const start = clock();
       game.players.forEach(p => { p.away = false; });
       const stepStart = clock();
       sim.step(game);
       const stepEnd = clock();
-      // Match the server's order and stagger. Every slot is an AI.
-      game.players.forEach((p, i) => { if ((game.tick + i * 13) % 40 === 0) think(game, i); });
+      // The server's AI schedule (shared/ai-schedule.js). Every slot is an AI.
+      aiTick(game, seats, views, { sim });
       const thinkEnd = clock();
       let buildUs = 0, stringifyUs = 0;
       const snapshotTick = game.tick % 2 === 0 || game.winner !== null;

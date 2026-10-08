@@ -2206,8 +2206,8 @@ queues cannot enter difficulty decisions.
 `tools/ai-balance.mjs` retains its three-faction default and accepts two difficulty seats,
 `--rotate` and an alternate AI module for same-simulation comparisons. Duels swap seats
 every other match and cycle all nine faction pairs, using seed 1 and the default map.
-The server's two-tick observation delivery and each difficulty's decision interval are
-reproduced. Balance results are recorded below.
+The server's two-tick observation delivery and each difficulty's decision interval come
+from the same `shared/ai-schedule.js` the server runs (`aiTick`; `playMatch` for whole seeded matches). Balance results are recorded below.
 
 Review regressions cover a second focus order preserving an already queued attack-move,
 cancelling a visible target that starts retreating, and immediate reconnection of an
