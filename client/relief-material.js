@@ -71,13 +71,16 @@ diffuseColor.rgb *= reliefTint;
 // Dug ground stays the paint colour. The tan slope mix was drawing a pale ring around each bomb.
 float reliefSlope = smoothstep( 0.05, 0.2929, reliefSteep );
 float reliefScarGate = 1.0 - clamp( vReliefScar, 0.0, 1.0 );
-float reliefEarth = reliefSlope * 0.55 * reliefScarGate;
+float reliefEarth = reliefSlope * 0.42 * reliefScarGate;
+vec3 reliefDry = vec3( 0.32, 0.24, 0.12 );
 #ifndef RELIEF_LOW
 	reliefEarth *= 0.5 + 0.5 * smoothstep( 0.20, 0.68, reliefPatch );
+	// Clods and grain, so a slope (a shelled hill is all slopes) is not one flat tan.
+	reliefDry *= 0.72 + 0.34 * reliefNoise( vReliefPosition * 2.7 ) + 0.18 * reliefNoise( vReliefPosition * 9.0 );
 #endif
 float reliefWetEarth = reliefDamp * 0.24;
 vec3 reliefSoil = mix( vec3( 0.16, 0.115, 0.065 ), vec3( 0.14, 0.14, 0.075 ), reliefDamp );
-diffuseColor.rgb = mix( diffuseColor.rgb, vec3( 0.32, 0.24, 0.12 ), reliefEarth );
+diffuseColor.rgb = mix( diffuseColor.rgb, reliefDry, reliefEarth );
 diffuseColor.rgb = mix( diffuseColor.rgb, reliefSoil, reliefWetEarth );
 diffuseColor.rgb *= 1.0 - 0.16 * reliefSlope * ( 1.0 - reliefRock );
 // Each raised level dries and lightens the painted ground, capped at three levels.
@@ -176,7 +179,7 @@ export function createReliefMaterial(texture, { low = false } = {}) {
       .replace('#include <normal_fragment_maps>', `#include <normal_fragment_maps>\n${FRAG_NORMAL}`)
       .replace('#include <emissivemap_fragment>', `#include <emissivemap_fragment>\n${FRAG_FILL}`);
   };
-  material.customProgramCacheKey = () => `relief-painted-v11-${'RELIEF_LOW' in material.defines ? 'low' : 'high'}`;
+  material.customProgramCacheKey = () => `relief-painted-v12-${'RELIEF_LOW' in material.defines ? 'low' : 'high'}`;
   material.userData.setLow = (next) => {
     if (Boolean(next) === ('RELIEF_LOW' in material.defines)) return;
     if (next) material.defines.RELIEF_LOW = '';

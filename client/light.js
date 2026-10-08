@@ -138,7 +138,38 @@ export function renderFrame(cam, ground, renderObject = null) {
     }
   }
   if (!renderObject) followView(cam);
-  renderer.render(renderObject ?? scene, camera);
+  const p = !renderObject && !gfx.low && !NO_AO ? postFor() : null;
+  if (!p) { renderer.render(renderObject ?? scene, camera); return; }
+  renderer.getSize(v2);
+  const ratio = renderer.getPixelRatio();
+  if (p.w !== v2.x || p.h !== v2.y || p.ratio !== ratio) { p.composer.setPixelRatio(ratio); p.composer.setSize(v2.x, v2.y); Object.assign(p, { w: v2.x, h: v2.y, ratio }); }
+  p.composer.render(dt);
+}
+
+// ---------- ambient occlusion (High) ----------
+// GTAO: soft shade where surfaces meet (a tank on the ground, the foot of a wall, a trench lip, the gap under a
+// turret). It draws its own depth and normals of the meshes (a second scene pass; points and lines cast none). The
+// add-ons load on first use; a page without them in its import map, ?ao=0, or Graphics Low draws straight to the screen.
+// ponytail: sharing the multisampled frame's depth instead (no second pass) drew nothing here; try again if the pass
+// shows up in frame time.
+const AO = { radius: 1.6, mix: 0.85 };
+const NO_AO = new URLSearchParams(location.search).get('ao') === '0';
+const v2 = new THREE.Vector2();
+let post = null, postLoading = false;
+function postFor() {
+  if (post || postLoading) return post;
+  postLoading = true;
+  Promise.all(['EffectComposer', 'RenderPass', 'GTAOPass', 'OutputPass'].map((n) => import(`three/addons/postprocessing/${n}.js`))).then((mods) => {
+    const { EffectComposer, RenderPass, GTAOPass, OutputPass } = Object.assign({}, ...mods);
+    // 4x multisampling keeps edges as smooth as the plain renderer's antialias
+    const composer = new EffectComposer(renderer, new THREE.WebGLRenderTarget(1, 1, { type: THREE.HalfFloatType, samples: 4 }));
+    const ao = new GTAOPass(scene, camera, 1, 1);
+    ao.updateGtaoMaterial({ radius: AO.radius, distanceFallOff: 1, thickness: 1, samples: 12 });
+    ao.blendIntensity = AO.mix;
+    composer.addPass(new RenderPass(scene, camera)); composer.addPass(ao); composer.addPass(new OutputPass());
+    post = { composer, w: 0, h: 0, ratio: 0 };
+  }).catch((e) => console.warn('ambient occlusion unavailable:', e.message));
+  return null;
 }
 
 // Haze scales with zoom, and the sun's shadow box covers just what the camera sees, so shadows stay crisp.

@@ -52,6 +52,7 @@ const shared = {
   uModelFilm: { value: MATS.map((name) => LAYERS[name].film ?? 1) },
   uModelSurface: { value: MATS.map((name) => { const l = LAYERS[name]; return new THREE.Vector3(l.roughness, l.metalness, l.relief); }) },
   uModelMud: { value: new THREE.Vector2(MATS.indexOf('mud'), MUD.texels / SIZE) },
+  uModelRim: { value: new THREE.Color(0.26, 0.29, 0.34) }, // the rim light: sky blue, linear
 };
 const patched = []; // [{ material, grime }]
 let texture = null;
@@ -166,6 +167,7 @@ varying vec3 vModelNormal;
 #endif`);
   shader.fragmentShader = shader.fragmentShader
     .replace('#include <common>', `#include <common>
+uniform vec3 uModelRim;
 #if defined( MODEL_TEX ) || defined( MODEL_SURFACE )
 uniform float uModelDefault;
 flat varying float vModelMat;
@@ -275,5 +277,14 @@ vec3 modelReliefNormal( vec3 p, vec3 n, vec2 heightGradient, float faceDirection
     .replace('#include <normal_fragment_maps>', `#include <normal_fragment_maps>
 #if defined( MODEL_SURFACE ) && defined( MODEL_TEX )
 	normal = modelReliefNormal( -vViewPosition, normal, vec2( dFdx( modelHeight ), dFdy( modelHeight ) ), faceDirection );
-#endif`);
+#endif`)
+    // A thin sky-colored rim where a surface turns away from the camera, so units read against ground of their own
+    // color (an olive tank on grass, a brown squad on dirt) at the game camera. Added after the lighting, so it also
+    // shows on the shadowed side.
+    .replace('#include <opaque_fragment>', `{
+	float rim = 1.0 - clamp( dot( normal, normalize( vViewPosition ) ), 0.0, 1.0 );
+	rim *= rim;
+	outgoingLight += uModelRim * rim * rim * ( 0.2 + 0.8 * diffuseColor.rgb ); // in the paint's own hue, so a man stays brown
+}
+#include <opaque_fragment>`);
 }

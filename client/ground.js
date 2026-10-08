@@ -480,7 +480,7 @@ function raster(S, X0, Y0, W, H, img) {
         const sc = S.sampleScar(u, v);
         if (sc.cover > 0.015) {
           const cover = sc.cover, sd = tData[SHELL], sk = tq(SHELL, i, j), rd = tData[RUBBLE], rk = tq(RUBBLE, i, j);
-          const shade = 0.48 + 0.52 * (1 - cover * cover);
+          const shade = 0.7 + 0.3 * (1 - cover * cover); // churned earth, not tar: the middle of a crater field stays brown
           const sr = sc.shell * sd[sk] * shade + sc.rubble * rd[rk];
           const sg = sc.shell * sd[sk + 1] * shade + sc.rubble * rd[rk + 1];
           const sb = sc.shell * sd[sk + 2] * shade * 1.06 + sc.rubble * rd[rk + 2];

@@ -1126,6 +1126,29 @@ or big celebratory banners. Corners 0 to 2 px, 1 px hairlines, 13 to 15 px body 
   draws only the ground war plus the anti-air tracers (`effects.aaFire`). Paratroop canopies stay in main.js. Crashes
   and strafing hits use `effects.explode`, and every air sound plays through `client/audio.js`.
 
+## Art pass (2026-10-07)
+
+Reviewed from AI-vs-AI matches on the default map at the game camera. What held up: buildings, trees, trenches,
+smoke, fire and the planes. What did not, and what changed:
+
+- Units vanished into ground of their own color (an olive tank on grass, a brown squad on dirt). Unit, gun and plane
+  materials now get a faint rim where the surface turns away from the camera, sky blue mixed with the paint's own hue
+  (`uModelRim` in client/model-textures.js). Thin soldiers are nearly all edge, so a stronger rim turned them grey.
+- Nothing sat in the ground. Graphics High adds GTAO (three's ground-truth ambient occlusion, client/light.js
+  `renderFrame`): soft shade under trees, at the foot of walls, sandbags and buildings, under hulls. It is a second
+  scene pass for depth and normals; Low and `?ao=0` draw without it. Sharing the multisampled frame's depth drew a
+  blank frame, so the pass renders its own.
+- Shelled ground went black: scars were multiplied down to 48% of the shelled texture. They now bottom out at 70%,
+  churned brown earth (client/ground.js).
+- A shelled hill showed flat tan, stepped patches: every slope was mixed toward one flat earth color at up to 55%.
+  The slope earth now has clods and grain from the shader's noise and mixes at up to 42% (client/relief-material.js).
+
+Seen and left for later: wall and trench sections that blow apart fly as plain flat-colored slabs (fx.js
+`sectionMesh`, steel nearly black), so they read as black cut-outs; house and flag shadows have stepped edges at the
+game camera (shadow map resolution); the grass is one even yellow-olive with a visible repeat; dead soldiers lie pale
+grey. The model viewer takes `&ao=1` to judge the occlusion on one unit. Frame cost of the occlusion was not measured
+(the review browser throttles frames); check it on a typical machine before more is built on it.
+
 ## Rooms, controls and match flow (round 3, 2026-10-01)
 - Pause: the host can pause and resume at any time. A human who drops mid-match auto-pauses the game for up to 30 s,
   at most once per player per match (reset in startMatch). While paused, sim, AI and commands are off, and a filtered

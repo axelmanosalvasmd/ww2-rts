@@ -43,11 +43,11 @@ function canvasAdapter() {
 
 const HASHES = {
   "clean": "4996c6d036e9c19e34e744b4721250f0113029c00f00625f28c5351a50658b96",
-  "isolated-and-edges": "359ce3affee0891c2277702d5d58b6076fea9a01170f22e638b103e683cd4787",
-  "mixed-wide-patch": "492a5e6e6f36e2f6bb023ef2ded6c6a615d17ae4214c88d0b92bce519e8e784f",
-  "horizontal-and-vertical-runs": "250732b396f933da8a91b52ac41a5e6b170b1672bb6ddc05e9dd088ffa48dc55",
-  "clear-scar-and-burn": "73111047c1c22adc702ee8c86622be45982d631a48c556cabd7ee445785307e6",
-  "restore-scar-and-burn": "d67c40bda1dbcb575ef6abe6425672c4b2a2dd8f2459c1dd235cd783e39672ad"
+  "isolated-and-edges": "a7938db1f7cbe31f83a19d492f0f1ecd5fabed86e0da96d543f8b41dc64335b7",
+  "mixed-wide-patch": "4211e5a4ab4c62d1883b188fd76126c52ce5a61e7725dbe185ec781b665e8d70",
+  "horizontal-and-vertical-runs": "cb4fde2f3c38f7dc8cec89e3f576e65e5b359326804c41d133960ffb9b29f14e",
+  "clear-scar-and-burn": "1642970ff2059d84343bfc227272d6e3b8ee0751c5c8b0bca07667b0dce34c52",
+  "restore-scar-and-burn": "aed5449e56a0b5fe965b50b30aefe910ba08eda7e522a11ca5bc2996170c5f48"
 };
 const hash = pixels => createHash('sha256').update(pixels).digest('hex');
 

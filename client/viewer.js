@@ -55,6 +55,10 @@ const bg = hex(q.get('bg')) ?? HAZE;
 const aim = (Number(q.get('aim')) || 0) * Math.PI / 180;
 const farLod = q.get('far') === '1', showGrid = q.get('grid') !== '0', lineup = q.get('all') === '1', textures = q.get('tex') !== '0';
 const noCrew = q.get('crew') === '0', moving = q.get('motion') === '1';
+// &ao=1: screen-space ambient occlusion (three's GTAO pass) over every view, to judge it before the game gets it;
+// &aoRadius= (metres, default 0.8) and &aoMix= (0..1, default 1) tune it
+const aoKit = q.get('ao') === '1' ? await Promise.all(['EffectComposer', 'RenderPass', 'GTAOPass', 'OutputPass'].map((n) => import(`three/addons/postprocessing/${n}.js`)))
+  .then(([a, b, c, d]) => ({ ...a, ...b, ...c, ...d })) : null;
 let motionUnit = null, motionTime = 0, motionLast = 0;
 
 // ---------- page ----------
@@ -454,10 +458,27 @@ function draw() {
     const y = H - rect.y - rect.h;
     renderer.setViewport(rect.x, y, rect.w, rect.h); renderer.setScissor(rect.x, y, rect.w, rect.h);
     const cam = view.setup(rect);
-    renderer.render(scene, cam);
+    if (aoKit) composerFor(cam, rect.w, rect.h).render(); else renderer.render(scene, cam);
     if (labelFor) placeTags(labelFor(rect, cam));
   }
   renderer.setScissorTest(false);
+}
+// one composer per camera (render, occlusion, tone mapping out), resized to the cell it draws; its last pass draws
+// into the cell's viewport on screen. 4x multisampling keeps the edges as smooth as the plain renderer's.
+const composers = new Map();
+function composerFor(cam, w, h) {
+  let c = composers.get(cam);
+  if (!c) {
+    const { EffectComposer, RenderPass, GTAOPass, OutputPass } = aoKit;
+    c = new EffectComposer(renderer, new THREE.WebGLRenderTarget(w, h, { type: THREE.HalfFloatType, samples: 4 }));
+    const ao = new GTAOPass(scene, cam, w, h);
+    ao.updateGtaoMaterial({ radius: Number(q.get('aoRadius')) || 0.8, distanceFallOff: 1, thickness: 1, samples: 16 });
+    ao.blendIntensity = q.has('aoMix') ? Number(q.get('aoMix')) : 1;
+    c.addPass(new RenderPass(scene, cam)); c.addPass(ao); c.addPass(new OutputPass());
+    composers.set(cam, c);
+  }
+  if (c.w !== w || c.h !== h) { c.setSize(w, h); c.w = w; c.h = h; }
+  return c;
 }
 function placeTags(tags) {
   let box = $('tags');
