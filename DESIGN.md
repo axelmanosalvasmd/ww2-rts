@@ -233,6 +233,19 @@ world information. The server keeps the generation seed and full map private dur
 
 Fortifications (2026-10-08): capturing a region hands every Pillbox, Scout Tower, wall and gate standing in it to the capturing player (`seizeForts`). They never block a capture. At setup the farthest 40% of guard regions (by distance to the nearest home, so it scales with map size and player count) get a guard Pillbox 14 m out toward that home; the farthest 15% also a Scout Tower and 4-cell walls either side of the Pillbox (`WORLD_FORTS`). Guard buildings that are armed or lookouts see for the guards, without a line-of-sight test.
 
+Scenery (2026-10-08): `shared/world-scenery.js` dresses the map after territories, from seed streams of its own, so
+a seed keeps its rivers, roads, regions, homes and names (`generateWorldMap({ scenery: false })` gives the bare map;
+`test-world-scenery.js` compares the two). Each region gets a biome (farmland, pine, marsh, highland, orchard,
+steppe) from its height, water and woods plus a few seeded provinces, so neighbours tend to share a look; no home is
+marsh. City regions get a church facing a paved square and up to 14 houses, industrial regions a works (`factory`)
+with warehouses, resource regions a `mine head` (800 hp, 0.25x, garrison vision 1.5) with two spoil tips (rubble).
+Farmland and orchard regions get bigger farm hamlets. Biomes touch play in three ways only: hedgerows on a field grid
+in farmland, pine woods, and marsh mud, all kept 13 cells (24 in a city) from the objective. The biome index and a
+landmark's name travel with a discovered cell, never ahead of it. Clients tint the ground per biome, shift the props
+mix (orchard rows, reeds, dry steppe grass, more rocks in the highlands) and draw lasting crater marks on known
+craters. Shelling short of a crater now shows (cell state bits 5-6), and a destroyed vehicle scorches the ground
+under it.
+
 Losing an HQ does not cause defeat. Losing the last team region does. Winning requires all regions, including
 those still held by local defenders. Classic's production-loss defeat and Sudden Death do not apply. The intended
 Huge match length is 45 to 60 minutes, a balance target that needs playtesting rather than a victory timer.

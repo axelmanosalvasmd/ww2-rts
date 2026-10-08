@@ -6,7 +6,7 @@ import { gfx } from './gfx.js';
 import { CELL, CFG, levelOf } from '../shared/sim.js';
 import { treeGeometry, leafGeometry, leafMaterial, barkMaterial } from './foliage.js';
 import { surface } from './surfaces.js';
-import { fieldCells } from './ground.js';
+import { fieldCells, BIOME_LOOKS } from './ground.js';
 
 const KINDS = ['deciduous', 'poplar', 'pine', 'bush', 'grass', 'crop', 'rocks', 'fence', 'haystack', 'supplies'];
 const TALL = new Set(['deciduous', 'poplar', 'pine', 'fence', 'haystack']);
@@ -68,11 +68,13 @@ export function visible(c, grid, { heights, nodes = [], low = false } = {}) {
 
 // Species follows current elevation, without changing a candidate's position or seed.
 export function kindFor(c, heights) {
-  return c.kind === 'deciduous' && level(heights, c.cx, c.cy) > 0 && (c.seed >>> 3) % 3 === 0 ? 'pine' : c.kind;
+  return c.kind === 'deciduous' && !c.orchard && level(heights, c.cx, c.cy) > 0 && (c.seed >>> 3) % 3 === 0 ? 'pine' : c.kind;
 }
 
 export function candidates(map) {
   const { w, h, rows } = map, paths = pathSegments(map), list = [], occupied = new Set();
+  // World Conquest: the cell's region look (client/ground.js BIOME_LOOKS) shifts the mix; elsewhere null, as before
+  const lookAt = (x, y) => BIOME_LOOKS[map.biome?.[y * w + x]] ?? null;
   const zones = [
     ...(map.spawns ?? []).filter(Boolean).map(p => ({ x: (p.x + 0.5) * CELL, z: (p.y + 0.5) * CELL, r: CFG.reinforceRadius + 4 })),
     ...(map.points ?? []).map(p => ({ x: (p.x + 0.5) * CELL, z: (p.y + 0.5) * CELL, r: CFG.pointRadius + 4 })),
@@ -94,7 +96,8 @@ export function candidates(map) {
     const margin = TALL.has(kind) ? 1.4 : 0.7;
     if (zones.some(p => Math.hypot(x - p.x, z - p.z) < p.r + margin)) return false;
     if (TALL.has(kind) && corridor(x, z, margin)) return false;
-    list.push({ kind, cx, cy, x, z, seed, angle: angle ?? fraction(cx, cy, 83) * Math.PI * 2, scale, ...(anchor ? { anchor } : {}) });
+    const biome = map.biome?.[key];
+    list.push({ kind, cx, cy, x, z, seed, angle: angle ?? fraction(cx, cy, 83) * Math.PI * 2, scale, ...(anchor ? { anchor } : {}), ...(biome < 255 ? { biome } : {}) });
     occupied.add(key);
     return true;
   };
@@ -167,6 +170,13 @@ export function candidates(map) {
     for (const p of spots) if (add('supplies', p.cx, p.cy, undefined, p.anchor)) break;
   }
 
+  // Orchards: plots of small fruit trees in rows, three cells apart, kept whole (not thinned by the tree cap)
+  if (map.biome) for (let y = 3; y < h - 3; y++) for (let x = 3; x < w - 3; x++) {
+    const bx = Math.floor(x / 15), by = Math.floor(y / 11);
+    if (x % 3 || y % 3 || !lookAt(x, y)?.orchard || fraction(bx, by, 150) > 0.45 || x - bx * 15 < 2 || y - by * 11 < 2) continue;
+    if (add('deciduous', x, y, undefined, null, 0.5 + fraction(x, y, 151) * 0.12)) list[list.length - 1].orchard = true;
+  }
+
   // Poplars occur in short orderly rows along field boundaries.
   for (let y = 3; y < h - 3; y++) for (let x = 3; x < w - 3; x++) {
     if (country(x, y) < 0.15 || fraction(x, y, 105) > 0.0012) continue;
@@ -182,35 +192,36 @@ export function candidates(map) {
   }
 
   let hay = 0;
-  const hayCap = Math.min(16, Math.max(3, Math.round(w * h / 2200)));
+  const hayCap = map.world ? 400 : Math.min(16, Math.max(3, Math.round(w * h / 2200)));
   for (let y = 2; y < h - 2; y++) for (let x = 2; x < w - 2; x++) {
     if (!clear(x, y) || occupied.has(y * w + x)) continue;
-    const d = country(x, y), nearPath = corridor((x + 0.5) * CELL, (y + 0.5) * CELL, 0.7);
-    if (fraction(x, y, 111) < 0.013 + d * 0.065 &&
-        add(fraction(x, y, 112) < 0.23 ? 'pine' : 'deciduous', x, y, undefined, null, 0.86 + fraction(x, y, 113) * 0.25)) continue;
-    const bushChance = (0.031 + d * 0.06) * (besideHedge(x, y) ? 2 : 1) * (nearPath ? 0.4 : 1);
+    const d = country(x, y), nearPath = corridor((x + 0.5) * CELL, (y + 0.5) * CELL, 0.7), look = lookAt(x, y);
+    if (fraction(x, y, 111) < (0.013 + d * 0.065) * (look?.trees ?? 1) &&
+        add(fraction(x, y, 112) < (look?.pine ?? 0.23) ? 'pine' : 'deciduous', x, y, undefined, null, 0.86 + fraction(x, y, 113) * 0.25)) continue;
+    const bushChance = (0.031 + d * 0.06) * (besideHedge(x, y) ? 2 : 1) * (nearPath ? 0.4 : 1) * (look?.bush ?? 1);
     if (fraction(x, y, 118) < bushChance && add('bush', x, y, undefined, null, 0.8 + fraction(x, y, 114) * 0.3)) continue;
-    if (fraction(x, y, 115) < 0.004 * (nearPath ? 0.3 : 1) &&
-        add('rocks', x, y, undefined, null, 0.8 + fraction(x, y, 116) * 0.3)) continue;
-    if (hay < hayCap && d > 0.22 && fraction(x, y, 117) < 0.0012 && add('haystack', x, y)) hay++;
+    if (fraction(x, y, 115) < 0.004 * (nearPath ? 0.3 : 1) * (look?.rocks ?? 1) &&
+        add('rocks', x, y, undefined, null, (0.8 + fraction(x, y, 116) * 0.3) * (look?.rocks > 2 ? 1.5 : 1))) continue;
+    if (hay < hayCap && (look ? fraction(x, y, 117) < 0.0012 * look.hay * (1 + 3 * d) : d > 0.22 && fraction(x, y, 117) < 0.0012) && add('haystack', x, y)) hay++;
   }
   // meadow grass on the open cells left over, thicker in hedged country, kept off the paths
   for (let y = 2; y < h - 2; y++) for (let x = 2; x < w - 2; x++) {
-    if (occupied.has(y * w + x) || fraction(x, y, 120) > 0.1 + 0.16 * country(x, y)) continue;
+    if (occupied.has(y * w + x) || fraction(x, y, 120) > (0.1 + 0.16 * country(x, y)) * (lookAt(x, y)?.grass ?? 1)) continue;
     if (!corridor((x + 0.5) * CELL, (y + 0.5) * CELL, 0.4)) add('grass', x, y, undefined, null, 0.8 + fraction(x, y, 121) * 0.5);
   }
-  const trees = list.filter(c => ['deciduous', 'pine', 'poplar'].includes(c.kind)).sort((a, b) => a.seed - b.seed);
-  const capped = new Set(trees.slice(1200));
+  const trees = list.filter(c => ['deciduous', 'pine', 'poplar'].includes(c.kind) && !c.orchard).sort((a, b) => a.seed - b.seed);
+  const capped = new Set(trees.slice(map.world ? 3000 : 1200)); // a World map spreads its trees over far more ground
   // woods ('O' cells): a tree on about one cell in three, smaller than a field tree so the canopy stays readable.
   // They are the wood itself, so they skip the clearings and paths the scattered trees keep to. Capped separately.
   const wood = [];
   for (let y = 0; y < h; y++) for (let x = 0; x < w; x++) {
     if (rows[y][x] !== 'O' || fraction(x, y, 140) > 0.3) continue;
-    wood.push({ kind: fraction(x, y, 141) < 0.3 ? 'pine' : 'deciduous', cx: x, cy: y, x: (x + 0.5) * CELL + (fraction(x, y, 142) - 0.5) * 1.2, z: (y + 0.5) * CELL + (fraction(x, y, 143) - 0.5) * 1.2,
+    const look = lookAt(x, y);
+    wood.push({ kind: fraction(x, y, 141) < (look ? Math.max(0.3, look.pine) : 0.3) ? 'pine' : 'deciduous', cx: x, cy: y, x: (x + 0.5) * CELL + (fraction(x, y, 142) - 0.5) * 1.2, z: (y + 0.5) * CELL + (fraction(x, y, 143) - 0.5) * 1.2,
       seed: hash(x, y, 144), angle: fraction(x, y, 145) * Math.PI * 2, scale: 0.55 + fraction(x, y, 146) * 0.3, wood: true });
   }
   wood.sort((a, b) => a.seed - b.seed);
-  return [...list.filter(c => !capped.has(c)), ...wood.slice(0, 1500)];
+  return [...list.filter(c => !capped.has(c)), ...wood.slice(0, map.world ? 3000 : 1500)];
 }
 
 // Rocks, fences, haystacks and supply heaps: parts merged by hand (only the core three.js module is served). Parts keep
@@ -325,14 +336,18 @@ export function createProps({ map, grid, hAt, parent }) {
     const kind = kindFor(c, map.heights), crop = kind === 'crop';
     // each tree or bush its own height, girth and heading; leafy kinds also their own shade of green
     const f = (k) => ((c.seed >>> k) & 255) / 255, leafy = kind !== 'rocks' && kind !== 'fence' && kind !== 'haystack' && kind !== 'supplies';
-    const girth = leafy && !crop ? 0.9 + 0.2 * f(4) : 1, tall = leafy ? 0.88 + 0.24 * f(12) : 1;
+    const look = BIOME_LOOKS[c.biome], reeds = look?.reeds && kind === 'grass';
+    const girth = (leafy && !crop ? 0.9 + 0.2 * f(4) : 1) * (reeds ? 0.75 : 1), tall = (leafy ? 0.88 + 0.24 * f(12) : 1) * (reeds ? 1.9 : 1);
     scale.set(c.scale * girth, c.scale * tall, c.scale * girth);
     turn.setFromAxisAngle(UP, c.angle);
     c.m = matrix.compose(at.set(c.x, hAt(c.x, c.z) - 0.035, c.z), turn, scale).toArray(c.m);
     const tint = 0.88 + ((c.seed >>> 8) % 101) / 600, colour = c.col ??= new THREE.Color();
     if (!leafy) colour.setRGB(tint, tint, tint);
     else if (crop) colour.setRGB(tint * 1.3, tint * 1.06, tint * 0.56); // ripe wheat
+    else if (c.orchard) colour.setRGB(tint * 1.02, tint * 1.12, tint * 0.7); // fruit trees: a light, yellowish green
     else if (kind === 'deciduous' && (c.seed >>> 16) % 9 === 0) colour.setRGB(tint * 1.08, tint * 1.0, tint * 0.72); // a tree turning
+    else if (look?.dry && (kind === 'grass' || kind === 'bush')) colour.setRGB(tint * 1.3, tint * 1.12, tint * 0.6); // steppe grass, dried straw-gold
+    else if (reeds) colour.setRGB(tint * 0.96, tint * 1.02, tint * 0.7); // reeds: olive
     else colour.setRGB(tint * (0.94 + f(18) * 0.1), tint * (0.97 + f(20) * 0.05), tint * (0.86 + f(22) * 0.12));
     (c.bark ??= new THREE.Color()).setRGB(tint, tint, tint);
     c.at = kind;

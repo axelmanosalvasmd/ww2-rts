@@ -57,7 +57,8 @@ try {
   // Controlled deployments isolate navigation from recruitment, damage and unrelated battles.
   const start = {x:riverX*CELL-40,z:fordY*CELL}, target={x:fords.at(-1).x*CELL+60,z:fords.at(-1).y*CELL};
   Object.assign(rifle,start,{path:[],orders:[],worldGoal:null,attackId:0,targetId:0,build:0});
-  const tank={...rifle,id:g.nextId++,type:'tank',hp:UNITS.tank.hpPer,x:start.x-4,z:start.z+4,path:[],orders:[],worldGoal:null};
+  // beside the rifle on its river side: the town on this seed has a house just west of the start
+  const tank={...rifle,id:g.nextId++,type:'tank',hp:UNITS.tank.hpPer,x:start.x+4,z:start.z+4,path:[],orders:[],worldGoal:null};
   g.units.set(tank.id,tank);
   for (const u of g.units.values()) {u.holdFire=true;u.autoRetreat=false;u.auto=false;}
   await tick(4);

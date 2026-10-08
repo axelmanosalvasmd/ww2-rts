@@ -127,7 +127,8 @@ export const CFG = {
     { name: 'stone building', min: 24, hp: 650, mul: 0.25, worn: 0.55 },
     // landmarks: only a map's `buildings` list makes one (min: Infinity). vision: replaces garrisonVision for a squad inside
     { name: 'church', min: Infinity, hp: 700, mul: 0.25, worn: 0.55, vision: 1.6 },
-    { name: 'factory', min: Infinity, hp: 1000, mul: 0.2, worn: 0.45, vision: 1.4 }],
+    { name: 'factory', min: Infinity, hp: 1000, mul: 0.2, worn: 0.45, vision: 1.4 },
+    { name: 'mine head', min: Infinity, hp: 800, mul: 0.25, worn: 0.5, vision: 1.5 }],
   // a bridge the map's `buildings` list calls a 'stone bridge' takes this many times a plank bridge's hits
   stoneBridge: 12,
   // point kinds: a held radio post speeds its team's support cooldowns, a held supply depot reinforces and repairs
@@ -1128,7 +1129,7 @@ const WORLD_GUARDS = { rural: ['rifle', 'rifle', 'mg'], city: ['rifle', 'rifle',
 function setupWorld(g, map) {
   const error = validateWorldMap(map); if (error) throw new Error(error);
   g.mode = { kind: 'world', teams: new Set(g.players.map(p => p.team)).size, total: map.world.total };
-  g.world = { size: map.world.size, total: map.world.total, seed: map.world.seed, regionMap: map.world.regionMap ? Int16Array.from(map.world.regionMap) : null, regionCells: map.world.regionCells, memory: new Map(), regions: map.world.regions.map(r => ({ ...r, x: (r.x + 0.5) * CELL, z: (r.y + 0.5) * CELL, bounds: r.bounds.map(v => v * CELL), team: r.home === undefined ? -1 : g.players[r.home].team, progress: r.home === undefined ? 0 : 1, capper: -1 })) };
+  g.world = { size: map.world.size, total: map.world.total, seed: map.world.seed, regionMap: map.world.regionMap ? Int16Array.from(map.world.regionMap) : null, biomes: map.world.biomes ? Uint8Array.from(map.world.biomes) : null, regionCells: map.world.regionCells, memory: new Map(), regions: map.world.regions.map(r => ({ ...r, x: (r.x + 0.5) * CELL, z: (r.y + 0.5) * CELL, bounds: r.bounds.map(v => v * CELL), team: r.home === undefined ? -1 : g.players[r.home].team, progress: r.home === undefined ? 0 : 1, capper: -1 })) };
   // An array property keeps the hostile local actor out of lobby seats, results and competitive team loops.
   Object.defineProperty(g.players, '-1', { value: { slot: -1, name: 'Local defenders', team: -1, faction: 0, spawn: { x: 0, z: 0 }, visible: new Set(), mp: 0, mun: 0, fuel: 0 }, configurable: true });
   g.nodes = [];
@@ -1957,10 +1958,12 @@ const rng = (g) => { let t = g.seed = (g.seed + 0x6D2B79F5) | 0; t = Math.imul(t
 // a stable 0-1 number per cell, so two fords or two mud patches on one map are not alike
 const cellNoise = (c) => { let h = Math.imul(c + 1, 0x9e3779b1); h ^= h >>> 15; h = Math.imul(h, 0x85ebca6b); return ((h ^ h >>> 13) >>> 0) / 4294967296; };
 const startWear = (ch, c) => (ch === 'M' || ch === 'F' ? 0.2 + 0.6 * cellNoise(c) : ch === '+' ? 0.3 + 0.3 * cellNoise(c) : 0);
-// What clients are told about a cell besides its type: wear in quarters (bits 0-1), burnt (bit 2), and how shot up a
-// wall, hedge or house is (bits 3-4: 0 whole, 1 damaged, 2 nearly gone).
-const packState = (wear, burnt, hp, max) => Math.min(3, Math.floor(wear * 4)) | (burnt ? 4 : 0) | (max > 1 && hp < max * 0.67 ? (hp < max * 0.34 ? 16 : 8) : 0);
-const stateOf = (g, c) => packState(g.wear[c], g.burnt[c], g.cellHp[c], maxHp(g, c));
+// What clients are told about a cell besides its type: wear in quarters (bits 0-1), burnt (bit 2), how shot up a
+// wall, hedge or house is (bits 3-4: 0 whole, 1 damaged, 2 nearly gone) and how much shelling the ground has soaked up
+// short of sinking (bits 5-6, g.scar: 1 from the first real hit, 3 when it is about to go). Each step is sent once.
+const packState = (wear, burnt, hp, max, scar = 0) => Math.min(3, Math.floor(wear * 4)) | (burnt ? 4 : 0) | (max > 1 && hp < max * 0.67 ? (hp < max * 0.34 ? 16 : 8) : 0)
+  | (scar > 0.6 ? 96 : scar > 0.3 ? 64 : scar > 0.02 ? 32 : 0);
+const stateOf = (g, c) => packState(g.wear[c], g.burnt[c], g.cellHp[c], maxHp(g, c), g.scar?.[c]);
 // the state a map cell starts in (clients use it for cells the server has not mentioned yet)
 export const startState = (ch, c) => packState(startWear(ch, c), 0, 1, 1);
 // tell the clients when a cell's state crosses into another step
@@ -2112,6 +2115,9 @@ function seenWorldCell(g, c, team) {
   if (g.world) {
     const initial = g.initialTerrain;
     row[4].initial = [initial.chars[c] === 'N' ? composeWorldCell(initial.ground[c], initial.objects[c]) : initial.chars[c], initial.height?.[c] ?? 0];
+    // the region's look (BIOMES index) and a landmark's name travel with the discovered cell, never ahead of it
+    if (g.world.biomes?.[c] < 255) row[4].biome = g.world.biomes[c];
+    if (g.house?.[c] >= 3) row[4].landmark = CFG.houses[g.house[c]].name;
   }
   if (row[1] === 'N' && mineKnown(g, c, team)) { const owner = g.mines.get(c) ?? -1; row[4].mineOwned = owner >= 0 && g.players[owner].team === team; }
   if (row[1] === 'N' && !mineKnown(g, c, team)) {
@@ -2340,7 +2346,8 @@ function setLevel(g, c, L) { mutateWorldCell(g, c, { height: L }); }
 const level0 = (g, c) => g.initialTerrain.height?.[c] ?? 0; // the map as drawn: what filling in works back to
 function fillable(g, c) {
   const ch = g.chars[c];
-  return ch === '+' || ch === 'R' || (ch === 'F' && g.initialTerrain.chars[c] !== 'F') || (ch === '.' && level(g, c) < level0(g, c));
+  // a World map's own rubble (a mine's spoil tips) is scenery, not battle damage
+  return ch === '+' || (ch === 'R' && !(g.world && g.initialTerrain.chars[c] === 'R')) || (ch === 'F' && g.initialTerrain.chars[c] !== 'F') || (ch === '.' && level(g, c) < level0(g, c));
 }
 // Back to open ground, and up towards the height the map had there: as far as one level above the lowest ground
 // beside it (the slope rule again), so a deep bowl is filled from its deepest cells outwards.
@@ -4205,9 +4212,11 @@ export function damageCells(g, list, at, radius, dmg, scar = 0, context = {}) {
     }
     // shelling sinks open ground bit by bit: a cell that has taken CFG.scar.hit goes one level down and is a crater.
     // One the slope rule holds back waits for the ground beside it, so a pounded field sinks as a bowl.
-    if (scar && (ground === '.' || ground === '+' || ground === 'D') && (g.scar[c] = Math.min(1, g.scar[c] + hit * scar * worldMaterial(g, c, true).crater / CFG.scar.hit)) >= 1) {
-      const was = level(g, c); dent(g, c);
-      if (level(g, c) < was) { g.scar[c] = 0; if (ground === '.') mutateWorldCell(g, c, { ground: '+' }); }
+    if (scar && (ground === '.' || ground === '+' || ground === 'D')) {
+      if ((g.scar[c] = Math.min(1, g.scar[c] + hit * scar * worldMaterial(g, c, true).crater / CFG.scar.hit)) >= 1) {
+        const was = level(g, c); dent(g, c);
+        if (level(g, c) < was) { g.scar[c] = 0; if (ground === '.') mutateWorldCell(g, c, { ground: '+' }); }
+      } else touch(g, c); // churned earth that stays: the clients show it from the first hit
     }
     // a trench caves in under enough shelling (wear counts it up) and is left a crater
     if (ch === 'T' && (g.wear[c] += hit / CFG.trench.hp) >= 1) { wreckCell(g, list, c, '+'); continue; }
@@ -5114,6 +5123,11 @@ export function step(g) {
       const impulse = u.deathImpulse ?? { dir: u.rot ?? 0, impulse: 0.25 }, motion = debrisBody({ id: 'wreck:' + u.id, kind: 'wreck', x: u.x, y: levelAt(g, u.x, u.z) * CFG.levelHeight + 0.08, z: u.z, dir: impulse.dir, impulse: impulse.impulse, mass: wreckMass(u.type, UNITS[u.type]), material: 'steel', radius: Math.min(2.2, UNITS[u.type].radius * 0.6), time: g.tick * TICK });
       const wreck = { id: u.id, type: u.type, owner: u.owner, x: u.x, z: u.z, rot: u.rot ?? 0, c: -1, motion };
       g.wrecks.push(wreck);
+      // the burnt-out hulk scorches the ground under it, and the mark outlasts the hulk
+      for (const [dx, dz] of [[0, 0], [CELL, 0], [-CELL, 0], [0, CELL], [0, -CELL]]) {
+        const c = cellOf(g, u.x + dx, u.z + dz);
+        if (c >= 0 && physicalWorldCell(g, c) === '.' && !g.burnt[c]) { g.burnt[c] = 1; touch(g, c); }
+      }
       if (activeDebrisCount(g) > DEBRIS_LIMITS.active) { finishOverflowDebris(g, motion); settleWreck(g, wreck); }
       if (g.wrecks.length > CFG.wrecks) { const old = g.wrecks.shift(); if (collisionChar(g, old.c) === 'Q') mutateWorldCell(g, old.c, { object: '.' }); }
 

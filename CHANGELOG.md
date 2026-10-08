@@ -5,6 +5,24 @@ AI-vs-AI runs (see DESIGN.md for the balance log). Add new entries under **Unrel
 
 ## Unreleased
 
+- World Conquest regions now look different from each other. Each region has a biome (farmland, pine, marsh,
+  highland, orchard or steppe) with its own ground tint and scenery: hedgerows with gates in farmland, pine woods,
+  marsh mud, orchard rows, reeds, dry steppe grass, rocky highlands. Cities have a church on a paved square and a
+  town around it, industrial regions a brick works with a chimney and warehouses, resource regions a mine head
+  (new landmark: 800 hp, 0.25x damage, garrison vision 1.5) under a steel headframe with spoil tips beside it.
+  Farm hamlets fill the countryside. A seed keeps its rivers, roads, regions, homes and names. Biomes and landmark
+  names reach a player only with the discovered cell.
+- Battle scars last: known craters keep a crater mark on the ground in World Conquest, shelled ground shows as churned
+  earth from the first hit (before it sinks), and a destroyed vehicle leaves a scorch mark under its hulk.
+- Tests: new `test-world-scenery.js` (scenery leaves the geography alone, landmarks sit in their kind of region,
+  biomes and landmarks arrive only with discovered cells); `test.js` gains a shelling-marks check and a scorch
+  assertion in the wreck check. `generateWorldMap` takes `scenery: false` for the bare map.
+  `test-ground-performance.mjs`: the pinned pixel hashes of the three fixtures with a burnt cell were regenerated,
+  since burnt ground is now charred darker (the others are unchanged). `test-world-river.js`: its tank now starts
+  east of the rifle, since its old spot on seed 4111514762 is inside one of the new houses.
+- Fixed before release: a World map's spoil tips (rubble from the start) counted as battle damage, so supply through
+  a resource region was a step weaker than it should be and engineers could "fill in" the heaps.
+
 - Drills (no game change): small authored scenes for AI behaviour questions, played on the server's AI schedule.
   `drills/drill.js` places a drill's units on a small map, runs its timed script and returns its measure;
   `node tools/drill.mjs drills/<name>.js --seeds 200` runs one across seeds. The first drill, `drills/flank-answer.js`,

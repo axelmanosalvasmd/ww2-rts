@@ -1,6 +1,7 @@
 import { relief, waterways } from './world-landforms.js';
 import { territories } from './world-territories.js';
 import { roadNetwork } from './world-roads.js';
+import { dressWorld } from './world-scenery.js';
 // Authoritative seeded geography. Never send the seed or diagnostics to live clients.
 export const WORLD_TUNING = Object.freeze({
   regionCells: 64,
@@ -20,6 +21,7 @@ export function generateWorldMap({
   seed = Math.floor(Math.random() * 4294967296),
   players = 2,
   teams = [],
+  scenery = true, // false: the bare geography, for checking that scenery leaves it alone
 } = {}) {
   if (!['huge', 'massive'].includes(size)) throw Error('invalid world size');
   const n = Array.isArray(players) ? players.length : players;
@@ -175,7 +177,8 @@ export function generateWorldMap({
     const base = pool.splice(nameState % pool.length, 1)[0];
     r.name = { rural: base, city: base, industrial: `${base} Works`, resource: `${base} Mines` }[r.kind];
   }
-  const regionMap = territories(ground, heights, regions);
+  const regionMap = territories(ground, heights, regions),
+    { buildings, biomes } = scenery ? dressWorld({ seed, ground, heights, regions, regionMap, roads }) : {};
   return {
     name: `World Conquest (${size === 'massive' ? 'Massive' : 'Huge'})`,
     w,
@@ -184,6 +187,7 @@ export function generateWorldMap({
     heights: heights.map((r) => r.join('')),
     spawns: homes.map((r) => ({ x: r.x, y: r.y })),
     points: [],
+    buildings,
     world: {
       size,
       total: regions.length,
@@ -192,6 +196,7 @@ export function generateWorldMap({
       waterways: { rivers: features.rivers, crossings: features.crossings, lake: features.lake },
       regionCells: span,
       regionMap,
+      biomes,
       regions,
     },
   };
