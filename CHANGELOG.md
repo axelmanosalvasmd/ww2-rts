@@ -5,6 +5,12 @@ AI-vs-AI runs (see DESIGN.md for the balance log). Add new entries under **Unrel
 
 ## Unreleased
 
+- Room checks in `test.js` no longer use the network or wall-clock sleeps (no game change). Their clients connect
+  through in-memory sockets (`memoryConnect` in `test-socket.js`) that deliver each message at once in both
+  directions, and the harness serves map files from already-resolved promises, so a reply is there as soon as the
+  server's handler finishes. This removes the lobby-read races seen when tests run side by side (a check read the
+  lobby before the reply arrived). Two full suites run at the same time pass.
+
 - AI tools now play the AI that players face (no game change). The server's per-tick AI schedule moved into
   `shared/ai-schedule.js` (`aiTick`), and `playMatch` runs a seeded headless match on it. The server, the balance,
   bench and Horde tools, the skirmish scenario tool, the map editor's spawn fairness worker and the full-match test
