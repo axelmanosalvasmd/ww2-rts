@@ -480,6 +480,17 @@ every look. The horde wave is unchanged: it still attack-moves the bunker and st
   `assaultTime` (seconds) because crossing takes longer: 20 min / 16 min / default 15. AI 3v3 attacker wins over 40:
   58% / 45% / 25%. Assault results swing a lot at 20 matches (2/20 and 7/12 for the same map), so measure with 40+.
   Monte Cassino XL: 23 min, 45%.
+- Historic battle maps (2026-10-07, `tools/genmap-history.mjs`, then `tools/mapwork.mjs` for cover on long bare
+  stretches): Prokhorovka and Hurtgen Forest (Conquest, point-symmetric, drawn on a mirroring canvas), El Alamein
+  and Seelow Heights (Assault, 30 min clock). The generator validates each map and checks that every spawn reaches
+  every point on foot and by tank. Each map opens with a `say` trigger.
+  AI 1v1 Conquest (30 each): Prokhorovka 16/14, Hurtgen 17/13, matches about 6 min.
+  AI 1v1 Assault, attacker wins: Seelow 3/30 at first, 1/21 after wider ramps (8 rows) and a 30 min clock.
+  El Alamein 30/30 to the defender at first; thinner belts (4 deep, 45%), 4+3 gaps 6 wide, defender spawns 8 cells
+  closer and point MP moved to the attacker side (Kidney Ridge 2.5, start line 2, ridge 1) still 0/21 (bunkers lower,
+  some under 500 hp); a 40 min clock gave 2/21, not worth the length.
+  Baseline on the same code: Hill 112 4/14, The Great Bridge 2/14, Seawall 1/14. The AI attacker has weakened since
+  the numbers above were measured; fix that before tuning these two maps further.
 - Assault-only spawns (`"assault": true` on a spawn): for maps whose defenders start inside a fortress in the middle
   (Stalingrad Factory). Other modes skip them, so nobody starts surrounded; the lobby seats players per mode.
 - The map editor previews each mode by running createGame for it and drawing the result (cells, bunkers, nodes, which

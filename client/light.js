@@ -166,6 +166,14 @@ function postFor() {
     const ao = new GTAOPass(scene, camera, 1, 1);
     ao.updateGtaoMaterial({ radius: AO.radius, distanceFallOff: 1, thickness: 1, samples: 12 });
     ao.blendIntensity = AO.mix;
+    // three only leaves points and lines out of the AO depth: see-through things (capture rings, labels, fog, the
+    // apron haze) then count as solid walls and cast long black streaks over the ground behind them. Leave them out too.
+    ao._overrideVisibility = function () {
+      const cache = this._visibilityCache;
+      this.scene.traverse((o) => {
+        if (o.visible && (o.isPoints || o.isLine || o.isLine2 || o.isSprite || (o.material && [].concat(o.material).every((m) => m.transparent || !m.depthWrite)))) { o.visible = false; cache.push(o); }
+      });
+    };
     composer.addPass(new RenderPass(scene, camera)); composer.addPass(ao); composer.addPass(new OutputPass());
     post = { composer, w: 0, h: 0, ratio: 0 };
   }).catch((e) => console.warn('ambient occlusion unavailable:', e.message));
