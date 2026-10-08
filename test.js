@@ -19,7 +19,7 @@ import { createGame, step, los, findPath, validateMap, snapshotFor, snapshotCach
 import { SpatialGrid, updateGrid } from './shared/grid.js';
 import { DEBRIS_LIMITS } from './shared/debris-motion.js';
 import { think, thinkEvery, AI_LEVEL_NAMES } from './shared/ai.js';
-import { playMatch, aiTick } from './shared/ai-schedule.js';
+import { playMatch, aiTick, planner } from './shared/ai-schedule.js';
 import { viewFor } from './shared/ai-view.js';
 import { unitRole } from './client/unit-roles.js';
 import { createRelief, TRENCH_DEPTH } from './client/relief.js';
@@ -4429,7 +4429,7 @@ await check("Exercise the real room tick's delivery ordering without opening a s
     const decisions = [], deliveries = [];
     // The real schedule (shared/ai-schedule.js) with a recording AI in every seat.
     const recording = { thinkEvery, observe: g => ({ tick: g.tick }), think: (g, slot, opts) => { decisions.push([g.tick, slot, opts.view.tick]); } };
-    const recordedTick = (g, seats, views, options) => aiTick(g, seats.map(seat => ({ ...seat, ai: recording })), views, { ...options, sim: { snapshotCache: () => ({}) } });
+    const recordedTick = (g, seats, views, options) => aiTick(g, seats.map(seat => ({ ...seat, brain: planner(recording) })), views, { ...options, sim: { snapshotCache: () => ({}) } });
     const tick = new Function('aiTick', 'step', 'snapshotCache', 'snapshotFor', 'createTickMeter', 'recordTick', 'tickStats', 'trimmed',
       body + '\nreturn timedRoomTick;')(
       recordedTick, g => { g.tick++; },

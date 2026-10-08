@@ -12,6 +12,7 @@ import { mapForClient } from './shared/world-layers.js';
 import { WEATHER_CHOICES, weatherRow } from './shared/weather.js';
 import { observe, resetAI, AI_LEVEL_NAMES } from './shared/ai.js';
 import { aiTick } from './shared/ai-schedule.js';
+import { resetCommander } from './shared/ai-human.js';
 import { mapPing } from './server/map-pings.js';
 import { allowDeny } from './shared/command-feedback.js';
 import { storyResult } from './shared/story.js';
@@ -385,7 +386,7 @@ function handToAi(room, player) {
   Object.assign(player, { ai: true, ws: null, token: '', name: player.name + ' (AI)' });
   if (room.game) {
     const slot = room.players.indexOf(player);
-    resetAI(room.game, slot);
+    resetAI(room.game, slot); resetCommander(room.game, slot);
     (room.aiViews ??= [])[slot] = null;
   }
   if (room.pause?.reason === 'drop' && room.pause.player === player) resumeRoom(room);
@@ -461,7 +462,7 @@ wss.on('connection', (ws, req) => {
         const old = me.ws;
         clock.clearTimeout(me.cleanupTimer);
         me.ws = ws; me.name = name;
-        if (room.game && room.players.includes(me) && !me.ai) resetAI(room.game, room.players.indexOf(me));
+        if (room.game && room.players.includes(me) && !me.ai) { resetAI(room.game, room.players.indexOf(me)); resetCommander(room.game, room.players.indexOf(me)); }
         if (old && old !== ws) { send(old, { t: 'replaced' }); old.close(); }
       }
       else if (room.state === 'lobby' && room.players.length < MAX_PLAYERS && (!room.listed || room.players.length < seats(room)) && msg.spectate !== true) addSeat(room, me = newPlayer(room, { token, name, ws }));
@@ -608,7 +609,8 @@ function timedRoomTick(room) {
   // The seats the server plays: the room's AIs and, in Horde, the horde itself (nobody's seat, but it gets the same view).
   const seats = [...room.players.keys()].filter(i => room.players[i].ai);
   if (g.mode?.kind === 'horde') seats.push(g.mode.slot);
-  // The AI schedule lives in shared/ai-schedule.js, so the balance and bench tools play the same AI as this room.
+  // The AI schedule lives in shared/ai-schedule.js, so the balance and bench tools play the same AI as this room:
+  // seat AIs are human-like commanders (shared/ai-human.js), the Horde seat keeps the scripted planner.
   room.aiViews ??= [];
   const built = aiTick(g, seats.map(slot => ({ slot, level: room.players[slot]?.level })), room.aiViews, { sent }); // human snapshots reuse its cache
   const snapshotAt = process.hrtime.bigint();
