@@ -4,10 +4,11 @@ import { availableParallelism } from 'node:os';
 import { dirname, resolve } from 'node:path';
 import { fileURLToPath, pathToFileURL } from 'node:url';
 import { isMainThread, parentPort, Worker, workerData } from 'node:worker_threads';
-import { aiTick } from '../shared/ai-schedule.js';
+import { aiTick, planner } from '../shared/ai-schedule.js';
 
 const script = fileURLToPath(import.meta.url);
-const usage = 'Usage: node tools/ai-balance.mjs [--root DIR] [--map NAME] [--mode conquest|classic] [--matches N] [--seed S] [--workers N] [--seats easy,normal|hard,normal|normal,alt:normal] [--alt FILE] [--rotate] [--army standard|large|massive|endless] [--factions 3|4]';
+// Seats play as the root's human-like commanders; an old: seat plays the scripted planner (the pre-commander AI).
+const usage = 'Usage: node tools/ai-balance.mjs [--root DIR] [--map NAME] [--mode conquest|classic] [--matches N] [--seed S] [--workers N] [--seats easy,normal|hard,old:easy|normal,alt:normal] [--alt FILE] [--rotate] [--army standard|large|massive|endless] [--factions 3|4]';
 const factions = ['USA', 'Germany', 'USSR', 'UK'];
 
 function seededRandom(initial) {
@@ -31,10 +32,13 @@ async function runMatches(options, indices) {
   const sim = await import(pathToFileURL(resolve(options.root, 'shared/sim.js')).href);
   const current = await import(pathToFileURL(resolve(options.root, 'shared/ai.js')).href);
   const alternate = options.alt ? await import(pathToFileURL(resolve(options.alt)).href) : null;
+  // The root's own commander when it has one; an older checkout plays its planner.
+  const rootCommander = (await import(pathToFileURL(resolve(options.root, 'shared/ai-schedule.js')).href).catch(() => ({}))).commander ?? planner(current);
   const map = JSON.parse(await readFile(resolve(options.root, `maps/${options.map}.json`), 'utf8'));
   // without --seats: one Normal AI per spawn the mode can use, every one for itself, factions cycling
   const ffa = sim.spawnsFor(map, options.mode).map(() => 'normal');
-  const maxSeconds = options.seats ? (options.mode === 'classic' ? 2400 : 1800) : 1200;
+  // Classic matches run long: free-for-alls get 40 minutes there, the same as Classic duels.
+  const maxSeconds = options.mode === 'classic' ? 2400 : options.seats ? 1800 : 1200;
   const maxTicks = Math.round(maxSeconds / sim.TICK), originalRandom = Math.random;
   try {
     for (const index of indices) {
@@ -46,12 +50,13 @@ async function runMatches(options, indices) {
       const pair = [index % 3, Math.floor(index / 3) % 3];
       // --factions 4 brings in the UK: each match fields a different run of the four, so each sits out one match in four
       const factionIds = options.rotate ? order.map(i => pair[i]) : order.map((_, i) => options.factions === 4 ? (i + index) % 4 : i % 3);
-      const brains = order.map(i => ({ level: seats[i].replace(/^alt:/, ''), mod: seats[i].startsWith('alt:') ? alternate : current }));
+      const brains = order.map(i => ({ level: seats[i].replace(/^(alt|old):/, ''), mod: seats[i].startsWith('alt:') ? alternate : current,
+        brain: seats[i].startsWith('alt:') ? planner(alternate) : seats[i].startsWith('old:') ? planner(current) : rootCommander }));
       const g = sim.createGame(map, order.map(i => 'AI ' + seats[i]), true, order.map((_, i) => i), factionIds, { mode: options.mode, army: options.army });
       const spawns = g.players.map(p => map.spawns.findIndex(s => (s.x + 0.5) * sim.CELL === p.spawn.x && (s.y + 0.5) * sim.CELL === p.spawn.z));
       const initialCache = sim.snapshotCache(g);
       const views = brains.map((b, slot) => b.mod.observe?.(g, slot, initialCache));
-      const aiSeats = brains.map((b, slot) => ({ slot, level: b.level, ai: b.mod }));
+      const aiSeats = brains.map((b, slot) => ({ slot, level: b.level, brain: b.brain }));
       for (let tick = 0; tick < maxTicks && g.winner === null; tick++) {
         sim.step(g);
         // The server's schedule: views on the two-tick delivery beat, only for seats about to think.
@@ -90,7 +95,7 @@ if (!isMainThread) {
   options.root = resolve(options.root);
   if (options.seats) {
     options.seats = options.seats.split(',');
-    if (options.seats.length !== 2 || options.seats.some(s => !/^(alt:)?(easy|normal|hard)$/.test(s))) throw new Error('--seats requires two valid difficulties');
+    if (options.seats.length !== 2 || options.seats.some(s => !/^(alt:|old:)?(easy|normal|hard)$/.test(s))) throw new Error('--seats requires two valid difficulties');
     if (options.seats.some(s => s.startsWith('alt:')) && !options.alt) throw new Error('alternate seat needs --alt');
   }
   if (options.rotate && !options.seats) throw new Error('--rotate requires --seats');
@@ -130,7 +135,7 @@ if (!isMainThread) {
   const ratios = results.map(r => r.runnerUpVpRatio).filter(r => r !== null);
   const result = {
     root: options.root, mode: options.mode, map: options.map, players: results[0].spawns.length, seats: options.seats, rotate: options.rotate, alt: options.alt, winsBySeat: options.seats?.map((_, i) => wins.filter(r => r.winnerSeat === i).length) ?? null, army: options.army, seed: options.seed,
-    matches: options.matches, workers: options.workers, maxSeconds: options.seats ? (options.mode === 'classic' ? 2400 : 1800) : 1200,
+    matches: options.matches, workers: options.workers, maxSeconds: options.mode === 'classic' ? 2400 : options.seats ? 1800 : 1200,
     winsByFaction: byFaction, winsBySpawn: bySpawn,
     ended: ended.length, draws: ended.length - wins.length, timeouts: options.matches - ended.length,
     medianSeconds: median(results.map(r => r.seconds)), medianEndedSeconds: median(ended.map(r => r.seconds)),

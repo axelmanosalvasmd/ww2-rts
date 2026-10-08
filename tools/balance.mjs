@@ -7,7 +7,7 @@ import { resolve, dirname } from 'node:path';
 import { fileURLToPath, pathToFileURL } from 'node:url';
 import { Worker, isMainThread, parentPort, workerData } from 'node:worker_threads';
 import { availableParallelism } from 'node:os';
-import { aiTick } from '../shared/ai-schedule.js';
+import { aiTick, planner } from '../shared/ai-schedule.js';
 
 const here = fileURLToPath(import.meta.url);
 
@@ -24,6 +24,8 @@ function seededRandom(initial) {
 async function playMatches({ root, mode, map: mapName, seeds }) {
   const sim = await import(pathToFileURL(resolve(root, 'shared/sim.js')).href);
   const { think, observe, thinkEvery } = await import(pathToFileURL(resolve(root, 'shared/ai.js')).href);
+  // The root's own commander when it has one; an older checkout plays its planner.
+  const rootCommander = (await import(pathToFileURL(resolve(root, 'shared/ai-schedule.js')).href).catch(() => ({}))).commander;
   const { UNITS, CELL, COVER, TRENCH } = sim;
   // Use the current graded cover rule, including woods, house corners and wrecks.
   const sheltered = (g, t, f) => {
@@ -38,8 +40,8 @@ async function playMatches({ root, mode, map: mapName, seeds }) {
     try {
       const names = ['AI 1', 'AI 2', 'AI 3'];
       const g = sim.createGame(map, names, true, [0, 1, 2], [0, 1, 2], { mode });
-      const initialCache = sim.snapshotCache(g), ai = { think, observe, thinkEvery };
-      const views = g.players.map((_, slot) => observe(g, slot, initialCache)), seats = g.players.map((_, slot) => ({ slot, level: 'normal', ai }));
+      const initialCache = sim.snapshotCache(g), brain = rootCommander ?? planner({ think, observe, thinkEvery });
+      const views = g.players.map((_, slot) => observe(g, slot, initialCache)), seats = g.players.map((_, slot) => ({ slot, level: 'normal', brain }));
       const vehicle = t => t && !UNITS[t.type].infantry && !UNITS[t.type].structure && !t.air;
       // Behavior counters, read from the shots each tick reports (the same feed the clients get).
       const m = { vehHits: 0, rearHits: 0, frontHits: 0, infHits: 0, infHitsCovered: 0, infHitsSheltered: 0, atShots: 0, atOnVehicles: 0,

@@ -19,7 +19,9 @@ if (!['classic', 'conquest', 'all'].includes(options.scenario)) throw new Error(
 
 const sim = await import(pathToFileURL(resolve(options.root, 'shared/sim.js')).href);
 const ai = await import(pathToFileURL(resolve(options.root, 'shared/ai.js')).href);
-const { aiTick } = await import('../shared/ai-schedule.js');
+const { aiTick, planner } = await import('../shared/ai-schedule.js');
+// The root's own commander when it has one; an older checkout plays its planner.
+const brain = (await import(pathToFileURL(resolve(options.root, 'shared/ai-schedule.js')).href).catch(() => ({}))).commander ?? planner(ai);
 const seed = 0x3c1055;
 function seededRandom(initial) {
   let value = initial;
@@ -57,7 +59,7 @@ async function run(scenario) {
     const samples = { tick: [], step: [], think: [], snapshotBuild: [], stringify: [], snapshotTotal: [], snapshotTick: [] };
     const bytes = names.map(() => []);
     let peakUnits = game.units.size;
-    const seats = names.map((_, slot) => ({ slot, level: 'normal', ai })), views = [], first = sim.snapshotCache(game);
+    const seats = names.map((_, slot) => ({ slot, level: 'normal', brain })), views = [], first = sim.snapshotCache(game);
     for (const { slot } of seats) views[slot] = ai.observe(game, slot, first);
     for (let t = 0; t < options.ticks; t++) {
       const start = clock();
