@@ -29,10 +29,12 @@ const SUPPORT_TIP = { recon: 'Reveals a wide area for 15s', artillery: '10 shell
   dive: 'One heavy bomb, right on the spot: tanks, guns, houses', para: 'Drops two rifle squads and an MG team where your side can see (3 toward pop)',
   cover: 'Fighters intercept the next enemy air strike over the area for 60s (not recon)' };
 const FORT_TIP = { trench: 'Heavy cover for infantry', sandbags: 'Cover for infantry', wire: 'Slows infantry; tanks flatten it', traps: 'Stops vehicles; cover for infantry',
-  nest: 'A trench pit behind a horseshoe of sandbags', mines: 'Hidden from the enemy; goes off under the first enemy squad or vehicle',
+  nest: 'A trench pit behind a horseshoe of sandbags. An MG, AT gun, mortar, flak gun or howitzer standing in the pit reaches 25% farther', mines: 'Hidden from the enemy; goes off under the first enemy squad or vehicle',
   bridge: 'Across a river, up to 5 cells; aim it along the crossing',
   fill: 'Shovels craters, flooded craters and sunken ground back to open ground, and clears rubble (a road gets its road back)',
   demine: `Lifts the mines your side knows about: your own, and enemy ones a builder squad found by standing within ${CFG.mine.detect} m`,
+  wall: 'Concrete, Engineers only: stops infantry and vehicles and blocks sight; explosives breach it a block at a time',
+  gate: 'Three cells of wall that stand open for your side and allies, and shut while an enemy is within 16 m',
   aid: `Infantry within ${CFG.aid.radius} m reinforce for manpower, at half the HQ's pace. One per player` };
 const ENTRENCH_TIP = { line: 'One straight trench from the first click to the second', zigzag: 'A sawtooth trench: more room on the same frontage',
   double: 'Two rows, the second 6 m behind the first', arc: 'A crescent around the first click, bowed toward the second',
@@ -42,7 +44,7 @@ const STANCE = { holdFire: [2048, 'Hold fire', 'shoot only when given an attack 
   holdPos: [4096, 'Hold position', 'never move without an order, not even to cover'],
   autoRetreat: [8192, 'Auto-retreat', `run for home when below ${Math.round(CFG.autoRetreat * 100)}% strength`] };
 const BUILD_ROLE = { hq: 'Forward HQ: retreat point, trains Engineers', supplycache: 'Stores delivered supplies', armory: 'Researches weapon and armor upgrades', depot: 'On a resource node: +1.5 MP/s', barracks: 'Trains MGs and elite infantry', motorpool: 'Trains AT guns, tanks, rockets',
-  airfield: 'Trains planes; their base', flakpos: 'Shoots down planes over your base', shipyard: 'On the coast: trains landing craft' };
+  airfield: 'Trains planes; their base', flakpos: 'Shoots down planes over your base', pillbox: 'Concrete MG post: shrugs off rifles, weak from behind', tower: 'Timber lookout: sees 60 m over walls and houses', shipyard: 'On the coast: trains landing craft' };
 const AIR_STATE = ['Ready', 'Flying out', 'On station', 'Heading home', 'Rearming'];
 const AIMED = new Set(['grenade', 'barrage', 'satchel']); // abilities that need a spot clicked
 
@@ -315,7 +317,10 @@ export function createHud(ctx) {
   // ---------- bottom left: orders ----------
   // Formation, Build and Trenches are submenus: their buttons open a second grid under the orders, which stays open
   // until clicked again. The hotkeys work with the menus closed.
-  let ordKey = '', menu = null;
+  // the Build menu sorts its buttons into tabs; hotkeys stay direct (Shift+letter), so the tabs are only for the eye
+  const BUILD_TABS = { base: 'Base', defense: 'Defenses', field: 'Field works', eng: 'Engineering' };
+  const FORT_TAB = { nest: 'defense', wall: 'defense', gate: 'defense', bridge: 'eng', fill: 'eng', demine: 'eng', aid: 'eng' }; // the rest are field works
+  let ordKey = '', menu = null, buildTab = 'base';
   const SHAPE_TIP = { line: 'ranks of up to ten across the facing; a longer right-drag fits more side by side',
     block: 'a square, widened by a longer right-drag', column: 'two files deep, for roads and gaps', wedge: 'an arrowhead, one unit at the tip' };
   const MENUS = { form: ['f_wedge', 'Form', 'Formation'], build: ['sandbags', 'Build', 'Build'], trench: ['e_zigzag', 'Trench', 'Trench patterns'] };
@@ -328,9 +333,15 @@ export function createHud(ctx) {
       orderBtn('data-f="together"', 'f_together', '', 'March together: the group moves at the pace of its slowest unit and arrives in one piece') +
       orderBtn('data-f="snap"', 'f_snap', '', 'Snap to trenches: infantry placed within 3 m of a trench step into it');
     // outside Classic the Build menu also puts up a Flak Emplacement (in Classic the Engineers' card has it)
-    if (m === 'build') return (ctx.logistics().enabled && UNITS.supplycache ? orderBtn('data-a="bld:supplycache"', 'supplycache', '', 'Supply Cache: stores delivered supplies. 60 MP, 12 s') : '') +
-      (ctx.classic() ? '' : buildKinds(false, isSkirmishBaseMode(snapshot)).filter(k => k !== 'supplycache' && (k !== 'shipyard' || ctx.naval()) && (k !== 'armory' || snapshot?.tech)).map(k => orderBtn(`data-a="bld:${k}"`, k, '', `${UNITS[k].name}: ${UNITS[k].cost} MP, ${UNITS[k].buildTime}s. Click where; selected builder squads construct it. Right-click a damaged building to repair it`, k)).join('')) +
-      Object.entries(FORTS).map(([k, f]) => orderBtn(`data-a="fort:${k}"`, k, FORT_BADGES[k], `${f.name}${FORT_KEYS[k] ? ` (${FORT_KEYS[k]})` : ''}: ${FORT_TIP[k] ?? ''}. ${lineFort(k) && k !== 'trench' ? 'Click where it starts, then where it ends: one piece, or a continuous line that every selected builder squad works on. Price per piece' : 'Click where; the nearest builder squad puts it across its approach'}`)).join('');
+    if (m === 'build') {
+      const tabs = { base: [], defense: [], field: [], eng: [] };
+      if (ctx.logistics().enabled && UNITS.supplycache) tabs.base.push(orderBtn('data-a="bld:supplycache"', 'supplycache', '', 'Supply Cache: stores delivered supplies. 60 MP, 12 s'));
+      if (!ctx.classic()) for (const k of buildKinds(false, isSkirmishBaseMode(snapshot)).filter(k => k !== 'supplycache' && (k !== 'shipyard' || ctx.naval()) && (k !== 'armory' || snapshot?.tech)))
+        tabs[['flakpos', 'pillbox', 'tower'].includes(k) ? 'defense' : 'base'].push(orderBtn(`data-a="bld:${k}"`, k, '', `${UNITS[k].name}: ${UNITS[k].cost} MP, ${UNITS[k].buildTime}s. Click where; selected builder squads construct it. Right-click a damaged building to repair it`, k));
+      for (const [k, f] of Object.entries(FORTS)) tabs[FORT_TAB[k] ?? 'field'].push(orderBtn(`data-a="fort:${k}"`, k, FORT_BADGES[k], `${f.name}${FORT_KEYS[k] ? ` (${FORT_KEYS[k]})` : ''}: ${FORT_TIP[k] ?? ''}. ${lineFort(k) && k !== 'trench' ? 'Click where it starts, then where it ends: one piece, or a continuous line that every selected builder squad works on. Price per piece' : 'Click where; the nearest builder squad puts it across its approach'}`));
+      const shown = Object.keys(BUILD_TABS).filter(t => tabs[t].length), cur = shown.includes(buildTab) ? buildTab : shown[0];
+      return `<div class="tabs" role="tablist">${shown.map(t => `<button role="tab" data-tab="${t}" class="${t === cur ? 'on' : ''}" aria-selected="${t === cur}">${BUILD_TABS[t]}</button>`).join('')}</div>` + tabs[cur].join('');
+    }
     return ENTRENCH_TYPES.map((k) => orderBtn(`data-a="ent:${k}"`, `e_${k}`, k === 'line' ? badge('entrench:line') : '',
       `${ENTRENCH[k]}${k === 'line' ? ` (${label('entrench:line')})` : ''}: ${ENTRENCH_TIP[k]}. Every selected builder squad digs; each segment is paid as it is started. Shift on the second click queues it. Right-click a planned pattern with other squads to send them to help`)).join('');
   }
@@ -352,7 +363,7 @@ export function createHud(ctx) {
     const types = ctx.PRIORITY.filter((t) => sel.some((v) => v.type === t)), dig = sel.some((v) => CFG.fortBuilders.includes(v.type));
     const inf = sel.some((v) => UNITS[v.type].infantry), carry = sel.some((v) => UNITS[v.type].carries), shell = sel.some((v) => UNITS[v.type].w?.salvo);
     if (menu && menu !== 'form' && !dig) menu = null;
-    const key = bld || !sel.length ? '' : `${types.join()}|${dig}|${inf}|${carry}|${shell}|${menu}`;
+    const key = bld || !sel.length ? '' : `${types.join()}|${dig}|${inf}|${carry}|${shell}|${menu}|${buildTab}`;
     if (key !== ordKey) {
       ordKey = key;
       el.innerHTML = !key ? '' : '<div class="hd">Orders</div><div class="grid">' +
@@ -364,7 +375,7 @@ export function createHud(ctx) {
         (inf ? orderBtn('data-a="cover"', 'takecover', badge('cover'), `Take cover (${label('cover')}): infantry run to the nearest trench, wall or rubble within ${CFG.coverSeek} m. Shift+click queues it`) : '') +
         (carry ? orderBtn('data-a="unload"', 'unload', badge('unload'), `Unload (${label('unload')}): the squad inside gets out beside the halftrack. To board, right-click the halftrack with infantry selected`) : '') +
         menuBtn('form', 'Formation: shape, spacing, marching together and snapping to trenches. Right-drag sets the facing and the width; double right-click turns to face a spot') +
-        (dig ? menuBtn('build', 'Build: sandbags, wire, traps, nests, mines, bridges and more') + menuBtn('trench', 'Trench patterns: lines, zigzags, rings and strongpoints the builder squads dig together') : '') +
+        (dig ? menuBtn('build', 'Build: defenses, sandbags, wire, traps, mines, bridges and more') + menuBtn('trench', 'Trench patterns: lines, zigzags, rings and strongpoints the builder squads dig together') : '') +
         types.map((t) => { const ab = UNITS[t].ab; return orderBtn(`data-a="${t}"`, ab.id === 'smoke' ? 'smokeab' : ab.id, '', `${ab.name}: ${name(t)}${AIMED.has(ab.id) ? ', click where' : ''}. ${ab.cd}s cooldown. Right-click: autocast on/off`, t); }).join('') +
         '</div><div class="control-transfer"><label>Control group <select data-group-destination aria-label="Destination control group">' + Array.from({ length: 9 }, (_, i) => `<option value="${i + 1}">${i + 1}</option>`).join('') + '</select></label><button data-group-transfer title="Alt+1 to Alt+9 moves selected units and removes them from other groups">Move to group</button></div>' + (menu ? `<div class="hd sub">${MENUS[menu][2]}</div><div class="grid">${menuHTML(menu)}</div>` : '');
       el.querySelector('[data-group-transfer]')?.addEventListener('click', () => ctx.transferGroup(el.querySelector('[data-group-destination]').value));
@@ -378,6 +389,7 @@ export function createHud(ctx) {
         if (UNITS[a]) b.oncontextmenu = (e) => { e.preventDefault(); ctx.autocast(a); };
       });
       el.querySelectorAll('button[data-m]').forEach((b) => (b.onclick = () => { menu = menu === b.dataset.m ? null : b.dataset.m; drawOrders(s, sel); }));
+      el.querySelectorAll('button[data-tab]').forEach((b) => (b.onclick = () => { buildTab = b.dataset.tab; drawOrders(s, sel); }));
       el.querySelectorAll('button[data-f]').forEach((b) => (b.onclick = () => {
         const f = b.dataset.f;
         if (f.startsWith('shape:')) ctx.setForm({ shape: f.slice(6) });

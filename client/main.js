@@ -15,7 +15,7 @@ import { createFormationPreview } from './formation-preview.js';
 import { facingSpots, slotSize, SHAPES } from '/shared/formation.js';
 import { availability, denySentence, placementState, rememberPlacementTerrain } from './availability.js';
 import { createFeedback } from './feedback.js';
-import { UNITS, UNIT_TYPES, CELL, CFG, SUPPORT, SUPPORT_TYPES, BUILDABLE, builderTypes, isSkirmishBaseMode, productionAccess, levelOf, levelChar, startState, canBuild, winVp, supCost, popCap, abCost, priceOf, FORTS, lineFort, placementCheck, ENTRENCH, entrenchPlan, segmentCost, RIDING_FLAG, TERRAIN, TRENCH } from '/shared/sim.js';
+import { UNITS, UNIT_TYPES, CELL, CFG, SUPPORT, SUPPORT_TYPES, GATE_OPEN_FLAG, BUILDABLE, builderTypes, isSkirmishBaseMode, productionAccess, levelOf, levelChar, startState, canBuild, winVp, supCost, popCap, abCost, priceOf, FORTS, lineFort, placementCheck, ENTRENCH, entrenchPlan, segmentCost, RIDING_FLAG, TERRAIN, TRENCH } from '/shared/sim.js';
 import { alerts } from './alerts.js';
 import { setupLight, renderFrame } from './light.js';
 import { createAtmosphere } from './atmosphere.js';
@@ -76,7 +76,7 @@ const isAir = (type) => !!UNITS[type]?.air;
 const worldMode = () => !!lastStart?.map?.world || lobbyState?.mode === 'world';
 const classicMode = () => ['classic', 'world'].includes(lobbyState?.mode) || !!lastStart?.map?.world;
 const isVeh = (type) => !UNITS[type].infantry;
-const barY = (type) => (isAir(type) ? AIR_ALT + 2.5 : type === 'bunker' || type === 'hq' || type === 'barracks' || type === 'motorpool' || type === 'shipyard' ? 7.5 : type === 'destroyer' || type === 'kaiju' ? 24 : type === 'gunboat' ? 5 : type === 'depot' ? 4.5 : type === 'tiger' || type === 'churchill' || type === 'medium' ? 4.2 : isVeh(type) ? 3.4 : 2.4);
+const barY = (type) => (isAir(type) ? AIR_ALT + 2.5 : type === 'bunker' || type === 'tower' || type === 'hq' || type === 'barracks' || type === 'motorpool' || type === 'shipyard' ? 7.5 : type === 'destroyer' || type === 'kaiju' ? 24 : type === 'gunboat' ? 5 : type === 'depot' || type === 'pillbox' ? 4.5 : type === 'tiger' || type === 'churchill' || type === 'medium' ? 4.2 : isVeh(type) ? 3.4 : 2.4);
 const regionTeamColor = (team) => css(team < 0 ? 0xaaaaaa : COLORS[teams.indexOf(team)] ?? 0xaaaaaa);
 const css = (c) => '#' + c.toString(16).padStart(6, '0');
 const esc = (s) => String(s).replace(/[&<>"']/g, (c) => `&#${c.charCodeAt(0)};`);
@@ -740,6 +740,18 @@ function seatTrench(v) {
 }
 
 const hulks = new Map(); // wreck id -> its model
+// a destroyed Scout Tower keels over about its base, then crashes down in dust where the top lands
+const toppling = [];
+function topple(dt) {
+  for (let i = toppling.length - 1; i >= 0; i--) {
+    const f = toppling[i]; f.t += dt;
+    const a = Math.min(Math.PI / 2, 1.6 * f.t * f.t);
+    f.v.root.rotation.set(0, f.dir, 0); f.v.root.rotateZ(-a); // rotation.y = -dir faces it; tipping about z drops it along that way
+    if (a < Math.PI / 2) continue;
+    world.remove(f.v.root); toppling.splice(i, 1);
+    effects.wreck({ type: 'tower', x: f.v.x + Math.cos(f.dir) * 6, z: f.v.z + Math.sin(f.dir) * 6 });
+  }
+}
 function removeUnit(v) {
   releaseBuildingBreach(v);
   releaseWheels(v);
@@ -748,6 +760,8 @@ function removeUnit(v) {
   if (isAir(v.type)) {
     // a plane shot down falls as its own copy, drawn from the 'planedown' shot (client/aircraft.js); this one just goes
     aviation.release(v); world.remove(v.root);
+  } else if (v.killed && v.type === 'tower') {
+    toppling.push({ v, t: 0, dir: Math.random() * Math.PI * 2 });
   } else if (v.killed && isVeh(v.type)) {
     // it burns; the hull that stays is drawn from the snapshot's wrecks (see hulks)
     world.remove(v.root);
@@ -819,6 +833,7 @@ function applySnapshot(s) {
     Object.assign(v, { owner, tx: x, tz: z, trot: rot, taim: aim, hp, supp, tgt, cover, cd, flags, vet: stars || 0, moveSpeed: moveSpeed ?? 0, vx: vx ?? 0, vz: vz ?? 0, travelDir: travelDir ?? rot, garr: !!(flags & 32), built: built ?? 1, plan: null, orders: [] });
     if (!productionAccess({ mode: s.mode, players: teams.map(team => ({ team })) }, v, me)) { v.rally = null; v.queue = []; v.productionJobs = []; }
     if (v.body) v.body.scale.y = 0.15 + 0.85 * v.built; // a construction site rises as it's built
+    if (v.door) v.door.visible = !(flags & GATE_OPEN_FLAG); // a gate's door shows while it is shut
     v.stars.forEach((st, i) => (st.visible = i < v.vet));
     const cl = !v.garr && COVER_LOOK[cover];
     v.shield.visible = !!cl;
@@ -844,7 +859,7 @@ function applySnapshot(s) {
   }
   autocast.adopt(s.units, me, classicMode()); // new units of a type take the player's remembered autocast choice
   for (const sh of s.shots) {
-    if (sh.kill && units.get(sh.t)) units.get(sh.t).killed = true;
+    if ((sh.kill || (sh.k === 'collapse' && units.get(sh.t)?.type === 'tower')) && units.get(sh.t)) units.get(sh.t).killed = true; // a wrecked tower topples
     if (!airShot(sh)) continue;
     // planes, parachutes, flak and shoot-downs are drawn by client/aircraft.js; their sounds go through client/audio.js
     const at = { x: sh.x, z: sh.z };
@@ -1753,6 +1768,7 @@ renderer.setAnimationLoop(() => {
   water?.tick(now);
   // camera
   rig.update(dt);
+  if (toppling.length) topple(dt);
 
   // units: smooth toward the latest server state
   const k = 1 - Math.exp(-sdt * 1000 / snapshotGap), ranges = rangeRings(), interested = animationInterest(camera);

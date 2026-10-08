@@ -2,6 +2,7 @@ import { sendsReadBy } from './test-socket.js';
 // World Conquest acceptance checks use the same WebSocket messages as the browser.
 import assert from 'node:assert/strict';
 import WebSocket from 'ws';
+import { UNITS } from './shared/sim.js';
 
 Object.assign(process.env, { PORT: '0', EDIT_PASSWORD: 'test', PUBLIC_URL: 'http://test' });
 const server = await import('./server.js');
@@ -81,7 +82,7 @@ try {
   const base = [...game.units.values()].find(u => u.type === 'worldbase' && u.region === region.id);
   const rifle = [...game.units.values()].find(u => u.owner === 0 && u.type === 'rifle');
   const engineer = [...game.units.values()].find(u => u.owner === 0 && u.type === 'engineer');
-  const guards = [...game.units.values()].filter(u => u.owner === -1 && u.type !== 'worldbase' && Math.hypot(u.x - region.x, u.z - region.z) < 20);
+  const guards = [...game.units.values()].filter(u => u.owner === -1 && !UNITS[u.type].building && Math.hypot(u.x - region.x, u.z - region.z) < 20);
   for (const u of game.units.values()) u.holdFire = true;
   guards.forEach((u, i) => Object.assign(u, { x: region.x + 12, z: region.z + 8 + i * 3, guardHome: { x: region.x + 12, z: region.z + 8 + i * 3 } }));
   Object.assign(rifle, { x: region.x, z: region.z });

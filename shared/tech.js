@@ -2,7 +2,7 @@
 
 // the HQ tier a unit or building needs; anything not listed is tier 1
 export const TIER = {
-  motorpool: 2, shipyard: 2, armory: 2,
+  motorpool: 2, shipyard: 2, armory: 2, pillbox: 2,
   halftrack: 2, armoredcar: 2, flaktrack: 2, tank: 2, at: 2, mortar: 2, flak: 2, lcvp: 2, gunboat: 2,
   airfield: 3, medium: 3, tankdestroyer: 3, rocket: 3, howitzer: 3, tiger: 3, churchill: 3, ranger: 3, commando: 3, destroyer: 3,
   fighter: 3, attacker: 3, bomber: 3,

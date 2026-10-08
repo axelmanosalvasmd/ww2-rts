@@ -324,8 +324,10 @@ function plan(observation, slot, opts, mem, send) {
   const rush = rule(2) && now < 240 ? recent.filter(e => now - e.t < 5 && ownB.some(b => d(b, e) < 35)) : [];
   // rule 1, counters: tanks seen lately push the Motor Pool (for AT guns) up the build order
   const seenArmor = recent.filter(e => HEAVY.has(e.type)).length, seenInf = recent.filter(e => UNITS[e.type].infantry).length;
-  me.mp -= research(view, slot, classic, submit); // MP saved for the next HQ tier is hidden from every other spender
+  const saved = research(view, slot, classic, submit); // MP saved for the next HQ tier is hidden from every other spender
+  me.mp -= saved;
   const reserve = (classic ? (rush.length ? 0 : 1) * buildEconomy(view, slot, all.filter(u => u.type === 'engineer'), counters && seenArmor > 0, mem, submit) : skirmish ? buildSkirmishBase(view, slot, all, submit) : 0);
+  const fortReserve = (classic || skirmish) && !rush.length ? fortify(view, slot, all, classic, reserve, saved, mem, submit) : 0;
   // Classic: only what my finished buildings can train (and, with HQ tiers, what my tier allows)
   const trains = (t) => (!me.tech || tierOf(t) <= me.tech.tier) && (skirmish ? productionBuildings(view, slot, t).length > 0 : !classic || grid.ownedBy(slot).some(b => b.built >= 1 && UNITS[b.type].makes?.includes(t)));
   const mine = all.filter(u => u.type !== 'engineer' && !(skirmish && u.build)); // Engineers build; everyone else fights
@@ -427,7 +429,7 @@ function plan(observation, slot, opts, mem, send) {
   if (classic && count('engineer') < (view.nodes.some((_, i) => !view.claimedNodes.has(i)) ? 2 : 1)) buy = 'engineer';
   // Classic: save up for the next building, unless the army is nearly gone
   // big armies: buy several at a time (one per decision can't keep a 60-unit army topped up)
-  if (!horde && trains(buy)) for (let k = 0; k < (view.army?.pop > 1 ? 4 : 1); k++) if (me.mp - (mine.length >= 3 ? reserve : 0) >= priceOf(view, buy).mp) submit({ t: 'buy', unit: buy });
+  if (!horde && trains(buy)) for (let k = 0; k < (view.army?.pop > 1 ? 4 : 1); k++) if (me.mp - (mine.length >= 3 ? reserve + fortReserve : 0) >= priceOf(view, buy).mp) submit({ t: 'buy', unit: buy });
 
   // how many of my units are at or heading to each point
   const pointOf = (pos) => view.points.findIndex(p => d(pos, p) <= CFG.pointRadius);
@@ -857,6 +859,64 @@ function buildSkirmishBase(view, slot, squads, submit) {
     if (submit({t:'build',ids:[u.id],kind:next,...at}) === undefined) return 0;
   }
   return UNITS[next].cost;
+}
+
+// Fortifying (docs/superpowers/plans/2026-10-08-fortress-buildings.md): after the first minutes, with MP over the build
+// order's reserve (the tier savings count once the bank also holds `bank`), each HQ of mine (forward HQs too, so the
+// front gets them) is fortified in steps toward
+// its threat: a Scout Tower, a Pillbox (Company HQ), then a concrete wall across the threat side `wall` metres out with
+// a Gate in the middle, then two flank walls angled back. The back stays open, so a base is never sealed in; gates shut
+// only while an enemy is near. One job at a time; damaged pieces are repaired by the build order's repair pass.
+// Returns the MP the next step needs, which unit buying keeps back, so the walls do go up.
+const FORTIFY = { after: 150, bank: 300, tower: 10, pillbox: 14, wall: 24, half: 14, gap: 3 };
+function fortify(view, slot, squads, classic, reserve, saved, mem, submit) {
+  const me = view.players[slot], tier = me.tech?.tier ?? 3;
+  if (view.tick / 20 < FORTIFY.after || (view.mode?.kind === 'assault' && me.team !== view.mode.defenderTeam)) return 0;
+  const kinds = classic ? ['engineer'] : CFG.fortBuilders;
+  const crew = squads.filter(u => kinds.includes(u.type) && !u.retreating && !u.build && !u.targetId && !u.dig && !u.entrench && u.garrison < 0);
+  const own = [...view.units.values()].filter(b => b.owner === slot && b.hp > 0 && UNITS[b.type].building);
+  if (!crew.length || own.some(b => ['pillbox', 'tower', 'wall', 'gate'].includes(b.type) && b.built < 1) || squads.some(u => u.entrench || u.dig?.kind === 'wall')) return 0;
+  const sites = view.mode?.kind === 'world' ? { ...view, players: view.players.filter(p => p.spawn) } : view; // unscouted homes have no spawn
+  const spare = Math.max(me.mp, me.mp + saved - FORTIFY.bank) - reserve, steps = mem.fortSteps ??= new Map();
+  const toward = (hq) => {
+    const foes = view.mode?.kind === 'world' ? (view.world?.regions ?? []).filter(r => r.team !== me.team) : view.players.filter(q => q.spawn && q.team !== me.team && !q.out).map(q => q.spawn);
+    const at = foes.sort((a, b) => d(a, hq) - d(b, hq))[0] ?? { x: view.w * CELL / 2, z: view.h * CELL / 2 };
+    return Math.atan2(at.z - hq.z, at.x - hq.x);
+  };
+  for (const hq of own.filter(b => b.type === 'hq' && b.built >= 1)) {
+    const step = steps.get(hq.id) ?? 0, a = toward(hq), fx = Math.cos(a), fz = Math.sin(a);
+    const u = crew.sort((p, q) => d(p, hq) - d(q, hq))[0];
+    const ok = (cmd) => placementCheck(view, { ...cmd, team: me.team }, p => view.sees(p)).ok;
+    const next = () => { steps.set(hq.id, step + 1); return 0; };
+    if (step === 0) {
+      if (spare < UNITS.tower.cost) return UNITS.tower.cost;
+      const at = siteNear(sites, hq.x + fx * FORTIFY.tower - fz * 6, hq.z + fz * FORTIFY.tower + fx * 6, 1);
+      if (at && ok({ kind: 'tower', ...at })) submit({ t: 'build', ids: [u.id], kind: 'tower', ...at });
+      return next();
+    }
+    if (step === 1) {
+      if (tier < 2) continue;
+      if (spare < UNITS.pillbox.cost) return UNITS.pillbox.cost;
+      const at = siteNear(sites, hq.x + fx * FORTIFY.pillbox, hq.z + fz * FORTIFY.pillbox, 2);
+      if (at && ok({ kind: 'pillbox', ...at })) submit({ t: 'build', ids: [u.id], kind: 'pillbox', ...at, dir: a });
+      return next();
+    }
+    // the wall: across the threat side (step 2: the front pieces, step 3: its gate), then the flanks (steps 4, 5)
+    // square to the grid, so the wall runs straight and the gate (always along the grid) fills its gap
+    const sq = Math.round(a / (Math.PI / 2)) * (Math.PI / 2), wx = Math.round(Math.cos(sq)), wz = Math.round(Math.sin(sq));
+    const mid = { x: hq.x + wx * FORTIFY.wall, z: hq.z + wz * FORTIFY.wall }, px = -wz, pz = wx, gap = FORTIFY.gap * CELL / 2 + 1;
+    const line = (from, to, queue = false) => ({ t: 'entrench', ids: crew.map(v => v.id).slice(0, 2), pattern: 'line', fort: 'wall', x: from.x, z: from.z, x2: to.x, z2: to.z, queue });
+    const flank = (side) => { const end = { x: mid.x + px * side * FORTIFY.half, z: mid.z + pz * side * FORTIFY.half }; return line(end, { x: end.x - wx * FORTIFY.half, z: end.z - wz * FORTIFY.half }); };
+    if (step >= 6 || tier < 2) continue;
+    if (spare < FORTS.wall.cost * 2) return FORTS.wall.cost * 2;
+    if (step === 2) {
+      submit(line({ x: mid.x + px * gap, z: mid.z + pz * gap }, { x: mid.x + px * FORTIFY.half, z: mid.z + pz * FORTIFY.half }));
+      submit(line({ x: mid.x - px * gap, z: mid.z - pz * gap }, { x: mid.x - px * FORTIFY.half, z: mid.z - pz * FORTIFY.half }, true));
+    } else if (step === 3) { if (ok({ kind: 'gate', ...mid, dir: Math.atan2(pz, px) })) submit({ t: 'dig', kind: 'gate', ids: [u.id], ...mid, dir: Math.atan2(pz, px) }); }
+    else submit(flank(step === 4 ? 1 : -1));
+    return next();
+  }
+  return 0;
 }
 
 // HQ tiers: a building above my tier waits (`instead` goes up meanwhile); at Company HQ an Armory joins the build order

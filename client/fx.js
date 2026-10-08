@@ -102,6 +102,7 @@ const GUNS = {
   commando: { ...SMALL, snd: 'smg', burst: 3, gap: 0.06, flash: 0.26 },
   mg: { ...SMALL, snd: 'mg', n: 1, burst: 4, gap: 0.065, spd: 210, w: 0.085, tr: FX.tracer, trOdds: 1, flash: 0.45 },
   bunker: { ...SMALL, snd: 'mg', n: 1, burst: 4, gap: 0.08, spd: 210, w: 0.085, tr: FX.tracer, trOdds: 1, flash: 0.5 },
+  pillbox: { ...SMALL, snd: 'mg', n: 1, burst: 4, gap: 0.08, spd: 210, w: 0.085, tr: FX.tracer, trOdds: 1, flash: 0.5 },
   sniper: { ...SMALL, snd: 'sniper', n: 1, spd: 420, w: 0.035, trOdds: 0.6, flash: 0.4 },
   at: { ...SMALL, snd: 'atgun', n: 1, spd: 150, w: 0.16, tr: FX.tracerHot, trOdds: 1, flash: 1.3, heavy: 2.4, smoke: 1, blast: 1 },
   tank: { ...SMALL, snd: 'tankgun', n: 1, spd: 150, w: 0.16, tr: FX.tracerHot, trOdds: 1, flash: 1.4, heavy: 2.6, smoke: 1, blast: 1 },
@@ -706,9 +707,9 @@ export function createEffects({ scene, camera, cam, hAt, units, airAlt = 20, map
       const body = type === 'lcvp' ? v.visualBody ?? v.root : v.root;
       body.updateWorldMatrix(true, false); v3.set(fixed[0], fixed[1], (k + v.fxGun) % 2 ? fixed[2] : -fixed[2]).applyMatrix4(body.matrixWorld); return true;
     }
-    if (type === 'bunker') {
-      const dx = tx - v.x, dz = tz - v.z, d = Math.hypot(dx, dz) || 1;
-      v3.set(v.x + dx / d * 2.8, hAt(v.x, v.z) + 1.6, v.z + dz / d * 2.8); return true;
+    if (type === 'bunker' || type === 'pillbox') {
+      const dx = tx - v.x, dz = tz - v.z, d = Math.hypot(dx, dz) || 1, r = type === 'bunker' ? 2.8 : 1.8;
+      v3.set(v.x + dx / d * r, hAt(v.x, v.z) + (type === 'bunker' ? 1.6 : 1.1), v.z + dz / d * r); return true;
     }
     const tip = barrelTip(v);
     if (tip) { v.turret.updateWorldMatrix(true, false); v3.set(tip[0], tip[1], tip[2]).applyMatrix4(v.turret.matrixWorld); return true; }

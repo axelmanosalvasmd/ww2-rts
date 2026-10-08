@@ -230,6 +230,9 @@
   .vet { color: var(--brass); font-size: 13px; letter-spacing: 1px; }
   #abil .grid { display: grid; grid-template-columns: repeat(4, 1fr); gap: 3px; }
   #abil .hd.sub { margin-top: 6px; }
+  #abil .tabs { grid-column: 1 / -1; display: flex; gap: 3px; }
+  #abil .tabs button { flex: 1; padding: 4px 2px; font-size: 12px; white-space: nowrap; }
+  #abil .tabs button.on { border-color: var(--line-hot); background: rgba(214, 178, 94, 0.1); color: var(--brass); }
   #abil .ob { width: auto; }
   /* the HUD's on state (brass hairline over a faint brass tint, like a pressed toggle) for a stance switch that is on
      and for autocast, which also gets a small A at the right edge, under the hotkey and clear of the cost text along

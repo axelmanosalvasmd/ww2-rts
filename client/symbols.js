@@ -291,6 +291,11 @@ const DEFS = {
   bunker: ['Command Bunker', 'fort', 'Bunker: a low concrete blockhouse with a firing slit, on an earth berm',
     poly([6, 84], [18, 70], [22, 69], [22, 52], [19, 52], [19, 44], [81, 44], [81, 52], [78, 52], [78, 69], [82, 70], [94, 84]) +
     poly([30, 56], [70, 56], [70, 62], [30, 62])],
+  pillbox: ['Pillbox', 'fort', 'Pillbox: a small concrete blockhouse with one firing slit, half sunk in the ground',
+    poly([10, 84], [22, 66], [26, 65], [26, 54], [74, 54], [74, 65], [78, 66], [90, 84]) + poly([36, 60], [64, 60], [64, 64], [36, 64])],
+  tower: ['Scout Tower', 'building', 'Scout tower: a tall timber lookout on four legs with a roofed platform',
+    poly([30, 84], [36, 34], [40, 34], [35, 84]) + poly([65, 84], [60, 34], [64, 34], [70, 84]) + poly([24, 34], [76, 34], [76, 28], [24, 28]) +
+    poly([28, 28], [31, 28], [31, 16], [28, 16]) + poly([69, 28], [72, 28], [72, 16], [69, 16]) + poly([20, 16], [50, 6], [80, 16])],
   hq: ['HQ', 'building', 'Headquarters: a command tent with a flag on a pole',
     poly([8, 68], [38, 40], [68, 68], [64, 68], [64, 84], [44, 84], [38, 68], [32, 84], [12, 84], [12, 68]) +
     poly([74, 14], [78, 14], [78, 84], [74, 84]) + poly([78, 15], [86, 14], [94, 16], [94, 30], [86, 28], [78, 29])],
@@ -371,6 +376,10 @@ const GLYPH_DEFS = {
   // Czech hedgehog: three steel beams crossing, standing on the ground
   traps: star(50, 52, [[52, 33], [128, 33], [200, 26], [232, 30], [308, 30], [20, 26]], 10) + poly([6, 84], [94, 84], [94, 90], [6, 90]),
   // machine gun nest: a sandbag wall with a machine gun resting on it
+  // concrete wall: three cast blocks with joints, a capping course on top
+  wall: poly([8, 84], [8, 36], [92, 36], [92, 84]) + poly([4, 36], [96, 36], [96, 28], [4, 28]),
+  // gate: two concrete posts and a steel door between them
+  gate: poly([6, 84], [6, 20], [22, 20], [22, 84]) + poly([78, 84], [78, 20], [94, 20], [94, 84]) + poly([26, 80], [26, 36], [74, 36], [74, 80]),
   nest: blob(50, 78, [18, 34, 50, 66, 82].map((x) => [x, 78, 9, 6.5]).concat([34, 50, 66].map((x) => [x, 67, 9, 6.5])), 84) +
     poly([20, 51], [34, 48], [56, 48], [56, 49], [90, 49], [90, 53], [56, 53], [54, 57.5], [50, 57.5], [49, 54], [34, 54], [20, 57]),
   grenade: place(poly([-44, -6], [-40, -6], [-40, -4], [14, -4], [14, -11], [38, -11], [41, -8], [41, 8], [38, 11], [14, 11],

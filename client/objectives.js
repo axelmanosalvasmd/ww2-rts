@@ -5,7 +5,7 @@ import { gfx } from './gfx.js';
 
 const now = () => performance.now() / 1000;
 const FLIP_TIME = 0.6, BANNER_TIME = 4, MAX_PLUMES = 12;
-const ROOF = { hq: 3.6, barracks: 4.7, motorpool: 3.7, bunker: 3.1, depot: 2.5, airfield: 3.7, flakpos: 1.6 };
+const ROOF = { hq: 3.6, barracks: 4.7, motorpool: 3.7, bunker: 3.1, depot: 2.5, airfield: 3.7, flakpos: 1.6, pillbox: 2, tower: 7.4 };
 
 export function createObjectives(hooks) {
   const pointState = [], damage = new Map(), active = [], projected = new THREE.Vector3();

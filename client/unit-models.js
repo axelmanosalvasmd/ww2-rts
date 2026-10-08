@@ -59,7 +59,7 @@ let skin = (_key, color) => color;
 export function setSurfaces(surface) { skin = (key) => surface(key); }
 // base buildings (HQ, barracks, motor pool, depot, command bunker): main.js passes client/structures.js buildingModel(),
 // one merged miniature per type and team; without it (the Node tests) the box models below stand in
-const BUILDINGS = new Set(['hq', 'barracks', 'motorpool', 'depot', 'bunker']);
+const BUILDINGS = new Set(['hq', 'barracks', 'motorpool', 'depot', 'bunker', 'pillbox', 'tower', 'wall', 'gate']);
 let building = null;
 export function setBuildings(model) { building = model; }
 
@@ -400,6 +400,7 @@ export function buildModel(v, root, f, fac, def) {
     // the command bunker stands from the first second (never built), so it keeps no v.body to scale
     const model = building(type, f);
     if (type !== 'bunker') v.body = model;
+    if (type === 'gate') model.add(v.door = building('gatedoor', f)); // hidden while the gate stands open
     root.add(model); v.models.push(root);
   } else if (type === 'hq') {
     // command post: sandbagged timber block with a radio mast
@@ -467,7 +468,7 @@ export function buildModel(v, root, f, fac, def) {
     v.models.push(root);
   } else if (type === 'kaiju') {
     kaiju(v, root, key);
-  } else if (type === 'bunker' || type === 'worldbase') {
+  } else if (type === 'bunker' || type === 'worldbase' || type === 'pillbox' || type === 'tower' || type === 'wall' || type === 'gate') {
     const shell = new THREE.Group();
     shell.add(part(GEO.box, 0x8a8a82, 5.2, 2.4, 5.2, 0, 1.2, 0), part(GEO.box, 0x74746c, 6, 0.5, 6, 0, 2.6, 0), part(GEO.box, 0x1e1e1a, 0.3, 0.4, 3, 2.62, 1.6, 0));
     for (let i = 0; i < 12; i++) { const a = i / 12 * Math.PI * 2; if (i % 4 === 0) continue; shell.add(part(GEO.box, skin('sandbag', 0x9c8a60), 1.6, 0.7, 0.8, Math.cos(a) * 4.6, 0.35, Math.sin(a) * 4.6).rotateY(-a + Math.PI / 2)); }

@@ -15,6 +15,7 @@ await check('test-skirmish-bases.js', () => import('./test-skirmish-bases.js'));
 await check('test-skirmish-client.js', () => import('./test-skirmish-client.js'));
 await check('test-skirmish-ai.js', () => import('./test-skirmish-ai.js'));
 await check('test-tech.js', () => import('./test-tech.js'));
+await check('test-fortress.js', () => import('./test-fortress.js'));
 import { createGame, step, los, findPath, validateMap, snapshotFor, snapshotCache, inTrench, vet, spawnSlots, popOf, popCap, CFG, CELL, SUPPORT, UNITS, teamSees, levelOf } from './shared/sim.js';
 import { SpatialGrid, updateGrid } from './shared/grid.js';
 import { DEBRIS_LIMITS } from './shared/debris-motion.js';

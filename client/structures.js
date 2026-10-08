@@ -990,6 +990,8 @@ const ENGINE_CASE = new THREE.CylinderGeometry(0.27, 0.27, 0.74, 12).rotateZ(Mat
 const VALVE_COVER = new THREE.CapsuleGeometry(0.09, 0.51, 4, 8).rotateZ(Math.PI / 2);
 const oct = (top, bottom) => flat(new THREE.CylinderGeometry(top, bottom, 1, 8, 1).rotateY(Math.PI / 8));
 const BUNKER = { body: oct(2.3, 2.75), slab: oct(2.6, 2.6), turf: oct(1.5, 2.35) };
+const hex = (top, bottom) => flat(new THREE.CylinderGeometry(top, bottom, 1, 6, 1));
+const PILLBOX = { berm: hex(1.9, 2.3), body: hex(1.45, 1.6), slab: hex(1.65, 1.65), turf: hex(1.0, 1.55) };
 const SANDBAG = 0x9c8a60;
 // surfaces for base building parts, drawn from one packed detail texture (client/textures/detail.jpg)
 const CANVAS = 1, TIMBER = 2, CONCRETE = 3, SHEET_X = 4, BURLAP = 5, SHEET_Z = 6;
@@ -1189,6 +1191,46 @@ const MODELS = {
     P.push(cyl(f.vehicle, 0.29, 0.88, 8, 0.85, 0.47, 0.25, Math.PI / 2));
     for (let i = 0; i < 4; i++) P.push(bx(darker(f.vehicle, 0.8), 0.16, 0.46, 0.34, -1.5 + i * 0.2, 0.41, 0.2));
     P.push(cyl(0x4a3f30, 0.04, 3.2, 6, 1.65, 1.78, -1.65), bx(f.color, 0.9, 0.55, 0.04, 1.2, 3.05, -1.65));
+    return P;
+  },
+  // concrete wall: one 2 m cast block with a capping course and a dark joint, so a line reads as separate pours
+  wall: () => {
+    const conc = 0x8f8d84, concD = 0x76746c;
+    return [...tx(CONCRETE, bx(conc, 2, 2.3, 1.1, 0, 1.15, 0), bx(concD, 2.04, 0.18, 1.3, 0, 2.39, 0)), bx(0x55534d, 0.04, 2.3, 1.14, 0.99, 1.15, 0)];
+  },
+  // gate cell (the line runs along x like the wall): a concrete post at one end and a sill; the steel door is its own model
+  gate: () => {
+    const conc = 0x8f8d84, concD = 0x76746c;
+    return [...tx(CONCRETE, bx(conc, 0.4, 2.7, 1.2, -0.8, 1.35, 0), bx(concD, 0.5, 0.2, 1.3, -0.8, 2.8, 0)), bx(0x3a3a36, 2, 0.12, 0.12, 0, 0.1, 0)];
+  },
+  gatedoor: () => [bx(0x4b4f48, 1.9, 2.1, 0.12, 0.15, 1.15, 0), bx(0x3a3d37, 1.9, 0.12, 0.16, 0.15, 1.9, 0), bx(0x3a3d37, 1.9, 0.12, 0.16, 0.15, 0.5, 0)],
+  // scout tower: four splayed timber legs with cross braces, a planked platform at 6 m behind a breastwork,
+  // corner posts and a pitched roof, a ladder up the back (-x)
+  tower: (f) => {
+    const P = [], wood = 0x6a5236, dark = 0x4a3a26, plank = 0x7b6244, h = 6;
+    for (const [sx, sz] of [[1, 1], [1, -1], [-1, 1], [-1, -1]]) {
+      const lean = Math.atan2(0.35, h); // legs splay out 0.35 m over their height
+      P.push(...tx(TIMBER, bx(wood, 0.18, h, 0.18, sx * 0.82, h / 2, sz * 0.82, 0, sz * lean, -sx * lean)));
+    }
+    for (const y of [1.6, 3.8]) for (const [sx, sz, ry] of [[1, 0, 0], [-1, 0, 0], [0, 1, Math.PI / 2], [0, -1, Math.PI / 2]])
+      P.push(...tx(TIMBER, bx(dark, 0.08, 2.5, 0.1, sx * 0.9, y, sz * 0.9, ry, 0, Math.PI / 3.2)));
+    P.push(...tx(TIMBER, bx(plank, 2.2, 0.14, 2.2, 0, h, 0)));
+    for (const [sx, sz, ry] of [[1, 0, 0], [-1, 0, 0], [0, 1, Math.PI / 2], [0, -1, Math.PI / 2]]) P.push(...tx(TIMBER, bx(plank, 0.1, 0.8, 2.2, sx * 1.05, h + 0.47, sz * 1.05, ry)));
+    for (const [sx, sz] of [[1, 1], [1, -1], [-1, 1], [-1, -1]]) P.push(...tx(TIMBER, bx(dark, 0.1, 1.5, 0.1, sx * 1.0, h + 0.8, sz * 1.0)));
+    P.push(...tx(TIMBER, bx(dark, 1.5, 0.08, 2.6, 0.62, h + 1.82, 0, 0, 0, -0.55), bx(dark, 1.5, 0.08, 2.6, -0.62, h + 1.82, 0, 0, 0, 0.55)));
+    for (let y = 0.5; y < h; y += 0.45) P.push(...tx(TIMBER, bx(dark, 0.06, 0.06, 0.6, -1.05, y, 0)));
+    P.push(...tx(TIMBER, bx(wood, 0.08, h, 0.08, -1.05, h / 2, 0.3), bx(wood, 0.08, h, 0.08, -1.05, h / 2, -0.3)));
+    P.push(cyl(0x4a3f30, 0.03, 1.4, 5, 0.9, h + 2.4, 0.9), bx(f.color, 0.7, 0.42, 0.03, 0.55, h + 2.9, 0.9));
+    return P;
+  },
+  // pillbox: a small hexagonal concrete blockhouse half sunk into an earth berm, one firing slit to the front (+x),
+  // a low steel door behind, turf on the roof
+  pillbox: () => {
+    const P = [], conc = 0x8f8d84, concD = 0x76746c;
+    P.push(...tx(BURLAP, part(PILLBOX.berm, 0x6b6343, 0, 0.35, 0, 1, 0.7, 1)));
+    P.push(...tx(CONCRETE, part(PILLBOX.body, conc, 0, 0.95, 0, 1, 1.5, 1), part(PILLBOX.slab, concD, 0, 1.82, 0, 1, 0.28, 1)), ...tx(BURLAP, part(PILLBOX.turf, 0x66603f, 0, 2.1, 0, 1, 0.3, 1)));
+    P.push(part(BOX, 0x14130f, 1.3, 1.2, 0, 0.16, 0.22, 1.1), ...tx(CONCRETE, part(BOX, concD, 1.36, 1.38, 0, 0.3, 0.1, 1.3)));
+    P.push(part(BOX, 0x3a3a36, -1.32, 0.75, 0, 0.1, 1.1, 0.8));
     return P;
   },
   // command bunker: octagonal concrete blockhouse under a turf cap, firing slits to the front, steel door behind,

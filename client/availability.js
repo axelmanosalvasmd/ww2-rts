@@ -110,7 +110,11 @@ export function availability(s, cfg = CFG, action = {}) {
     return resources(s, cost.mp, 0, cost.mun);
   }
   if (action.t === 'dig') {
-    const crew = selected.filter((v) => cfg.fortBuilders.includes(v.type));
+    // concrete (wall, gate) takes an HQ tier, and Engineers where the mode has them
+    const f = FORTS[action.kind];
+    if (f?.tier && s.tech && f.tier > s.tech.tier) return no(`Needs ${TIER_NAMES[f.tier]}`);
+    const builders = f?.unit ? builderTypes(classic) : cfg.fortBuilders;
+    const crew = selected.filter((v) => builders.includes(v.type));
     if (!crew.length) return no(DENY_SENTENCES.noBuilders);
     if (crew.every((v) => v.flags & 1)) return no(DENY_SENTENCES.retreating);
     return action.queue ? yes() : resources(s, FORTS[action.kind].cost); // a queued dig is paid when it starts
