@@ -41,7 +41,7 @@ const ENTRENCH_TIP = { line: 'One straight trench from the first click to the se
 const STANCE = { holdFire: [2048, 'Hold fire', 'shoot only when given an attack order (snipers and guns stay hidden)'],
   holdPos: [4096, 'Hold position', 'never move without an order, not even to cover'],
   autoRetreat: [8192, 'Auto-retreat', `run for home when below ${Math.round(CFG.autoRetreat * 100)}% strength`] };
-const BUILD_ROLE = { supplycache: 'Stores delivered supplies', armory: 'Researches weapon and armor upgrades', depot: 'On a resource node: +1.5 MP/s', barracks: 'Trains MGs and elite infantry', motorpool: 'Trains AT guns, tanks, rockets',
+const BUILD_ROLE = { hq: 'Forward HQ: retreat point, trains Engineers', supplycache: 'Stores delivered supplies', armory: 'Researches weapon and armor upgrades', depot: 'On a resource node: +1.5 MP/s', barracks: 'Trains MGs and elite infantry', motorpool: 'Trains AT guns, tanks, rockets',
   airfield: 'Trains planes; their base', flakpos: 'Shoots down planes over your base', shipyard: 'On the coast: trains landing craft' };
 const AIR_STATE = ['Ready', 'Flying out', 'On station', 'Heading home', 'Rearming'];
 const AIMED = new Set(['grenade', 'barrage', 'satchel']); // abilities that need a spot clicked
@@ -547,7 +547,7 @@ export function createHud(ctx) {
           const pr = priceOf(s, t), fuel = pr.fuel ? `${pr.fuel} Fuel, ` : '';
           return unitCard(t, `data-train="${t}"`, `${pr.mp} MP`, `${fuel}${UNITS[t].train}s`, unitTip(t, ctx.me, `. ${pr.mp} MP${pr.fuel ? ` + ${pr.fuel} Fuel` : ''}, trains in ${UNITS[t].train}s`));
         });
-      else if (eng) card.innerHTML = '<div class="grp"><div class="hd">Build</div><div class="cards">' + BUILDABLE.filter(k => (k !== 'supplycache' || ctx.logistics().enabled) && (k !== 'armory' || s.tech)).map((k) =>
+      else if (eng) card.innerHTML = '<div class="grp"><div class="hd">Build</div><div class="cards">' + buildKinds(true, false, s.mode?.kind === 'world').filter(k => (k !== 'supplycache' || ctx.logistics().enabled) && (k !== 'armory' || s.tech)).map((k) =>
         `<button class="uc wide" data-build="${k}" title="${esc(`${UNITS[k].name}${BUILD_KEYS[k] ? ` (${BUILD_KEYS[k]})` : ''}: ${BUILD_ROLE[k] ?? ''}. ${UNITS[k].cost} MP, ${UNITS[k].buildTime}s`)}">` +
         `<span class="nm">${esc(UNITS[k].name)} <kbd>${BUILD_KEYS[k] ?? ''}</kbd></span>${cardSymbol(k)}<span class="cost">${UNITS[k].cost} MP, ${UNITS[k].buildTime}s</span>` +
         `<span class="sub" data-note></span></button>`).join('') + '</div></div>';

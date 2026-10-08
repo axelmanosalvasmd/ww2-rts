@@ -87,7 +87,7 @@ export function availability(s, cfg = CFG, action = {}) {
     return action.kind === 'para' ? population(null, dropPop('para')) : yes();
   }
   if (action.t === 'build') {
-    if (!buildKinds(classic, skirmish).includes(action.kind) || (action.kind === 'armory' && !s.tech)) return no('Unavailable in this mode');
+    if (!buildKinds(classic, skirmish, s.mode?.kind === 'world').includes(action.kind) || (action.kind === 'armory' && !s.tech)) return no('Unavailable in this mode');
     if (s.tech && tierOf(action.kind) > s.tech.tier) return no(`Needs ${TIER_NAMES[tierOf(action.kind)]}`);
     if (sudden) return no(DENY_SENTENCES.suddenDeath);
     const crew = selected.filter((v) => builderTypes(classic).includes(v.type));

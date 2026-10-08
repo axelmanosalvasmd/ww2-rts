@@ -79,7 +79,7 @@ try {
   const base = [...game.units.values()].find(u => u.type === 'worldbase' && u.region === region.id);
   const rifle = [...game.units.values()].find(u => u.owner === 0 && u.type === 'rifle');
   const engineer = [...game.units.values()].find(u => u.owner === 0 && u.type === 'engineer');
-  const guards = [...game.units.values()].filter(u => u.owner === -1 && u.type === 'rifle' && Math.hypot(u.x - region.x, u.z - region.z) < 20);
+  const guards = [...game.units.values()].filter(u => u.owner === -1 && u.type !== 'worldbase' && Math.hypot(u.x - region.x, u.z - region.z) < 20);
   for (const u of game.units.values()) u.holdFire = true;
   guards.forEach((u, i) => Object.assign(u, { x: region.x + 12, z: region.z + 8 + i * 3, guardHome: { x: region.x + 12, z: region.z + 8 + i * 3 } }));
   Object.assign(rifle, { x: region.x, z: region.z });

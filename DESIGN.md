@@ -240,6 +240,11 @@ World tuning starts at 0.65 MP/s per region, with another 0.6 MP/s for cities, 0
 regions and 0.5 Munitions/s for resource regions. Team income is split among active teammates and uses the
 selected army income multiplier. Captured land adds 2 population capacity per region, shared across active
 teammates, with a maximum of 160 per player. Recovering an HQ costs 200 MP; an Engineer uses its normal cost.
+Engineers can build more HQs (200 MP, 40 s) on owned land, so hurt squads retreat to the nearest one instead of
+walking home, and every HQ trains Engineers. Local defenders vary by region kind: rural 2 rifles and an MG, cities
+2 rifles, an MG, an AT gun and a mortar, industrial a rifle squad, an AT gun and an armored car, resource a rifle
+squad, an MG and a mortar (`WORLD_GUARDS`). Regions carry generated place names (Falkburg, Dornburg Works,
+Brayford Mines) from their own seeded stream, so names never shift a seed's geography.
 
 Distant movement plans 64 metre legs beyond 96 metres, using only remembered terrain. The original destination
 remains active across legs, queued moves wait for full arrival and retreat continues to friendly ground.

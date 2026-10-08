@@ -338,7 +338,9 @@ export const BUILDABLE = ['supplycache', 'depot', 'barracks', 'motorpool', 'airf
 // outside Classic the fort builder squads can still put up anti-air: what they build, and who builds what where
 export const FIELD_BUILDS = ['flakpos', 'supplycache'];
 export const SKIRMISH_BUILDS = ['hq', 'barracks', 'motorpool', 'airfield', 'shipyard', 'armory', 'flakpos', 'supplycache'];
-export const buildKinds = (classic, skirmish = false) => (classic ? BUILDABLE : skirmish ? SKIRMISH_BUILDS : FIELD_BUILDS);
+// World Conquest engineers can also raise forward HQs: retreat points that train engineers.
+export const WORLD_BUILDS = ['hq', ...BUILDABLE];
+export const buildKinds = (classic, skirmish = false, world = false) => (classic ? world ? WORLD_BUILDS : BUILDABLE : skirmish ? SKIRMISH_BUILDS : FIELD_BUILDS);
 export const builderTypes = (classic) => (classic ? ['engineer'] : CFG.fortBuilders);
 // Classic: seconds to train each unit at its building
 for (const [t, s] of Object.entries({ engineer: 12, rifle: 15, conscript: 12, mg: 18, flak: 20, mortar: 20, sniper: 20, medic: 15, ranger: 20, at: 22, halftrack: 22, lcvp: 20, gunboat: 25, destroyer: 75, armoredcar: 25, flaktrack: 30, fighter: 30, attacker: 35, bomber: 45, rocket: 30, tank: 35, medium: 40, tankdestroyer: 40, tiger: 50, churchill: 50, commando: 22, howitzer: 30, flamer: 20 })) UNITS[t].train = s;
@@ -1097,6 +1099,8 @@ function validateWorldMap(m) {
   }
   return v.regions.every(r => seen[r.y * m.w + r.x]) ? null : 'world regions need connected ground routes';
 }
+// Local defenders by region kind: towns dig in with guns, works keep armour, mines and farms hold infantry and mortars.
+const WORLD_GUARDS = { rural: ['rifle', 'rifle', 'mg'], city: ['rifle', 'rifle', 'mg', 'at', 'mortar'], industrial: ['rifle', 'at', 'armoredcar'], resource: ['rifle', 'mg', 'mortar'] };
 function setupWorld(g, map) {
   const error = validateWorldMap(map); if (error) throw new Error(error);
   g.mode = { kind: 'world', teams: new Set(g.players.map(p => p.team)).size, total: map.world.total };
@@ -1116,8 +1120,9 @@ function setupWorld(g, map) {
     const baseCell = cellOf(g, r.x - 8, r.z - 8);
     for (const k of footprint(g, baseCell, 3)) { setCell(g, k, '.'); setLevel(g, k, 0); }
     const b = placeBuilding(g, -1, 'worldbase', baseCell, true); b.region = r.id;
-    for (let n = 0; n < 2; n++) {
-      const u = spawnUnit(g, -1, 'rifle', n), at = cellCenter(g, nearestFree(g, r.x + (n ? 5 : -5), r.z + 3));
+    const guard = WORLD_GUARDS[r.kind] ?? WORLD_GUARDS.rural;
+    for (let n = 0; n < guard.length; n++) {
+      const a = (n / guard.length) * 2 * Math.PI, u = spawnUnit(g, -1, guard[n], n), at = cellCenter(g, nearestFree(g, r.x + Math.cos(a) * 6, r.z + 3 + Math.sin(a) * 6));
       Object.assign(u, at, { guardHome: at, autoRetreat: false, auto: false, holdPos: true }); updateGrid(g, u);
     }
   }
@@ -2715,7 +2720,7 @@ export function placementCheck(g, { kind, x, z, dir = 0, team }, sees = () => tr
     if (cells.length) return { ok: true, reason: undefined, cells, x, z };
     return fail('blocked', { cells });
   }
-  if ((!BUILDABLE.includes(kind) && !(kind === 'hq' && isSkirmishBaseMode(g))) || (kind === 'supplycache' && !g.logisticsEnabled)) return fail('blocked');
+  if ((!BUILDABLE.includes(kind) && !(kind === 'hq' && (isSkirmishBaseMode(g) || g.mode?.kind === 'world'))) || (kind === 'supplycache' && !g.logisticsEnabled)) return fail('blocked');
   const def = UNITS[kind];
   if (g.mode?.kind === 'world' && !sees({x,z})) return fail('notVisible');
   let c, node;
@@ -3086,7 +3091,7 @@ export function command(g, slot, cmd, auto = false) {
     tally(g, slot, 'supportCalls'); if (cur === 'mp') tally(g, slot, 'mpSpent', cost);
     const dir = angle(cmd.dir) ?? Math.atan2(z - p.spawn.z, x - p.spawn.x);
     g.strikes.push({ kind: cmd.kind, owner: slot, x, z, dir, t: sp.delay, left: sp.shells ? supShells(p.faction, cmd.kind) : sp.dur ?? 0, next: 0, live: false });
-  } else if (cmd.t === 'build' && !g.mode?.suddenDeath && buildKinds(isConstructionMode(g), isSkirmishBaseMode(g)).includes(cmd.kind)) {
+  } else if (cmd.t === 'build' && !g.mode?.suddenDeath && buildKinds(isConstructionMode(g), isSkirmishBaseMode(g), g.mode?.kind === 'world').includes(cmd.kind)) {
     // Engineers put up a building: a depot on the free node nearest the click, anything else centered on the click.
     // Outside construction modes the fort builder squads put up flak emplacements the same way. Paid up front; the team must see the spot.
     const p = g.players[slot], def = UNITS[cmd.kind], x = num(cmd.x, g.w * CELL), z = num(cmd.z, g.h * CELL), can = builderTypes(isConstructionMode(g));

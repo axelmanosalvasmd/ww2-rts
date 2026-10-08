@@ -12,6 +12,9 @@ export const WORLD_TUNING = Object.freeze({
   resourceMun: 0.5,
   recoverHQ: 200,
 });
+// 16 x 10 = 160 unique names, enough for a Massive map's 128 regions.
+const NAME_HEADS = ['Alden', 'Bray', 'Carn', 'Dorn', 'Elm', 'Falk', 'Gram', 'Hart', 'Kessel', 'Lind', 'Mar', 'Nor', 'Ost', 'Ravel', 'Stein', 'Wald'];
+const NAME_TAILS = ['burg', 'court', 'dorf', 'feld', 'ford', 'heim', 'mont', 'ville', 'wick', 'stadt'];
 export function generateWorldMap({
   size = 'huge',
   seed = Math.floor(Math.random() * 4294967296),
@@ -110,7 +113,6 @@ export function generateWorldMap({
       const kind = ['rural', 'city', 'industrial', 'resource'][Math.floor(random() * 4)];
       regions.push({
         id,
-        name: `${{ rural: 'Province', city: 'City', industrial: 'Works', resource: 'Resources' }[kind]} ${id + 1}`,
         kind,
         ...best,
         bounds: [rx * span, ry * span, (rx + 1) * span, (ry + 1) * span],
@@ -164,6 +166,14 @@ export function generateWorldMap({
     homes.push(best);
     best.home = i;
     best.team = teams[i] ?? i;
+  }
+  // Place names from their own seeded stream, so naming never shifts the geography of a seed.
+  let nameState = (Number(seed) ^ 0x9e3779b9) >>> 0;
+  const pool = NAME_HEADS.flatMap((a) => NAME_TAILS.map((b) => a + b));
+  for (const r of regions) {
+    nameState = (Math.imul(nameState, 1664525) + 1013904223) >>> 0;
+    const base = pool.splice(nameState % pool.length, 1)[0];
+    r.name = { rural: base, city: base, industrial: `${base} Works`, resource: `${base} Mines` }[r.kind];
   }
   const regionMap = territories(ground, heights, regions);
   return {
