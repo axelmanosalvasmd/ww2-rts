@@ -617,17 +617,31 @@ export function animationInterest(camera) {
   frustum.setFromProjectionMatrix(clip.multiplyMatrices(camera.projectionMatrix, camera.matrixWorldInverse));
   return (v, selected = false) => v.root.visible && (selected || frustum.intersectsSphere(ball.set(v.root.position, 25)));
 }
+// The men also leave the scene's own matrix pass, which walked some 40 objects a squad every frame on or off screen:
+// drawSoldiers updates the men it draws, and a squad off screen has its meshes hidden so none is drawn where it once
+// stood. Code that reads a man's position updates it first (updateWorldMatrix, getWorldPosition).
+const updateMan = THREE.Object3D.prototype.updateMatrixWorld, skipMan = () => {};
+function hideMen(v) {
+  for (const man of v.models) { man.updateMatrixWorld = skipMan; for (const m of man.userData.meshes) m.layers.mask = HIDDEN; }
+}
 // once per frame, after animate(), before rendering; units: the units to draw, camera: the view
 export function drawSoldiers(units, camera) {
   camera.updateMatrixWorld();
   frustum.setFromProjectionMatrix(clip.multiplyMatrices(camera.projectionMatrix, camera.matrixWorldInverse));
   for (const p of pools.values()) p.n = 0;
   for (const v of units) {
+    if (!v.squad) continue;
     // ponytail: a 25 m ball around the squad covers its spread-out men; widen it if men pop at the screen edge
-    if (!v.squad || !v.root.visible || !frustum.intersectsSphere(ball.set(v.root.position, 25))) continue;
+    if (!v.root.visible || !frustum.intersectsSphere(ball.set(v.root.position, 25))) {
+      if (v.squad.shown !== false) { hideMen(v); v.squad.shown = false; }
+      continue;
+    }
+    if (v.squad.shown === undefined) hideMen(v);
+    v.squad.shown = true;
     v.root.updateMatrixWorld();
     for (const man of v.models) {
       if (!man.visible) continue;
+      updateMan.call(man, true);
       for (const m of man.userData.meshes) {
         if (!m.visible) continue;
         if (m.material !== m.userData.baked) { m.layers.mask = 1; continue; }

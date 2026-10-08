@@ -6378,6 +6378,15 @@ for (const lookupFinished of [false, true]) {
   assert.ok(men.every((m) => !m.layers.test(cam.layers)), 'the men no longer draw themselves');
   cam.lookAt(5, 0, 400); drawSoldiers(squads, cam);
   assert.ok(crowd.children.every((m) => !m.count), 'squads behind the camera are left out');
+  const allMeshes = squads.flatMap((u) => u.models).flatMap((m) => m.userData.meshes);
+  assert.ok(allMeshes.every((m) => !m.layers.test(cam.layers)), 'men off screen stay hidden, at any level of detail');
+  // the men leave the scene's matrix pass; drawSoldiers brings the drawn ones up to date
+  const scout = squads[0].models[0], was = scout.matrixWorld.elements[12];
+  scout.position.x += 5; squads[0].root.updateMatrixWorld(true);
+  assert.equal(scout.matrixWorld.elements[12], was, 'the scene pass skips the men');
+  cam.lookAt(5, 0, 0); drawSoldiers(squads, cam);
+  assert.ok(Math.abs(scout.matrixWorld.elements[12] - was - 5 * scout.parent.scale.x) < 1e-6, 'a drawn man is placed where he stands now');
+  scout.position.x -= 5;
   // The mesh the pool instances is the slack fallen build. These squads use their own pools so the two-uniform
   // check above stays a leader and one gunner. Landmarks come from the living aiming prone; the measured mesh is
   // the one createBodies placed.

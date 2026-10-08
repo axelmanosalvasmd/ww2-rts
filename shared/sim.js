@@ -2,7 +2,7 @@
 // Coordinates: world metres, x right, z down the map rows. Grid cells are CELL metres.
 import { tally, died, captured, lastCapture, sample, SAMPLE_EVERY } from './story.js';
 import { setupTutorial, stepTutorial } from './tutorial.js';
-import { gridFor, rebuildGrid, updateGrid, SpatialGrid } from './grid.js';
+import { gridFor, rebuildGrid, updateGrid, SpatialGrid, setHeavy } from './grid.js';
 import { planWeather, stepWeather, sightMul, weatherSpeed, weatherRow } from './weather.js';
 import { normalizeFace, slotSize, facingSpots } from './formation.js';
 import { knownTerritoryRuns } from './world-territories.js';
@@ -181,6 +181,7 @@ export const UNITS = {
     w: { range: 35, interval: 3, inf: 30, veh: 45, accInf: 0.6, accVeh: 0.7, supp: 25, moveFire: 1, shellTerrain: 90 },
     ab: { id: 'smoke', name: 'Smoke', cd: 45, dur: 14, radius: 9 } },
 };
+setHeavy(u => !UNITS[u.type]?.infantry); // the grid's buckets without infantry (shared/grid.js)
 // Rocket launcher: area artillery. It never fires on its own at a unit (area): an 8-rocket salvo lands where it is
 // told (a barrage spot or an attack order), or by autocast on a crowd or a dug-in enemy its side can see (no line of
 // sight needed). Hits garrisons hard and wrecks buildings. Slow, fragile, needs to stop to set up, slow to reload.
@@ -1862,7 +1863,7 @@ export function coverBehind(g, t, from, units = true) {
     const dx = v.x - t.x, dz = v.z - t.z, d = Math.hypot(dx, dz);
     if (d > 0 && d < 4 && (dx * ca + dz * sa) / d > 0.7) best = Math.max(best, Math.min(1, (4 - d) / 1.5));
   };
-  if (units) for (const v of gridFor(g).candidates(t, 4, false, v => v !== t && !v.air && !UNITS[v.type].infantry && v.hp > 0)) hull(v);
+  if (units) for (const v of gridFor(g).candidates(t, 4, false, v => v !== t && !v.air && !UNITS[v.type].infantry && v.hp > 0, true)) hull(v);
   for (const v of g.wrecks ?? []) if (!v.motion) hull(v);
   return best;
 }
@@ -1910,7 +1911,7 @@ function nearCover(g, u) {
   const c = Math.floor(u.z / CELL) * g.w + Math.floor(u.x / CELL);
   if (SOLID.has(g.chars[c + 1]) || SOLID.has(g.chars[c - 1]) || SOLID.has(g.chars[c + g.w]) || SOLID.has(g.chars[c - g.w])) return true;
   if (WALLS.has(g.chars[c + g.w + 1]) || WALLS.has(g.chars[c + g.w - 1]) || WALLS.has(g.chars[c - g.w + 1]) || WALLS.has(g.chars[c - g.w - 1])) return true; // a house corner
-  return gridFor(g).candidates(u, 3.5, false, v => v !== u && !v.air && !UNITS[v.type].infantry).some(v => dist(u, v) < 3.5);
+  return gridFor(g).candidates(u, 3.5, false, v => v !== u && !v.air && !UNITS[v.type].infantry, true).some(v => dist(u, v) < 3.5);
 }
 export const vet = (u) => (UNITS[u.type].cost ? CFG.vetXp.filter(k => u.xp >= k * UNITS[u.type].cost).length : 0); // free units (the bunker) never rank up
 const cellCenter = (g, c) => ({ x: (c % g.w + 0.5) * CELL, z: (Math.floor(c / g.w) + 0.5) * CELL });
@@ -2073,7 +2074,7 @@ function registerBridgeSection(g, c) {
 function occupiedVehicleCell(g, c, list) {
   const at = cellCenter(g, c);
   const radius = g.worldFootprintRadius ??= Math.max(...Object.values(UNITS).map(def => def.radius ?? 0));
-  return gridFor(g).candidates(at, radius + CELL, false).some(u => u.hp > 0 && !u.air && !u.riding && !UNITS[u.type].infantry && !UNITS[u.type].structure
+  return gridFor(g).candidates(at, radius + CELL, false, undefined, true).some(u => u.hp > 0 && !u.air && !u.riding && !UNITS[u.type].infantry && !UNITS[u.type].structure
     && Math.abs(u.x - at.x) < UNITS[u.type].radius + CELL / 2 && Math.abs(u.z - at.z) < UNITS[u.type].radius + CELL / 2);
 }
 function failWorldSection(g, section, list, direction) {
@@ -5143,7 +5144,20 @@ export function terrainFor(g, slot, full = false) {
   if (!pending.size || pending.key === key) return full ? [...memory.values()] : take();
   pending.key = key;
   const visible = new Map();
-  let eyes; // the team's units, filtered once: pending cells pile up in a long battle and each asks teamSees
+  // The team's units, filtered once and bucketed by the longest sight, so a cell asks only the units that could reach
+  // it: unseen craters pile up pending in a long battle, and each asked every unit of the team every vision pass.
+  let eyes;
+  const eyesNear = (at) => {
+    if (!eyes) {
+      const team = [...g.units.values()].filter(u => g.players[u.owner].team === p.team);
+      const reach = Math.max(1, ...team.map(u => visionOf(g, u))), buckets = new Map();
+      for (const u of team) { const k = `${Math.floor(u.x / reach)},${Math.floor(u.z / reach)}`; if (!buckets.has(k)) buckets.set(k, []); buckets.get(k).push(u); }
+      eyes = { reach, buckets };
+    }
+    const bx = Math.floor(at.x / eyes.reach), bz = Math.floor(at.z / eyes.reach), near = [];
+    for (let z = bz - 1; z <= bz + 1; z++) for (let x = bx - 1; x <= bx + 1; x++) { const list = eyes.buckets.get(`${x},${z}`); if (list) near.push(...list); }
+    return near;
+  };
   // Unseen footprints stay pending. Replay order also preserves remembered terrain order.
   for (const index of [...pending].sort((a, b) => a - b)) {
     const stored = g.cellLog[index], c = stored[0], cell = seenWorldCell(g, c, p.team), old = memory.get(c);
@@ -5156,7 +5170,7 @@ export function terrainFor(g, slot, full = false) {
       if (!visible.has(building)) visible.set(building, allied(g, building.owner, slot)
         || (g.units.has(building.id) ? p.visible.has(building.id) : teamSees(g, p.team, building)));
       if (!visible.get(building)) continue;
-    } else if (!g.reveal && !g.skipFog && !teamSees(g, p.team, cellCenter(g, c), eyes ??= [...g.units.values()].filter(u => g.players[u.owner].team === p.team))) continue;
+    } else if (!g.reveal && !g.skipFog && !teamSees(g, p.team, cellCenter(g, c), eyesNear(cellCenter(g, c)))) continue;
     if (!hiddenMine) pending.delete(index);
     const known = [...cell]; memory.set(c, known); changes.delete(c); changes.set(c, known);
   }
