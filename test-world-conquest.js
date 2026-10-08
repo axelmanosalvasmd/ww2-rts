@@ -1,9 +1,11 @@
+import { sendsReadBy } from './test-socket.js';
 // World Conquest acceptance checks use the same WebSocket messages as the browser.
 import assert from 'node:assert/strict';
 import WebSocket from 'ws';
 
 Object.assign(process.env, { PORT: '0', EDIT_PASSWORD: 'test', PUBLIC_URL: 'http://test' });
 const server = await import('./server.js');
+const sendRead = sendsReadBy(server.wss);
 clearInterval(server.loop);
 if (!server.server.listening) await new Promise(resolve => server.server.once('listening', resolve));
 const clients = [];
@@ -19,7 +21,7 @@ async function connect(room, token) {
   const client = {
     ws, messages, room,
     latest: t => messages.filter(m => m.t === t).at(-1),
-    async send(message) { ws.send(JSON.stringify(message)); await settle(); },
+    async send(message) { await sendRead(ws, message); await settle(); },
     wait: (t, after = 0) => waitFor(() => messages.slice(after).find(m => m.t === t), `missing ${t}`),
   };
   clients.push(client);
