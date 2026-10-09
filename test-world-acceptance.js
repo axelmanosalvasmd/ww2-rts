@@ -6,6 +6,8 @@ import { CELL, TICK, CFG, TERRAIN, MOVE, VBLOCK, UNITS, createGame, validateMap,
 import { generateWorldMap, WORLD_TUNING } from './shared/world-conquest.js';
 
 Object.assign(process.env, { PORT: '0', EDIT_PASSWORD: 'test', PUBLIC_URL: 'http://test' });
+// One world and one roll of the dice every run: with random worlds the fixed build spots were sometimes blocked terrain.
+let dice = 7; Math.random = () => ((dice = Math.imul(dice, 1664525) + 1013904223 | 0) >>> 0) / 4294967296;
 const server = await import('./server.js');
 const sendRead = sendsReadBy(server.wss);
 clearInterval(server.loop);
@@ -59,6 +61,7 @@ async function start(code, teams = [0, 1], size = 'huge') {
   await seats[0].send({ t: 'weather', v: 'clear' });
   // These territorial fixtures exclude incidental combat and convoys. Dedicated logistics suites cover supplies.
   server.rooms.get(code).logistics = false;
+  server.rooms.get(code).worldSeed = 12345;
   await seats[0].send({ t: 'start' });
   for (const c of seats) await c.wait('start');
   const g = server.rooms.get(code).game;
