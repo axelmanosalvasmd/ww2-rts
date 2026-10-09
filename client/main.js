@@ -907,7 +907,7 @@ function applySnapshot(s) {
   const arrived = performance.now();
   if (snapshotAt) snapshotGap += (Math.max(60, Math.min(400, arrived - snapshotAt)) - snapshotGap) * 0.2;
   snapshotAt = arrived;
-  const seen = new Set();
+  const seen = new Set(), access = { mode: s.mode, players: teams.map(team => ({ team })) }; // productionAccess's view, once a snapshot
   trenchTaken.clear();
   const shotMen = new Map(); // squad id -> the drawn man an operative's bullet hit this snapshot (shared/sim.js fireOperative)
   for (const sh of s.shots) if (sh.m !== undefined) shotMen.set(sh.t, sh.m);
@@ -916,7 +916,7 @@ function applySnapshot(s) {
     let v = units.get(id);
     if (!v) { v = makeUnit(id, type, owner); Object.assign(v, { x, z, rot, aim }); units.set(id, v); }
     Object.assign(v, { owner, tx: x, tz: z, trot: rot, taim: aim, hp, supp, tgt, cover, cd, flags, vet: stars || 0, moveSpeed: flags & 16 ? 0 : moveSpeed ?? 0, dig: flags & 16 ? moveSpeed ?? 0 : 0, vx: vx ?? 0, vz: vz ?? 0, travelDir: travelDir ?? rot, garr: !!(flags & 32), built: built ?? 1, plan: null, orders: [] });
-    if (!productionAccess({ mode: s.mode, players: teams.map(team => ({ team })) }, v, me)) { v.rally = null; v.queue = []; v.productionJobs = []; }
+    if (!productionAccess(access, v, me)) { v.rally = null; v.queue = []; v.productionJobs = []; }
     if (v.body) v.body.scale.y = 0.15 + 0.85 * v.built; // a construction site rises as it's built
     if (v.door) v.door.visible = !(flags & GATE_OPEN_FLAG); // a gate's door shows while it is shut
     v.stars.forEach((st, i) => (st.visible = i < v.vet));
@@ -1039,6 +1039,7 @@ function applySnapshot(s) {
   if (s.out?.[me] && !lastSnap?.out?.[me]) {
     selected.clear(); selection.reset(); cancelInput(); cancelAim(); hud.setRecruit(false);
   }
+  if (!lastSnap) warmGpu();
   lastSnap = s;
   fps.snapshot(s);
   if (s.home ?? s.world?.home) { const p = s.home ?? s.world.home; home = { x: p[0], z: p[1] }; }
@@ -1048,6 +1049,21 @@ function applySnapshot(s) {
   if (!operative) updateHud(s);
   wx.snapshot(s);
   endgame.snapshot(s);
+}
+
+// A shader compiles, and a texture uploads, on the frame its material is first drawn, and that frame stalls (the first
+// explosion, the first selection ring). The match's first snapshot has built the world and the units: compile
+// everything the scene holds, hidden things too (effect pools, rings, bars), in the background, and upload the loaded
+// textures now. Every ground unit's model uses one of about six materials, so the units already on the field cover
+// the types still to come.
+function warmGpu() {
+  renderer.compileAsync(scene, camera).catch(() => {});
+  const seen = new Set();
+  scene.traverse((o) => {
+    for (const m of o.material ? [].concat(o.material) : []) {
+      for (const t of [...Object.values(m), ...Object.values(m.uniforms ?? {}).map(u => u?.value)]) if (t?.isTexture && !seen.has(t)) { seen.add(t); renderer.initTexture(t); }
+    }
+  });
 }
 
 // public warnings for incoming support: everyone sees where it will land

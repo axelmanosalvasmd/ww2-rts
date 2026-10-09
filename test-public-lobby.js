@@ -30,6 +30,11 @@ try {
   const response = await fetch(base + '/api/rooms');
   assert.equal(response.status, 200, 'public directory endpoint exists');
   assert.deepEqual((await response.json()).rooms, [], 'empty directory');
+  const script = await fetch(base + '/client/main.js'), tag = script.headers.get('etag');
+  assert.equal(script.headers.get('content-encoding'), 'gzip', 'scripts are sent gzipped');
+  assert.match(await script.text(), /applySnapshot/);
+  assert.equal((await fetch(base + '/client/main.js', { headers: { 'if-none-match': tag } })).status, 304, 'an unchanged script is not sent again');
+  assert.equal((await fetch(base + '/client/')).status, 404, 'a folder is not a file');
   await connect('hidden');
   const host = await connect('publicone', { listing: { public: true, title: 'Saturday skirmish' } });
   const listing = await (await fetch(base + '/api/rooms')).json();

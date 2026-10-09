@@ -87,7 +87,13 @@ const loading = Promise.all(LOOK.map(L => new Promise((res) => {
   img.src = `/client/textures/${L.tex}.jpg`;
 }))).then(() => {
   ready = true;
-  if (cur?.attrs) { tilesP = 0; fullPaint(cur); }
+  if (!cur?.attrs) return;
+  tilesP = 0;
+  // A match already shows the flat ground (someone joined before the textures arrived). Repainting all of it at once
+  // froze the game for 0.3 to 0.6 s on a big map: bring the textures in tile by tile within the frame budget instead.
+  if (!cur.frames) return fullPaint(cur);
+  buildTiles(cur.P); cur.painted = 'textured';
+  queuePaint(cur, Array.from({ length: Math.ceil(cur.w / TILE) * Math.ceil(cur.h / TILE) }, (_, tile) => tile));
 });
 
 function buildTiles(P) {

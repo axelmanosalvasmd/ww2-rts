@@ -5,6 +5,51 @@ AI-vs-AI runs (see DESIGN.md for the balance log). Add new entries under **Unrel
 
 ## Unreleased
 
+- Performance work beyond issue #58, with the game itself unchanged (the 6-AI Massive Classic and Conquest benchmarks
+  end in exactly the same state as before):
+  - Loading is lighter for friends joining over Tailscale. The server now gzips scripts and other text (three.js goes
+    from 1,458 KB to 288 KB; the game's 9.5 MB of scripts come to about 4.7 MB) and answers a reload of an unchanged
+    file with a 304 instead of sending it again (an ETag from the file's size and time). Images and sounds are unchanged.
+  - Big battles draw with less work per frame. Each squad's men now stand in one group that three.js skips entirely
+    once they are drawn instanced (they were hidden only by a camera layer, so every pass still walked them). In a
+    scene of 200 rifle squads and 60 tanks each pass (the camera, the shadows and, on High, the ambient occlusion
+    normals) walks 2,061 objects instead of 11,261. The ambient occlusion pass's own walk over the scene now skips
+    hidden branches and allocates nothing per object: 4.1 ms to 0.6 ms a frame there (headless, machine under load).
+  - Shadows are drawn at most once a frame and at most every 25 ms: about 30 times a second at 60 fps instead of 60 on
+    Low and 120 on High, where the ambient occlusion pass's second render of the scene drew them again for nothing.
+    Below 40 fps, and in the operative's eye-level view, they are still drawn every frame.
+  - The first explosion, corpse or selection ring of a match no longer compiles its shader on the frame it appears:
+    after the match's first snapshot the game compiles every shader in the scene in the background and uploads the
+    loaded textures. All 43 ground unit types share about six materials, so the units on the field cover those still to come
+    (building one of each type to warm them up would cost about 8.6 s per faction).
+  - Joining before the ground textures arrive no longer freezes the game when they do: the textured ground comes in
+    tile by tile within the frame budget. A full repaint takes 290 to 615 ms of script on the default, Kasserine Pass,
+    Six Fronts and Three Islands maps. The paint at match start is still done at once, while the match loads.
+  - Route regions are recomputed far less often. A player's remembered-terrain path view moves its region versions for
+    any remembered change (wear, cover, a crater's material), and each move redid a whole-map flood fill.
+    `regionsFor` now first checks whether any cell's blocking or height changed. Over 4,000 ticks of the 6-AI Massive
+    Conquest benchmark the fills fell from 1,922 to 305, from 1.37 s to 0.23 s.
+  - Crowd separation and the off-map strikes moved out of `step()` into their own functions (`separateCrowds`,
+    `stepStrikes`), which V8 optimizes on their own; separation alone was about 10% of step time. With the region
+    change above, 8,000 ticks of the 6-AI Massive Conquest benchmark spent 5.0% less main-thread CPU (164.2 and 164.5 s
+    against 172.8 and 173.2 s; two copies of each version stepped side by side in one process, and the copies agreed
+    within 0.3%). How much of that each change gives was not measured: that run was stopped when the machine ran low
+    on memory.
+  - `applySnapshot` builds the view `productionAccess` needs once a snapshot instead of once per unit. Handling only
+    the unit rows that changed was measured and left out: a player holds about 37 rows in that battle and 57% of them
+    change every snapshot.
+  - Tests: the ground check that pinned the old full repaint on texture arrival now checks the queued one. Two checks
+    that read code structure follow the moves: the separation check splices its reference in place of the
+    `separateCrowds` call (and now says so when its markers are gone), and the crew-served gun check skips the crew
+    group when it looks for the gun's mesh. New checks:
+    scripts are gzipped and revalidate with a 304 (test-public-lobby.js), the shadow map is drawn every other frame at
+    60 fps (test-client-performance.mjs), and three.js skips the drawn men's own meshes (test.js, unit models).
+  - Not verified in a browser: the wmux browser panel drew no frames this session, so the shader warm-up, the shadow
+    cadence and the hidden crews were checked only headlessly. Found and left for later: `step()` never stays
+    optimized, since V8 throws its optimized code away dozens of times a match ("wrong map": units gain properties as
+    they play); giving units every property at spawn is the fix. Ambient occlusion at half resolution was not tried
+    (it needs a visual check). Crowd separation's search radius is not its cost: its queries return 1.6 units each.
+
 - Classic balance re-measured over 60 free-for-alls with the 40-minute limit: USA 37%, Germany 35%, USSR 28% of
   decisive matches (three draws), all inside 25-42%. The earlier 30-match reading of USA 43% was noise.
 

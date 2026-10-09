@@ -479,6 +479,8 @@ export function buildModel(v, root, f, fac, def) {
   } else {
     const scale = BLOCKS.has(type) ? 1.1 : 1.35;
     const figure = type === 'medic' ? 'engineer' : type; // ponytail: medics borrow the engineer figure until they get their own
+    // the men stand in one crew group, so drawSoldiers() can hide all of them from three's passes at once
+    const crew = v.crew = new THREE.Group(); root.add(crew);
     SLOTS[type].forEach(([x, z], i) => {
       // client/models/infantry.js builds the figure, near and far, with its kneeling, prone and running builds in
       // userData.poses for the posture morph targets
@@ -493,7 +495,7 @@ export function buildModel(v, root, f, fac, def) {
       man.position.set(x * SLOT_SCALE, 0, z * SLOT_SCALE); man.scale.setScalar(scale);
       pose.add(...hi, ...lo); man.add(pose);
       man.userData = { slot: [x * SLOT_SCALE, z * SLOT_SCALE], pose, hi, lo, meshes: [...hi, ...lo], index: i };
-      root.add(man); v.models.push(man);
+      crew.add(man); v.models.push(man);
     });
     v.squad = { w: [1, 0, 0, 0], far: false, moveFire: def.w?.moveFire !== undefined };
     // the weapon of a gun squad: one merged mesh. Guns that traverse (at, flak) are the whole of v.turret, with the muzzle in v.fxTip
@@ -617,8 +619,11 @@ export function animationInterest(camera) {
 // The men also leave the scene's own matrix pass, which walked some 40 objects a squad every frame on or off screen:
 // drawSoldiers updates the men it draws, and a squad off screen has its meshes hidden so none is drawn where it once
 // stood. Code that reads a man's position updates it first (updateWorldMatrix, getWorldPosition).
+// Their crew group is hidden too: three walks every visible object in each pass (camera, shadows, the AO normals), and
+// the men's own meshes are some 60 objects a squad. A crew stays visible only while a man draws himself (camouflage).
 const updateMan = THREE.Object3D.prototype.updateMatrixWorld, skipMan = () => {};
 function hideMen(v) {
+  v.crew.visible = false;
   for (const man of v.models) { man.updateMatrixWorld = skipMan; for (const m of man.userData.meshes) m.layers.mask = HIDDEN; }
 }
 // once per frame, after animate(), before rendering; units: the units to draw, camera: the view
@@ -636,12 +641,13 @@ export function drawSoldiers(units, camera) {
     if (v.squad.shown === undefined) hideMen(v);
     v.squad.shown = true;
     v.root.updateMatrixWorld();
+    let self = false;
     for (const man of v.models) {
       if (!man.visible) continue;
       updateMan.call(man, true);
       for (const m of man.userData.meshes) {
         if (!m.visible) continue;
-        if (m.material !== m.userData.baked) { m.layers.mask = 1; continue; }
+        if (m.material !== m.userData.baked) { m.layers.mask = 1; self = true; continue; }
         let p = pools.get(m.geometry);
         if (!p) pools.set(m.geometry, p = { geometry: m.geometry, material: m.material, cap: 0, n: 0, mesh: null });
         if (p.n === p.cap) grow(p);
@@ -649,6 +655,7 @@ export function drawSoldiers(units, camera) {
         p.mesh.setMatrixAt(p.n, m.matrixWorld); p.mesh.setMorphAt(p.n++, m);
       }
     }
+    v.crew.visible = self;
   }
   for (const p of pools.values()) { p.mesh.count = p.n; p.mesh.instanceMatrix.needsUpdate = true; p.mesh.morphTexture.needsUpdate = true; }
 }

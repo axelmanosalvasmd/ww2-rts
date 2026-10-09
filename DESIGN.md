@@ -1132,6 +1132,9 @@ or big celebratory banners. Corners 0 to 2 px, 1 px hairlines, 13 to 15 px body 
 - Screens: designed at 1920x1080, must fit 1366x768 without overlap. No phone layout. 60 fps target on laptop graphics.
 - Graphics setting (menu): High / Low, saved per browser. Low uses cheaper shadows and fewer
   particles. Defaults to High; switches itself to Low with a one-line notice if the game runs under 45 fps for 5 s.
+- Shadows (2026-10-09, `client/light.js`): the sun's shadow map is drawn at most once a frame and at most every 25 ms,
+  so about 30 times a second at 60 fps and every frame below 40 fps or in the operative's eye-level view. three draws
+  it in every `render()` of the scene, and High's ambient occlusion renders the scene a second time for its normals.
 - World:
   - Ground painted from tileable textures (grass, dirt, mud, road, field) generated with gpt-image-2 and blended per
     cell; contour lines stay. Craters and scorch marks are painted into the ground.
@@ -1563,6 +1566,8 @@ the page. Adding text to the game means adding its Spanish to `client/es.js`.
   radius + 1.5 m of it unless an end of the segment is already there. A cost, not a block, so a move or attack aimed
   at the bunker still gets a route.
 - Hosted on the owner's PC in Ecuador, reached by friends over Tailscale (`tailscale serve`).
+- Static files (2026-10-09): `no-cache` with an ETag from the file's size and time, so a reload costs a 304 per file;
+  text (scripts, JSON, CSS, HTML) goes gzipped, compressed once per file version and kept in memory.
 - Stats overlay (2026-10-03, `client/stats.js`, numbers from `client/perf.js`): Menu > Stats overlay picks which
   numbers show (frame, network, game), where (top left, center or right, under the HUD panel there), the layout,
   size and background, and whether bad numbers turn amber and red. F2 shows or hides it; saved per browser in

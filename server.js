@@ -1,10 +1,12 @@
 // One process: serves the client and runs game rooms over WebSocket.
 import http from 'node:http';
-import { readFile, readdir, writeFile } from 'node:fs/promises';
+import { readFile, readdir, writeFile, stat } from 'node:fs/promises';
 import { readFileSync, writeFileSync, existsSync } from 'node:fs';
 import { randomBytes, createHash, timingSafeEqual } from 'node:crypto';
 import { execFile } from 'node:child_process';
 import { join, normalize, extname } from 'node:path';
+import { promisify } from 'node:util';
+import { gzip } from 'node:zlib';
 import { WebSocketServer } from 'ws';
 import { createGame, step, command, snapshotFor, snapshotCache, unitDelta, terrainFor, fogFor, validateMap, spawnsFor, worldMapFor, joinOperative, operativeInput, OPERATIVE, UNITS, TICK, MAX_PLAYERS, FACTION_COUNT } from './shared/sim.js';
 import { generateWorldMap } from './shared/world-conquest.js';
@@ -111,6 +113,7 @@ async function saveMap(req, res, name) {
 const STATIC = { '/client/': 'client', '/shared/': 'shared', '/vendor/': 'node_modules/three/build', '/vendor-jsm/': 'node_modules/three/examples/jsm' };
 const TYPES = { '.html': 'text/html', '.js': 'text/javascript', '.css': 'text/css', '.json': 'application/json',
   '.png': 'image/png', '.jpg': 'image/jpeg', '.webp': 'image/webp', '.svg': 'image/svg+xml', '.mp3': 'audio/mpeg' };
+const zip = promisify(gzip), zipped = new Map(); // static file -> { tag, body }, its gzipped text
 
 export const server = http.createServer(async (req, res) => {
   const url = new URL(req.url, 'http://x');
@@ -149,9 +152,21 @@ export const server = http.createServer(async (req, res) => {
   }
   try {
     if (!file) throw 0;
-    const body = await readFile(file);
-    res.writeHead(200, { 'content-type': TYPES[extname(file)] || 'application/octet-stream', 'cache-control': 'no-cache' });
-    res.end(body);
+    // A browser asks again on every load (no-cache) and gets a 304 while the file's size and time match its ETag.
+    // Text goes gzipped, made once per version of the file: friends load about 9 MB of scripts over Tailscale.
+    const info = await stat(file);
+    if (!info.isFile()) throw 0;
+    const type = TYPES[extname(file)] || 'application/octet-stream', tag = `"${info.size.toString(36)}-${Math.floor(info.mtimeMs).toString(36)}"`;
+    const text = /^text\/|json|svg/.test(type), headers = { 'content-type': type, 'cache-control': 'no-cache', etag: tag, ...(text && { vary: 'accept-encoding' }) };
+    if (req.headers['if-none-match'] === tag) { res.writeHead(304, headers); return res.end(); }
+    if (text && /\bgzip\b/.test(req.headers['accept-encoding'] ?? '')) {
+      let packed = zipped.get(file);
+      if (packed?.tag !== tag) zipped.set(file, packed = { tag, body: await zip(await readFile(file)) });
+      res.writeHead(200, { ...headers, 'content-encoding': 'gzip' });
+      return res.end(packed.body);
+    }
+    res.writeHead(200, headers);
+    res.end(await readFile(file));
   } catch { res.writeHead(404); res.end('not found'); }
 });
 

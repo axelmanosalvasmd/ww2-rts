@@ -103,7 +103,10 @@ const battlefield = new THREE.Mesh(new THREE.BoxGeometry(), new THREE.MeshBasicM
 const rendered = [];
 const renderer = { shadowMap: {}, info: { autoReset: true, render: { calls: 0, triangles: 0 },
   reset() { this.render.calls = this.render.triangles = 0; } },
-  render(root) { rendered.push(root); root.traverse(node => { if (node.isMesh) { this.info.render.calls++; this.info.render.triangles += 2; } }); } };
+  render(root) {
+    if (this.shadowMap.autoUpdate !== false || this.shadowMap.needsUpdate) { this.shadowDraws = (this.shadowDraws ?? 0) + 1; this.shadowMap.needsUpdate = false; } // as three does
+    rendered.push(root); root.traverse(node => { if (node.isMesh) { this.info.render.calls++; this.info.render.triangles += 2; } });
+  } };
 // This renderer measures scene routing without a GPU. Supply the GPU-created resource at its boundary.
 const environment = new THREE.Texture();
 const { sun } = setupLight(renderer, scene, camera, () => environment);
@@ -120,13 +123,14 @@ goreButton.onclick();
 assert.equal(goreButton.textContent, 'Gore: Off');
 assert.equal(shadowResizes, 0, 'gore UI refresh must not reapply shadow quality');
 const ground = map.object.children[1];
-let updates = 0; const stopPerf = perf.onUpdate(() => updates++);
+let updates = 0; const stopPerf = perf.onUpdate(() => updates++), shadowsBefore = renderer.shadowDraws ?? 0;
 for (let i = 0; i < 90; i++) {
   const start = now; now += 1000 / 60;
   map.frame(1 / 60, 1); renderFrame({ dist: 400 }, ground, map.renderObject);
   perf.frame(renderer, start, { units: units.size, fx: 5, corpses: 2 });
 }
 assert.equal(rendered.at(-1), map.object, 'opaque map rendering excludes the battlefield');
+assert.equal(renderer.shadowDraws - shadowsBefore, 45, 'at 60 fps the shadow map is drawn every other frame');
 assert.equal(renderer.info.render.calls, 3);
 assert.equal(window.__perf.calls, 3, 'map render counts stay current');
 assert.ok(window.__perf.fps >= 59 && updates > 0, 'the performance overlay keeps rolling while the map is opaque');

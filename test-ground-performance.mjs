@@ -153,9 +153,12 @@ export async function runGroundPerformanceTests({ modulePath = new URL('./client
       delayed.paint(queuedGrid, queuedState);
       assert.equal(pending.size, 1, 'incremental work can be queued while textures are loading');
       for (const image of waitingImages) image.onerror();
+      const putsAtReady = delayed.ctx.puts;
       await delayed.loading;
-      assert.equal(pending.size, 0, 'texture readiness cancels queued work before repainting the latest state');
-      assert.deepEqual(delayed.ctx.getImageData(0, 0, w * delayed.px, h * delayed.px).data, latestPixels, 'texture-ready full repaint uses the latest queued attributes');
+      assert.equal(delayed.ctx.puts, putsAtReady, 'texture readiness does not repaint the whole ground in one frame');
+      assert.equal(pending.size, 1, 'it joins the queued work instead');
+      for (let n = 0; pending.size; n++) { assert.ok(n < 100, 'the texture repaint finishes'); const start = delayed.ctx.puts; pump(); assert.ok(delayed.ctx.puts - start <= 2, 'within each frame\'s tile count'); }
+      assert.deepEqual(delayed.ctx.getImageData(0, 0, w * delayed.px, h * delayed.px).data, latestPixels, 'the queued texture repaint ends at the latest state, as a full paint');
     }
     if (capture) {
       await writeFile(capture, full);

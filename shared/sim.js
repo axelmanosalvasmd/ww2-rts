@@ -2828,9 +2828,16 @@ function regionsFor(g, block) {
   }
   let entry = data.masks.get(block);
   if (entry?.version === version) return entry.labels;
-  if (!entry) { entry = { labels: new Int32Array(N), version: -1 }; data.masks.set(block, entry); }
+  if (!entry) { entry = { labels: new Int32Array(N), version: -1, blocked: new Uint8Array(N), heights: new Int8Array(N) }; data.masks.set(block, entry); }
   const { labels } = entry, flags = g.flags, heights = g.height, queue = buffersFor(N).freeQueue;
-  for (let c = 0; c < N; c++) labels[c] = flags[c] & block ? -1 : 0;
+  // Regions follow only which cells block and their heights. Most version moves change neither (an observed path view
+  // moves its versions for any remembered cell: wear, cover, a crater's material), so look before flooding again.
+  if (entry.version >= 0) {
+    let c = 0;
+    while (c < N && entry.blocked[c] === (flags[c] & block ? 1 : 0) && entry.heights[c] === (heights ? heights[c] : 0)) c++;
+    if (c === N) { entry.version = version; return labels; }
+  }
+  for (let c = 0; c < N; c++) { entry.blocked[c] = flags[c] & block ? 1 : 0; entry.heights[c] = heights ? heights[c] : 0; labels[c] = flags[c] & block ? -1 : 0; }
   const offsets = [-1, 1, -W, W, -W - 1, -W + 1, W - 1, W + 1], directions = heights ? 8 : 4;
   // Flat diagonals connect through their open corners, so cardinal edges already give the same regions.
   // With hills, add a diagonal when either directed corner check permits it.
@@ -5033,6 +5040,124 @@ function stepWorldDebris(g, dt) {
   }
 }
 
+// Soft separation; never push a unit into a blocked cell. Kept out of step(), like stepStrikes: V8 optimizes a small hot
+// function on its own, while step() keeps losing its optimized code (units gain properties as they play, so it meets
+// new object shapes) and was past V8's 61,440-byte limit for full optimization.
+function separateCrowds(g, list) {
+  const order = new Map(list.map((u, i) => [u.id, i])), maxRadius = Math.max(0, ...list.map(u => UNITS[u.type].radius));
+  const sep = new SpatialGrid(g.units, 4); // fine 4 m cells: this query is tiny and runs for every unit
+  const nearCrossing = u => {
+    const c = cellOf(g, u.x, u.z), x = c % g.w, y = Math.floor(c / g.w);
+    for (let ny = Math.max(0, y - 1); ny <= Math.min(g.h - 1, y + 1); ny++)
+      for (let nx = Math.max(0, x - 1); nx <= Math.min(g.w - 1, x + 1); nx++)
+        if (g.chars[ny * g.w + nx] === '=' || g.flags[ny * g.w + nx] & FORD) return true;
+    return false;
+  };
+  for (let i = 0; i < list.length; i++) {
+    const a = list[i], radius = (UNITS[a.type].radius + maxRadius) * 0.8;
+    if (a.garrison >= 0 || a.air || a.riding || a.rail) continue;
+    const grid = sep, size = grid.size;
+    let x0 = Math.floor((a.x - radius) / size), x1 = Math.floor((a.x + radius) / size), z0 = Math.floor((a.z - radius) / size), z1 = Math.floor((a.z + radius) / size);
+    let candidates = grid.candidates(a, radius, true, b => order.get(b.id) > i);
+    for (let k = 0; k < candidates.length; k++) {
+      const b = candidates[k], j = order.get(b.id), min = (UNITS[a.type].radius + UNITS[b.type].radius) * 0.8;
+      if (a.garrison >= 0 || b.garrison >= 0 || a.air || b.air || b.riding || b.rail) continue;
+      let dx = b.x - a.x, dz = b.z - a.z, d = Math.hypot(dx, dz);
+      if (d >= min) continue;
+      if (d === 0) { dx = a.id < b.id ? 1e-6 : -1e-6; dz = 0; d = 1e-6; }
+      const sa = UNITS[a.type].structure, sb = UNITS[b.type].structure;
+      if (sa && sb) continue;
+      const solidContact = !UNITS[a.type].infantry && !UNITS[b.type].infantry && (isGroundVehicle(UNITS[a.type]) || isGroundVehicle(UNITS[b.type])) && !ghostPair(g, a, b);
+      const push = (min - d) / 2 * (solidContact ? sa || sb ? 2 : 1 : sa || sb ? 1 : 0.5), px = dx / d * push, pz = dz / d * push;
+      let apx = px, apz = pz, bpx = px, bpz = pz;
+      if (UNITS[a.type].infantry && UNITS[b.type].infantry && allied(g, a.owner, b.owner) && a.path.length && b.path.length && nearCrossing(a) && nearCrossing(b)) {
+        const ga = a.worldGoal ?? a.amove ?? a.path.at(-1), gb = b.worldGoal ?? b.amove ?? b.path.at(-1);
+        const ax = ga.x - a.x, az = ga.z - a.z, bx = gb.x - b.x, bz = gb.z - b.z;
+        if (ax * bx + az * bz > Math.hypot(ax, az) * Math.hypot(bx, bz) * 0.5) {
+          // Same-way bridge traffic keeps lateral spacing without undoing either squad's forward step.
+          const againstA = Math.max(0, (px * a.vx + pz * a.vz) / (a.vx * a.vx + a.vz * a.vz || 1));
+          const againstB = Math.min(0, (px * b.vx + pz * b.vz) / (b.vx * b.vx + b.vz * b.vz || 1));
+          apx -= againstA * a.vx; apz -= againstA * a.vz;
+          bpx -= againstB * b.vx; bpz -= againstB * b.vz;
+        }
+      }
+      // a squad holding its cover is not pushed off it, and does not push back at a friend walking past
+      const ha = !sa && (a.holdPos || a.build || a.dig || a.entrench || shovedFromCover(g, a, a.x - apx, a.z - apz)), hb = !sb && (b.holdPos || b.build || b.dig || b.entrench || shovedFromCover(g, b, b.x + bpx, b.z + bpz));
+      if (!sa && !ha && !(hb && a.path.length) && !(flagsAt(g, a.x - apx, a.z - apz) & blockOf(UNITS[a.type])) && (!isGroundVehicle(UNITS[a.type]) || sweptVehicleClear(g, a, { ...a, x: a.x - apx, z: a.z - apz }, UNITS[a.type], blockOf(UNITS[a.type]))) && Math.abs(levelAt(g, a.x - apx, a.z - apz) - levelAt(g, a.x, a.z)) <= 1) { a.x -= apx; a.z -= apz; }
+      if (!sb && !hb && !(ha && b.path.length) && !(flagsAt(g, b.x + bpx, b.z + bpz) & blockOf(UNITS[b.type])) && (!isGroundVehicle(UNITS[b.type]) || sweptVehicleClear(g, b, { ...b, x: b.x + bpx, z: b.z + bpz }, UNITS[b.type], blockOf(UNITS[b.type]))) && Math.abs(levelAt(g, b.x + bpx, b.z + bpz) - levelAt(g, b.x, b.z)) <= 1) { b.x += bpx; b.z += bpz; }
+      if (solidContact) { a.moveSpeed = b.moveSpeed = 0; a.vx = a.vz = b.vx = b.vz = 0; }
+      updateGrid(g, a); updateGrid(g, b); sep.update(a); sep.update(b);
+      // Unvisited units have not moved during this i pass. The candidate cells remain
+      // complete until a push changes the query bounds. No displacement padding is needed.
+      const nx0 = Math.floor((a.x - radius) / size), nx1 = Math.floor((a.x + radius) / size), nz0 = Math.floor((a.z - radius) / size), nz1 = Math.floor((a.z + radius) / size);
+      if (nx0 !== x0 || nx1 !== x1 || nz0 !== z0 || nz1 !== z1) {
+        x0 = nx0; x1 = nx1; z0 = nz0; z1 = nz1;
+        candidates = grid.candidates(a, radius, true, next => order.get(next.id) > j); k = -1;
+      }
+    }
+  }
+}
+// Off-map support: planes, paratroopers, smoke, bombing, artillery and strafing runs as their timers come due.
+function stepStrikes(g, list, dt) {
+  for (const s of g.strikes) {
+    const sp = SUPPORT[s.kind];
+    if ((s.t -= dt) > 0) continue;
+    if (!s.live) {
+      s.live = true;
+      if (sp.plane) g.shots.push({ k: s.kind, x: s.x, z: s.z, dir: s.dir, fo: s.owner, pub: true });
+      if (sp.plane && intercepted(g, s, list)) continue; // shot down on the way in
+      if (s.kind === 'dive') {
+        // one heavy bomb, right on the spot
+        g.shots.push({ x: s.x, z: s.z, k: 'bomb', pub: true });
+        blast(g, list, s, sp.blast, sp, s.owner);
+        digAt(g, s, sp.dig);
+      } else if (s.kind === 'para') {
+        // the stick lands around the spot, each squad on the nearest open ground to its own place in the ring
+        sp.units.forEach((type, i) => {
+          if (g.players[s.owner].out || popOf(g, s.owner) + popUse(type) > popCap(g, s.owner)) return;
+          const a = s.dir + i * 2 * Math.PI / sp.units.length, u = spawnUnit(g, s.owner, type);
+          Object.assign(u, cellCenter(g, nearestFree(g, s.x + Math.cos(a) * sp.spread, s.z + Math.sin(a) * sp.spread))); updateGrid(g, u);
+          g.shots.push({ k: 'chutes', x: u.x, z: u.z, pub: true });
+        });
+      } else if (s.kind === 'cover') {
+        (g.covers ??= []).push({ team: g.players[s.owner].team, owner: s.owner, x: s.x, z: s.z, r: sp.radius, t: sp.dur });
+        s.left = 0;
+      }
+    }
+    if (s.kind === 'recon') s.left -= dt;
+    else if (s.kind === 'smoke') {
+      for (let i = 0; i < sp.clouds; i++) {
+        // a wall of clouds along the line
+        const at = stripAt(s, (i / (sp.clouds - 1) - 0.5) * (sp.len - sp.cloud), (Math.random() - 0.5) * 2);
+        g.smokes.push({ id: g.nextId++, x: at.x, z: at.z, r: sp.cloud, t: sp.dur });
+      }
+      g.shots.push({ k: 'smokeshells', x: s.x, z: s.z, pub: true });
+      s.left = 0;
+    }
+    else if (s.kind === 'bombing' && (s.next -= dt) <= 0) {
+      const i = sp.shells - s.left, at = stripAt(s, (i / (sp.shells - 1) - 0.5) * sp.len, (Math.random() - 0.5) * 3);
+      g.shots.push({ x: at.x, z: at.z, k: 'bomb', pub: true });
+      blast(g, list, at, sp.blast, sp, s.owner);
+      digAt(g, at, sp.dig);
+      s.left--; s.next = sp.every;
+    }
+    else if (s.kind === 'artillery' && (s.next -= dt) <= 0) {
+      const at = stripAt(s, (Math.random() - 0.5) * sp.len, (Math.random() - 0.5) * sp.width);
+      g.shots.push({ x: at.x, z: at.z, k: 'shell', pub: true });
+      blast(g, list, at, sp.blast, sp, s.owner);
+      digAt(g, at, sp.dig);
+      s.left--; s.next = sp.every;
+    } else if (s.kind === 'strafe') {
+      // everything within `width` of the run's line gets raked
+      for (const t of list) {
+        if (inStrip(s, t, sp.len, sp.width) && t.hp > 0 && !t.air && !t.riding) hurt(g, t, sp, 1, s.owner);
+      }
+      s.left = 0;
+    }
+  }
+  g.strikes = g.strikes.filter(s => !s.live || s.left > 0);
+}
+
 // After a winner the sim keeps running (the server's closing hold shows the last seconds) without win checks or story.
 export function step(g) {
   for (const u of g.units.values()) if (u.structureId) syncBuildingSections(g, u);
@@ -5397,60 +5522,8 @@ export function step(g) {
     repairBuildingSections(g, s, def.hpPer * 0.75 * rate);
   }
 
-  // soft separation; never push a unit into a blocked cell
   const list = [...g.units.values()];
-  const order = new Map(list.map((u, i) => [u.id, i])), maxRadius = Math.max(0, ...list.map(u => UNITS[u.type].radius));
-  const sep = new SpatialGrid(g.units, 4); // fine 4 m cells: this query is tiny and runs for every unit
-  const nearCrossing = u => {
-    const c = cellOf(g, u.x, u.z), x = c % g.w, y = Math.floor(c / g.w);
-    for (let ny = Math.max(0, y - 1); ny <= Math.min(g.h - 1, y + 1); ny++)
-      for (let nx = Math.max(0, x - 1); nx <= Math.min(g.w - 1, x + 1); nx++)
-        if (g.chars[ny * g.w + nx] === '=' || g.flags[ny * g.w + nx] & FORD) return true;
-    return false;
-  };
-  for (let i = 0; i < list.length; i++) {
-    const a = list[i], radius = (UNITS[a.type].radius + maxRadius) * 0.8;
-    if (a.garrison >= 0 || a.air || a.riding || a.rail) continue;
-    const grid = sep, size = grid.size;
-    let x0 = Math.floor((a.x - radius) / size), x1 = Math.floor((a.x + radius) / size), z0 = Math.floor((a.z - radius) / size), z1 = Math.floor((a.z + radius) / size);
-    let candidates = grid.candidates(a, radius, true, b => order.get(b.id) > i);
-    for (let k = 0; k < candidates.length; k++) {
-      const b = candidates[k], j = order.get(b.id), min = (UNITS[a.type].radius + UNITS[b.type].radius) * 0.8;
-      if (a.garrison >= 0 || b.garrison >= 0 || a.air || b.air || b.riding || b.rail) continue;
-      let dx = b.x - a.x, dz = b.z - a.z, d = Math.hypot(dx, dz);
-      if (d >= min) continue;
-      if (d === 0) { dx = a.id < b.id ? 1e-6 : -1e-6; dz = 0; d = 1e-6; }
-      const sa = UNITS[a.type].structure, sb = UNITS[b.type].structure;
-      if (sa && sb) continue;
-      const solidContact = !UNITS[a.type].infantry && !UNITS[b.type].infantry && (isGroundVehicle(UNITS[a.type]) || isGroundVehicle(UNITS[b.type])) && !ghostPair(g, a, b);
-      const push = (min - d) / 2 * (solidContact ? sa || sb ? 2 : 1 : sa || sb ? 1 : 0.5), px = dx / d * push, pz = dz / d * push;
-      let apx = px, apz = pz, bpx = px, bpz = pz;
-      if (UNITS[a.type].infantry && UNITS[b.type].infantry && allied(g, a.owner, b.owner) && a.path.length && b.path.length && nearCrossing(a) && nearCrossing(b)) {
-        const ga = a.worldGoal ?? a.amove ?? a.path.at(-1), gb = b.worldGoal ?? b.amove ?? b.path.at(-1);
-        const ax = ga.x - a.x, az = ga.z - a.z, bx = gb.x - b.x, bz = gb.z - b.z;
-        if (ax * bx + az * bz > Math.hypot(ax, az) * Math.hypot(bx, bz) * 0.5) {
-          // Same-way bridge traffic keeps lateral spacing without undoing either squad's forward step.
-          const againstA = Math.max(0, (px * a.vx + pz * a.vz) / (a.vx * a.vx + a.vz * a.vz || 1));
-          const againstB = Math.min(0, (px * b.vx + pz * b.vz) / (b.vx * b.vx + b.vz * b.vz || 1));
-          apx -= againstA * a.vx; apz -= againstA * a.vz;
-          bpx -= againstB * b.vx; bpz -= againstB * b.vz;
-        }
-      }
-      // a squad holding its cover is not pushed off it, and does not push back at a friend walking past
-      const ha = !sa && (a.holdPos || a.build || a.dig || a.entrench || shovedFromCover(g, a, a.x - apx, a.z - apz)), hb = !sb && (b.holdPos || b.build || b.dig || b.entrench || shovedFromCover(g, b, b.x + bpx, b.z + bpz));
-      if (!sa && !ha && !(hb && a.path.length) && !(flagsAt(g, a.x - apx, a.z - apz) & blockOf(UNITS[a.type])) && (!isGroundVehicle(UNITS[a.type]) || sweptVehicleClear(g, a, { ...a, x: a.x - apx, z: a.z - apz }, UNITS[a.type], blockOf(UNITS[a.type]))) && Math.abs(levelAt(g, a.x - apx, a.z - apz) - levelAt(g, a.x, a.z)) <= 1) { a.x -= apx; a.z -= apz; }
-      if (!sb && !hb && !(ha && b.path.length) && !(flagsAt(g, b.x + bpx, b.z + bpz) & blockOf(UNITS[b.type])) && (!isGroundVehicle(UNITS[b.type]) || sweptVehicleClear(g, b, { ...b, x: b.x + bpx, z: b.z + bpz }, UNITS[b.type], blockOf(UNITS[b.type]))) && Math.abs(levelAt(g, b.x + bpx, b.z + bpz) - levelAt(g, b.x, b.z)) <= 1) { b.x += bpx; b.z += bpz; }
-      if (solidContact) { a.moveSpeed = b.moveSpeed = 0; a.vx = a.vz = b.vx = b.vz = 0; }
-      updateGrid(g, a); updateGrid(g, b); sep.update(a); sep.update(b);
-      // Unvisited units have not moved during this i pass. The candidate cells remain
-      // complete until a push changes the query bounds. No displacement padding is needed.
-      const nx0 = Math.floor((a.x - radius) / size), nx1 = Math.floor((a.x + radius) / size), nz0 = Math.floor((a.z - radius) / size), nz1 = Math.floor((a.z + radius) / size);
-      if (nx0 !== x0 || nx1 !== x1 || nz0 !== z0 || nz1 !== z1) {
-        x0 = nx0; x1 = nx1; z0 = nz0; z1 = nz1;
-        candidates = grid.candidates(a, radius, true, next => order.get(next.id) > j); k = -1;
-      }
-    }
-  }
+  separateCrowds(g, list);
 
   // Measure infantry progress after crowd separation, which can undo its attempted step.
   for (const [u, speed] of infantryProgress) if (u.hp > 0 && !u.riding && u.garrison < 0) {
@@ -5475,64 +5548,7 @@ export function step(g) {
   }
   g.salvos = g.salvos.filter(s => s.left > 0);
 
-  // off-map support
-  for (const s of g.strikes) {
-    const sp = SUPPORT[s.kind];
-    if ((s.t -= dt) > 0) continue;
-    if (!s.live) {
-      s.live = true;
-      if (sp.plane) g.shots.push({ k: s.kind, x: s.x, z: s.z, dir: s.dir, fo: s.owner, pub: true });
-      if (sp.plane && intercepted(g, s, list)) continue; // shot down on the way in
-      if (s.kind === 'dive') {
-        // one heavy bomb, right on the spot
-        g.shots.push({ x: s.x, z: s.z, k: 'bomb', pub: true });
-        blast(g, list, s, sp.blast, sp, s.owner);
-        digAt(g, s, sp.dig);
-      } else if (s.kind === 'para') {
-        // the stick lands around the spot, each squad on the nearest open ground to its own place in the ring
-        sp.units.forEach((type, i) => {
-          if (g.players[s.owner].out || popOf(g, s.owner) + popUse(type) > popCap(g, s.owner)) return;
-          const a = s.dir + i * 2 * Math.PI / sp.units.length, u = spawnUnit(g, s.owner, type);
-          Object.assign(u, cellCenter(g, nearestFree(g, s.x + Math.cos(a) * sp.spread, s.z + Math.sin(a) * sp.spread))); updateGrid(g, u);
-          g.shots.push({ k: 'chutes', x: u.x, z: u.z, pub: true });
-        });
-      } else if (s.kind === 'cover') {
-        (g.covers ??= []).push({ team: g.players[s.owner].team, owner: s.owner, x: s.x, z: s.z, r: sp.radius, t: sp.dur });
-        s.left = 0;
-      }
-    }
-    if (s.kind === 'recon') s.left -= dt;
-    else if (s.kind === 'smoke') {
-      for (let i = 0; i < sp.clouds; i++) {
-        // a wall of clouds along the line
-        const at = stripAt(s, (i / (sp.clouds - 1) - 0.5) * (sp.len - sp.cloud), (Math.random() - 0.5) * 2);
-        g.smokes.push({ id: g.nextId++, x: at.x, z: at.z, r: sp.cloud, t: sp.dur });
-      }
-      g.shots.push({ k: 'smokeshells', x: s.x, z: s.z, pub: true });
-      s.left = 0;
-    }
-    else if (s.kind === 'bombing' && (s.next -= dt) <= 0) {
-      const i = sp.shells - s.left, at = stripAt(s, (i / (sp.shells - 1) - 0.5) * sp.len, (Math.random() - 0.5) * 3);
-      g.shots.push({ x: at.x, z: at.z, k: 'bomb', pub: true });
-      blast(g, list, at, sp.blast, sp, s.owner);
-      digAt(g, at, sp.dig);
-      s.left--; s.next = sp.every;
-    }
-    else if (s.kind === 'artillery' && (s.next -= dt) <= 0) {
-      const at = stripAt(s, (Math.random() - 0.5) * sp.len, (Math.random() - 0.5) * sp.width);
-      g.shots.push({ x: at.x, z: at.z, k: 'shell', pub: true });
-      blast(g, list, at, sp.blast, sp, s.owner);
-      digAt(g, at, sp.dig);
-      s.left--; s.next = sp.every;
-    } else if (s.kind === 'strafe') {
-      // everything within `width` of the run's line gets raked
-      for (const t of list) {
-        if (inStrip(s, t, sp.len, sp.width) && t.hp > 0 && !t.air && !t.riding) hurt(g, t, sp, 1, s.owner);
-      }
-      s.left = 0;
-    }
-  }
-  g.strikes = g.strikes.filter(s => !s.live || s.left > 0);
+  stepStrikes(g, list, dt);
   antiAir(g, list, dt);
   if (g.covers) { for (const c of g.covers) c.t -= dt; g.covers = g.covers.filter(c => c.t > 0); }
   for (const p of g.players) {

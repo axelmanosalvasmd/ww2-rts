@@ -122,6 +122,9 @@ function notice(msg) {
 
 // ---------- per frame ----------
 
+const SHADOW_MS = 25;
+let shadowAt = -Infinity;
+
 // cam is main.js's camera rig ({ x, z, y, dist }); ground is the terrain mesh (or null before a match).
 // A fully opaque paper map supplies its own render object and needs no battlefield or shadow pass.
 export function renderFrame(cam, ground, renderObject = null) {
@@ -138,6 +141,12 @@ export function renderFrame(cam, ground, renderObject = null) {
     }
   }
   if (!renderObject) followView(cam);
+  // three redraws the shadow map in every render() of the scene, so High drew it twice a frame (the AO pass renders
+  // the scene again for its normals). Draw it once, and at most every SHADOW_MS: it draws every caster in view again,
+  // and a shadow one frame behind does not show at 60 fps from above. Below 40 fps, and at eye level (the operative's
+  // view, shadows right in front of him), it is still drawn every frame.
+  renderer.shadowMap.autoUpdate = false;
+  if (cam?.fps || now - shadowAt >= SHADOW_MS) { renderer.shadowMap.needsUpdate = true; shadowAt = now; }
   const p = !renderObject && !gfx.low && !NO_AO ? postFor() : null;
   if (!p) { renderer.render(renderObject ?? scene, camera); return; }
   renderer.getSize(v2);
@@ -168,10 +177,14 @@ function postFor() {
     ao.blendIntensity = AO.mix;
     // three only leaves points and lines out of the AO depth: see-through things (capture rings, labels, fog, the
     // apron haze) then count as solid walls and cast long black streaks over the ground behind them. Leave them out too.
+    // This runs every frame: walk only what is drawn (most of a big battle's ~20,000 objects are hidden soldiers'
+    // meshes, and a hidden parent hides its children anyway) and allocate nothing per object.
+    const seeThrough = (m) => m.transparent || !m.depthWrite;
     ao._overrideVisibility = function () {
       const cache = this._visibilityCache;
-      this.scene.traverse((o) => {
-        if (o.visible && (o.isPoints || o.isLine || o.isLine2 || o.isSprite || (o.material && [].concat(o.material).every((m) => m.transparent || !m.depthWrite)))) { o.visible = false; cache.push(o); }
+      this.scene.traverseVisible((o) => {
+        const m = o.material;
+        if (o.isPoints || o.isLine || o.isLine2 || o.isSprite || (m && (Array.isArray(m) ? m.every(seeThrough) : seeThrough(m)))) { o.visible = false; cache.push(o); }
       });
     };
     composer.addPass(new RenderPass(scene, camera)); composer.addPass(ao); composer.addPass(new OutputPass());

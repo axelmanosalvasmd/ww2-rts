@@ -3469,7 +3469,9 @@ const referenceSeparation = `
 
 // Twenty ticks of a seeded crowded infantry army preserve the old separation coordinates.
 await check("Twenty ticks of a seeded crowded infantry army preserve the old separation coordinates", async () => {
-  const source = readFileSync('shared/sim.js', 'utf8'), start = source.indexOf('  // soft separation;'), end = source.indexOf('  // grenades:', start);
+  // step() calls separateCrowds right after making its unit list: the reference takes the place of both
+  const source = readFileSync('shared/sim.js', 'utf8'), start = source.indexOf('  const list = [...g.units.values()];\n  separateCrowds(g, list);'), end = source.indexOf('  // grenades:', start);
+  assert.ok(start > 0 && end > start, 'the separation call and the grenades comment are still in step()');
   const old = await simCopy(source.slice(0, start) + referenceSeparation + source.slice(end));
   const g = massiveFixture(); g.players.forEach(p => { p.team = 0; }); g.mode.teams = 1;
   let seed = 123456;
@@ -6432,6 +6434,8 @@ await check("Unit models (client/unit-models.js)", async () => {
   assert.equal(batches.reduce((n, m) => n + m.count, 0), men.length, 'every man is one instance');
   assert.equal(batches.length, new Set(men.map((m) => m.geometry)).size, 'one draw call per figure');
   assert.ok(men.every((m) => !m.layers.test(cam.layers)), 'the men no longer draw themselves');
+  let walked = 0; squads[0].root.traverseVisible(() => walked++);
+  assert.ok(walked < 10, `three's passes skip the drawn men's own meshes (${walked} objects walked)`);
   cam.lookAt(5, 0, 400); drawSoldiers(squads, cam);
   assert.ok(crowd.children.every((m) => !m.count), 'squads behind the camera are left out');
   const allMeshes = squads.flatMap((u) => u.models).flatMap((m) => m.userData.meshes);
@@ -8475,9 +8479,9 @@ await check("Crew-served guns (client/models/guns.js)", async () => {
   for (const type of ['mg', 'mortar', 'at', 'flak']) for (const fac of [0, 1, 2, 3]) {
     const label = `${type} (faction ${fac})`, look = looks[fac], root = new THREE.Group(), v = { type, root, models: [], turret: null, x: 0, z: 0 };
     buildModel(v, root, look, fac, UNITS[type]);
-    // the weapon is every visible mesh under the root outside the soldiers (their nodes carry a formation slot)
+    // the weapon is every visible mesh under the root outside the soldiers (their crew group)
     const meshes = [];
-    for (const o of root.children) if (!o.userData.slot) o.traverseVisible((m) => { if (m.isMesh) meshes.push(m); });
+    for (const o of root.children) if (!o.userData.slot && o !== v.crew) o.traverseVisible((m) => { if (m.isMesh) meshes.push(m); });
     assert.equal(meshes.length, 1, `${label}: the gun is one draw call`);
     assert.ok(meshes[0].castShadow, `${label}: the gun casts a shadow`);
     const geo = meshes[0].geometry, I = geo.index, P = geo.attributes.position, N = geo.attributes.normal, tris = I.count / 3;
@@ -8506,10 +8510,10 @@ await check("Crew-served guns (client/models/guns.js)", async () => {
     assert.ok(farGeo && farGeo.index.count / 3 <= 500, `${label}: a far version under 500 triangles`);
     assert.ok(farGeo.attributes.position.array.every(Number.isFinite) && farGeo.attributes.color, `${label}: the far version is finite and painted`);
     animate(v, 0, new THREE.Vector3(0, 160, 160));
-    for (const o of root.children) if (!o.userData.slot) o.traverseVisible((m) => { if (m.isMesh) farMeshes.push(m); });
+    for (const o of root.children) if (!o.userData.slot && o !== v.crew) o.traverseVisible((m) => { if (m.isMesh) farMeshes.push(m); });
     assert.ok(farMeshes.length === 1 && farMeshes[0] !== meshes[0] && farMeshes[0].geometry.index.count / 3 <= 500, `${label}: one cheap draw call far away`);
     animate(v, 0, new THREE.Vector3(0, 8, 8));
-    const backNear = []; for (const o of root.children) if (!o.userData.slot) o.traverseVisible((m) => { if (m.isMesh) backNear.push(m); });
+    const backNear = []; for (const o of root.children) if (!o.userData.slot && o !== v.crew) o.traverseVisible((m) => { if (m.isMesh) backNear.push(m); });
     assert.ok(backNear.length === 1 && backNear[0] === meshes[0], `${label}: the full gun is back when the camera comes close`);
   }
   for (const fac of [0, 1, 2]) {
