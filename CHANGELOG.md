@@ -5,23 +5,6 @@ AI-vs-AI runs (see DESIGN.md for the balance log). Add new entries under **Unrel
 
 ## Unreleased
 
-- The server simulates a third faster (no game change: both 6-AI Massive benchmarks end in exactly the same state).
-  Units gained properties as they played (movement, traffic, combat and supply each added their own), in whatever
-  order a unit met them, so 167 units in the Conquest benchmark had 55 different hidden classes and the game object
-  grew 10 more properties mid-match. V8 kept throwing away step()'s optimized code (43 times in 2,000 ticks).
-  `spawnUnit` now declares all 49 such unit properties and `createGame` the 26 game ones, as `undefined`: every unit
-  shares one hidden class, and step() loses its optimized code 19 times instead. Stepping master and this change
-  side by side in one process (two copies of each) over 6,000 ticks of the 6-AI Massive Conquest benchmark, step()
-  took 37.5 and 36.6 s instead of 55.8 and 55.1 s, and the whole tick's main thread 50.7 and 49.6 s instead of 74.4
-  and 72.7 s. New check: a seeded three-AI match must end with every unit and the game in the shape they were created
-  with (test.js). Left for later: the unit type definitions (`UNITS`) and their weapons still come in many shapes, the
-  source of most of the remaining discards.
-- Fixed three flaky checks, all failing on master too. test-world-conquest.js and test-world-acceptance.js played a new
-  random world every run, and in about 1 run in 8 the spot they build on was blocked terrain; they now pin the world
-  (`room.worldSeed`, which the server uses when set) and seed `Math.random`, so every run plays the same match. The
-  relief check over every shipped map also read the temporary maps other test files save and delete meanwhile, and
-  failed when one vanished mid-read; it now skips them.
-
 - Classic balance re-measured over 60 free-for-alls with the 40-minute limit: USA 37%, Germany 35%, USSR 28% of
   decisive matches (three draws), all inside 25-42%. The earlier 30-match reading of USA 43% was noise.
 
@@ -155,6 +138,25 @@ AI-vs-AI runs (see DESIGN.md for the balance log). Add new entries under **Unrel
 - Fixed trenches and MG nests dug during a match showing only as a flat dirt strip, with no cut, walls or sandbags. The server dropped the change for any player who had a unit on the move at that moment (the movement code read the terrain first and used up the update), so the client never learned the cell became a trench. Reconnecting showed them. Older than the ping fix below.
 - Fixed pings climbing to 10 s and beyond late in big fights. The server tick grew with the battle (3 ms at 66 units to 70 ms at 268 in a 2v2 Annihilation), and once it overran, snapshots piled up 3 MB deep per socket with pongs stuck behind them. Now a player whose connection is 256 KB behind skips snapshots and gets one fresh snapshot when it catches up, so a slow server or connection costs smoothness, not a minute of lag.
 - The server does about 44% less work in large battles (CPU 119 s to 67 s over a 6000-tick Massive 2v2 Annihilation with the same result): remembered terrain no longer rechecks every pending crater for every player each tick, team sight checks no longer copy the whole unit list per cell, and vehicle traffic skips a sort it never needed. Path searches and crowd separation are the next biggest costs, left for later.
+
+### 2026-10-09: Units and the game keep one shape (`bafba85`)
+
+- The server simulates a third faster (no game change: both 6-AI Massive benchmarks end in exactly the same state).
+  Units gained properties as they played (movement, traffic, combat and supply each added their own), in whatever
+  order a unit met them, so 167 units in the Conquest benchmark had 55 different hidden classes and the game object
+  grew 10 more properties mid-match. V8 kept throwing away step()'s optimized code (43 times in 2,000 ticks).
+  `spawnUnit` now declares all 49 such unit properties and `createGame` the 26 game ones, as `undefined`: every unit
+  shares one hidden class, and step() loses its optimized code 19 times instead. Stepping master and this change
+  side by side in one process (two copies of each) over 6,000 ticks of the 6-AI Massive Conquest benchmark, step()
+  took 37.5 and 36.6 s instead of 55.8 and 55.1 s, and the whole tick's main thread 50.7 and 49.6 s instead of 74.4
+  and 72.7 s. New check: a seeded three-AI match must end with every unit and the game in the shape they were created
+  with (test.js). Left for later: the unit type definitions (`UNITS`) and their weapons still come in many shapes, the
+  source of most of the remaining discards.
+- Fixed three flaky checks, all failing on master too. test-world-conquest.js and test-world-acceptance.js played a new
+  random world every run, and in about 1 run in 8 the spot they build on was blocked terrain; they now pin the world
+  (`room.worldSeed`, which the server uses when set) and seed `Math.random`, so every run plays the same match. The
+  relief check over every shipped map also read the temporary maps other test files save and delete meanwhile, and
+  failed when one vanished mid-read; it now skips them.
 
 ### 2026-10-09: Performance beyond issue #58 (`a956193`)
 
