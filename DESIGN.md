@@ -1716,6 +1716,17 @@ health budget, queue and identity during a local breach. Repair may restore supp
 free repair cannot revive a destroyed building. Fire damages sections progressively, and material hardness controls
 ground deformation.
 
+Explosives against base buildings (2026-10-09). A constructed building's cells are pieces of one hp pool, so a blast
+hits the building once: what it would do at the building's nearest cell, taken by the nearest cells first, with what a
+broken cell can't absorb going on to the next (a beam: once per breath). Base buildings, walls and gates (K cells)
+don't catch fire; houses, hedges and fields still do. Both rules undo multipliers that arrived with local destruction
+(2026-10-03), a day after the howitzer and bomber were balanced: every cell in reach took the full blast (a howitzer
+shell did about 1,100 to a 3x3 HQ instead of 150), and any heavy blast rolled a 15% fire chance on every cell, after
+which the fire alone burned the HQ down in 3 of 6 tries. One attacker against an undefended full HQ (3,000 hp),
+default map, before / after: howitzer at 80 m 54-78 s / 306-354 s; bomber 13 s (its first stick) / one full sortie
+leaves 900-1,200 hp; rocket truck at 60 m 23-44 s / 84-104 s; mortar at 50 m 148-189 s / 503-543 s. Command bunkers
+were never affected (one unit, one hit). Against troops nothing changed.
+
 Falling sections and wrecks have mass, impulse, gravity, damped motion and bounded swept contacts. There are at most
 96 active bodies, 8 contacts per body and 2.5 seconds of motion. Section travel stops within 4 metres and wreck travel
 within 2; overflow solves and settles immediately. Settled rubble/wrecks become normal pathing and cover objects.

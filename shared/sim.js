@@ -93,8 +93,9 @@ export const CFG = {
   // dust: a vehicle moving over dry ground is seen from this much further away
   dustSeen: 1.3,
   // fire: seconds a cell burns, chance per second of catching from a burning neighbour (more downwind, little upwind),
-  // chance a heavy blast sets it alight. Infantry in a burning cell lose hp and nerve every second.
-  fire: { burn: { H: 14, B: 25, K: 25, '.': 5, O: 20 }, spread: { H: 0.25, B: 0.03, K: 0.03, '.': 0.022, O: 0.12 }, ignite: { H: 0.3, B: 0.15, K: 0.15, '.': 0.03, O: 0.2 }, inf: 8, supp: 12, smoke: { r: 5, t: 12 } },
+  // chance a heavy blast sets it alight. Infantry in a burning cell lose hp and nerve every second. Base buildings,
+  // walls and gates (K) don't burn: one spark used to burn a whole HQ down.
+  fire: { burn: { H: 14, B: 25, '.': 5, O: 20 }, spread: { H: 0.25, B: 0.03, '.': 0.022, O: 0.12 }, ignite: { H: 0.3, B: 0.15, '.': 0.03, O: 0.2 }, inf: 8, supp: 12, smoke: { r: 5, t: 12 } },
   // a mine goes off under the first enemy to step on it; any explosion that damages terrain clears it. detect: how
   // close a builder squad finds enemy mines (after standing still for `sweep` seconds; Engineers on the move too)
   mine: { blast: 3, inf: 45, veh: 220, supp: 60, detect: 6, sweep: 2 },
@@ -4577,7 +4578,7 @@ function blast(g, list, at, radius, src, owner, context = {}) {
 }
 // explosions chew through structures; a wrecked cell changes type (house -> rubble, bridge -> river)
 export function damageCells(g, list, at, radius, dmg, scar = 0, context = {}) {
-  const r = Math.ceil(radius / CELL);
+  const r = Math.ceil(radius / CELL), buildingHits = new Map();
   for (let y = Math.floor(at.z / CELL) - r; y <= Math.floor(at.z / CELL) + r; y++) for (let x = Math.floor(at.x / CELL) - r; x <= Math.floor(at.x / CELL) + r; x++) {
     if (x < 0 || y < 0 || x >= g.w || y >= g.h) continue;
     const c = y * g.w + x, d = Math.hypot((x + 0.5) * CELL - at.x, (y + 0.5) * CELL - at.z);
@@ -4607,17 +4608,30 @@ export function damageCells(g, list, at, radius, dmg, scar = 0, context = {}) {
     if (dmg >= 60 && CFG.fire.ignite[ch] && rng(g) < CFG.fire.ignite[ch]) ignite(g, c);
     const section = g.structuralCells?.get(c);
     if (section && section.state !== 'failed') {
-      if (!context.skipBuildings?.has(section.entityId)) damageWorldSection(g, c, hit, { ...context, list });
+      if (context.skipBuildings?.has(section.entityId)) continue;
+      if (section.entityId === undefined) damageWorldSection(g, c, hit, { ...context, list });
+      else if (buildingHits.has(section.entityId)) buildingHits.get(section.entityId).push([c, hit]);
+      else buildingHits.set(section.entityId, [[c, hit]]);
       continue;
     }
     if (!(g.cellHp[c] > 0)) continue;
     if ((g.cellHp[c] -= hit) <= 0) wreckCell(g, list, c); else touch(g, c);
   }
+  // A building's cells are pieces of one hp pool, so a blast hits the building once, as hard as at its nearest cell
+  // (a beam: once per breath). Hitting every cell took a 3x3 HQ's damage up to nine times over. The nearest cells
+  // take it first; what a broken cell can't absorb carries on to the next.
+  for (const [id, cells] of buildingHits) {
+    if (context.damagedCells?.has('building:' + id)) continue;
+    context.damagedCells?.add('building:' + id);
+    cells.sort((a, b) => b[1] - a[1]);
+    let left = cells[0][1];
+    for (const [c] of cells) { if (left <= 0) break; left -= damageWorldSection(g, c, left, { ...context, list }); }
+  }
 }
 // what burns: hedges, houses, and dry grass that is neither churned up nor already burnt
 const flammable = (g, c) => {
   const ch = physicalWorldCell(g, c);
-  return !g.fires.has(c) && (ch === 'H' || ch === 'B' || ch === 'K' || ch === 'O' || (ch === '.' && !g.burnt[c] && g.wear[c] < 0.5 && (g.wx?.wet ?? 0) < 0.35));
+  return !g.fires.has(c) && (ch === 'H' || ch === 'B' || ch === 'O' || (ch === '.' && !g.burnt[c] && g.wear[c] < 0.5 && (g.wx?.wet ?? 0) < 0.35));
 };
 function ignite(g, c) {
   if (!flammable(g, c)) return;
@@ -4652,7 +4666,7 @@ function burn(g, list, dt) {
       const along = (dx * wx + dy * wz) / Math.hypot(dx, dy) * g.wind.v;
       if (rng(g) < CFG.fire.spread[physicalWorldCell(g, n)] * dt * Math.max(0.1, 1 + 1.5 * along) * (1 - rain)) ignite(g, n);
     }
-    if (ch === 'B' || ch === 'K') {
+    if (ch === 'B') {
       damageWorldSection(g, c, maxHp(g, c) / CFG.fire.burn.B * dt * (0.2 + 0.8 * worldMaterial(g, c).fire) * (1 - rain * 0.7), { list, direction: { x: wx, z: wz } });
       if (g.structuralCells?.get(c)?.state === 'failed') { g.burnt[c] = 1; continue; }
     }

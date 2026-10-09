@@ -30,6 +30,16 @@ AI-vs-AI runs (see DESIGN.md for the balance log). Add new entries under **Unrel
   their size.
   Found, not looked into: `test-world-conquest.js` "engineers can raise a forward HQ on conquered land" fails about
   one run in four on master as it was (4dffcce), so it is flaky.
+- Howitzers, bombers and other explosives no longer flatten an HQ or other base building in seconds. An explosion
+  hit every map cell of a building it reached at full strength (a 3x3 HQ has nine), and any heavy shell could set a
+  building alight, after which the fire burned it down on its own about half the time. Now an explosion hits a
+  building once, for at most its listed demolition value (150 for a howitzer shell, 250 for a bomb), and base
+  buildings, walls and gates don't burn (houses, hedges and fields still do). One attacker against an undefended
+  full-health HQ, before / after: a howitzer at 80 m 54-78 s / 5-6 min; a bomber 13 s (its first stick) / one full
+  sortie leaves 30-40% of the HQ; a rocket truck at 60 m 23-44 s / 84-104 s; a mortar at 50 m 2.5-3 min / 8.5-9 min.
+  Command bunkers (Assault, Annihilation) were never affected, and nothing changed against troops: a howitzer still
+  wipes a rifle squad standing in the open 60 m away in about 1-2 minutes. New check `Explosives vs base buildings` in
+  `test.js`. Left for later: the rocket truck is now the quickest way to knock an HQ down.
 - Operative shots hit the soldiers you see. A squad in the open is now its drawn men, each a 0.45 m body on the
   formation slot the client draws (slots moved to `shared/squad-men.js`, shared by client and server, with a lag
   of speed/9 for marching men). Before, a squad was one 1.2 m cylinder at its centre, so the end men of a rifle

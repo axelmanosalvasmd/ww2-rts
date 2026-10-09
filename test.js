@@ -3841,6 +3841,20 @@ await check("Annihilation", async () => {
   assert.equal([...fg.units.values()].filter(u => u.type === 'flakpos').length, before + 1);
 });
 
+// A blast hits a base building once, not once per cell of it, and base buildings don't catch fire: a howitzer shell
+// on an HQ does at most its demolition value
+await check("Explosives vs base buildings", async () => {
+  const map = JSON.parse(readFileSync('maps/default.json', 'utf8'));
+  const g = createGame(map, ['a', 'b'], false, [0, 1], [0, 1], { mode: 'conquest', weather: false });
+  const hq = [...g.units.values()].find(u => u.type === 'hq' && u.owner === 1), w = UNITS.howitzer.w;
+  for (let i = 0; i < 10; i++) {
+    const before = hq.hp;
+    sim.damageCells(g, [...g.units.values()], hq, w.blast, w.terrain, 0, { owner: 0 });
+    assert.ok(before - hq.hp > 0 && before - hq.hp <= w.terrain + 1e-6, `a shell on the HQ does at most ${w.terrain} (${Math.round(before - hq.hp)})`);
+  }
+  assert.ok(!hq.cells.some(c => g.fires.has(c)), 'ten shells never set it alight');
+});
+
 // Only the light vehicles lay smoke. The Medium Tank fires an HE shell at a spot, the Tiger loads an 88 mm AP round,
 // the Churchill fires its petard.
 await check("Only the light vehicles lay smoke", async () => {
