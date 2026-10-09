@@ -49,6 +49,28 @@ AI-vs-AI runs (see DESIGN.md for the balance log). Add new entries under **Unrel
   house) instead of at its foot, so shells no longer burst on the rubble of the wall in front. A medium tank 20 m from
   a 3x3 house block, firing at its middle cell: 0 shots in 90 s before, the cell down in 5 shots after. Attacking
   an enemy HQ you can see was never affected. `Tank shells` in `test.js` now also checks the middle of a house block.
+- El Alamein is fair in Conquest and Classic. It was drawn for Assault, so in the other modes the east side's home
+  points paid 5 VP and the west's none: in AI 2v2 Conquest the east won 60 of 60. The two Miteirya Ridge points and
+  the station now pay no VP, like home points on other maps; Kidney Ridge in the middle pays 3; Tel el Eisa (now 1.5
+  VP) has a west twin at the north gap of the first minefield (1.5 VP, 2 MP), so both sides earn the same VP and MP
+  from home. AI 2v2 with supply on, same seeds: Conquest west 36 / east 24 over 60 (median match 12.5 min, was 9);
+  Classic east 13 / west 12 with 10 draws over 35 (stopped at 35: Classic matches run up to 40 minutes and memory
+  allowed two at once). Assault scores no VP, but its AI prefers higher-VP points and the north gap is a new
+  attacker-side point: AI 1v1 attacker wins 15/20 before, 12/20 after on the same seeds, within noise.
+  `tools/ai-balance.mjs` takes `--teams 0,0,1,1` for team matches and `--logistics` to play with supply on, as the
+  lobby does. Found and left for later: El Alamein attackers now win 15 of 20 on the old map, where DESIGN.md had 0
+  to 2 of 21, so the AI attacker has grown much stronger and the Assault maps need re-measuring.
+- Fixed: in Classic, a side holding no point worth victory points earned no Munitions at all, and since refilling
+  ammunition costs Munitions its units could not rearm. Found on El Alamein 2v2 (2026-10-09): the west side started
+  next to a single 0-vp point, so in an all-AI match it sat at 0 Munitions for 8 minutes while its army's ammunition
+  fell to 67%, against 2,500 Munitions for the east. Classic HQs now trickle 0.5 Munitions/s (like the 0.5/s Fuel
+  trickle); in the same match the west keeps 6 to 64 Munitions and its ammunition at 99%. A full rifle reload costs
+  about 0.6 Munitions, so the trickle rearms a whole army but buys only one smoke call a minute. Not measured over 60
+  Classic matches: the trickle is the same for every player. `Fuel (Classic)` in `test.js` now also checks the
+  Munitions trickle; `test-territory-supply.mjs` "refills cost Munitions" was rewritten to measure against it.
+  Also found: with other sessions loading the machine, `test-world-acceptance.js` and `test-world-multiple-rivers.js`
+  hit the suite's 180 s limit (127 s and 90 s alone) and `test-world-conquest.js` failed "engineers can raise a
+  forward HQ on conquered land" once; all pass alone.
 - Operative shots hit the soldiers you see. A squad in the open is now its drawn men, each a 0.45 m body on the
   formation slot the client draws (slots moved to `shared/squad-men.js`, shared by client and server, with a lag
   of speed/9 for marching men). Before, a squad was one 1.2 m cylinder at its centre, so the end men of a rifle

@@ -2021,6 +2021,7 @@ await check("Fuel (Classic)", async () => {
   const hq = [...g.units.values()].find(u => u.owner === 0 && u.type === 'hq');
   run(g, 5);
   assert.ok(Math.abs(p.fuel - CFG.classic.hqFuel * 5) < 0.05, `HQ trickles Fuel (${p.fuel})`);
+  assert.ok(Math.abs(p.mun - CFG.classic.hqMun * 5) < 0.05, `HQ trickles Munitions, so a side holding no VP points still rearms (${p.mun})`);
   // a Motor Pool that can train vehicles
   const c = g.units.size;
   const mp = { id: 0 }; p.mp = 5000;

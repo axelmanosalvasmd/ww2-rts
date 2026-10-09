@@ -86,7 +86,8 @@ const settle = (g) => advance(g, CFG.supply.network * TICK);
     u.logistics.ammo = 0; const mun = g.players[0].mun = 50;
     advance(g, 4);
     assert.ok(u.logistics.ammo > 0, `${mode}: the line refills ammunition`);
-    assert.equal(g.players[0].mun < mun, pays, `${mode}: ${pays ? 'refills cost Munitions' : 'refills are free'}`);
+    const trickle = pays ? CFG.classic.hqMun * g.army.income * 4 : 0; // Classic's HQ trickle comes in meanwhile
+    assert.equal(g.players[0].mun < mun + trickle, pays, `${mode}: ${pays ? 'refills cost Munitions' : 'refills are free'}`);
   }
 }
 

@@ -8,7 +8,7 @@ import { aiTick, planner } from '../shared/ai-schedule.js';
 
 const script = fileURLToPath(import.meta.url);
 // Seats play as the root's human-like commanders; an old: seat plays the scripted planner (the pre-commander AI).
-const usage = 'Usage: node tools/ai-balance.mjs [--root DIR] [--map NAME] [--mode conquest|classic] [--matches N] [--seed S] [--workers N] [--seats easy,normal|hard,old:easy|normal,alt:normal] [--alt FILE] [--rotate] [--army standard|large|massive|endless] [--factions 3|4]';
+const usage = 'Usage: node tools/ai-balance.mjs [--root DIR] [--map NAME] [--mode conquest|classic] [--matches N] [--seed S] [--workers N] [--seats easy,normal|hard,old:easy|normal,alt:normal] [--alt FILE] [--rotate] [--army standard|large|massive|endless] [--factions 3|4] [--teams 0,0,1,1] [--logistics]';
 const factions = ['USA', 'Germany', 'USSR', 'UK'];
 
 function seededRandom(initial) {
@@ -52,7 +52,8 @@ async function runMatches(options, indices) {
       const factionIds = options.rotate ? order.map(i => pair[i]) : order.map((_, i) => options.factions === 4 ? (i + index) % 4 : i % 3);
       const brains = order.map(i => ({ level: seats[i].replace(/^(alt|old):/, ''), mod: seats[i].startsWith('alt:') ? alternate : current,
         brain: seats[i].startsWith('alt:') ? planner(alternate) : seats[i].startsWith('old:') ? planner(current) : rootCommander }));
-      const g = sim.createGame(map, order.map(i => 'AI ' + seats[i]), true, order.map((_, i) => i), factionIds, { mode: options.mode, army: options.army });
+      // --teams: seat i plays on team teams[i] (a 2v2 is 0,0,1,1); --logistics: supply on, as in the lobby
+      const g = sim.createGame(map, order.map(i => 'AI ' + seats[i]), true, options.teams ?? order.map((_, i) => i), factionIds, { mode: options.mode, army: options.army, logistics: options.logistics });
       const spawns = g.players.map(p => map.spawns.findIndex(s => (s.x + 0.5) * sim.CELL === p.spawn.x && (s.y + 0.5) * sim.CELL === p.spawn.z));
       const initialCache = sim.snapshotCache(g);
       const views = brains.map((b, slot) => b.mod.observe?.(g, slot, initialCache));
@@ -89,7 +90,8 @@ if (!isMainThread) {
   for (let i = 2; i < process.argv.length; i++) {
     const key = process.argv[i];
     if (key === '--rotate') { options.rotate = true; continue; }
-    if (!['--root', '--map', '--mode', '--matches', '--seed', '--workers', '--seats', '--alt', '--army', '--factions'].includes(key) || i + 1 >= process.argv.length) throw new Error(usage);
+    if (key === '--logistics') { options.logistics = true; continue; }
+    if (!['--root', '--map', '--mode', '--matches', '--seed', '--workers', '--seats', '--alt', '--army', '--factions', '--teams'].includes(key) || i + 1 >= process.argv.length) throw new Error(usage);
     options[key.slice(2)] = process.argv[++i];
   }
   options.root = resolve(options.root);
@@ -99,6 +101,8 @@ if (!isMainThread) {
     if (options.seats.some(s => s.startsWith('alt:')) && !options.alt) throw new Error('alternate seat needs --alt');
   }
   if (options.rotate && !options.seats) throw new Error('--rotate requires --seats');
+  if (options.teams) options.teams = options.teams.split(',').map(Number);
+  if (options.teams && (options.seats || options.teams.some(t => !Number.isSafeInteger(t) || t < 0))) throw new Error('--teams takes one team number per spawn, without --seats');
   if (!['conquest', 'classic'].includes(options.mode)) throw new Error('--mode must be conquest or classic');
   options.army ??= 'standard';
   options.factions = Number(options.factions ?? 3);

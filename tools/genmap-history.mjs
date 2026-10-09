@@ -199,13 +199,16 @@ function finish(c, file, map, extraRows = []) {
   line(6, 40, 46, 56, 'D', 'WNX'); line(6, 70, 46, 87, 'D', 'WNX'); line(112, 30, 112, 90, 'D', 'WNXBT');
   slopes(c);
   const spawns = [{ x: 118, y: 46 }, { x: 118, y: 70 }, { x: 6, y: 40 }, { x: 6, y: 70 }];
+  // vp counts only in Conquest and Classic, where either side may spawn east: as on other maps, home points pay none
+  // and each side has a forward point the same distance out. Assault scores no vp and leaves out mp-0 points.
   const points = [
     { x: 30, y: 54, vp: 0, mp: 2 },                         // the start line
-    { x: 72, y: 50, vp: 1, mp: 2.5 },                       // Kidney Ridge, between the belts
-    { x: 88, y: 23, vp: 1, mp: 1 },                         // Tel el Eisa, by the coast road
-    { x: 112, y: 40, vp: 2, mp: 1 },                        // Miteirya Ridge (north)
-    { x: 112, y: 72, vp: 1, mp: 1 },                        // Miteirya Ridge (south)
-    { x: 116, y: 25, vp: 1, mp: 1, kind: 'depot', needs: 3 }, // El Alamein station: only once the north ridge is held
+    { x: 72, y: 50, vp: 3, mp: 2.5 },                       // Kidney Ridge, between the belts
+    { x: 88, y: 23, vp: 1.5, mp: 1 },                       // Tel el Eisa, by the coast road
+    { x: 112, y: 40, vp: 0, mp: 1 },                        // Miteirya Ridge (north)
+    { x: 112, y: 72, vp: 0, mp: 1 },                        // Miteirya Ridge (south)
+    { x: 116, y: 25, vp: 0, mp: 1, kind: 'depot', needs: 3 }, // El Alamein station: only once the north ridge is held
+    { x: 43, y: 25, vp: 1.5, mp: 2 },                       // the north gap: the west's twin of Tel el Eisa
   ];
   finish(c, 'el-alamein', { name: 'El Alamein', spawns, points, defend: [0, 1], assaultTime: 1800,
     triggers: [{ at: 3, say: "El Alamein, October 1942. Two belts of the Devil's Gardens: find the gaps, or bring engineers to clear a lane." }] });

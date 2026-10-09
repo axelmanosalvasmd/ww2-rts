@@ -596,6 +596,11 @@ every look. The horde wave is unchanged: it still attack-moves the bunker and st
   some under 500 hp); a 40 min clock gave 2/21, not worth the length.
   Baseline on the same code: Hill 112 4/14, The Great Bridge 2/14, Seawall 1/14. The AI attacker has weakened since
   the numbers above were measured; fix that before tuning these two maps further.
+  El Alamein in Conquest and Classic (2026-10-09): drawn for Assault, its east home points paid 5 VP and the west's
+  none, so the east won AI 2v2 Conquest 60/60 and in Classic the west earned no Munitions. Home points now pay 0 VP,
+  Kidney Ridge 3, Tel el Eisa 1.5 and its west twin at the first belt's north gap 1.5 (2 MP, so both sides' home
+  points pay 4 MP). With 0 MP on the twin the east still won 11/15; with 2 the west won 36/24 over 60 (not
+  significant). Classic 13/12 with 10 draws over 35. Assault attacker 15/20 before, 12/20 after (1v1, same seeds).
 - Forward HQs for the AI (2026-10-07, `forwardHQ` in shared/ai.js, `FORWARD`): retreat and refills go to the nearest
   own HQ, and the AI only ever built one at its spawn, so on long assault maps every hurt squad walked all the way
   back. Now a builder puts up another HQ 20 m behind the army once the army's middle is 70+ m from every own HQ
@@ -806,9 +811,10 @@ Base building as a third lobby mode next to Conquest and Assault. Terms are defi
 - Sudden Death at 25:00: production and construction stop, and Production Buildings lose ~1% max hp/s (depots exempt).
   Repair is slower than decay. Last building standing wins; if the last ones fall in the same tick, it's a draw.
 - Economy, three currencies, one source each: home depots pay MP (2.5/s each, plus an HQ trickle of 3/s), the contested
-  depots by the villages pay Fuel (1.5/s, plus an HQ trickle of 0.5/s), points pay Munitions. Fuel buys vehicles, which
-  cost less MP in Classic: armored car 160 MP + 25 Fuel, light tank 200 + 60, rocket truck 170 + 50, medium tank
-  260 + 90, Tiger 420 + 150. Upkeep: each fielded unit costs 0.08% of its price per second off the MP income (min 0.5/s).
+  depots by the villages pay Fuel (1.5/s, plus an HQ trickle of 0.5/s), points pay Munitions (plus an HQ trickle of
+  0.5/s). Fuel buys vehicles, which cost less MP in Classic: armored car 160 MP + 25 Fuel, light tank 200 + 60,
+  rocket truck 170 + 50, medium tank 260 + 90, Tiger 420 + 150. Upkeep: each fielded unit costs 0.08% of its price
+  per second off the MP income (min 0.5/s).
   History: contested depots paid 2.5 MP/s before Fuel. Upkeep alone (even doubled) didn't stop the leader banking MP at
   the pop cap; Fuel and the new units did (winners end with ~450 MP instead of 1500-2500). Depots only go on Resource Nodes (one each).
   No catch-up. Start: HQ, 1 Engineer, 1 rifle squad, 200 MP. Pop cap 20 in Classic (buildings excluded, queued units
@@ -818,7 +824,10 @@ Base building as a third lobby mode next to Conquest and Assault. Terms are defi
   the nearby spot both sides walk about equally far to. Village-side Fuel nodes were unfair: some sat 15-17 m from one
   HQ. (Hand-placed nodes in the map file wait for the editor Node tool.)
 - Munitions: a second currency, Classic only, earned from held points at 1.5 x the point's vp (center 3/s, village 1.5/s),
-  full rate for every teammate. It pays for off-map support and unit abilities (abilities keep their cooldowns).
+  plus an HQ trickle of 0.5/s, full rate for every teammate. It pays for off-map support, unit abilities (abilities
+  keep their cooldowns) and refilling ammunition. The trickle came in 2026-10-09: El Alamein's west side started next to
+  a single 0-vp point, so it earned nothing and its units could not rearm for minutes (its points are fixed too: see
+  Historic battle maps).
 - Buildings: HQ (3000 hp; Engineers, rifles; unique, can't be rebuilt), Supply Depot (60 MP, 600 hp), Barracks
   (150 MP, 1500 hp; MG, mortar, sniper, faction infantry), Motor Pool (200 MP, 1900 hp; AT gun, armored car, light and
   medium tank, rocket truck, Tiger; needs a Barracks). Hp went down 25% with the new units: armies hold fewer tanks

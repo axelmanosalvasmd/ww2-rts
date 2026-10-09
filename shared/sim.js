@@ -156,10 +156,11 @@ export const CFG = {
   wrecks: 40, // burnt-out vehicles left on the field as cover; past this the oldest is cleared away
   levelHeight: 2.5, minLevel: -2, maxLevel: 4, eye: 1.6, highGroundAcc: 0.15, highGroundVision: 0.1,
   startForce: ['rifle', 'rifle', 'mg'],
-  // Classic mode: build a base. MP from an HQ trickle plus Supply Depots on resource nodes, Munitions from points.
+  // Classic mode: build a base. MP from an HQ trickle plus Supply Depots on resource nodes, Munitions from an HQ trickle
+  // plus points.
   // depots pay per node: safe home nodes less than the contested ones by the villages. upkeep: each fielded unit costs
   // this share of its price per second, off the income (never below minInc)
-  classic: { time: 1500, mpStart: 200, trickle: 3, homeRate: 2.5, contestedFuel: 1.5, hqFuel: 0.5, upkeep: 0.0008, minInc: 0.5, munPerVp: 1.5, startForce: ['engineer', 'rifle'], buildReach: 2.5, crew: 0.72, repair: 0.005, smallArms: 0.25,
+  classic: { time: 1500, mpStart: 200, trickle: 3, homeRate: 2.5, contestedFuel: 1.5, hqFuel: 0.5, hqMun: 0.5, upkeep: 0.0008, minInc: 0.5, munPerVp: 1.5, startForce: ['engineer', 'rifle'], buildReach: 2.5, crew: 0.72, repair: 0.005, smallArms: 0.25,
     // a bigger army than Conquest (the economy grows), and Sudden Death: Production Buildings lose decay x max hp per second
     popCap: 24, decay: 0.01,
     // adaptive AI: attack a base only with an army worth this much more than the enemy it saw in the last window seconds
@@ -5635,7 +5636,8 @@ export function step(g) {
     // away = disconnected (set by the server): their clock stops so a dropout doesn't decide the match
     if (!g.mode && g.winner === null) pl.vp += held.reduce((a, p) => a + p.vp, 0) * dt * (pl.away ? 0 : 1); // frozen once decided
     if (g.mode?.kind === 'classic') {
-      // no catch-up: MP from the HQ trickle and finished depots, Munitions from every point the team holds
+      // no catch-up: MP from the HQ trickle and finished depots, Munitions from the HQ trickle and every point the team
+      // holds (the trickle keeps a team with no VP points rearming: refills cost Munitions)
       const C = CFG.classic, own = list.filter(u => u.owner === pl.slot && u.hp > 0);
       // home depots pay MP, the contested ones by the villages pay Fuel
       const paying = g.nodes.filter(n => { const d = g.units.get(n.depot); return d && d.owner === pl.slot && d.built >= 1 && d.hp > 0; });
@@ -5645,7 +5647,7 @@ export function step(g) {
       pl.upkeep = own.reduce((a, u) => a + (UNITS[u.type].structure ? 0 : UNITS[u.type].cost * C.upkeep), 0);
       pl.inc = pl.away || pl.out ? 0 : Math.max(C.minInc, (C.trickle + depots) * g.army.income - pl.upkeep);
       pl.mp += pl.inc * dt;
-      if (!pl.away && !pl.out) pl.mun += g.points.reduce((a, p) => a + (allied(g, p.owner, pl.slot) && !p.cut ? p.vp : 0), 0) * C.munPerVp * g.army.income * dt;
+      if (!pl.away && !pl.out) pl.mun += (C.hqMun + g.points.reduce((a, p) => a + (allied(g, p.owner, pl.slot) && !p.cut ? p.vp : 0), 0) * C.munPerVp) * g.army.income * dt;
       continue;
     }
     if (g.mode?.kind === 'world') { worldIncome(g, pl, list, dt); continue; }
