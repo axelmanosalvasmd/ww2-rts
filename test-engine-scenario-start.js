@@ -1,7 +1,6 @@
-import { sendsReadBy } from './test-socket.js';
+import { memoryConnect, sendsReadBy } from './test-socket.js';
 // A rejected mission must restore the live room rather than leave a partial match.
 import assert from 'node:assert/strict';
-import WebSocket from 'ws';
 import { validateMap } from './shared/sim.js';
 import { migrateWorldMap } from './shared/world-layers.js';
 Object.assign(process.env,{PORT:'0',PUBLIC_URL:'http://test',EDIT_PASSWORD:'test'});
@@ -16,9 +15,9 @@ service.mapFiles.list=async()=>[...await originalList(),'scenario-start-test.jso
 const settle=()=>new Promise(resolve=>setTimeout(resolve,10));
 async function until(fn,label) { const end=Date.now()+10000;while(Date.now()<end) { const value=fn();if(value)return value;await settle(); }assert.fail(label); }
 async function connect(token) {
- const ws=new WebSocket(`ws://127.0.0.1:${service.server.address().port}/ws?room=scenstart`,{perMessageDeflate:false}), messages=[];
+ const ws=memoryConnect(service.wss, `/ws?room=scenstart`), messages=[];
  const client={ws,messages,async send(value){await sendRead(ws, value);await settle();},wait:(t,after=0)=>until(()=>messages.slice(after).find(m=>m.t===t),`missing ${t}`)};clients.push(client);
- ws.on('message',data=>messages.push(JSON.parse(data)));await new Promise((resolve,reject)=>{ws.once('open',resolve);ws.once('error',reject);});await client.send({t:'hello',token,name:token});await client.wait('lobby');return client;
+ ws.on('message',data=>messages.push(JSON.parse(data)));await client.send({t:'hello',token,name:token});await client.wait('lobby');return client;
 }
 try {
  assert.equal(validateMap(fixture),null,'map contract is valid before match faction selection');

@@ -1,6 +1,6 @@
+import { memoryConnect } from './test-socket.js';
 // Long movement and discovery acceptance through the browser's real room protocol.
 import assert from 'node:assert/strict';
-import WebSocket from 'ws';
 import { CELL, UNITS, createGame } from './shared/sim.js';
 import { generateWorldMap } from './shared/world-conquest.js';
 Object.assign(process.env, { PORT: '0', HOST: '127.0.0.1', EDIT_PASSWORD: 'test', PUBLIC_URL: 'http://test' });
@@ -15,7 +15,7 @@ async function until(fn, label) {
   assert.fail(label);
 }
 async function connect(token) {
-  const ws = new WebSocket(`ws://127.0.0.1:${server.server.address().port}/ws?room=worldriver`, { perMessageDeflate: false });
+  const ws = memoryConnect(server.wss, `/ws?room=worldriver`);
   const c = { ws, units: new Map(), pongs: new Set(), denied: [] }; clients.push(c);
   ws.on('message', raw => {
     const m = JSON.parse(raw);
@@ -30,7 +30,6 @@ async function connect(token) {
     if (m.t === 'pong') c.pongs.add(m.c);
     if (m.t === 'deny') c.denied.push(m);
   });
-  await new Promise((resolve,reject) => { ws.once('open',resolve); ws.once('error',reject); });
   c.send = m => ws.send(JSON.stringify(m));
   c.barrier = async () => { const id = ++ping; c.send({t:'ping',c:id}); await until(() => c.pongs.delete(id), 'ordered ping returned'); };
   c.send({t:'hello',name:token,token}); await until(() => c.lobby,'lobby received'); return c;

@@ -1,6 +1,6 @@
+import { memoryConnect } from './test-socket.js';
 // Real room commands and recipient snapshots exercise movement under a controlled clock.
 import assert from 'node:assert/strict';
-import WebSocket from 'ws';
 import { CELL, TERRAIN, UNITS, TICK, RIDING_FLAG } from './shared/sim.js';
 import { vehiclePositionClear, VEHICLE_PROFILES } from './shared/vehicle-motion.js';
 Object.assign(process.env, { PORT: '0', HOST: '127.0.0.1', EDIT_PASSWORD: 'test', PUBLIC_URL: 'http://test' });
@@ -15,7 +15,7 @@ async function until(fn, label) {
   assert.fail(label);
 }
 async function connect(name) {
-  const ws = new WebSocket(`ws://127.0.0.1:${server.server.address().port}/ws?room=enginemove`, { perMessageDeflate: false });
+  const ws = memoryConnect(server.wss, `/ws?room=enginemove`);
   const c = { ws, rows: new Map(), pongs: new Set(), denies: [] }; clients.push(c);
   ws.on('message', raw => {
     const m = JSON.parse(raw);
@@ -25,7 +25,6 @@ async function connect(name) {
     if (m.t === 'deny') c.denies.push(m);
     if (m.t === 's') { if (m.all) c.rows.clear(); for (const id of m.gone ?? []) c.rows.delete(id); for (const row of m.units) c.rows.set(row[0], row); c.snapshot = m; }
   });
-  await new Promise((resolve, reject) => { ws.once('open', resolve); ws.once('error', reject); });
   c.send = message => ws.send(JSON.stringify(message));
   c.barrier = async () => { const id = ++nonce; c.send({ t: 'ping', c: id }); await until(() => c.pongs.delete(id), 'command barrier'); };
   c.send({ t: 'hello', name, token: name }); await until(() => c.lobby, 'lobby'); return c;

@@ -5,6 +5,20 @@ AI-vs-AI runs (see DESIGN.md for the balance log). Add new entries under **Unrel
 
 ## Unreleased
 
+- Classic balance re-measured over 60 free-for-alls with the 40-minute limit: USA 37%, Germany 35%, USSR 28% of
+  decisive matches (three draws), all inside 25-42%. The earlier 30-match reading of USA 43% was noise.
+
+- World Conquest snapshots cost less than half as much (no game change): deciding which burning cells and smoke
+  clouds a player sees now asks only the units that could reach each spot, not every unit on the map. Burning cells
+  were 94% of that visibility work on the huge map. Four simulated minutes of a three-player World match spent 29.9 s
+  building snapshots before and 12.6 s after (the whole simulation 41.0 s and 22.8 s). Output checked identical against the full check in 144 snapshots (1,716 burning
+  cells, 93 smokes). The bucketed unit lookup that terrain updates already used is now shared (`eyesFor` in sim.js).
+- Eleven more room-test files connect through in-memory sockets (`memoryConnect`, which now also supports
+  `pause()`/`resume()` for the delayed-receiver check), so they no longer depend on network timing. The public lobby,
+  compressed-snapshot and backpressure checks keep real WebSockets on purpose.
+- The fire check places an observer next to the burnt cell before asserting the client is told about it. It failed
+  once on CI when the original squad had died or wandered off during the fire.
+
 - Training is easy to see. A selected Classic or World Conquest building shows its queue as five slots: the unit in
   training fills its slot in brass, with "Training Rifle squad, 6 s left" above; waiting units follow (click one to
   cancel it for a refund) and free places stay empty. Before, it was one line of text and a list of cancel buttons.

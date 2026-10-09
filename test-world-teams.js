@@ -1,4 +1,4 @@
-import { sendsReadBy } from './test-socket.js';
+import { memoryConnect, sendsReadBy } from './test-socket.js';
 // Team, defeat, discovery and AI acceptance through real room WebSocket messages.
 import assert from 'node:assert/strict';
 import WebSocket from 'ws';
@@ -14,7 +14,7 @@ async function waitFor(fn, label) {
   assert.fail(label);
 }
 async function connect(code, token, spectate = false) {
-  const ws = new WebSocket(`ws://127.0.0.1:${server.server.address().port}/ws?room=${code}`, { perMessageDeflate: false });
+  const ws = memoryConnect(server.wss, `/ws?room=${code}`);
   const messages = [], rows = new Map();
   const client = {
     ws, messages, latest: t => messages.filter(m => m.t === t).at(-1),
@@ -33,7 +33,6 @@ async function connect(code, token, spectate = false) {
     }
     messages.push(m);
   });
-  await new Promise((resolve, reject) => { ws.once('open', resolve); ws.once('error', reject); });
   await client.send({ t: 'hello', token, name: token, spectate });
   await client.wait('lobby');
   return client;

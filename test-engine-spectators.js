@@ -1,4 +1,4 @@
-import { sendsReadBy } from './test-socket.js';
+import { memoryConnect, sendsReadBy } from './test-socket.js';
 // Real room snapshots keep authored recipient policies and owner-only work off spectator sockets.
 import assert from 'node:assert/strict';
 import { readFileSync } from 'node:fs';
@@ -57,11 +57,10 @@ async function waitFor(fn) {
   assert.fail('missing WebSocket message');
 }
 async function connect(token, spectate = false, code = 'spectest') {
-  const ws = new WebSocket(`ws://127.0.0.1:${server.server.address().port}/ws?room=${code}`, { perMessageDeflate: false });
+  const ws = memoryConnect(server.wss, `/ws?room=${code}`);
   const messages = [], c = { ws, messages, latest: kind => messages.filter(m => m.t === kind).at(-1), async send(m) { await sendRead(ws, m); await settle(); } };
   clients.push(c);
   ws.on('message', raw => messages.push(JSON.parse(raw)));
-  await new Promise((resolve, reject) => { ws.once('open', resolve); ws.once('error', reject); });
   await c.send({ t: 'hello', name: token, token, spectate });
   await waitFor(() => c.latest('lobby'));
   return c;

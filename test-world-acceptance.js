@@ -1,4 +1,4 @@
-import { sendsReadBy } from './test-socket.js';
+import { memoryConnect, sendsReadBy } from './test-socket.js';
 // Remaining World Conquest acceptance checks. Fixture setup is internal; orders and observations use real sockets.
 import assert from 'node:assert/strict';
 import WebSocket from 'ws';
@@ -18,7 +18,7 @@ async function waitFor(fn, label) {
   assert.fail(label);
 }
 async function connect(room, token) {
-  const ws = new WebSocket(`ws://127.0.0.1:${server.server.address().port}/ws?room=${room}`, { perMessageDeflate: false });
+  const ws = memoryConnect(server.wss, `/ws?room=${room}`);
   const messages = [], rows = new Map(), terrain = new Map(), lists = {};
   const c = { ws, messages, terrain, room, latest: t => messages.filter(m => m.t === t).at(-1),
     async send(m) { await sendRead(ws, m); await settle(); },
@@ -37,7 +37,6 @@ async function connect(room, token) {
     }
     messages.push(m);
   });
-  await new Promise((resolve, reject) => { ws.once('open', resolve); ws.once('error', reject); });
   await c.send({ t: 'hello', token, name: token });
   await c.wait('lobby');
   return c;

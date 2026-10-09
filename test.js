@@ -7541,7 +7541,9 @@ await check("Wind, weather, dust and fire", async () => {
   assert.equal(f.fires.size, 0, 'the fire burns out');
   const gone = [...f.chars.slice(row + 2, row + 16)].filter(ch => ch !== 'H').length;
   assert.ok(gone >= 12, `the fire ran down the hedge (${gone} of 14 cells)`);
-  assert.ok(f.burnt[row + 2] && (sim.terrainFor(f, 0, true).find(([k]) => k === row + 2)[3] & 4), 'burnt ground is marked for the clients');
+  // A fresh observer beside the burnt cell: the first squad may have died or wandered off during the fire.
+  put(f, 0, 'rifle', 5, 25); run(f, 0.1);
+  assert.ok(f.burnt[row + 2] && (sim.terrainFor(f, 0, true).find(([k]) => k === row + 2)?.[3] & 4), 'burnt ground is marked for the clients');
   const wetRows = fresh(rows); wetRows.wx.rain = 1; wetRows.wx.raining = true; wetRows.wx.next = 1e9;
   wetRows.fires.set(row + 2, CFG.fire.burn.H); run(wetRows, 5);
   assert.equal(wetRows.fires.size, 0, 'rain puts a fire out before it spreads');
