@@ -157,7 +157,7 @@ function showFollow() {
   const text = v ? `Following ${hooks.unitName(v)}` : '';
   if (chip.textContent !== text) chip.textContent = text;
   const top = hooks.top;
-  if (v && top && changed) chip.style.top = Math.ceil(top.getBoundingClientRect().bottom + 8) + 'px';
+  if (v && top && changed) chip.style.top = Math.ceil(top.getBoundingClientRect().bottom / (document.getElementById('hud')?.currentCSSZoom || 1) + 8) + 'px'; // UI scale: screen px to HUD px
 }
 function cancelFollow() { followed = null; anchor = null; showFollow(); }
 function follow(id) {
@@ -180,7 +180,7 @@ function init(h) {
   preferences();
   addEventListener('resize', () => {
     bandCache = null;
-    if (followed != null && hooks.top && hooks.chip) hooks.chip.style.top = Math.ceil(hooks.top.getBoundingClientRect().bottom + 8) + 'px';
+    if (followed != null && hooks.top && hooks.chip) hooks.chip.style.top = Math.ceil(hooks.top.getBoundingClientRect().bottom / (document.getElementById('hud')?.currentCSSZoom || 1) + 8) + 'px';
   });
 }
 function skipIntro() {

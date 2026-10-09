@@ -91,6 +91,14 @@ export function createHud(ctx) {
   $('util').append(logisticsControls);
   logisticsControls.querySelector('[data-logistics-overlay]').onclick = () => ctx.toggleLogisticsOverlay();
   logisticsControls.querySelector('[data-logistics-selection]').onclick = () => ctx.toggleLogisticsSelection();
+  // UI scale (menu slider): zooms the whole HUD. It applies on release, so the slider does not grow under the cursor
+  // mid-drag; the resize event lets the boxes placed from screen positions (alerts, stats) place themselves again
+  const scale = $('uiScale'), scaleLabel = () => setText($('uiScaleVal'), `${scale.value}%`);
+  const applyScale = () => { scaleLabel(); $('hud').style.setProperty('--ui', scale.value / 100); dispatchEvent(new Event('resize')); };
+  try { scale.value = localStorage.getItem('ww2-ui-scale') ?? 100; } catch { scale.value = 100; }
+  scale.oninput = scaleLabel;
+  scale.onchange = () => { applyScale(); try { localStorage.setItem('ww2-ui-scale', scale.value); } catch { /* private window: this page only */ } };
+  applyScale();
   // the placement hint sits just above the Command Card, whose height changes (the Classic build card is taller
   // than the recruit row), so --card-h follows the card's real height
   if (typeof ResizeObserver === 'function') new ResizeObserver(() => {
@@ -308,8 +316,10 @@ export function createHud(ctx) {
       setText(r.nm, name(r.type, v.owner)); setText(r.ct, `×${us.length}`);
       setText(r.hp, `${hp}/${max} hp`); setHTML(r.tags, tags.join(''));
       if (r.q) {
-        const training = us.filter((u) => u.queue?.length);
-        setText(r.q, training.length === 1 ? `Training ${name(training[0].queue[0], training[0].owner)} ${Math.round((training[0].prog ?? 0) * 100)}% (${training[0].queue.length}/5)` : training.length ? `${training.length} buildings training` : '');
+        const training = us.filter((u) => u.queue?.length), one = training.length === 1 ? training[0] : null;
+        setText(r.q, one ? `Training ${name(one.queue[0], one.owner)} ${Math.round((one.prog ?? 0) * 100)}% (${one.queue.length}/5)` : training.length ? `${training.length} buildings training` : '');
+        r.q.classList.toggle('on', training.length > 0);
+        r.q.style.setProperty('--p', one ? `${Math.round((one.prog ?? 0) * 100)}%` : '100%');
       }
     }
   }
@@ -548,6 +558,27 @@ export function createHud(ctx) {
       b.classList.toggle('broke', broke);
     }
   }
+  // a building's training queue as five slots (index.html .pq): the unit in training fills its slot as it trains, a
+  // waiting one cancels for a refund when clicked, and the free places stay empty
+  function drawQueue(el, bld) {
+    const q = bld.queue ?? [], jobs = bld.productionJobs ?? [], key = `${q.join()}|${jobs.map((j) => j.id).join()}`;
+    if (el.dataset.key !== key) {
+      el.dataset.key = key;
+      el.innerHTML = Array.from({ length: 5 }, (_, i) => {
+        const t = q[i], job = jobs[i]?.type === t ? jobs[i] : null;
+        if (!t) return '<span class="pq-slot"></span>';
+        if (!i || job?.status !== 'waiting') return `<span class="pq-slot${i ? '' : ' on'}" title="${esc(`${i ? 'Waiting' : 'Training'}: ${name(t)}`)}">${symbolSVG(t)}</span>`;
+        const tip = esc(`Cancel ${name(t)}: refund ${job.mp} MP, ${job.fuel} Fuel`);
+        return `<button class="pq-slot" data-job="${job.id}" title="${tip}" aria-label="${tip}">${symbolSVG(t)}</button>`;
+      }).join('');
+      el.querySelectorAll('[data-job]').forEach((b) => {
+        const action = { t: 'cancelProduction', id: bld.id, job: +b.dataset.job };
+        b.onclick = () => attempt(action, () => { b.disabled = true; ctx.send(action); });
+      });
+    }
+    el.firstChild.style.setProperty('--p', `${Math.round((bld.prog ?? 0) * 100)}%`);
+    for (const b of el.querySelectorAll('[data-job]')) setAvailability(b, check({ t: 'cancelProduction', id: bld.id, job: +b.dataset.job }));
+  }
   function drawClassicCard(s, pop, cap, sel) {
     const card = $('buy');
     const bld = sel.length === 1 && UNITS[sel[0].type].building && sel[0].owner === ctx.me ? sel[0] : null, eng = !bld && sel.some((v) => v.owner === ctx.me && v.type === 'engineer');
@@ -561,7 +592,7 @@ export function createHud(ctx) {
       const info = (t, status, hint) => `<div class="cinfo"><div class="ci-t">${symbolSVG(t)}<b>${esc(UNITS[t].name)}</b></div><div class="ci-s">${status}</div><div class="ci-h">${hint}</div></div>`;
       if (bld && bld.built < 1) card.innerHTML = info(bld.type, 'Under construction <span data-built></span>', 'Right-click it with Engineers to help') +
         '<button class="cancel" data-cancel title="Cancel the building and get 75% of its cost back">Cancel<span>75% back</span></button>';
-      else if (bld) card.innerHTML = info(bld.type, '<span data-queue></span><div data-production-jobs class="production-jobs"></div>', 'Right-click the ground: rally point') +
+      else if (bld) card.innerHTML = info(bld.type, '<span data-queue></span><div class="pq" data-pq></div>', 'Right-click the ground: rally point') +
         groupsHTML((UNITS[bld.type].makes ?? []).filter((t) => canBuild(t, ctx.facOf(ctx.me))), (t) => {
           const pr = priceOf(s, t), fuel = pr.fuel ? `${pr.fuel} Fuel, ` : '';
           return unitCard(t, `data-train="${t}"`, `${pr.mp} MP`, `${fuel}${UNITS[t].train}s`, unitTip(t, ctx.me, `. ${pr.mp} MP${pr.fuel ? ` + ${pr.fuel} Fuel` : ''}, trains in ${UNITS[t].train}s`));
@@ -583,32 +614,10 @@ export function createHud(ctx) {
     if (recovery) { const button = card.querySelector('[data-recover]'); if (button) button.disabled = s.mp < recoveryCost; }
     if (bld && bld.built < 1) setText(card.querySelector('[data-built]'), `${Math.round(bld.built * 100)}%`);
     if (bld && bld.built >= 1) {
-      const q = bld.queue ?? [], nm = (t) => name(t);
-      setText(card.querySelector('[data-queue]'), q.length ? `Training ${nm(q[0])} ${Math.round((bld.prog ?? 0) * 100)}%` + (q.length > 1 ? `, then ${q.slice(1).map(nm).join(', ')}` : '') : 'Idle');
-      const jobs = bld.productionJobs ?? [], list = card.querySelector('[data-production-jobs]');
-      if (list) {
-        const key = jobs.map(job => `${job.id}:${job.status}`).join(',');
-        if (list.dataset.jobs !== key) {
-          list.dataset.jobs = key;
-          list.replaceChildren(...jobs.map(job => {
-            const row = document.createElement('div'), text = document.createElement('span');
-            row.className = 'production-job';
-            text.textContent = tr(`${job.status === 'active' ? 'Training' : 'Waiting'}: ${name(job.type)}`);
-            row.append(text);
-            if (job.status === 'waiting') {
-              const button = document.createElement('button');
-              button.type = 'button'; button.dataset.job = job.id;
-              button.textContent = tr(`Cancel: refund ${job.mp} MP, ${job.fuel} Fuel`);
-              button.title = tr(`Cancel ${name(job.type)}: refund ${job.mp} MP, ${job.fuel} Fuel`);
-              button.setAttribute('aria-label', button.title);
-              button.onclick = () => attempt({ t: 'cancelProduction', id: bld.id, job: job.id }, () => { button.disabled = true; ctx.send({ t: 'cancelProduction', id: bld.id, job: job.id }); });
-              row.append(button);
-            }
-            return row;
-          }));
-        }
-        for (const button of list.querySelectorAll('[data-job]')) setAvailability(button, check({ t: 'cancelProduction', id: bld.id, job: +button.dataset.job }));
-      }
+      const q = bld.queue ?? [], line = card.querySelector('[data-queue]');
+      setText(line, q.length ? `Training ${name(q[0])}, ${Math.ceil(UNITS[q[0]].train * (1 - (bld.prog ?? 0)))} s left` : 'Idle: click a unit to train it');
+      line.classList.toggle('on', q.length > 0);
+      drawQueue(card.querySelector('[data-pq]'), bld);
       for (const b of card.querySelectorAll('[data-train]')) {
         const pr = priceOf(s, b.dataset.train), broke = s.mp < pr.mp || (s.fuel ?? 0) < pr.fuel;
         setAvailability(b, check({ t: 'buy', unit: b.dataset.train, from: bld.id }));

@@ -11,7 +11,7 @@
 #statsOverlay.layout-list { display: grid; grid-template-columns: auto auto; column-gap: 14px; }
 #statsOverlay.layout-list .stat { display: contents; }
 #statsOverlay.layout-list .stat-val { text-align: right; }
-#statsOverlay.layout-line { display: flex; flex-wrap: wrap; column-gap: 14px; max-width: calc(100vw - 2 * var(--gap)); }
+#statsOverlay.layout-line { display: flex; flex-wrap: wrap; column-gap: 14px; max-width: calc(var(--vw, 100vw) - 2 * var(--gap)); }
 #statsOverlay.layout-line .stat { display: flex; gap: 5px; }
 #statsOverlay .stat-name { color: var(--dim); }
 #statsOverlay .stat-val[data-warn="amber"] { color: var(--brass); }

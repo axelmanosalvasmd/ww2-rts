@@ -5,6 +5,17 @@ AI-vs-AI runs (see DESIGN.md for the balance log). Add new entries under **Unrel
 
 ## Unreleased
 
+- Training is easy to see. A selected Classic or World Conquest building shows its queue as five slots: the unit in
+  training fills its slot in brass, with "Training Rifle squad, 6 s left" above; waiting units follow (click one to
+  cancel it for a refund) and free places stay empty. Before, it was one line of text and a list of cancel buttons.
+  A building that is training also shows its progress in the bar over it on the map, and a building's line in the
+  selection list turns brass with its progress underlined. `test-engine-controls.js` now checks the new queue
+  sentences translate instead of the old cancel button's.
+- UI scale: a slider in the menu (75% to 150%) makes the panels, buttons and text bigger or smaller. It applies when
+  you let go of the slider and is remembered by the browser. Left for later: the lobby and the Controls sheet keep
+  their size.
+  Found, not looked into: `test-world-conquest.js` "engineers can raise a forward HQ on conquered land" fails about
+  one run in four on master as it was (4dffcce), so it is flaky.
 - Operative shots hit the soldiers you see. A squad in the open is now its drawn men, each a 0.45 m body on the
   formation slot the client draws (slots moved to `shared/squad-men.js`, shared by client and server, with a lag
   of speed/9 for marching men). Before, a squad was one 1.2 m cylinder at its centre, so the end men of a rifle

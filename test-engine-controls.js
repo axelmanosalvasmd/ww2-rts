@@ -111,7 +111,7 @@ const jobsOf = (s, id) => s.productionJobs.find(row => row[0] === id)?.[1] ?? []
   for (let n = 0; n < 101; n++) h.add({ kind: 'ping', text: `Ping ${n}`, x: n, z: n, time: n });
   assert.equal(h.entries.length, 100); assert.equal(h.entries.at(-1).text, 'Ping 1');
   assert.equal(h.start('match-b'), true); assert.equal(h.entries.length, 0); assert.equal(h.acceptTick(1), true);
-  for (const text of ['Alert history', 'Previous Alert', 'Next Alert', 'Move to group', 'Destination control group', 'Waiting: Rifle squad', 'Cancel: refund 40 MP, 0 Fuel']) assert.notEqual(spanish(text), text);
+  for (const text of ['Alert history', 'Previous Alert', 'Next Alert', 'Move to group', 'Destination control group', 'Waiting: Rifle squad', 'Training Rifle squad, 6 s left', 'Idle: click a unit to train it', 'UI scale']) assert.notEqual(spanish(text), text);
   assert.equal(match({ code: 'Digit3', altKey: true }, 'army'), 'group:transfer:3');
   assert.equal(match({ code: 'Digit3', shiftKey: true }, 'army'), 'group:append:3');
   assert.equal(match({ code: 'KeyH', altKey: true }, 'army'), 'alertHistory');

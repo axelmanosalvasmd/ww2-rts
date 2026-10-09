@@ -29,7 +29,7 @@ export function installTooltips(root) {
     #commandTooltip { position: fixed; z-index: 20; max-width: min(340px, calc(100vw - 16px)); padding: 6px 10px;
       background: rgba(25, 28, 30, 0.97); color: #e2dfd3; border: 1px solid rgba(176, 164, 122, 0.46); border-radius: 2px;
       font: 500 14px/1.35 'Barlow Semi Condensed', 'Arial Narrow', sans-serif; pointer-events: none; }
-    #hint { max-width: calc(100vw - 32px); white-space: normal; text-align: center; background: rgba(25, 28, 30, 0.96); }`;
+    #hint { max-width: calc(var(--vw, 100vw) - 32px); white-space: normal; text-align: center; background: rgba(25, 28, 30, 0.96); }`;
   document.head.append(style);
   const tip = document.createElement('div'); tip.id = 'commandTooltip'; tip.role = 'tooltip'; tip.hidden = true; document.body.append(tip);
   let active;

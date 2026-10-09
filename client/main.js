@@ -953,8 +953,9 @@ function applySnapshot(s) {
     v.suppBar.visible = supp > 0;
     v.suppBar.scale.x = 2.3 * supp / 100; v.suppBar.position.x = -1.15 * (1 - supp / 100);
     if (v.suppColor !== suppColor) v.suppBar.material.color.set(v.suppColor = suppColor);
-    // work bar: how far a construction site is built, or how far a digging squad is through its dig
-    const work = UNITS[type].building && v.built < 1 ? v.built : flags & 16 ? v.dig : -1;
+    // work bar: how far a construction site is built, a digging squad is through its dig, or a building is through the
+    // unit it trains (your own: the queues come only to their owner, a snapshot late, which a bar does not show)
+    const work = UNITS[type].building && v.built < 1 ? v.built : flags & 16 ? v.dig : v.queue?.length ? v.prog : -1;
     v.workBg.visible = v.workBar.visible = work >= 0;
     if (work >= 0) { v.workBar.scale.x = 2.3 * work; v.workBar.position.x = -1.15 * (1 - work); }
   }

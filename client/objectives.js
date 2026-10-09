@@ -53,7 +53,8 @@ export function createObjectives(hooks) {
   }
 
   function placeBanner() {
-    const r = document.getElementById('top')?.getBoundingClientRect(), top = Math.max(12, (r?.bottom ?? 100) + 6);
+    const z = document.getElementById('hud')?.currentCSSZoom || 1; // UI scale: screen px to HUD px
+    const r = document.getElementById('top')?.getBoundingClientRect(), top = Math.max(12, (r ? r.bottom / z : 100) + 6);
     if (goal && !goal.hidden) goal.style.top = `${top}px`;
     if (banner && !banner.hidden) banner.style.top = `${top + (goal && !goal.hidden ? goal.offsetHeight + 6 : 0)}px`;
   }

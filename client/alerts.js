@@ -111,8 +111,9 @@ function navigate(direction) {
 function place() {
   const mm = document.getElementById('minimap'), r = mm?.getBoundingClientRect();
   if (!box || !r?.width) return;
-  box.style.right = Math.max(0, Math.round(innerWidth - r.right)) + 'px';
-  box.style.bottom = Math.max(0, Math.round(innerHeight - r.top + 5 + 8)) + 'px'; // clear the minimap's 5 px frame, then an 8 px gap
+  const z = document.getElementById('hud')?.currentCSSZoom || 1; // the UI scale zooms the HUD: screen pixels in, HUD pixels out
+  box.style.right = Math.max(0, Math.round((innerWidth - r.right) / z)) + 'px';
+  box.style.bottom = Math.max(0, Math.round((innerHeight - r.top) / z + 5 + 8)) + 'px'; // clear the minimap's 5 px frame, then an 8 px gap
 }
 
 function sound(kind) {

@@ -1,13 +1,13 @@
 #objective-banner {
   position: fixed; left: 50%; transform: translateX(-50%); z-index: 3;
-  max-width: min(620px, calc(100vw - 660px)); padding: 5px 12px;
+  max-width: min(620px, calc(var(--vw, 100vw) - 660px)); padding: 5px 12px;
   background: rgba(25, 28, 30, 0.92); color: #e2dfd3; border: 1px solid rgba(200, 72, 59, 0.8); border-radius: 2px;
   font: 500 14px/1.35 'Barlow Semi Condensed', 'Arial Narrow', sans-serif; text-align: center; pointer-events: none;
 }
 #objective-banner[hidden] { display: none; }
 #objective-goal {
   position: fixed; left: 50%; transform: translateX(-50%); z-index: 3;
-  max-width: max(280px, min(620px, calc(100vw - 660px))); padding: 6px 14px;
+  max-width: max(280px, min(620px, calc(var(--vw, 100vw) - 660px))); padding: 6px 14px;
   background: rgba(25, 28, 30, 0.92); color: #d6b25e; border: 1px solid rgba(214, 178, 94, 0.6); border-radius: 2px;
   font: 600 16px/1.35 'Barlow Semi Condensed', 'Arial Narrow', sans-serif; text-align: center; pointer-events: none;
 }

@@ -98,16 +98,17 @@ export function createStats({ box, sheet, menuButton, under, clear, storage, bef
   // menu buttons and the resources at its sides, and a box that would run into the score strip goes below it.
   function place() {
     const W = innerWidth, util = under.tl?.()?.getBoundingClientRect(), econ = under.tr?.()?.getBoundingClientRect();
+    const z = document.getElementById('hud')?.currentCSSZoom || 1; // the UI scale zooms the HUD: screen pixels in, HUD pixels out
     if (settings.layout === 'line') {
       const left = util ? util.right : 0, right = econ ? econ.left : W, room = { tl: right, tr: W - left, tc: 2 * Math.min(W / 2 - left, right - W / 2) };
-      box.style.maxWidth = Math.max(160, room[settings.pos] - 16) + 'px';
+      box.style.maxWidth = Math.max(160, (room[settings.pos] - 16) / z) + 'px';
     } else box.style.maxWidth = '';
     const panel = under[settings.pos]?.(), strip = clear?.()?.getBoundingClientRect();
-    let top = panel ? panel.getBoundingClientRect().bottom + 6 : 52;
-    box.style.top = Math.round(top) + 'px';
+    let top = panel ? panel.getBoundingClientRect().bottom + 6 * z : 52 * z;
+    box.style.top = Math.round(top / z) + 'px';
     const r = box.getBoundingClientRect();
-    if (strip && settings.pos !== 'tc' && r.left < strip.right && r.right > strip.left && r.top < strip.bottom) top = strip.bottom + 6;
-    box.style.top = Math.round(top) + 'px';
+    if (strip && settings.pos !== 'tc' && r.left < strip.right && r.right > strip.left && r.top < strip.bottom) top = strip.bottom + 6 * z;
+    box.style.top = Math.round(top / z) + 'px';
   }
   perf.onUpdate(render);
   addEventListener('resize', place);

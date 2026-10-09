@@ -846,7 +846,9 @@ Base building as a third lobby mode next to Conquest and Assault. Terms are defi
   Shift-click keeps placing, Esc cancels. No global buy bar in Classic (the user found the always-on unit list confusing):
   the bottom panel is the selection's command card, a building's units and queue or the Engineers' buildings. H selects
   the HQ. Click a building to select it: its queue, what it trains, Cancel for a
-  site; right-click sets its rally point. Building footprints aren't painted on the ground, because terrain changes reach
+  site; right-click sets its rally point. The queue shows as five slots (2026-10-09): the unit in training fills its
+  slot in brass with the seconds left above, a waiting one cancels for a refund when clicked, free places stay empty.
+  A building that is training also shows its progress in the bar over it on the map, like a construction site. Building footprints aren't painted on the ground, because terrain changes reach
   every client and would show enemy bases through the fog (the data still reaches the client: fine among friends).
 - AI build order: 2 depots, Barracks, Motor Pool, then the remaining nodes; Engineers help unfinished sites and repair
   anything under 70%; it saves MP for its next building unless its army is nearly gone, and only buys what its buildings
@@ -1144,6 +1146,9 @@ or big celebratory banners. Corners 0 to 2 px, 1 px hairlines, 13 to 15 px body 
   condensed faces tried (Sofia Sans Semi Condensed, Barlow Semi Condensed, Mona Sans, Archivo, Fira Sans Condensed)
   its numerals read clearest at 13 to 14 px and its width fits fourteen recruit cards at 1920. Weights: 500 body, 600
   names and numbers. Sentence case, no all-caps labels, nothing under 13 px. Courier Prime and Stardos Stencil are gone.
+- UI scale (2026-10-09): a menu slider from 75% to 150% zooms the whole HUD (CSS `zoom` on `#hud`, saved per browser).
+  Zoom also scales `vw` and `vh`, so HUD rules measure the screen with `--vw` and `--vh`, and the few boxes placed
+  from screen positions in script (alerts, stats overlay, follow chip, objective banner) divide by the HUD's zoom.
 - Icons (`client/symbols.js`): one set of flat, filled silhouettes in a 100 box, single color, for unit types (side
   view facing right on a common baseline, planes from above), buildings, support calls, orders and the few UI glyphs.
   The HUD draws them in the text color; world badges draw them in the owner's color. They replace the NATO map

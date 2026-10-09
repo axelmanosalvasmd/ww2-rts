@@ -1,6 +1,6 @@
 /* Match notices stay in the score stack, clear of the minimap and command controls. */
 #top > #match-strip, #top > #eliminated-banner {
-  max-width: calc(100vw - 660px);
+  max-width: calc(var(--vw, 100vw) - 660px);
   box-sizing: border-box;
   padding: 3px 12px;
   color: #e2dfd3;

@@ -118,7 +118,9 @@
   @media (max-width: 760px) { .cols { grid-template-columns: minmax(0, 1fr); } }
 
   /* ---------- HUD ---------- */
-  #hud { position: fixed; inset: 0; pointer-events: none; }
+  /* UI scale (menu slider, hud.js sets --ui): the whole HUD zooms. zoom scales vw and vh too, so HUD rules measure the
+     screen with --vw and --vh instead */
+  #hud { position: fixed; inset: 0; pointer-events: none; zoom: var(--ui, 1); --vw: calc(100vw / var(--ui, 1)); --vh: calc(100vh / var(--ui, 1)); }
   #hud > * { pointer-events: auto; }
   #hud .hd { color: var(--dim); font-size: 13px; line-height: 1; margin: 0 0 6px 1px; white-space: nowrap; }
 
@@ -135,13 +137,14 @@
   /* one volume for effects, voices and alerts (audio.js); M mutes */
   #menu .vol { display: flex; align-items: center; gap: 8px; padding: 4px 4px 2px; color: var(--dim); }
   #menu .vol input { flex: 1; min-width: 0; margin: 0; padding: 0; accent-color: var(--brass); }
+  #menu .vol .num { width: 4ch; text-align: right; color: var(--text); }
 
   /* top center: score and clock */
   /* centered between the top-left buttons and the resources. hud.js sets --n (teams) and --lead (clock block width):
      team blocks share the room between 174px and 240px wide, and only five or more teams at 1366px wrap to a second row */
   #top { position: absolute; top: var(--gap); left: 0; right: 0; display: flex; flex-direction: column; align-items: center; gap: 4px; pointer-events: none !important; }
   #top > * { pointer-events: auto; }
-  #scores { max-width: calc(100vw - 660px); display: flex; flex-wrap: wrap; justify-content: center; row-gap: 8px; padding: 8px 4px 9px; }
+  #scores { max-width: calc(var(--vw) - 660px); display: flex; flex-wrap: wrap; justify-content: center; row-gap: 8px; padding: 8px 4px 9px; }
   /* the top panels are near solid: world labels (+1.5 MP/s) and units must not read through them */
   #util, #scores, #status, #econ { background: var(--panel-solid); }
   #scores > div { padding: 0 12px; min-width: 0; }
@@ -158,12 +161,12 @@
   /* Sandbox spawner (main.js): bottom center, above the command card */
   #sandbox { position: absolute; left: 50%; transform: translateX(-50%); bottom: 230px; padding: 6px 10px; display: flex; gap: 6px; align-items: center; background: var(--panel-solid); }
   /* Horde boss bar (hud.js): a Kaiju's hp across the top while one is on the map */
-  #boss { width: min(640px, calc(100vw - 32px)); padding: 6px 12px 8px; background: var(--panel-solid); text-align: center; }
+  #boss { width: min(640px, calc(var(--vw) - 32px)); padding: 6px 12px 8px; background: var(--panel-solid); text-align: center; }
   #boss .boss-name { font-size: 15px; font-weight: 700; letter-spacing: 0.2em; color: #e8c060; }
   #boss .boss-bar { height: 18px; margin-top: 4px; border: 1px solid #000; background: #2a1010; }
   #boss .boss-bar > div { height: 100%; background: linear-gradient(#e04a3a, #8e1c14); transition: width 0.3s; }
   .sc-next { margin-top: 4px; padding: 2px 10px; font-size: 13px; } /* Horde: send the next wave early */
-  .sc-team { flex: none; width: clamp(174px, calc((100vw - 668px - var(--lead, 0px)) / var(--n, 2)), 240px); }
+  .sc-team { flex: none; width: clamp(174px, calc((var(--vw) - 668px - var(--lead, 0px)) / var(--n, 2)), 240px); }
   .sc-p { display: flex; align-items: center; gap: 6px; font-size: 15px; font-weight: 600; line-height: 22px; }
   .sc-p .mark { width: 18px; height: 18px; flex: none; }
   .sc-name { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; min-width: 0; }
@@ -209,7 +212,7 @@
   .ob .usym .sym { width: 15px; height: 15px; }
 
   /* bottom left: the selection list and its orders */
-  #lowerleft { position: absolute; bottom: var(--gap); left: var(--gap); width: var(--left-w); max-height: calc(100vh - 64px); display: flex; flex-direction: column; gap: 6px; pointer-events: none !important; }
+  #lowerleft { position: absolute; bottom: var(--gap); left: var(--gap); width: var(--left-w); max-height: calc(var(--vh) - 64px); display: flex; flex-direction: column; gap: 6px; pointer-events: none !important; }
   #lowerleft > * { pointer-events: auto; }
   #selection, #abil { padding: 7px 6px 6px; }
   #selection:empty, #abil:empty { display: none; }
@@ -225,6 +228,8 @@
   .srow .ct { color: var(--dim); font-weight: 600; white-space: nowrap; }
   .srow .tg, .srow .q { grid-column: 2 / -1; display: flex; flex-wrap: wrap; gap: 3px 6px; align-items: baseline; font-size: 13px; color: var(--dim); }
   .srow .tg:empty, .srow .q:empty { display: none; }
+  /* a selected building that is training: brass, with the progress underlined */
+  .srow .q.on { padding-bottom: 3px; color: var(--brass); background: linear-gradient(var(--brass), var(--brass)) left bottom / var(--p, 0%) 2px no-repeat; }
   .tag { font-size: 13px; line-height: 1.25; padding: 0 5px; border-radius: 2px; border: 1px solid var(--line-soft); color: var(--text); }
   .tag.pin { color: var(--red-hi); border-color: rgba(200, 72, 59, 0.6); }
   .tag.sup { color: var(--brass); border-color: rgba(214, 178, 94, 0.5); }
@@ -252,7 +257,7 @@
   .uc:hover:not(:disabled) .pt > .sym { color: var(--brass); }
 
   /* bottom center: the Command Card, between the bottom-left column and the minimap */
-  #buy { position: absolute; bottom: var(--gap); left: calc(var(--left-w) + 2 * var(--gap)); right: calc(var(--mm) + 2 * var(--gap)); width: fit-content; max-width: calc(100vw - var(--left-w) - var(--mm) - 4 * var(--gap)); margin: 0 auto;
+  #buy { position: absolute; bottom: var(--gap); left: calc(var(--left-w) + 2 * var(--gap)); right: calc(var(--mm) + 2 * var(--gap)); width: fit-content; max-width: calc(var(--vw) - var(--left-w) - var(--mm) - 4 * var(--gap)); margin: 0 auto;
     display: flex; align-items: flex-end; gap: 12px; padding: 7px 7px 7px; }
   #buy:empty { display: none; }
   #buy .grp { min-width: 0; }
@@ -271,7 +276,7 @@
   #buy.fit.picked .grp:not(.open) { opacity: 1; }
   #buy .hd .ico { width: 17px; height: 17px; margin: -2px 0; }
   #buy .cards { display: flex; gap: 4px; }
-  .uc { width: clamp(80px, 5.9vw, 100px); padding: 0; display: flex; flex-direction: column; align-items: stretch; overflow: hidden; }
+  .uc { width: clamp(80px, calc(0.059 * var(--vw)), 100px); padding: 0; display: flex; flex-direction: column; align-items: stretch; overflow: hidden; }
   .uc:hover:not(:disabled), .uc.vhover:not(:disabled) { background: var(--cell-hi); border-color: var(--line-hot); }
   .uc .nm { height: 2.4em; padding: 2px 3px 0; display: flex; align-items: center; justify-content: center; text-align: center; font-size: 13px; font-weight: 600; line-height: 1.12; overflow-wrap: anywhere; }
   .uc .pt { width: 100%; aspect-ratio: 4 / 3; background: rgba(0, 0, 0, 0.22); }
@@ -287,7 +292,7 @@
   .uc.wide { width: 136px; }
   /* the recruit row (outside Classic) splits the room between its cards (hud.js sets --nc cards and --ng groups);
      below about 72 px a card shows only its portrait and cost, the name stays in the tooltip */
-  #buy.fit .uc { container-type: inline-size; width: clamp(50px, calc((100vw - var(--left-w) - var(--mm) - 4 * var(--gap) - 16px - (var(--ng) - 1) * 25px - (var(--nc) - var(--ng)) * 4px) / var(--nc)), 100px); }
+  #buy.fit .uc { container-type: inline-size; width: clamp(50px, calc((var(--vw) - var(--left-w) - var(--mm) - 4 * var(--gap) - 16px - (var(--ng) - 1) * 25px - (var(--nc) - var(--ng)) * 4px) / var(--nc)), 100px); }
   @container (max-width: 72px) { .uc .nm, .uc .cu { display: none; } }
   .uc .nm kbd { margin-left: 6px; }
   /* card letters (hud.js): shown in recruit mode, and on a selected Classic building's cards. The letter sits at the
@@ -317,6 +322,17 @@
   .ci-t .sym { width: 28px; height: 28px; color: var(--dim); }
   .ci-s { color: var(--text); }
   .ci-h { color: var(--dim); margin-top: auto; }
+  /* a building's training queue (hud.js drawQueue): five slots. The unit in training fills its slot from the bottom up
+     in brass, the waiting ones follow (hover shows the cancel cross) and the free places stay dashed */
+  [data-queue] { font-size: 14px; font-weight: 600; color: var(--dim); }
+  [data-queue].on { color: var(--brass); }
+  .pq { display: grid; grid-template-columns: repeat(5, 1fr); gap: 4px; margin-top: 5px; }
+  .pq-slot { position: relative; aspect-ratio: 1; padding: 3px; display: grid; place-items: center; color: var(--text); background: var(--cell-lo); border: 1px dashed var(--line-soft); border-radius: 2px; }
+  .pq-slot:has(.sym) { border-style: solid; background: var(--cell); }
+  .pq-slot .sym { width: 100%; height: 100%; }
+  .pq-slot.on { border-color: var(--brass); background: linear-gradient(to top, rgba(214, 178, 94, 0.4) var(--p, 0%), var(--cell) 0); }
+  button.pq-slot:hover:not(:disabled)::after, button.pq-slot.vhover:not(:disabled)::after { content: '×'; position: absolute; inset: 0; display: grid; place-items: center;
+    font: 700 22px/1 var(--type); color: var(--red-hi); background: rgba(21, 24, 26, 0.72); }
   .cancel { display: grid; gap: 2px; align-self: center; border-color: rgba(200, 72, 59, 0.7); }
   .cancel span { font-size: 13px; color: var(--dim); }
   #buy [data-rally] { color: var(--dim); }
@@ -409,7 +425,7 @@
     <button id="captureNow" title="Capture mouse: keeps the cursor inside the game so edge scrolling always works. Click again or press Esc to let go" aria-label="Capture mouse" aria-pressed="false"><svg class="ico" viewBox="0 0 100 100" aria-hidden="true"><path fill-rule="evenodd" fill="currentColor" d="M6 14L94 14L94 86L6 86ZM13 21L87 21L87 79L13 79ZM38 28L38 68L47 60L53 73L59.5 70L53.5 57.5L65 57.5Z"/></svg></button>
     <button id="controlsBtn" title="Controls and mouse help (F1)" aria-label="Controls, F1">? <kbd>F1</kbd></button>
   </div>
-  <div id="menu" class="panel hidden"><button id="pauseBtn">Pause match</button><button id="saveBtn" title="Save this match to load it again later from this room's lobby">Save match</button><button id="restartBtn">Restart match</button><button id="endBtn">End match (back to lobby)</button><div id="offlineSeats"></div><button id="leaveBtn">Leave game</button><button id="edgeBtn">Edge scroll: On</button><button id="captureBtn" title="Keep the cursor inside the game while you play, so pushing past the screen edge always scrolls. Esc lets go">Capture mouse: In fullscreen</button><button id="panBtn">Pan speed: Normal</button><button id="statsBtn" title="Frame rate, ping, loss and other numbers over the game (F2 shows or hides)">Stats overlay: Off</button><label class="vol" title="Effects, voices and alerts. M mutes">Volume<input id="volume" type="range" min="0" max="100" step="1" aria-label="Volume"></label></div>
+  <div id="menu" class="panel hidden"><button id="pauseBtn">Pause match</button><button id="saveBtn" title="Save this match to load it again later from this room's lobby">Save match</button><button id="restartBtn">Restart match</button><button id="endBtn">End match (back to lobby)</button><div id="offlineSeats"></div><button id="leaveBtn">Leave game</button><button id="edgeBtn">Edge scroll: On</button><button id="captureBtn" title="Keep the cursor inside the game while you play, so pushing past the screen edge always scrolls. Esc lets go">Capture mouse: In fullscreen</button><button id="panBtn">Pan speed: Normal</button><button id="statsBtn" title="Frame rate, ping, loss and other numbers over the game (F2 shows or hides)">Stats overlay: Off</button><label class="vol" title="Effects, voices and alerts. M mutes">Volume<input id="volume" type="range" min="0" max="100" step="1" aria-label="Volume"></label><label class="vol" title="Size of the panels, buttons and text over the battlefield">UI scale<input id="uiScale" type="range" min="75" max="150" step="5" aria-label="UI scale"><span id="uiScaleVal" class="num"></span></label></div>
   <div id="sandbox" class="panel hidden"><b>Sandbox</b> <select id="sbUnit"></select> <select id="sbSide"><option value="enemy">Enemy</option><option value="mine">Mine</option></select> <button id="sbGo" title="Then click the map, once per unit. Right-click stops">Spawn</button></div>
   <div id="top"><div id="scores" class="panel"></div><div id="boss" class="panel hidden"><div class="boss-name">KAIJU</div><div class="boss-bar"><div></div></div></div><div id="status" class="panel"></div></div>
   <div id="econ" class="panel">

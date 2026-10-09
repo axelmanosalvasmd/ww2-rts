@@ -2,7 +2,7 @@
 #hud > #alerts {
   position: absolute; /* index.html places it above the minimap; alerts.js keeps it there on resize */
   display: flex; flex-direction: column; align-items: flex-end; gap: 3px;
-  max-width: min(380px, calc(100vw - 20px));
+  max-width: min(380px, calc(var(--vw, 100vw) - 20px));
   pointer-events: none; /* only the lines take clicks, the gaps between them stay on the map */
 }
 #hud > #alerts:empty { display: none; }
@@ -29,7 +29,7 @@
 @keyframes alert-in { from { opacity: 0; transform: translateX(8px); } }
 #alerts > #lossAlerts {
   display: flex; flex-direction: column; gap: 6px; margin-bottom: 8px;
-  width: min(380px, calc(100vw - 24px)); max-width: 100%;
+  width: min(380px, calc(var(--vw, 100vw) - 24px)); max-width: 100%;
   pointer-events: none;
 }
 #alerts > #lossAlerts:empty { display: none; }
@@ -48,7 +48,7 @@
 @media (prefers-reduced-motion: reduce) { :is(#alerts, #lossAlerts) .alert { animation: none; } }
 /* The history remains beside the minimap so battle controls stay available. */
 #alerts .alert-history {
-  pointer-events: auto; width: min(320px, calc(100vw - 20px));
+  pointer-events: auto; width: min(320px, calc(var(--vw, 100vw) - 20px));
   color: #e2dfd3; background: rgba(25, 28, 30, 0.96); border: 1px solid rgba(176, 164, 122, 0.46);
   font: 500 14px/1.35 'Barlow Semi Condensed', 'Arial Narrow', sans-serif;
 }
@@ -60,9 +60,6 @@
 #alerts button[aria-current="true"], #alerts button:focus-visible, #alerts summary:focus-visible, :is(#alerts, #lossAlerts) .alert:focus-visible { outline: 2px solid #d6b25e; outline-offset: -2px; }
 #alerts .alert-history-entry.k-attack, #alerts .alert-history-entry.k-base, #alerts .alert-history-entry.k-unitLost, #alerts .alert-history-entry.k-pointLost, #alerts .alert-history-entry.k-air { color: #ee8a7b; }
 #alerts .alert-history-entry.k-pointWon { color: #d6b25e; }
-.production-jobs { display: grid; gap: 3px; max-height: 150px; overflow-y: auto; }
-.production-job { display: flex; flex-wrap: wrap; align-items: center; gap: 3px 8px; }
-.production-job button, .control-transfer button, .control-transfer select { font: inherit; color: inherit; background: #252a2e; border: 1px solid rgba(176, 164, 122, 0.46); padding: 3px 5px; }
-.production-job button { cursor: pointer; }
+.control-transfer button, .control-transfer select { font: inherit; color: inherit; background: #252a2e; border: 1px solid rgba(176, 164, 122, 0.46); padding: 3px 5px; }
 .control-transfer { display: flex; flex-wrap: wrap; align-items: center; gap: 5px; padding-top: 5px; }
 .wave-threat { display: block; font-size: 13px; color: #d6b25e; }
