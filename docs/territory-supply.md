@@ -67,8 +67,7 @@ A long, thin front is weaker than a compact one, so pushing deep without taking 
 
 - At 100%, a unit's empty reserves fill in 40 s: about 90 s of ammunition, 120 s of provisions, 180 s of fuel plus
   60 s emergency fuel.
-- Prices stay as today. Classic and World Conquest pay Munitions per projectile and Fuel per second refilled, at the
-  moment it is refilled. Other modes refill for free.
+- Refills are free in every mode (2026-10-09; Classic and World Conquest used to charge Munitions and Fuel).
 - Healing, repair and reinforcement keep using provisions as today.
 
 ## Being cut off
@@ -123,7 +122,7 @@ A long, thin front is weaker than a compact one, so pushing deep without taking 
 - Craters on a line lower the refill rate without cutting it; filling them in restores it.
 - In Annihilation a held, connected capture point supplies nearby units at full rate; once cut off it stops.
 - Grace: no change before 10 s cut off, refill stops after, and resumes at once on reconnection.
-- Classic and World Conquest charge Munitions and Fuel for refills; other modes don't.
+- Refills cost nothing in any mode.
 - A cache refills nearby units from its stock while cut off.
 - Trucks spawn only for out-of-supply jobs, at most 4 per player.
 - Privacy: snapshots never carry enemy supply state.

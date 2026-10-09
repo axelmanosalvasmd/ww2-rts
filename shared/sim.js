@@ -17,7 +17,7 @@ import { tierOf, techCost, techMul, TECH } from './tech.js';
 import { isGroundVehicle, movementProfile, bodyRadius, vehiclePositionClear, sweptVehicleClear, vehicleStep, vehicleNavigationView, vehicleDestinationClear, segmentCliffClear } from './vehicle-motion.js';
 import { trafficStep, rememberTrafficPosition, trafficWins, TRAFFIC } from './local-traffic.js';
 import { initializeUnit, tickReserves, consumeDrivingFuel, consumeAmmo, canFire, shortageRate, recoveryRate } from './logistics.js';
-import { setupConvoys, stepConvoys, convoyDeath, commandConvoy, logisticsSnapshot, supportProvision, convoyTravelBudget, consumeConvoyTravel } from './supply-convoys.js';
+import { setupConvoys, stepConvoys, convoyDeath, commandConvoy, logisticsSnapshot, supportProvision } from './supply-convoys.js';
 
 import { projectileProfile, PROJECTILE_PROFILES, CONTACT_MATERIALS, launchSolution, flightAt, velocityAt, crossedCells, sweepBox, sweepBody, sweepHull, segmentDistance, contactResponse } from './projectiles.js';
 
@@ -1867,7 +1867,6 @@ function fullConvoyRoute(g,u,at,safe) {
 // remembered terrain and visible weapon threats, including every remaining leg.
 function supplyContinueRoute(g, u) {
   if (!u.path.length || (u.stuck ?? 0) > .5) return false;
-  if (['classic', 'world'].includes(g.mode?.kind) && !(u.convoy.operatingMetres > 1e-6)) return false;
   const known = g.mode?.kind === 'world' ? worldPathView(g, u.owner) : observedPathView(g, u.owner);
   const def = UNITS[u.type], threats = [...g.players[u.owner].visible].map(id => g.units.get(id)).filter(t => t && t.hp > 0 && !allied(g, t.owner, u.owner) && UNITS[t.type].w?.range > 0 && !t.air);
   let from = u;
@@ -5341,7 +5340,6 @@ export function step(g) {
     let speed = (u.pace ? Math.min(def.speed, u.pace) : def.speed) * (u.retreating ? CFG.retreatSpeed : u.sprint > 0 ? def.ab.speed : sm.speed) * speedMul(g, u)
       * (1 - CFG.slope[def.infantry ? 0 : 1] * Math.min(1, Math.max(0, grade))) * weatherSpeed(g, def) * marchMul(g, u, def);
     if (u.logistics?.fuel !== null && u.logistics?.fuel !== undefined) speed *= Math.min(1, (u.logistics.fuel + (u.logistics.forced ? u.logistics.emergency : 0)) / dt);
-    if (u.convoy) speed = Math.min(speed, convoyTravelBudget(g, u, speed * dt) / dt);
     rememberTrafficPosition(u, dt);
     let trafficTerrain;
     const trafficView = () => trafficTerrain ??= g.mode?.kind === 'world' ? worldPathView(g, u.owner) : observedPathView(g, u.owner);
@@ -5426,7 +5424,6 @@ export function step(g) {
     u.vx = (u.x - before.x) / dt; u.vz = (u.z - before.z) / dt;
     const moved = dist(u, before);
     consumeDrivingFuel(u, Math.min(dt, moved / Math.max(speed, 0.001)));
-    if (u.convoy) consumeConvoyTravel(g, u, moved);
     const moving = u.path.length > 0 || moved > 0.001;
     if (!u.path.length) u.drift = false;
     updateGrid(g, u);

@@ -1,5 +1,5 @@
 // Territory supply on ordinary maps (docs/territory-supply.md): distance, damaged ground, chokepoints, Annihilation
-// points as sources, refill prices and the truck cap.
+// points as sources, free refills and the truck cap.
 import assert from 'node:assert/strict';
 import { createGame, step, CFG, TICK, supplyRateAt } from './shared/sim.js';
 import { LOGISTICS } from './shared/logistics.js';
@@ -76,8 +76,8 @@ const settle = (g) => advance(g, CFG.supply.network * TICK);
 }
 
 {
-  // Classic pays Munitions for refills along the line; Conquest refills for free
-  for (const [mode, pays] of [['classic', true], ['conquest', false]]) {
+  // refills along the line are free in every mode: the currencies buy decisions, supply lines limit ammunition
+  for (const mode of ['classic', 'conquest']) {
     const g = game(map(), mode);
     for (const u of [...g.units.values()]) if (u.owner === 1 && !u.cells) g.units.delete(u.id);
     const u = [...g.units.values()].find(v => v.owner === 0 && v.logistics?.ammoMax > 0);
@@ -86,8 +86,8 @@ const settle = (g) => advance(g, CFG.supply.network * TICK);
     u.logistics.ammo = 0; const mun = g.players[0].mun = 50;
     advance(g, 4);
     assert.ok(u.logistics.ammo > 0, `${mode}: the line refills ammunition`);
-    const trickle = pays ? CFG.classic.hqMun * g.army.income * 4 : 0; // Classic's HQ trickle comes in meanwhile
-    assert.equal(g.players[0].mun < mun + trickle, pays, `${mode}: ${pays ? 'refills cost Munitions' : 'refills are free'}`);
+    const trickle = mode === 'classic' ? CFG.classic.hqMun * g.army.income * 4 : 0; // Classic's HQ trickle comes in meanwhile
+    assert.ok(Math.abs(g.players[0].mun - (mun + trickle)) < 1e-6, `${mode}: refills are free (${g.players[0].mun} Munitions)`);
   }
 }
 
@@ -101,4 +101,4 @@ const settle = (g) => advance(g, CFG.supply.network * TICK);
   assert.ok(trucks.length > 0 && trucks.length <= LOGISTICS.maxTrucks, `cut-off troops get trucks, at most ${LOGISTICS.maxTrucks} (${trucks.length})`);
   CFG.supply.network = every;
 }
-console.log('PASS territory supply: distance, craters and filling, bridges, Annihilation points, refill prices and truck cap');
+console.log('PASS territory supply: distance, craters and filling, bridges, Annihilation points, free refills and truck cap');

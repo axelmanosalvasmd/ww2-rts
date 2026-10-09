@@ -118,7 +118,7 @@ test('fleet shrink retires only empty automatic trucks parked at an active sourc
   assert.equal(keep.convoy.cargo.provisions, 50);
 });
 
-test('source loads charge only the paying owner and explicit allied relief does not recharge cargo', () => {
+test('Classic source loads are free and explicit allied relief still arrives', () => {
   const f = fixture('classic', [0, 0]), recipient = f.troop({ x: 60, z: 0 }, 1);
   recipient.logistics.ammo = 0;
   f.step();
@@ -128,29 +128,11 @@ test('source loads charge only the paying owner and explicit allied relief does 
   scheduler.commandConvoy(f.g, 0, { t: 'supply', ids: [t.id], target: recipient.id }, f.hooks);
   for (let i = 0; i < 4; i++) f.step();
   assert.equal(t.convoy.cargo.ammo, 2.85);
-  near(f.g.players[0].mun, 97.15);
+  near(f.g.players[0].mun, 100);
   near(f.g.players[1].mun, beforeOther);
-  const paid = f.g.players[0].mun;
   f.arrive(t); f.step(); f.step();
-  near(f.g.players[0].mun, paid);
+  near(f.g.players[0].mun, 100);
   assert.ok(recipient.logistics.ammo > 0);
-});
-
-test('manual extension cannot reuse consumed operating fuel or move without funding', () => {
-  assert.equal(typeof scheduler.consumeConvoyTravel, 'function');
-  assert.equal(typeof scheduler.convoyTravelBudget, 'function');
-  const f = fixture('classic'); f.step();
-  const t = f.truck();
-  assert.equal(scheduler.commandConvoy(f.g, 0, { t: 'move', orders: [[t.id, 100, 0]] }, f.hooks), null);
-  assert.ok(f.g.players[0].fuel < 100);
-  const funded = scheduler.convoyTravelBudget(f.g, t, 10000);
-  assert.ok(funded >= 200);
-  scheduler.consumeConvoyTravel(f.g, t, funded);
-  assert.equal(scheduler.convoyTravelBudget(f.g, t, 1), 0);
-  f.g.players[0].fuel = 0;
-  const before = { ...t.convoy };
-  assert.deepEqual(scheduler.commandConvoy(f.g, 0, { t: 'move', orders: [[t.id, 200, 0]] }, f.hooks), { result: 'fuel' });
-  assert.deepEqual(t.convoy, before);
 });
 
 test('returning unused paid cargo stores it once under its payer and does not refund currency', () => {
@@ -165,20 +147,13 @@ test('returning unused paid cargo stores it once under its payer and does not re
   assert.equal(f.g.players[0].mun, money.mun);
 });
 
-test('queued waypoints reserve the complete route once and preserve manual state', () => {
+test('queued waypoints preserve manual state', () => {
   const f = fixture('classic'); f.step();
   const t = f.truck();
   scheduler.commandConvoy(f.g, 0, { t: 'move', orders: [[t.id, 100, 0]] }, f.hooks);
   t.path = [{ x: 100, z: 0 }]; t.worldGoal = { x: 100, z: 0 };
-  const before = f.g.players[0].fuel;
   scheduler.commandConvoy(f.g, 0, { t: 'move', orders: [[t.id, 200, 0]], queue: true }, f.hooks);
-  near(before - f.g.players[0].fuel, 240 * 0.002);
   assert.equal(t.convoy.state, 'manual');
-  scheduler.consumeConvoyTravel(f.g, t, 100);
-  t.x = 100; t.path = []; t.worldGoal = null;
-  const funded = f.g.players[0].fuel;
-  scheduler.commandConvoy(f.g, 0, { t: 'move', orders: [[t.id, 200, 0]] }, f.hooks);
-  assert.equal(f.g.players[0].fuel, funded);
 });
 
 test('support providers require a reachable local handoff', () => {
@@ -244,14 +219,13 @@ test('contested depot stock pauses intact while an ownership change destroys it'
   assert.equal(f.g.convoys.stores.get('point:0').buckets.get(0), undefined);
 });
 
-test('manual return reserves operating fuel before applying retreat state', () => {
+test('Classic trucks drive and return home without spending Fuel', () => {
   const f = fixture('classic'); f.step();
   const t = f.truck(); t.x = 100; f.g.players[0].fuel = 0;
-  assert.deepEqual(scheduler.commandConvoy(f.g, 0, { t: 'retreat', ids: [t.id] }, f.hooks), { result: 'fuel' });
-  assert.equal(t.convoy.manual, false);
-  f.g.players[0].fuel = 1;
+  assert.equal(scheduler.commandConvoy(f.g, 0, { t: 'move', orders: [[t.id, 300, 0]] }, f.hooks), null);
   assert.equal(scheduler.commandConvoy(f.g, 0, { t: 'retreat', ids: [t.id] }, f.hooks), null);
-  assert.ok(scheduler.convoyTravelBudget(f.g, t, 1000) >= 100);
+  assert.equal(t.convoy.manual, true);
+  assert.equal(f.g.players[0].fuel, 0);
 });
 
 test('automatic deliveries stop for newly visible danger and resume the same funded cargo job', () => {
@@ -340,18 +314,6 @@ test('returned paid cargo survives absent sources and resumes after a friendly H
   assert.equal(t.convoy.origin, `source:${rebuilt.id}`);
   f.arrive(t); f.step(0);
   assert.deepEqual(f.g.convoys.stores.get(`source:${rebuilt.id}`).buckets.get(0), { ammo: 1, provisions: 30, fuel: 10 });
-});
-
-
-test('queued long movement funds the full current goal beyond its active navigation leg', () => {
-  for(const path of [[{x:64,z:0}],[]]) {
-  const f=fixture('classic');f.step(0);const t=f.truck();
-  Object.assign(t,{path,worldGoal:{x:1000,z:0}});
-  Object.assign(t.convoy,{manual:true,state:'manual',operatingMetres:2400});
-  assert.equal(scheduler.commandConvoy(f.g,0,{t:'move',queue:true,orders:[[t.id,1000,1000]]},f.hooks),null);
-  const complete=(1000+1000+Math.hypot(1000,1000))*1.2;
-  near(t.convoy.operatingMetres,complete);
-  }
 });
 
 

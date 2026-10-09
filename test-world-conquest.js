@@ -78,7 +78,8 @@ try {
 
   // Arrange a nearby battle without waiting for a cross-continent march. All actions and assertions use clients.
   const game = server.rooms.get('worldcheck').game;
-  const region = game.world.regions.find(r => r.team === -1);
+  // A region without guard forts: the continent is random, and a seized Scout Tower could stand where the HQ check builds.
+  const region = game.world.regions.find(r => r.team === -1 && ![...game.units.values()].some(u => ['pillbox', 'tower', 'wall'].includes(u.type) && Math.hypot(u.x - r.x, u.z - r.z) < 30));
   const base = [...game.units.values()].find(u => u.type === 'worldbase' && u.region === region.id);
   const rifle = [...game.units.values()].find(u => u.owner === 0 && u.type === 'rifle');
   const engineer = [...game.units.values()].find(u => u.owner === 0 && u.type === 'engineer');

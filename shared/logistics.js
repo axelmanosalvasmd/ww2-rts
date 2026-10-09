@@ -1,10 +1,9 @@
-// All quantities use physical rounds or simulation seconds. Cargo ammunition is
-// compatible Munitions credit, paid at its source and consumed only on transfer.
+// All quantities use physical rounds or simulation seconds. Cargo counts ammunition in credit units, where a
+// shell weighs more than a bullet (the "prices" below); it is issued as whole rounds on transfer. Supplies are free.
 export const LOGISTICS = Object.freeze({
   ammoSeconds: 90, provisions: 120, fuel: 180, emergency: 60,
   low: 0.25, recovery: 0.5, warning: 20, unloadSeconds: 8,
   smallAmmoPrice: 0.01, shellAmmoPrice: 0.05, heavyAmmoPrice: 0.10,
-  fuelPrice: 6 / 180,
   sourceRadius: 15, cacheRadius: 15, truckRadius: 12,
   referenceAmmo: 3, referenceProvisions: 120, referenceFuel: 180,
   cargoEquivalents: 8, cacheEquivalents: 32, supportEquivalents: 4,
@@ -13,7 +12,7 @@ export const LOGISTICS = Object.freeze({
   // supplyGrace seconds. Trucks serve only what is out of supply: at most maxTrucks each, none while nothing is.
   refillSeconds: 40, supplyGrace: 10,
   spawnSeconds: 1, minTrucks: 0, maxTrucks: 4,
-  routeFuelPerMetre: 0.002, routeContingency: 1.2, alertSeconds: 20,
+  alertSeconds: 20,
 });
 
 const EPS = 1e-9;

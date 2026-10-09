@@ -130,8 +130,7 @@ of armed enemies except within 16 m of a held point (the point cut check's rule)
 is cut. The refill rate is 1 near a source and weakens to 0.25: World loses 0.15 per region beyond the first, each
 damaged (fillable) cell adding 0.05 of a region; other modes fall evenly from 150 to 600 m of travel, a damaged cell
 counting 10 m more. Craters weaken a line and Fill in restores it; rubble and broken bridges block vehicles, so they
-cut it. At 1, empty reserves refill in 40 s, paid like source loads (Munitions and Fuel in Classic and World
-Conquest). A unit out of supply keeps its last rate for 10 s, then gets nothing; finite stores in supply restock the
+cut it. At 1, empty reserves refill in 40 s, free in every mode. A unit out of supply keeps its last rate for 10 s, then gets nothing; finite stores in supply restock the
 same way. Outside World Conquest a cut-off unit is usually in enemy contact or beyond vehicle ground, where trucks
 cannot go either, so it lives on its reserves until the line reopens.
 
@@ -162,12 +161,13 @@ allied infrastructure. Automatic fleets spend and serve their own stocks; explic
 
 Reference stocks are 3 Munitions credit, 120 provision seconds and 180 fuel seconds. Trucks carry eight
 references of each resource, caches 32 and support stores four, scaled by army population multiplier.
-Small arms/MG/autocannon replacements cost .01 Munitions per projectile, ordinary shells .05 and
-howitzer/rocket ammunition .10. Vehicle fuel costs 6 Fuel for 180 ordinary driving seconds and 2 for
-60 emergency seconds. Classic and World pay these amounts from existing currencies. Other selected
-modes generate cargo freely; provisions are free at sources. Truck trips prepay .002 Fuel per route metre,
-including the straight-line return and 20% contingency. Actual powered movement consumes funded
-metres; extended manual routes reserve additional Fuel. Income, recruitment and ability prices remain.
+Cargo counts ammunition in credit units: a small arms/MG/autocannon round is .01, an ordinary shell .05 and
+howitzer/rocket ammunition .10, so heavy rounds fill more of a truck. Sources are free and endless in every mode
+(2026-10-09). Classic and World Conquest used to charge those credits in Munitions, 6 Fuel per 180 driving seconds
+and .002 Fuel per truck route metre, but refills were only 6% (Classic) and 11% (World) of Munitions spending in
+all-AI matches, and the charge only ever showed as a side at 0 Munitions that could not rearm. Supply lines limit
+ammunition and fuel; the currencies buy decisions (units, abilities, support, tiers). Income, recruitment and
+ability prices remain.
 Reinforcement retains MP costs and uses five provision seconds per replacement. Healing/repair uses
 one provision second per five restored HP, including medic and Engineer provider stocks.
 
@@ -825,9 +825,10 @@ Base building as a third lobby mode next to Conquest and Assault. Terms are defi
   HQ. (Hand-placed nodes in the map file wait for the editor Node tool.)
 - Munitions: a second currency, Classic only, earned from held points at 1.5 x the point's vp (center 3/s, village 1.5/s),
   plus an HQ trickle of 0.5/s, full rate for every teammate. It pays for off-map support, unit abilities (abilities
-  keep their cooldowns) and refilling ammunition. The trickle came in 2026-10-09: El Alamein's west side started next to
-  a single 0-vp point, so it earned nothing and its units could not rearm for minutes (its points are fixed too: see
-  Historic battle maps).
+  keep their cooldowns), tier-ups and Armory research. Refilling ammunition is free (2026-10-09; it used to cost
+  Munitions). The trickle came the same day: El Alamein's west side started next to a single 0-vp point, so it earned
+  nothing and, while refills still cost Munitions, its units could not rearm for minutes (its points are fixed too:
+  see Historic battle maps).
 - Buildings: HQ (3000 hp; Engineers, rifles; unique, can't be rebuilt), Supply Depot (60 MP, 600 hp), Barracks
   (150 MP, 1500 hp; MG, mortar, sniper, faction infantry), Motor Pool (200 MP, 1900 hp; AT gun, armored car, light and
   medium tank, rocket truck, Tiger; needs a Barracks). Hp went down 25% with the new units: armies hold fewer tanks

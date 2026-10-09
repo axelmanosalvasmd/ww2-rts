@@ -26,7 +26,7 @@ function alert(g, owner, type, message, at, count = 1) {
 function routeAlert(g, u, target) {
   const reason = u.convoy.routeFailure ?? 'unreachable';
   const messages = { dangerous: 'Supply delivery is waiting for a safe route', blocked: 'Supply route is blocked', unreachable: 'No reachable ground route for supplies' };
-  if (reason !== 'currency') alert(g, u.owner, reason, messages[reason] ?? messages.unreachable, target);
+  alert(g, u.owner, reason, messages[reason] ?? messages.unreachable, target);
 }
 
 function addStore(g, id, owner, at, source = false, entity = null, equivalents = L.cacheEquivalents) {
@@ -141,27 +141,19 @@ function missing(u) {
   return { ammo: Math.max(0, (r.ammoMax - r.ammo) * r.ammoPrice - (r.ammoCredit ?? 0)), provisions: Math.max(0, L.provisions - r.provisions), fuel: r.fuel === null ? 0 : Math.max(0, L.fuel - r.fuel) + Math.max(0, L.emergency - r.emergency) };
 }
 
-// What a player gets for supplies drawn from a source: Classic and World Conquest pay Munitions and Fuel as far as
-// they last; provisions, and everything in other modes, are free.
-function buy(g, owner, k, want) {
-  if (k === 'provisions' || !construction(g)) return want;
-  const p = g.players[owner], field = k === 'ammo' ? 'mun' : 'fuel', price = k === 'fuel' ? L.fuelPrice : 1;
-  const amount = Math.min(want, Math.max(0, p[field] ?? 0) / price);
-  p[field] = Math.max(0, (p[field] ?? 0) - amount * price);
-  return amount;
-}
-function fillFromSource(g, source, owner, need, limit) {
+// Sources are free and endless in every mode: supply lines limit ammunition and fuel, the currencies buy decisions.
+// Cargo returned to a source is used up first.
+function fillFromSource(source, owner, need, limit) {
   const stock = bucket(source, owner), cargo = empty();
   for (const k of keys) {
-    let want = Math.min(Math.max(0, need[k] ?? 0), limit[k]);
-    const reused = Math.min(stock[k], want); stock[k] -= reused; cargo[k] += reused; want -= reused;
-    cargo[k] += buy(g, owner, k, want);
+    cargo[k] = Math.min(Math.max(0, need[k] ?? 0), limit[k]);
+    stock[k] -= Math.min(stock[k], cargo[k]);
   }
   return cargo;
 }
 
 // Territory supply (docs/territory-supply.md): every unit with reserves refills where it stands at its network rate
-// (full in L.refillSeconds at a rate of 1), paid like a source. Cut off, it keeps its last rate for L.supplyGrace
+// (full in L.refillSeconds at a rate of 1). Cut off, it keeps its last rate for L.supplyGrace
 // seconds, then gets nothing. Finite stores in supply (halftracks, aid stations, caches) restock the same way.
 function territoryService(g, dt, hooks) {
   if (!hooks.supplyRate) return;
@@ -177,7 +169,7 @@ function territoryService(g, dt, hooks) {
     const need = missing(u), share = isCut ? 0 : (r.supplyRate ?? 0) * dt / L.refillSeconds;
     if (!(share > 0) || quantity(need) < 1e-6) continue;
     const limit = { ammo: r.ammoMax * r.ammoPrice * share, provisions: L.provisions * share, fuel: (L.fuel + L.emergency) * share }, stock = empty();
-    for (const k of keys) stock[k] = buy(g, u.owner, k, Math.min(need[k], limit[k]));
+    for (const k of keys) stock[k] = Math.min(need[k], limit[k]);
     transferStock(stock, u, dt);
   }
   for (const [owner, units] of cut) alert(g, owner, 'cut', `${units.length} unit${units.length === 1 ? '' : 's'} cut off from supply`, units[0], units.length);
@@ -186,7 +178,7 @@ function territoryService(g, dt, hooks) {
     const rate = hooks.supplyRate(store.owner, store);
     if (!(rate > 0)) continue;
     const b = bucket(store, store.owner), space = storeSpace(store), share = rate * dt / L.refillSeconds;
-    for (const k of keys) b[k] += buy(g, store.owner, k, Math.min(space[k], store.capacity[k] * share));
+    for (const k of keys) b[k] += Math.min(space[k], store.capacity[k] * share);
   }
 }
 
@@ -204,7 +196,7 @@ function localService(g, dt, hooks) {
     const nearby = stores.filter(s => friendly(g, s.owner, u.owner) && distance(s, host ?? u) <= L.sourceRadius && hooks.handoff(u, s, L.sourceRadius)).sort((a, b) => distance(a, host ?? u) - distance(b, host ?? u));
     for (const store of nearby) {
       if (store.source) {
-        const need = missing(u), stock = fillFromSource(g, store, u.owner, need, {
+        const need = missing(u), stock = fillFromSource(store, u.owner, need, {
           ammo: u.logistics.ammoMax * u.logistics.ammoPrice * dt / L.unloadSeconds,
           provisions: L.provisions * dt / L.unloadSeconds, fuel: (L.fuel + L.emergency) * dt / L.unloadSeconds,
         });
@@ -219,46 +211,9 @@ function localService(g, dt, hooks) {
   }
 }
 
-function routeLength(from, path) {
-  let length = 0, at = from;
-  for (const p of path) { length += distance(at, p); at = p; }
-  return length;
-}
-
 function endpoint(from, target) {
   const d = distance(from, target) || 1, gap = Math.min(9, d);
   return { x: target.x + (from.x - target.x) / d * gap, z: target.z + (from.z - target.z) / d * gap };
-}
-
-function fundRoute(g, u, path, hooks, from = u) {
-  if (!construction(g)) return true;
-  const end = path.at(-1) ?? from;
-  const origin = g.convoys.stores.get(u.convoy.origin) ?? sources(g, u.owner)[0];
-  const home = origin ?? from;
-  // The way home is priced by its straight line, the contingency covering detours: searching it cost about 47 ms
-  // per dispatch, the larger part of what the few remaining trucks cost.
-  const homeLength = distance(end, home);
-  const required = (routeLength(from, path) + homeLength) * L.routeContingency;
-  const extra = Math.max(0, required - (u.convoy.operatingMetres ?? 0));
-  const cost = extra * L.routeFuelPerMetre, p = g.players[u.owner];
-  if ((p.fuel ?? 0) + 1e-9 < cost) {
-    alert(g, u.owner, 'currency', 'Not enough Fuel to dispatch supplies', u); return false;
-  }
-  p.fuel = Math.max(0, (p.fuel ?? 0) - cost);
-  u.convoy.operatingMetres = (u.convoy.operatingMetres ?? 0) + extra;
-  return true;
-}
-
-export function convoyTravelBudget(g, u, requestedMetres) {
-  const requested = Number.isFinite(requestedMetres) ? Math.max(0, requestedMetres) : 0;
-  if (!construction(g)) return requested;
-  return Math.min(requested, Math.max(0, u.convoy?.operatingMetres ?? 0));
-}
-
-export function consumeConvoyTravel(g, u, actualMetres) {
-  const travelled = convoyTravelBudget(g, u, actualMetres);
-  if (construction(g) && u.convoy) u.convoy.operatingMetres = Math.max(0, (u.convoy.operatingMetres ?? 0) - travelled);
-  return travelled;
 }
 
 function sendTruck(g, u, target, hooks, manual = false) {
@@ -274,7 +229,6 @@ function sendTruck(g, u, target, hooks, manual = false) {
     return false;
   }
   c.retry = null;
-  if (!fundRoute(g, u, path, hooks)) { c.routeFailure = 'currency'; return false; }
   c.routeFailure = null;
   u.path = path; u.worldGoal = { ...at }; u.repath = 2; u.retreating = false; u.attackId = 0; u.targetId = 0;
   c.destination = { x: target.x, z: target.z }; c.route = path.map(p => ({ x: p.x, z: p.z }));
@@ -331,7 +285,7 @@ function assignJob(g, u, target, origin, hooks, manual = false) {
     if (!sendTruck(g, u, origin, hooks, manual)) return restore();
     c.state = 'collecting';
   } else {
-    // Validate and prepay the delivery before loading, but remain at the source.
+    // Validate the delivery route before loading, but remain at the source.
     if (!sendTruck(g, u, target, hooks, manual)) return restore();
     c.state = 'loading'; u.path = []; u.worldGoal = null;
   }
@@ -342,7 +296,7 @@ function loadJob(g, u, hooks) {
   const c = u.convoy, origin = g.convoys.stores.get(c.origin);
   if (!origin?.active || !c.target) { c.state = 'idle'; return; }
   const cap = capacity(g, L.cargoEquivalents), need = c.target.need ?? cap;
-  if (origin.source) c.cargo = fillFromSource(g, origin, u.owner, need, cap);
+  if (origin.source) c.cargo = fillFromSource(origin, u.owner, need, cap);
   else {
     c.cargo = empty(); const stock = availableStock(origin, u.owner, false);
     moveStock(stock, c.cargo, Object.fromEntries(keys.map(k => [k, Math.min(need[k] ?? cap[k], cap[k])])));
@@ -434,7 +388,7 @@ function fleet(g, hooks) {
 // A new automatic truck, idle at a source.
 export function addTruck(g, owner, source, hooks) {
   const u = hooks.spawn(owner, 'truck', source);
-  u.autoRetreat = false; u.convoy = { state: 'idle', cargo: empty(), target: null, origin: source.id, timer: 0, manual: false, hold: false, route: [], destination: null, operatingMetres: 0 };
+  u.autoRetreat = false; u.convoy = { state: 'idle', cargo: empty(), target: null, origin: source.id, timer: 0, manual: false, hold: false, route: [], destination: null };
   return u;
 }
 
@@ -678,8 +632,6 @@ export function commandConvoy(g, slot, cmd, hooks) {
         }
         const route = hooks.route({ ...u, x: from.x, z: from.z }, at, false);
         if (!route.length && distance(from, at) > 1) return { result: 'blocked' };
-        planned.push(...route);
-        if (!fundRoute(g, u, planned, hooks)) return { result: 'fuel' };
       }
     }
     for (const u of trucks) {

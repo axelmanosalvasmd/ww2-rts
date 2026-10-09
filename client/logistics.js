@@ -79,7 +79,7 @@ export function overlayItems(data, selected, units, known = () => true) {
 
 const EVENT_TEXT = { low: 'Low supplies', lowReserve: 'Low supplies', lowReserves: 'Low supplies', blocked: 'Delivery route blocked',
   unreachable: 'Delivery route unreachable', dangerous: 'Known danger blocks deliveries', danger: 'Known danger blocks deliveries',
-  currency: 'Insufficient currency for supplies', funds: 'Insufficient currency for supplies', stock: 'Supply stockpile empty',
+  stock: 'Supply stockpile empty',
   insufficientStock: 'Supply stockpile empty', withdrawal: 'Mandatory withdrawal', forced: 'Mandatory withdrawal',
   transit: 'Supplies in transit', stranded: 'Stranded', cut: 'Cut off from supply', restored: 'Supply line restored' };
 export function createLogisticsAlerts() {

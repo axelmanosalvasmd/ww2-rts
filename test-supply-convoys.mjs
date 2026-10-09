@@ -194,20 +194,6 @@ const trucksOf = (g, owner = 0) => [...g.units.values()].filter(u => u.owner ===
 }
 
 {
-  const m=map(); m.w=200;m.rows=Array(m.h).fill('.'.repeat(m.w));m.spawns[1].x=194;
-  const g=createGame(m,['one','two'],false,[0,1],[0,1],{mode:'classic',logistics:true,weather:'clear'}),restore=unsupplied(g);
-  needSupplies(g);advance(g,3);
-  const truck=trucksOf(g)[0],from={x:truck.x,z:truck.z},at={x:300,z:30};
-  g.players[0].fuel=.8;
-  assert.equal(command(g,0,{t:'move',orders:[[truck.id,at.x,at.z]]}),'fuel','a long truck trip cannot start with only enough Fuel for its first leg');
-  g.players[0].fuel=100;
-  assert.equal(command(g,0,{t:'move',orders:[[truck.id,at.x,at.z]]}),undefined);
-  const source=[...g.convoys.stores.values()].find(s=>s.owner===0&&s.source);
-  const roundTrip=Math.hypot(at.x-from.x,at.z-from.z)+Math.hypot(at.x-source.x,at.z-source.z);
-  assert.ok(truck.convoy.operatingMetres>=roundTrip*1.2-5,'the entire distant outward and return journey is prepaid');
-  restore();
-}
-{
   const m=map();m.rows=m.rows.map(row=>row.slice(0,25)+'W'+row.slice(26));
   const g=createGame(m,['one','two'],false,[0,1],[0,1],{logistics:true,weather:'clear'}),u=troops(g)[0],enemy=troops(g,1)[0];
   Object.assign(u,{x:70,z:30,auto:false,autoRetreat:false});Object.assign(enemy,{x:130,z:30,holdPos:true,holdFire:true,auto:false,autoRetreat:false});

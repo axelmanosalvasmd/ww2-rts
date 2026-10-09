@@ -5,6 +5,35 @@ AI-vs-AI runs (see DESIGN.md for the balance log). Add new entries under **Unrel
 
 ## Unreleased
 
+- Supplies are free in Classic and World Conquest, as they already were in every other mode. Refilling ammunition no
+  longer costs Munitions, refuelling no longer costs Fuel, and supply trucks no longer pay Fuel per metre driven or
+  refuse to leave when you have none (the "Not enough Fuel to dispatch supplies" alert is gone). The supply line
+  (territory, trucks, being cut off) is what limits ammunition and fuel now; Munitions and Fuel buy decisions: units,
+  abilities, support calls and HQ tiers. Why: in all-AI matches (6 Classic, 4 World Conquest, tiers and supply on)
+  refills were 6% and 11% of Munitions spending, a full rifle reload cost 0.6 Munitions against 15 for a grenade, and
+  the charge only ever showed as a side stuck at 0 Munitions whose units could not rearm (El Alamein, patched with
+  the HQ trickle earlier today; World Conquest has no such trickle). The trickle stays. Tests rewritten for the new
+  rule: `test-territory-supply.mjs` checks "refills are free" to the exact Munitions (it pinned "refills cost
+  Munitions"); the source-load, queued-waypoint and truck-return checks in `test-convoy-scheduler.mjs` and the relief
+  checks in `test-audit-logistics.mjs` expect no charge. Deleted with the feature: the funded-route checks ("manual
+  extension cannot reuse consumed operating fuel", "queued long movement funds the full current goal") and the
+  prepaid long trip in `test-supply-convoys.mjs`. Left for later: `client/es.js` keeps the unused "Insufficient
+  currency for supplies" translation (another session has uncommitted edits in that file).
+- Fixed a flaky test: `test-world-conquest.js` built at a fixed spot in the first guard region of a random continent.
+  About one run in four that region had a guard Scout Tower, handed to the player on capture, standing on the spot,
+  so "engineers can raise a forward HQ on conquered land" failed (HEAD failed 1 of 6 runs). It now picks a region
+  without guard forts: 12 of 12 runs pass.
+- Found while measuring the economy, left for later: in Classic 75% of MP went to automatic reinforcement at base and
+  Fuel piled up unspent (77 earned, 2 spent per minute; the AI fielded almost no vehicles), and all 6 matches went to
+  Sudden Death. In World Conquest every currency piles up from about minute 15 (median bank at minute 40: 15,900 MP,
+  4,300 Munitions, 5,900 Fuel) because the population cap is the only limit, home regions get a random kind (MP
+  income 3.2 to 8.8/s at minute 5), and there is no HQ Munitions trickle. `tools/ai-balance.mjs` runs without HQ
+  tiers (`tech` is never passed), unlike the live server. Tried and not shipped: moving Classic vehicle prices toward
+  Fuel (light tank 120 MP + 120 Fuel instead of 200 + 60, about 60% of the MP and twice the Fuel for every vehicle),
+  with and without an AI rule to spend banked Fuel on tanks, 30 paired matches each: still 1 vehicle at a time and 0
+  or 1 of 30 decided before Sudden Death, because reinforcement keeps the AI's MP bank under about 150. Classic AI
+  matches all went to Sudden Death with HQ tiers off (0 of 6) and with supply off (0 of 6) as well.
+
 - Classic balance re-measured over 60 free-for-alls with the 40-minute limit: USA 37%, Germany 35%, USSR 28% of
   decisive matches (three draws), all inside 25-42%. The earlier 30-match reading of USA 43% was noise.
 
