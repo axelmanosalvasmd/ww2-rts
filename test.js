@@ -966,6 +966,13 @@ await check("Tank shells", async () => {
   run(g, 20);
   settleDebris(g); settledRubble(g, [10 * 20 + 9], 'house shelled into rubble');
   assert.equal(t.fireAt, -1, 'tank stops once it is down');
+  // a cell walled in by its own house: the shells break the wall in front first, then reach it
+  const block = [...empty]; for (const y of [9, 10, 11]) block[y] = '.'.repeat(8) + 'BBB' + '.'.repeat(9);
+  const h = fresh(block); h.players[0].mp = 5000;
+  const deep = put(h, 0, 'tank', 20, 38);
+  command(h, 0, { t: 'fireat', ids: [deep.id], x: 19, z: 21 });
+  run(h, 40);
+  assert.ok(!(h.cellHp[10 * 20 + 9] > 0) && deep.fireAt === -1, 'a tank shells its way into the middle of a house block');
   const r = put(g, 0, 'rifle', 5, 5);
   command(g, 0, { t: 'fireat', ids: [r.id], x: 19, z: 21 });
   assert.equal(r.fireAt, -1, 'only tanks take fire-at orders');

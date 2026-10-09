@@ -937,6 +937,10 @@ Base building as a third lobby mode next to Conquest and Assault. Terms are defi
   forever: give a new order instead). A bomber gets an `area` mission: it circles the spot at 10 m and drops each
   stick there, then flies home when out of bombs. Client: Shift+B or the Shell area button, shown when a salvo unit
   is selected. Blind fire is allowed on purpose: shelling a suspected position is what artillery does.
+  A direct-fire gun fires at a structure cell when it has a clear line to it, or when the first wall in the way is part
+  of the same house or building (`canShell`, 2026-10-09): the shell hits that wall and the next goes deeper once it
+  breaks. It aims halfway up the target, 0.2 to 1.2 m. Before, a cell walled in by its own house could never be seen,
+  so the gun parked beside the house for good; a third of the maps' house cells are walled in on four sides.
 - Flamethrower squad (180 MP, Barracks): three men, 14 m, 9 damage a shot to infantry. `w.flame`: cover, walls,
   trenches and houses give no protection from it, and a garrison or a trench takes x1.5. Pins hard (30 a shot).
 - Bomber (420 MP, Airfield; Classic 300 MP + 100 Fuel): B-25 / He 111 / Pe-2. 420 hp, speed 12, two sticks a sortie,

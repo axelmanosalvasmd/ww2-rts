@@ -40,6 +40,15 @@ AI-vs-AI runs (see DESIGN.md for the balance log). Add new entries under **Unrel
   Command bunkers (Assault, Annihilation) were never affected, and nothing changed against troops: a howitzer still
   wipes a rifle squad standing in the open 60 m away in about 1-2 minutes. New check `Explosives vs base buildings` in
   `test.js`. Left for later: the rocket truck is now the quickest way to knock an HQ down.
+- Fixed: a tank (or tank destroyer, or any direct-fire gun) told to fire at a house cell with more of the same house
+  in front of it drove up beside the house and sat there for good, never firing. It needed a clear line to that exact
+  cell, which its own walls always block. About a third of all house cells on the maps (3,553 of 10,970) are walled in
+  on four sides, and the AI orders its tanks at whichever cell an enemy squad is garrisoned in, so AI tanks parked
+  this way too. Now the gun fires when the first wall in the way belongs to the same house or building: the shell
+  hits that wall, and once it breaks the next one goes deeper. Area fire also aims halfway up the target (1.2 m on a
+  house) instead of at its foot, so shells no longer burst on the rubble of the wall in front. A medium tank 20 m from
+  a 3x3 house block, firing at its middle cell: 0 shots in 90 s before, the cell down in 5 shots after. Attacking
+  an enemy HQ you can see was never affected. `Tank shells` in `test.js` now also checks the middle of a house block.
 - Operative shots hit the soldiers you see. A squad in the open is now its drawn men, each a 0.45 m body on the
   formation slot the client draws (slots moved to `shared/squad-men.js`, shared by client and server, with a lag
   of speed/9 for marching men). Before, a squad was one 1.2 m cylinder at its centre, so the end men of a rifle

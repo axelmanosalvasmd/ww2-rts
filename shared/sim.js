@@ -2700,7 +2700,9 @@ function digAt(g, at, r) {
 // Grid ray walk (Amanatides-Woo). Skips the start cell; checks the end cell only if withEnd.
 // Once an axis reaches the end cell, advance only the other axis. A tied crossing at an exact cell border must not
 // step past the endpoint and inspect unrelated ground.
-function clear(g, x0, z0, x1, z1, mask, withEnd) {
+const clear = (g, x0, z0, x1, z1, mask, withEnd) => blocker(g, x0, z0, x1, z1, mask, withEnd) === null;
+// the first cell on the line that stops it (-1 off the map), or null when the line is clear
+function blocker(g, x0, z0, x1, z1, mask, withEnd) {
   let cx = Math.floor(x0 / CELL), cy = Math.floor(z0 / CELL);
   const ex = Math.floor(x1 / CELL), ey = Math.floor(z1 / CELL);
   const dx = x1 - x0, dz = z1 - z0, sx = Math.sign(dx), sy = Math.sign(dz);
@@ -2711,11 +2713,21 @@ function clear(g, x0, z0, x1, z1, mask, withEnd) {
   for (let n = g.w + g.h; n > 0 && !(cx === ex && cy === ey); n--) {
     if (cy === ey || (cx !== ex && tx < ty)) { tx += tdx; cx += sx; } else { ty += tdy; cy += sy; }
     const end = cx === ex && cy === ey;
-    if (end && !withEnd) return true;
-    if (cx < 0 || cy < 0 || cx >= g.w || cy >= g.h || g.flags[cy * g.w + cx] & mask) return false;
-    if (mask & SIGHT && g.flags[cy * g.w + cx] & WOOD && ++wood > CFG.wood.sight) return false;
+    if (end && !withEnd) return null;
+    if (cx < 0 || cy < 0 || cx >= g.w || cy >= g.h) return -1;
+    if (g.flags[cy * g.w + cx] & mask) return cy * g.w + cx;
+    if (mask & SIGHT && g.flags[cy * g.w + cx] & WOOD && ++wood > CFG.wood.sight) return cy * g.w + cx;
   }
-  return true;
+  return null;
+}
+// Direct-fire area fire at a structure cell: a clear line to it, or one whose first wall belongs to the same house or
+// building (the shell hits that wall, and once it breaks the next one goes deeper). A gun told to shell a cell walled
+// in by its own house used to park beside the house for good.
+function canShell(g, u, c) {
+  const at = cellCenter(g, c);
+  if (los(g, u, at)) return true;
+  const id = g.structuralCells?.get(c)?.structureId, b = id === undefined ? null : blocker(g, u.x, u.z, at.x, at.z, SIGHT, false);
+  return b !== null && b >= 0 && g.structuralCells.get(b)?.structureId === id && los(g, u, cellCenter(g, b));
 }
 // does segment a-b pass through (or start/end inside) a circle?
 function segHits(a, b, c, r) {
@@ -3045,7 +3057,7 @@ function currentPathGoal(g, u, kind) {
   if (kind === 'amove') return u.amove && !u.path.length && dist(u, u.amove) >= 2.5 && !canShoot(g, u, g.units.get(u.targetId)) ? u.amove : null;
   if (kind === 'fireAt') {
     const at = u.fireAt >= 0 && (def.w.salvo || g.cellHp[u.fireAt] > 0) ? cellCenter(g, u.fireAt) : null;
-    return at && !u.path.length && !(dist(u, at) <= def.w.range && (def.w.salvo || los(g, u, at))) ? at : null;
+    return at && !u.path.length && !(dist(u, at) <= def.w.range && (def.w.salvo || canShell(g, u, u.fireAt))) ? at : null;
   }
   const target = g.units.get(u.attackId);
   return target && g.players[u.owner].visible.has(target.id) && !canShoot(g, u, target) ? target : null;
@@ -4018,7 +4030,10 @@ function fire(g, u, t, moving) {
 function fireTerrain(g, u, at) {
   if (!consumeAmmo(u, 1)) return;
   const w = UNITS[u.type].w;
-  addFlight(g, u, { ...at, y: levelAt(g, at.x, at.z) * CFG.levelHeight + 0.2 }, projectileProfile(u.type, w),
+  // aimed halfway up the target (a house at 1.2 m, like a hit on a vehicle; a bridge deck at its foot): aimed at the foot,
+  // a shell at a house burst on the rubble of the wall in front of it
+  const height = Math.max(0.2, Math.min(1.2, (FLIGHT_HEIGHT[collisionChar(g, cellOf(g, at.x, at.z))] ?? 0) / 2));
+  addFlight(g, u, { ...at, y: levelAt(g, at.x, at.z) * CFG.levelHeight + height }, projectileProfile(u.type, w),
     { intendedCell: cellOf(g, at.x, at.z), damageScale: 1, suppression: w.supp, suppressionScale: 1, explosive: true, terrain: w.shellTerrain, scar: CFG.scar.tank });
   u.shotAt = g.tick;
 }
@@ -5174,7 +5189,7 @@ export function step(g) {
     if (u.fireAt >= 0) {
       const at = cellCenter(g, u.fireAt);
       if (!w.salvo && !(g.cellHp[u.fireAt] > 0)) u.fireAt = -1; // a salvo keeps shelling open ground until told otherwise
-      else if (dist(u, at) <= rangeOf(g, u, w) && (w.salvo || los(g, u, at))) u.path = [];
+      else if (dist(u, at) <= rangeOf(g, u, w) && (w.salvo || canShell(g, u, u.fireAt))) u.path = [];
       else if (!u.path.length && u.repath <= 0) requestStepPath(g, u, at, 'fireAt');
     }
 
@@ -5339,7 +5354,7 @@ export function step(g) {
       const at = cellCenter(g, u.fireAt);
       u.aim = Math.atan2(at.z - u.z, at.x - u.x); u.targetId = 0;
       if (!u.path.length && dist(u, at) <= rangeOf(g, u, w) && u.cooldown <= 0 && w.salvo && u.still >= w.setup) { launchSalvo(g, u, at); u.cooldown = w.interval * shortageRate(u); }
-      else if (!u.path.length && dist(u, at) <= rangeOf(g, u, w) && u.cooldown <= 0 && !w.salvo && los(g, u, at)) {
+      else if (!u.path.length && dist(u, at) <= rangeOf(g, u, w) && u.cooldown <= 0 && !w.salvo && canShell(g, u, u.fireAt)) {
         u.cooldown = w.interval * sm.rate * shortageRate(u);
         fireTerrain(g, u, at);
       }
