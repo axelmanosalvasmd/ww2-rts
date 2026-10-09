@@ -3497,6 +3497,17 @@ await check("Twenty ticks of a seeded crowded infantry army preserve the old sep
   } finally { Math.random = savedRandom; }
 });
 
+// Units and the game keep the shape they were created with (spawnUnit and createGame declare every property), so V8
+// keeps step() optimized: a third less step time in a 6-AI Massive battle than when they gained properties in play.
+await check("Units and the game gain no properties during a match", async () => {
+  let created;
+  const g = playMatch({ map: JSON.parse(readFileSync('maps/default.json', 'utf8')), names: ['A', 'B', 'C'], teams: [0, 1, 2], factions: [0, 1, 2],
+    options: { mode: 'conquest', army: 'massive' }, seed: 5, maxTicks: 1500, setup: (game) => { created = Object.keys(game).join(); } });
+  assert.equal(Object.keys(g).join(), created, 'declare a game property in createGame instead of adding it mid-match');
+  const shapes = new Map([...g.units.values()].map(u => [Object.keys(u).join(), u.type]));
+  assert.equal(shapes.size, 1, `declare unit properties in spawnUnit: ${shapes.size} shapes (${[...shapes.values()].join(', ')})`);
+});
+
 const referenceNearCover = (g, u) => {
   const solid = new Set(['B', '#', 'R', 'H', 'K']), x = Math.floor(u.x / CELL), y = Math.floor(u.z / CELL);
   for (const [dx, dy] of [[1, 0], [-1, 0], [0, 1], [0, -1]]) if (solid.has(g.chars[(y + dy) * g.w + x + dx])) return true;
@@ -6846,7 +6857,8 @@ await check("Snapshot cadence reduces load, then recovers only after sustained s
 // Relief preserves cell centres, ordinary slopes and sealed cliff contact on every shipped map.
 await check("Relief preserves cell centres, ordinary slopes and sealed cliff contact on every shipped map", async () => {
   const THREE = await import('three');
-  for (const file of readdirSync('maps').filter(f => f.endsWith('.json'))) {
+  // not the maps other test files save and delete while this runs (test-engine-spectators, test-engine-acceptance)
+  for (const file of readdirSync('maps').filter(f => f.endsWith('.json') && !/^(test-|engine-mission-)/.test(f))) {
     const map = JSON.parse(readFileSync('maps/' + file, 'utf8')), grid = map.rows.map(r => [...r]);
     const relief = createRelief(map, grid, { low: false }), geo = relief.geometry, p = geo.attributes.position.array, idx = geo.index.array;
     const lv = (x, y) => levelOf(map.heights?.[y]?.[x] ?? '0') * CFG.levelHeight;

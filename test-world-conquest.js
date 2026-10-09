@@ -6,6 +6,8 @@ import { placementState } from './client/availability.js';
 import { UNITS, placementCheck, teamSees, worldMapFor } from './shared/sim.js';
 
 Object.assign(process.env, { PORT: '0', EDIT_PASSWORD: 'test', PUBLIC_URL: 'http://test' });
+// One world and one roll of the dice every run: with a random world the forward HQ spot was sometimes blocked terrain.
+let dice = 7; Math.random = () => ((dice = Math.imul(dice, 1664525) + 1013904223 | 0) >>> 0) / 4294967296;
 const server = await import('./server.js');
 const sendRead = sendsReadBy(server.wss);
 clearInterval(server.loop);
@@ -54,6 +56,7 @@ async function tick(count = 2) {
 try {
   const host = await connect('worldcheck', 'host');
   const guest = await connect('worldcheck', 'guest');
+  server.rooms.get('worldcheck').worldSeed = 12345;
   await host.send({ t: 'mode', v: 'world' });
   assert.equal(host.latest('lobby').mode, 'world', 'host can select World Conquest');
   await host.send({ t: 'worldSize', v: 'huge' });

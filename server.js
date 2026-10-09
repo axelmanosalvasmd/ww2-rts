@@ -340,7 +340,8 @@ async function startMatch(room) {
   const previous = { state: room.state, game: room.game };
   room.state = 'play'; room.game = null; // claim it before the await so a double-click can't start twice
   let map;
-  try { map = room.mode === 'world' ? generateWorldMap({ size: room.worldSize ?? 'huge', seed: randomBytes(4).readUInt32LE(), players: room.players.length, teams: room.players.map(p => p.team) }) : await loadMap(room.mapName, true); }
+  // room.worldSeed: tests pin the world; players get a new one each match
+  try { map = room.mode === 'world' ? generateWorldMap({ size: room.worldSize ?? 'huge', seed: room.worldSeed ?? randomBytes(4).readUInt32LE(), players: room.players.length, teams: room.players.map(p => p.team) }) : await loadMap(room.mapName, true); }
   catch {
     if (room.starting !== starting || room.state !== 'play') return;
     Object.assign(room, previous); room.starting = null;

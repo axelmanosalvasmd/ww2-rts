@@ -710,6 +710,13 @@ export function createGame(map, names, shuffle = true, teams = names.map((_, i) 
     tick: 0, nextId: 1, winVp: winVp(teams), units: new Map(), shots: [], flights: new Map(), nextFlight: 1, nades: [], salvos: [], smokes: [], strikes: [], wrecks: [], winner: null,
     // terrain changed mid-match: full log for (re)joining clients, plus what's new since the last snapshot
     cellLog: [], newCells: [],
+    // Set later by the systems that use them (vision, fog, story, routes, projects, supply), declared now: a game that
+    // gains a property mid-match changes shape, and every function reading it (step() above all) loses its optimized code.
+    claims: undefined, visionTick: undefined, fog: undefined, fogTerrain: undefined, fogSources: undefined, timeline: undefined,
+    story: undefined, fallen: undefined, pathStats: undefined, navalRegionVersion: undefined, worldFootprintRadius: undefined,
+    ghosts: undefined, nextProductionJob: undefined, projectSeq: undefined, projects: undefined, covers: undefined,
+    convoys: undefined, operatives: undefined, pits: undefined, tough: undefined, supplyGraph: undefined, supplyNet: undefined,
+    trenchFront: undefined, shoal: undefined, scenario: undefined, world: undefined,
     players: names.map((name, slot) => {
       const s = map.spawns[spawnIdx[slot]];
       return { slot, name, team: teams[slot], faction: factions[slot], vp: 0, mp: CFG.mpStart, inc: CFG.mpBase, sup: Object.fromEntries(SUPPORT_TYPES.map(k => [k, 0])), spawn: { x: (s.x + 0.5) * CELL, z: (s.y + 0.5) * CELL }, visible: new Set() };
@@ -1720,7 +1727,20 @@ function spawnUnit(g, owner, type, n = g.units.size) {
     // autocast starts on where abilities are free (cooldown only) and off where they cost Munitions (Classic)
     auto: UNITS[type].ab.id !== 'none' && !abCost(g, UNITS[type].ab),
     // auto-retreat starts on for everything on the ground; Shift+X turns it off
-    autoRetreat: !UNITS[type].air };
+    autoRetreat: !UNITS[type].air,
+    // Every property the systems below give a unit later, declared now. Undefined reads the same as missing, but
+    // units that gained them in play order ended up as 55 hidden classes among 167 units, too many for V8 to keep
+    // step() optimized. A new property a unit picks up during play belongs in this list.
+    motionBefore: undefined, motionClearance: undefined, traffic: undefined, trafficWait: undefined, trafficTrail: undefined,
+    trafficEntered: undefined, follow: undefined, routeEnd: undefined, moveOutcome: undefined, moveOutcomeTick: undefined,
+    moveResult: undefined, worldGoal: undefined, pace: undefined, ghost: undefined, build: undefined, entrench: undefined,
+    garrisonEntry: undefined, holdFire: undefined, holdPos: undefined, guardHome: undefined, shotAt: undefined,
+    lastHit: undefined, deathImpulse: undefined, hpWas: undefined, woundAt: undefined, healAt: undefined,
+    attackPick: undefined, atHit: undefined, aaShot: undefined, aaReserve: undefined, dust: undefined, cells: undefined,
+    built: undefined, queue: undefined, productionJobs: undefined, prog: undefined, rally: undefined,
+    structureId: undefined, region: undefined, gateT: undefined, open: undefined, logistics: undefined, convoy: undefined,
+    supplyStarted: undefined, supplyEscape: undefined, supplyHold: undefined, supplyRetry: undefined,
+    supplyRouteReason: undefined, air: undefined };
   if (UNITS[type].air) { u.air = { state: 'base', fuel: CFG.air.station, ammo: UNITS[type].ammo, timer: 0, ang: 0, mission: null }; Object.assign(u, airBase(g, u)); }
   initializeUnit(g, u, UNITS[type]);
   g.units.set(u.id, u);

@@ -1577,6 +1577,10 @@ the page. Adding text to the game means adding its Spanish to `client/es.js`.
   tick meter during a match; the p95 is over the ticks that sent a snapshot, the number the meter holds to 40 ms.
 - Server tick clock (2026-10-03): the loop polls every 10 ms and runs the ticks `process.hrtime` says are due, at
   most 4 per poll (a longer stall drops the backlog). `setInterval(50)` alone ran every ~62 ms on Windows.
+- Object shapes (2026-10-09): `spawnUnit` and `createGame` declare every property a unit or the game ever gets
+  (`undefined` until a system sets it), so all units share one hidden class and the game keeps its own. Gaining
+  properties during play gave 55 hidden classes among 167 units, and V8 kept discarding step()'s optimized code;
+  declaring them cut step time by a third. A check in test.js fails when a match adds a property.
 - Lag recorder (2026-10-03, `server/diag.js`, on with `WW2_DIAG=1`, which `start.cmd` sets): each ping carries the
   browser's numbers (`perf.diag()`, order = `CLIENT_KEYS`). Every 5 s a playing room appends a line to
   `logs/diag-<room>.jsonl`: real ticks/s, the latest a tick ran, event loop delay, tick p50/p95, and per player the
