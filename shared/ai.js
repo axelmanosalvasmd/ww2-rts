@@ -1,7 +1,7 @@
 // Seat commander. Runs on the server every couple of seconds and plays through command(),
 // from a detached per-seat observation. Each look it picks one situation, wait, hold, or attack,
 // and keeps that operation while the reason for it still holds.
-import { UNITS, CELL, CFG, COVER, MOVE, TRENCH, FORTS, command, spoiled, SUPPORT, abCost, canBuild, allied, supCost, siteNear, priceOf, alive, los, isSkirmishBaseMode, productionAccess, productionBuildings, placementCheck } from './sim.js';
+import { UNITS, CELL, CFG, COVER, MOVE, TRENCH, FORTS, RIDING_FLAG, CARGO_FLAG, CARGO_SHIFT, command, spoiled, SUPPORT, abCost, canBuild, allied, supCost, siteNear, priceOf, alive, los, isSkirmishBaseMode, productionAccess, productionBuildings, placementCheck } from './sim.js';
 import { viewFor } from './ai-view.js';
 import { tierOf, techCost, TECH } from './tech.js';
 import { beginMind, knownSince, pointReady, lesson, pointExtra, dropEmptyGround, liveSightings, operationHolds, planAssault, clearAssault, ARMOR, ANTI_ARMOR } from './ai-mind.js';
@@ -159,6 +159,9 @@ const MEMORY = new WeakMap();
 const memoryOf = (g, slot) => { if (!MEMORY.has(g)) MEMORY.set(g, []); const m = MEMORY.get(g); return (m[slot] ??= {}); };
 // Called when a human resumes this seat, before the next AI takeover can claim its units.
 export function resetAI(g, slot) { const memories = MEMORY.get(g); if (memories) delete memories[slot]; }
+// saved matches carry the AI seats' memories along (server/saves.js)
+export const aiMemories = (g) => MEMORY.get(g);
+export function restoreAIMemories(g, memories) { if (memories) MEMORY.set(g, memories); }
 const knownBuildings = (view) => view.ghosts;
 const inCover = (_view, u) => u.cover === 1 || u.cover === 2;
 
@@ -330,7 +333,7 @@ function plan(observation, slot, opts, mem, send) {
   const fortReserve = (classic || skirmish) && !rush.length ? fortify(view, slot, all, classic, reserve, saved, mem, submit) : 0;
   // Classic: only what my finished buildings can train (and, with HQ tiers, what my tier allows)
   const trains = (t) => (!me.tech || tierOf(t) <= me.tech.tier) && (skirmish ? productionBuildings(view, slot, t).length > 0 : !classic || grid.ownedBy(slot).some(b => b.built >= 1 && UNITS[b.type].makes?.includes(t)));
-  const mine = all.filter(u => u.type !== 'engineer' && !(skirmish && u.build)); // Engineers build; everyone else fights
+  const mine = all.filter(u => u.type !== 'engineer' && !UNITS[u.type].rail && !(skirmish && u.build)); // Engineers build; everyone else fights
   // The horde is a wave, not a player: it still arms every squad. A seat commander arms squads when it
   // sends them into a fight, or once that fight has been watched, not the whole army at the first look.
   const mindful = !horde;
@@ -416,6 +419,8 @@ function plan(observation, slot, opts, mem, send) {
   if (canBuild('tiger', me.faction) && count('tiger') < 1 && mine.length >= 5 && affords('tiger') && (want === 'tank' || want === 'rifle')) buy = 'tiger';
   if (want === 'rifle' && canBuild('commando', me.faction) && count('commando') < 2 && count('rifle') >= 1) buy = 'commando';
   if (canBuild('churchill', me.faction) && count('churchill') < 1 && mine.length >= 5 && affords('churchill') && (want === 'tank' || want === 'rifle')) buy = 'churchill';
+  // World Conquest: a troop truck for every six squads (at most three), to carry them across the continent
+  if (world && want === 'rifle' && count('lorry') < Math.min(3, Math.floor(mine.filter(u => UNITS[u.type].infantry).length / 6)) && trains('lorry') && affords('lorry')) buy = 'lorry';
   // A tank that already wiped a squad, or one this seat still remembers, changes the next buy after it leaves sight.
   if (mindful) {
     const learned = lesson(mind, buy, count('at'), count('mg')) || sit?.counter || null;
@@ -620,9 +625,27 @@ function plan(observation, slot, opts, mem, send) {
       busy.add(u.id);
     }
   }
+  // World railways: units far from where they are going, standing at one of our stations, take the train to our station
+  // nearest the goal (one train per station per CFG.rail.every seconds; the stations come from explored ground)
+  const railed = new Set(), ourStations = world ? (view.world?.stations ?? []).filter(s => view.world.regions.find(r => r.id === s.region)?.team === me.team) : [];
+  const railHop = (u, to) => {
+    if (!to || !ourStations.length || UNITS[u.type].naval || d(u, to) < 250) return false;
+    const at = ourStations.find(s => d(s, u) <= CFG.rail.reach), end = at && ourStations.filter(s => s !== at).sort((a, b) => d(a, to) - d(b, to))[0];
+    if (!end || d(end, to) > d(u, to) - 200 || ((mem.railAt ??= {})[at.region] ?? -1e9) > now - CFG.rail.every || !takeHand()) return false;
+    mem.railAt[at.region] = now;
+    const ids = mine.filter(v => !v.air && idleCombat(v) && !railed.has(v.id) && d(v, at) <= CFG.rail.reach).slice(0, CFG.rail.cars).map(v => v.id);
+    for (const id of ids) railed.add(id);
+    submit({ t: 'rail', ids, x: end.x, z: end.z });
+    return true;
+  };
+  // World transport: a squad with far to go climbs onto an idle tank or truck of ours close by; a loaded carrier drives on
+  // and puts its squads down near the goal or as soon as the enemy is close (riders jump off under fire anyway)
+  const boarding = new Map(), seats = (c) => UNITS[c.type].carries - (c.flags >> CARGO_SHIFT & 3) - (boarding.get(c.id) ?? 0);
+  const awaited = (c) => mine.some(v => v.orderPlan?.kind === 9 && d(v.orderPlan, c) < 3); // a squad walking to climb on (plan kind 9)
+  const lift = (u, to) => mine.find(c => UNITS[c.type].carries && !UNITS[c.type].naval && c !== u && seats(c) > 0 && d(c, u) < 30 && !c.path.length && !c.targetId && d(c, to) < d(u, to) + 40);
   for (const u of mine) {
     if (u.air) continue; // planes are flown above
-    if (busy.has(u.id)) continue;
+    if (busy.has(u.id) || railed.has(u.id) || u.flags & RIDING_FLAG) continue;
     const def = UNITS[u.type], frac = u.hp / (def.models * def.hpPer), home = atBase(u);
     if (u.retreating) continue;
 
@@ -660,6 +683,19 @@ function plan(observation, slot, opts, mem, send) {
       // Regions and frontiers come only from the delivered observation. No hidden homes are targets.
       const regions = (view.world?.regions ?? []).filter(r => r.team !== me.team);
       const target = regions.filter(r => !r.locked || mine.length >= L.wave).sort((a, b) => d(u, a) - d(u, b))[0];
+      if (idleCombat(u) && railHop(u, target)) continue;
+      const goal = target ?? worldFrontier(view, u);
+      // a carrier with seats waits for the squads climbing on, and for idle squads beside it that have far to go
+      const far = (v) => regions.some(r => d(v, r) > 220) && !regions.some(r => d(v, r) <= 220);
+      if (UNITS[u.type].carries && seats(u) > 0 && (boarding.has(u.id) || awaited(u) || mine.some(v => UNITS[v.type].infantry && v !== u && idleCombat(v) && !(v.flags & RIDING_FLAG) && d(v, u) < 30 && far(v)))) continue;
+      if (u.flags & CARGO_FLAG && UNITS[u.type].carries) {
+        if (!goal || d(u, goal) < 60 || enemiesNear(u, 45).length) { if (takeHand()) submit({ t: 'unload', ids: [u.id] }); continue; }
+        if (!u.path.length && takeHand()) { assault_.push([u.id, goal.x, goal.z]); arm(u); }
+        continue;
+      }
+      if (u.type === 'lorry') continue; // an empty truck waits where it is for the next squads
+      const ride = def.infantry && goal && idleCombat(u) && d(u, goal) > 220 && lift(u, goal);
+      if (ride && takeHand()) { submit({ t: 'board', ids: [u.id], target: ride.id }); boarding.set(ride.id, (boarding.get(ride.id) ?? 0) + 1); continue; }
       if (target && (target.locked || def.infantry)) {
         const base = target.locked && known.filter(e => insideRegion(target, e)).sort((a, b) => d(u, a) - d(u, b))[0];
         if (base && takeHand()) {

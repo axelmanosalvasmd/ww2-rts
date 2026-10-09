@@ -303,7 +303,8 @@ function meshesFor(kind) {
   return [[geo, surface({ rocks: 'stone', fence: 'wood', haystack: 'straw', supplies: 'wood' }[kind], true), 'solid']];
 }
 
-export function createProps({ map, grid, hAt, parent, prepared = candidates(map), deferRefresh = false }) {
+// skip(cell): nothing grows there (the railway's track, client/railways.js)
+export function createProps({ map, grid, hAt, parent, prepared = candidates(map), deferRefresh = false, skip = () => false }) {
   const cached = prepared, group = new THREE.Group(), meshes = new Map();
   group.name = 'scenery-props'; parent.add(group);
   const capacities = new Map(KINDS.map(kind => [kind, 0]));
@@ -336,6 +337,7 @@ export function createProps({ map, grid, hAt, parent, prepared = candidates(map)
   function place(c) {
     c.at = null;
     if (c.kind === 'grass' && gfx.low) return;
+    if (skip(c.cy * map.w + c.cx)) return;
     if (!visible(c, grid, { heights: map.heights, nodes, low: gfx.low })) return;
     const kind = kindFor(c, map.heights), crop = kind === 'crop';
     // each tree or bush its own height, girth and heading; leafy kinds also their own shade of green

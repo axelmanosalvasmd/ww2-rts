@@ -1,6 +1,7 @@
 import { relief, waterways } from './world-landforms.js';
 import { territories } from './world-territories.js';
 import { roadNetwork } from './world-roads.js';
+import { railNetwork } from './world-rails.js';
 // Authoritative seeded geography. Never send the seed or diagnostics to live clients.
 export const WORLD_TUNING = Object.freeze({
   regionCells: 64,
@@ -11,6 +12,8 @@ export const WORLD_TUNING = Object.freeze({
   industrialFuel: 0.3,
   resourceMun: 0.5,
   recoverHQ: 200,
+  // victory: a team wins once every rival nation is out, or once it owns this share of all regions
+  winShare: 0.6,
 });
 // 16 x 10 = 160 unique names, enough for a Massive map's 128 regions.
 const NAME_HEADS = ['Alden', 'Bray', 'Carn', 'Dorn', 'Elm', 'Falk', 'Gram', 'Hart', 'Kessel', 'Lind', 'Mar', 'Nor', 'Ost', 'Ravel', 'Stein', 'Wald'];
@@ -193,6 +196,7 @@ export function generateWorldMap({
       regionCells: span,
       regionMap,
       regions,
+      rails: railNetwork(ground, heights, regions, regionMap),
     },
   };
 }

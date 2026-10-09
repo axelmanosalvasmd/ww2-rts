@@ -7,3 +7,4 @@ logs/
 .cache/
 .claude/settings.local.json
 tools/blender/**/__pycache__/
+saves/

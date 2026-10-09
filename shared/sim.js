@@ -107,6 +107,14 @@ export const CFG = {
   aid: { radius: 12, carrier: 10, slow: 2, heal: 5, hot: 0.5, medic: 10, seek: 30, hurt: 0.9, calm: 5, board: 4.5, evict: 0.3 },
   // a landing craft lands its squad only with ground this close (metres); a squad thrown out further from it drowns
   shoreReach: 5,
+  // railways: units within `reach` metres of an owned station board a train of up to `cars` units; it loads for `load`
+  // seconds, unloads for `unload`, and a station sends one train per team every `every` seconds
+  rail: { reach: 30, cars: 8, load: 8, unload: 2, every: 20 },
+  paraRange: 300,
+  // World Conquest road march: speed on your own land after `calm` seconds without fighting
+  march: { speed: 1.5, calm: 10 },
+  // tank riders that jump down under fire land this suppressed
+  riderShock: 60,
   // a destroyer keeps this many cells of water between its centre and any shore or surf (its 11 m beam, and room to turn)
   shoal: 10,
   // supply lines: a point pays only while a vehicle could drive to it from its side's HQ. Enemy fighting units close
@@ -183,7 +191,7 @@ export const UNITS = {
   at: { name: 'AT Gun', cost: 200, models: 4, hpPer: 20, speed: 2.5, radius: 1.8, vision: 34, infantry: true,
     w: { range: 45, interval: 4.5, inf: 8, veh: 120, accInf: 0.3, accVeh: 0.75, supp: 0, setup: 2 },
     ab: { id: 'ap', name: 'AP Round', cd: 45 } },
-  tank: { name: 'Light Tank', cost: 300, models: 1, hpPer: 360, speed: 6.5, radius: 2.5, vision: 40, infantry: false, crushes: true,
+  tank: { name: 'Light Tank', cost: 300, models: 1, hpPer: 360, speed: 6.5, radius: 2.5, vision: 40, infantry: false, crushes: true, carries: 2, riders: true,
     w: { range: 35, interval: 3, inf: 30, veh: 45, accInf: 0.6, accVeh: 0.7, supp: 25, moveFire: 1, shellTerrain: 90 },
     ab: { id: 'smoke', name: 'Smoke', cd: 45, dur: 14, radius: 9 } },
 };
@@ -230,20 +238,28 @@ UNITS.armoredcar = { name: 'Armored Car', cost: 220, models: 1, hpPer: 170, spee
   w: { range: 28, interval: 1, inf: 4, veh: 14, accInf: 0.45, accVeh: 0.4, supp: 8, moveFire: 0.7 },
   ab: { id: 'smoke', name: 'Smoke', cd: 45, dur: 14, radius: 9 } };
 // Medium tank (Sherman / Panzer IV / T-34): the mainline tank, between the light tank and the Tiger.
-UNITS.medium = { name: 'Medium Tank', cost: 380, models: 1, hpPer: 600, speed: 5.5, radius: 2.7, vision: 40, infantry: false, crushes: true,
+UNITS.medium = { name: 'Medium Tank', cost: 380, models: 1, hpPer: 600, speed: 5.5, radius: 2.7, vision: 40, infantry: false, crushes: true, carries: 2, riders: true,
   w: { range: 38, interval: 3.5, inf: 35, veh: 80, accInf: 0.6, accVeh: 0.75, supp: 25, moveFire: 0.8, shellTerrain: 110 },
   // only the Light Tank (and the Armored Car) lay smoke; the heavier tanks get a shell or a charge of their own
   ab: { id: 'grenade', name: 'HE Shell', cd: 40, range: 38, fuse: 0.3, radius: 5, inf: 40, veh: 10, supp: 70, terrain: 110 } };
 // Halftrack: carries one infantry squad (carries), and infantry beside it reinforce while it stands still. A light
 // MG, thin armor.
-UNITS.halftrack = { name: 'Halftrack', cost: 180, models: 1, hpPer: 220, speed: 7.5, radius: 2.2, vision: 36, infantry: false, carries: true,
+UNITS.halftrack = { name: 'Halftrack', cost: 180, models: 1, hpPer: 220, speed: 7.5, radius: 2.2, vision: 36, infantry: false, carries: 1, reinforces: true,
   w: { range: 28, interval: 0.4, inf: 2.2, veh: 0.2, accInf: 0.4, accVeh: 0.3, supp: 6, moveFire: 0.6 },
   ab: { id: 'none', name: '', cd: 1e9 } };
+// Troop truck (Opel Blitz / GMC / ZiS-5 / Bedford): unarmed and thin-skinned, fast on roads, carries three squads under
+// its canvas. It does not reinforce the way a halftrack does.
+UNITS.lorry = { name: 'Troop Truck', cost: 110, models: 1, hpPer: 140, speed: 8.5, radius: 2, vision: 28, infantry: false, carries: 3,
+  w: { range: 0, interval: 1, inf: 0, veh: 0, accInf: 0, accVeh: 0, supp: 0 }, ab: { id: 'none', name: '', cd: 1e9 } };
+// Train (World Conquest railways): a locomotive and wagons that run a station-to-station trip along the track with up
+// to CFG.rail.cars ground units aboard, then unload them and leave. Nobody steers it; it can be shot up on the way.
+UNITS.train = { name: 'Train', faction: -1, classic: true, rail: true, cost: 0, pop: 0, models: 1, hpPer: 900, speed: 16, radius: 2.6, vision: 26, infantry: false, carries: 8,
+  w: { range: 0, interval: 1, inf: 0, veh: 0, accInf: 0, accVeh: 0, supp: 0 }, ab: { id: 'none', name: '', cd: 1e9 } };
 // Medic team: unarmed (a weapon with no range). Heals the most hurt squad nearby, slowly and for free (CFG.aid).
 // Landing craft (LCVP / Sturmboot / river boat): floats on water and surf only, carries one squad like a halftrack and
 // lands it on the nearest dry ground. Thin hull, two light MGs. Naval maps only: a Shipyard trains it in Classic,
 // other modes buy it like any unit and it launches on the water nearest the HQ.
-UNITS.lcvp = { name: 'Landing Craft', cost: 140, models: 1, hpPer: 160, speed: 7, radius: 2.5, vision: 32, infantry: false, carries: true, naval: true,
+UNITS.lcvp = { name: 'Landing Craft', cost: 140, models: 1, hpPer: 160, speed: 7, radius: 2.5, vision: 32, infantry: false, carries: 1, naval: true,
   w: { range: 26, interval: 0.4, inf: 2, veh: 0.2, accInf: 0.35, accVeh: 0.3, supp: 6, moveFire: 0.6 },
   ab: { id: 'none', name: '', cd: 1e9 } };
 // Gunboat (PT boat / S-boot / armored river boat): fast, a rapid autocannon against boats and the shore, and one
@@ -263,7 +279,7 @@ UNITS.medic = { name: 'Medic Team', cost: 120, models: 2, hpPer: 20, speed: 4.8,
   ab: { id: 'none', name: '', cd: 1e9 } };
 // Tank destroyer (M10 / StuG III / SU-85): a long gun on a tank hull, thinner armor, no smoke. Out-ranges every tank
 // but the Tiger and hits like an AT gun without having to set up; a poor shot against infantry.
-UNITS.tankdestroyer = { name: 'Tank Destroyer', cost: 320, models: 1, hpPer: 380, speed: 6.5, radius: 2.6, vision: 40, infantry: false, crushes: true,
+UNITS.tankdestroyer = { name: 'Tank Destroyer', cost: 320, models: 1, hpPer: 380, speed: 6.5, radius: 2.6, vision: 40, infantry: false, crushes: true, carries: 2, riders: true,
   w: { range: 46, interval: 4, inf: 12, veh: 120, accInf: 0.35, accVeh: 0.8, supp: 10, moveFire: 0.5, shellTerrain: 80 },
   ab: { id: 'ap', name: 'AP Round', cd: 45 } };
 // Field howitzer (M2A1 / leFH 18 / M-30): a towed gun and its crew. Mortar rules, further and heavier: it shells
@@ -290,7 +306,7 @@ UNITS.ranger = { name: 'Ranger Squad', faction: 0, cost: 200, models: 6, hpPer: 
   w: { range: 26, interval: 1.4, inf: 3.6, veh: 3, accInf: 0.72, accVeh: 0.6, supp: 5, perModel: true, moveFire: 0.6 },
   ab: { id: 'satchel', name: 'Satchel Charge', cd: 40, range: 6, fuse: 4, radius: 5, inf: 60, veh: 180, supp: 60, terrain: 600 } };
 // Germany Tiger: heavy tank, one at a time. Thick front armor: flank it.
-UNITS.tiger = { name: 'Tiger', faction: 1, max: 1, cost: 560, models: 1, hpPer: 900, speed: 4, radius: 3, vision: 42, infantry: false, crushes: true, frontArmor: 0.7,
+UNITS.tiger = { name: 'Tiger', faction: 1, max: 1, cost: 560, models: 1, hpPer: 900, speed: 4, radius: 3, vision: 42, infantry: false, crushes: true, frontArmor: 0.7, carries: 3, riders: true,
   w: { range: 42, interval: 4, inf: 40, veh: 110, accInf: 0.55, accVeh: 0.8, supp: 30, moveFire: 0.6, shellTerrain: 140 },
   ab: { id: 'ap', name: '88 mm AP Round', cd: 40, mult: 2 } };
 // USSR Conscripts: cheap human waves. Ura! = sprint and shrug off suppression.
@@ -298,7 +314,7 @@ UNITS.conscript = { name: 'Conscripts', faction: 2, cost: 80, pop: 0.75, models:
   w: { range: 24, interval: 1.8, inf: 2.2, veh: 1.1, accInf: 0.55, accVeh: 0.5, supp: 3, perModel: true, moveFire: 0.5 },
   ab: { id: 'ura', name: 'Ura!', cd: 35, dur: 6, speed: 1.6 } };
 // UK Churchill: a slow infantry tank, the thickest front on the map and a modest 75mm gun. One at a time.
-UNITS.churchill = { name: 'Churchill', faction: 3, max: 1, cost: 480, models: 1, hpPer: 1050, speed: 3.2, radius: 2.9, vision: 40, infantry: false, crushes: true, frontArmor: 0.6,
+UNITS.churchill = { name: 'Churchill', faction: 3, max: 1, cost: 480, models: 1, hpPer: 1050, speed: 3.2, radius: 2.9, vision: 40, infantry: false, crushes: true, frontArmor: 0.6, carries: 3, riders: true,
   w: { range: 36, interval: 3.5, inf: 35, veh: 70, accInf: 0.6, accVeh: 0.75, supp: 25, moveFire: 0.7, shellTerrain: 110 },
   // AVRE spigot mortar: satchel rules with a longer reach and a quick flight
   ab: { id: 'satchel', name: 'Petard', cd: 45, range: 20, fuse: 0.6, radius: 5, inf: 60, veh: 120, supp: 70, terrain: 600 } };
@@ -330,7 +346,7 @@ const building = (o) => ({ faction: -1, models: 1, speed: 0, infantry: false, st
 UNITS.hq = building({ name: 'HQ', cost: 200, buildTime: 40, hpPer: 3000, radius: 3, vision: 30, size: 3, produces: true, makes: ['engineer', 'rifle'] });
 UNITS.depot = building({ name: 'Supply Depot', cost: 60, hpPer: 600, radius: 2, vision: 16, size: 2, buildTime: 20 });
 UNITS.barracks = building({ name: 'Barracks', cost: 150, hpPer: 1500, radius: 3, vision: 24, size: 3, buildTime: 30, produces: true, makes: ['mg', 'mortar', 'sniper', 'medic', 'flak', 'flamer', 'ranger', 'conscript', 'commando'] });
-UNITS.motorpool = building({ name: 'Motor Pool', cost: 200, hpPer: 1900, radius: 3, vision: 24, size: 3, buildTime: 45, produces: true, needs: 'barracks', makes: ['at', 'howitzer', 'halftrack', 'armoredcar', 'flaktrack', 'tank', 'medium', 'tankdestroyer', 'rocket', 'tiger', 'churchill'] });
+UNITS.motorpool = building({ name: 'Motor Pool', cost: 200, hpPer: 1900, radius: 3, vision: 24, size: 3, buildTime: 45, produces: true, needs: 'barracks', makes: ['at', 'howitzer', 'halftrack', 'lorry', 'armoredcar', 'flaktrack', 'tank', 'medium', 'tankdestroyer', 'rocket', 'tiger', 'churchill'] });
 UNITS.airfield = building({ name: 'Airfield', cost: 250, hpPer: 1800, radius: 3, vision: 30, size: 3, buildTime: 40, produces: true, needs: 'motorpool', makes: ['fighter', 'attacker', 'bomber'] });
 UNITS.shipyard = building({ name: 'Shipyard', cost: 150, hpPer: 1500, radius: 3, vision: 30, size: 3, buildTime: 30, produces: true, coast: true, makes: ['lcvp', 'gunboat', 'destroyer'] });
 UNITS.flakpos = building({ name: 'Flak Emplacement', cost: 100, hpPer: 1500, radius: 2, vision: 40, size: 2, buildTime: 20, aa: { range: 55, dps: 40, chance: 0.45 } });
@@ -358,9 +374,9 @@ export const SKIRMISH_BUILDS = ['hq', 'barracks', 'motorpool', 'airfield', 'ship
 export const buildKinds = (classic, skirmish = false, world = false) => (classic ? world ? WORLD_BUILDS : BUILDABLE : skirmish ? SKIRMISH_BUILDS : FIELD_BUILDS);
 export const builderTypes = (classic) => (classic ? ['engineer'] : CFG.fortBuilders);
 // Classic: seconds to train each unit at its building
-for (const [t, s] of Object.entries({ engineer: 12, rifle: 15, conscript: 12, mg: 18, flak: 20, mortar: 20, sniper: 20, medic: 15, ranger: 20, at: 22, halftrack: 22, lcvp: 20, gunboat: 25, destroyer: 75, armoredcar: 25, flaktrack: 30, fighter: 30, attacker: 35, bomber: 45, rocket: 30, tank: 35, medium: 40, tankdestroyer: 40, tiger: 50, churchill: 50, commando: 22, howitzer: 30, flamer: 20 })) UNITS[t].train = s;
+for (const [t, s] of Object.entries({ engineer: 12, rifle: 15, conscript: 12, mg: 18, flak: 20, mortar: 20, sniper: 20, medic: 15, ranger: 20, at: 22, halftrack: 22, lorry: 15, lcvp: 20, gunboat: 25, destroyer: 75, armoredcar: 25, flaktrack: 30, fighter: 30, attacker: 35, bomber: 45, rocket: 30, tank: 35, medium: 40, tankdestroyer: 40, tiger: 50, churchill: 50, commando: 22, howitzer: 30, flamer: 20 })) UNITS[t].train = s;
 // Classic: vehicles cost Fuel and less MP
-for (const [t, mp, fuel] of [['halftrack', 140, 20], ['lcvp', 120, 15], ['gunboat', 170, 40], ['destroyer', 520, 180], ['flaktrack', 200, 30], ['fighter', 200, 40], ['attacker', 240, 70], ['armoredcar', 160, 25], ['tank', 200, 60], ['medium', 260, 90], ['tankdestroyer', 220, 80], ['bomber', 300, 100], ['rocket', 170, 50], ['tiger', 420, 150], ['churchill', 360, 130]]) Object.assign(UNITS[t], { classicCost: mp, fuel });
+for (const [t, mp, fuel] of [['halftrack', 140, 20], ['lorry', 80, 15], ['lcvp', 120, 15], ['gunboat', 170, 40], ['destroyer', 520, 180], ['flaktrack', 200, 30], ['fighter', 200, 40], ['attacker', 240, 70], ['armoredcar', 160, 25], ['tank', 200, 60], ['medium', 260, 90], ['tankdestroyer', 220, 80], ['bomber', 300, 100], ['rocket', 170, 50], ['tiger', 420, 150], ['churchill', 360, 130]]) Object.assign(UNITS[t], { classicCost: mp, fuel });
 export const isConstructionMode = (g) => g.mode?.kind === 'classic' || g.mode?.kind === 'world';
 export const isSkirmishBaseMode = (g) => !g.mode?.kind || ['conquest', 'assault', 'annihilation', 'horde'].includes(g.mode.kind);
 // Horde shares facilities, never wallets or the units purchased from them.
@@ -524,6 +540,8 @@ export function popCap(g, slot = 0) {
   }
   return Math.round(cap * (g.army?.pop ?? 1));
 }
+// World Conquest: paratroopers fly from one of your finished Airfields, and only this far (metres)
+export const paraField = (g, slot, at) => g.mode?.kind !== 'world' || [...g.units.values()].some(b => b.owner === slot && b.type === 'airfield' && b.built >= 1 && b.hp > 0 && dist(b, at) <= CFG.paraRange);
 export const supCost = (g, k) => (isConstructionMode(g) ? { cur: 'mun', cost: SUPPORT[k].mun } : { cur: 'mp', cost: SUPPORT[k].cost });
 
 // point in a len x width rectangle centered on s, long side along s.dir
@@ -767,7 +785,7 @@ export function createGame(map, names, shuffle = true, teams = names.map((_, i) 
   }
   if (isSkirmishBaseMode(g)) setupSkirmishBases(g);
   // HQ tiers and the Armory (shared/tech.js): Horde defenders start at Company HQ, and the scripted horde has it all
-  g.tech = opts.tech === true && ['conquest', 'assault', 'annihilation', 'horde', 'classic'].includes(opts.mode ?? 'conquest');
+  g.tech = opts.tech === true && ['conquest', 'assault', 'annihilation', 'horde', 'classic', 'world'].includes(opts.mode ?? 'conquest');
   if (g.tech) for (const p of g.players) Object.assign(p, { tier: !horde ? 1 : p.team === 0 ? 2 : 3, armory: { inf: 0, guns: 0, armor: 0 }, lab: [] });
   g.army = typeof opts.army === 'string' && Object.hasOwn(CFG.armies, opts.army) ? CFG.armies[opts.army] : CFG.armies.standard;
   for (const p of g.players) p.mp *= g.army.income;
@@ -1139,6 +1157,7 @@ function setupWorld(g, map) {
   const error = validateWorldMap(map); if (error) throw new Error(error);
   g.mode = { kind: 'world', teams: new Set(g.players.map(p => p.team)).size, total: map.world.total };
   g.world = { size: map.world.size, total: map.world.total, seed: map.world.seed, regionMap: map.world.regionMap ? Int16Array.from(map.world.regionMap) : null, regionCells: map.world.regionCells, memory: new Map(), regions: map.world.regions.map(r => ({ ...r, x: (r.x + 0.5) * CELL, z: (r.y + 0.5) * CELL, bounds: r.bounds.map(v => v * CELL), team: r.home === undefined ? -1 : g.players[r.home].team, progress: r.home === undefined ? 0 : 1, capper: -1 })) };
+  if (map.world.rails) setupRails(g, map.world.rails);
   // An array property keeps the hostile local actor out of lobby seats, results and competitive team loops.
   Object.defineProperty(g.players, '-1', { value: { slot: -1, name: 'Local defenders', team: -1, faction: 0, spawn: { x: 0, z: 0 }, visible: new Set(), mp: 0, mun: 0, fuel: 0 }, configurable: true });
   g.nodes = [];
@@ -1192,6 +1211,80 @@ function fortifyGuard(g, r, home, strong) {
     if (canStamp(g, [k])) placeBuilding(g, -1, 'wall', k, true).rot = face + Math.PI / 2;
   }
 }
+// Railways (shared/world-rails.js): stations by region, lines with the regions they cross and their bridge cells. A
+// line carries a team's trains while that team owns every region on it and its bridges stand.
+function setupRails(g, rails) {
+  const W = g.world;
+  W.stations = rails.stations.map(s => ({ region: s.region, c: s.y * g.w + s.x, x: (s.x + 0.5) * CELL, z: (s.y + 0.5) * CELL, next: {} }));
+  W.lines = rails.lines.map(l => ({ a: l.a, b: l.b, cells: l.cells, regions: l.regions, bridges: l.cells.filter(c => g.chars[c] === '=') }));
+  // each track cell: a bit per direction its rails leave it by (RAIL_DIRS), so a client draws track from what it has seen
+  W.railAt = new Map();
+  for (const l of rails.lines) for (let i = 1; i < l.cells.length; i++) {
+    const a = l.cells[i - 1], b = l.cells[i], dx = b % g.w - a % g.w, dz = Math.floor(b / g.w) - Math.floor(a / g.w);
+    const out = RAIL_DIRS.findIndex(([x, z]) => x === dx && z === dz), back = (out + 4) % 8;
+    if (out < 0) continue;
+    W.railAt.set(a, (W.railAt.get(a) ?? 0) | 1 << out); W.railAt.set(b, (W.railAt.get(b) ?? 0) | 1 << back);
+  }
+  W.stationAt = new Map(W.stations.map(s => [s.c, s.region]));
+  W.railYard = railYard(g.w, W.railAt.keys(), W.stationAt.keys());
+}
+// nothing is built on the track or in a station's yard (its platform, house and water tower)
+export const STATION_YARD = 5;
+export function railYard(w, track, stations) {
+  const out = new Set(track);
+  for (const c of stations) for (let dy = -STATION_YARD; dy <= STATION_YARD; dy++) for (let dx = -STATION_YARD; dx <= STATION_YARD; dx++) out.add(c + dy * w + dx);
+  return out;
+}
+export const RAIL_DIRS = [[1, 0], [1, 1], [0, 1], [-1, 1], [-1, 0], [-1, -1], [0, -1], [1, -1]];
+const railOpen = (g, line, team) => line.regions.every(id => g.world.regions[id].team === team) && line.bridges.every(c => g.chars[c] === '=');
+// the shortest open route between two stations, as points along the track, or null
+export function railRoute(g, team, from, to) {
+  const best = new Map([[from.region, { d: 0, via: null }]]), todo = [from.region];
+  while (todo.length) {
+    todo.sort((a, b) => best.get(b).d - best.get(a).d);
+    const at = todo.pop();
+    if (at === to.region) break;
+    for (const line of g.world.lines) {
+      if (line.a !== at && line.b !== at) continue;
+      const next = line.a === at ? line.b : line.a, d = best.get(at).d + line.cells.length;
+      if ((best.get(next)?.d ?? Infinity) <= d || !railOpen(g, line, team)) continue;
+      best.set(next, { d, via: [at, line] }); todo.push(next);
+    }
+  }
+  if (!best.has(to.region)) return null;
+  const legs = [];
+  for (let at = to.region; at !== from.region; at = best.get(at).via[0]) { const [prev, line] = best.get(at).via; legs.unshift(line.a === prev ? line.cells : [...line.cells].reverse()); }
+  return legs.flat().filter((c, i, all) => c !== all[i - 1]).map(c => ({ ...cellCenter(g, c), c }));
+}
+function stepTrain(g, u, dt) {
+  const R = u.rail, team = g.players[u.owner].team;
+  u.supp = 0; u.retreating = false; u.path = [];
+  if (R.wait > 0) { R.wait -= dt; u.moveSpeed = 0; if (R.wait <= 0 && R.i >= R.path.length - 1) endTrain(g, u); return; }
+  let budget = UNITS.train.speed * dt;
+  while (budget > 0 && R.i < R.path.length - 1) {
+    const next = R.path[R.i + 1], region = worldRegionAt(g, next);
+    // the line is cut ahead (a blown bridge, land that changed hands): everyone gets off here
+    if ((R.bridges.has(next.c) && g.chars[next.c] !== '=') || (region && region.team !== team)) { endTrain(g, u); return; }
+    const d = dist(u, next), go = Math.min(d, budget);
+    if (d > 1e-6) { u.rot = Math.atan2(next.z - u.z, next.x - u.x); u.x += (next.x - u.x) / d * go; u.z += (next.z - u.z) / d * go; }
+    budget -= go;
+    if (go >= d) R.i++;
+  }
+  u.moveSpeed = UNITS.train.speed - budget / dt;
+  updateGrid(g, u);
+  if (R.i >= R.path.length - 1) R.wait = CFG.rail.unload;
+}
+// the trip is over (or cut short): the cargo gets down around the train, which leaves the map
+function endTrain(g, u) {
+  const n = u.cargo.length;
+  [...u.cargo].forEach((id, i) => {
+    const v = g.units.get(id); if (!v) return;
+    const a = u.rot + Math.PI / 2 + (i / Math.max(1, n)) * 2 * Math.PI;
+    Object.assign(v, { x: u.x + Math.cos(a) * 5, z: u.z + Math.sin(a) * 5 });
+    leaveCarrier(g, v, u);
+  });
+  g.units.delete(u.id);
+}
 function worldLocked(g, r, team = r.team) {
   return [...g.units.values()].some(b => b.hp > 0 && UNITS[b.type].produces && worldRegionAt(g, b)?.id === r.id && (b.type === 'worldbase' || g.players[b.owner].team === team));
 }
@@ -1228,8 +1321,18 @@ function stepWorld(g, list, dt) {
     for (const u of [...g.units.values()]) if (u.owner === p.slot) { g.units.delete(u.id); if (UNITS[u.type].building) wreckBuilding(g, u); }
   }
   if (g.winner === null && g.players.every(p => p.out)) finish(g, -1, 'draw');
-  if (g.winner === null) for (const team of new Set(g.players.map(p => p.team))) if (worldOwned(g, team) === g.world.total) { finish(g, team, 'world', g.world.regions.find(r => r.capTick === g.tick)); break; }
+  if (g.winner === null) {
+    // win: own the continent's winShare, or outlast every rival nation (a match with one team needs every region)
+    const alive = new Set(g.players.filter(p => !p.out).map(p => p.team)), rivals = new Set(g.players.map(p => p.team)).size > 1;
+    const at = g.world.regions.find(r => r.capTick === g.tick);
+    for (const team of alive) {
+      const owned = worldOwned(g, team);
+      if (owned === g.world.total || (rivals && owned >= worldGoal(g))) { finish(g, team, 'world', at); break; }
+    }
+    if (g.winner === null && rivals && alive.size === 1) finish(g, [...alive][0], 'nations', at);
+  }
 }
+const worldGoal = (g) => Math.ceil(g.world.total * WORLD_TUNING.winShare);
 function worldIncome(g, p, list, dt) {
   const own = g.world.regions.filter(r => r.team === p.team), mates = Math.max(1, g.players.filter(q => q.team === p.team && !q.out).length);
   const C = CFG.classic, alive = list.filter(u => u.owner === p.slot && u.hp > 0), active = !p.away && !p.out;
@@ -1316,7 +1419,7 @@ function worldSnapshot(g, slot) {
   if (g.world.regionMap) for (const [id,r] of m.regions) r.runs=m.runs?.get(id)??[];
   const own=[...g.units.values()].filter(u=>u.owner===slot && u.hp>0);
   const home=worldHome(g,p.team,p.spawn);
-  return {home:[rounded(home.x),rounded(home.z)],size:g.world.size,total:g.world.total,owned:worldOwned(g,p.team),cap:popCap(g,slot),regions:[...m.regions.values()],recovery:{hq:WORLD_TUNING.recoverHQ,engineer:UNITS.engineer.cost,available:!p.out && (!own.some(u=>u.type==='hq') || !own.some(u=>u.type==='engineer'))}};
+  return {home:[rounded(home.x),rounded(home.z)],size:g.world.size,total:g.world.total,goal:new Set(g.players.map(q=>q.team)).size>1?worldGoal(g):g.world.total,owned:worldOwned(g,p.team),cap:popCap(g,slot),regions:[...m.regions.values()],stations:g.world.stations?.filter(s=>m.cells.has(s.c)).map(s=>({region:s.region,x:rounded(s.x),z:rounded(s.z)})),recovery:{hq:WORLD_TUNING.recoverHQ,engineer:UNITS.engineer.cost,available:!p.out && (!own.some(u=>u.type==='hq') || !own.some(u=>u.type==='engineer'))}};
 }
 function worldNodesFor(g, slot) {
   const m=worldTerrainMemory(g,g.players[slot].team);
@@ -1591,7 +1694,7 @@ function spawnUnit(g, owner, type, n = g.units.size) {
     cd: 0, buff: 0, ap: false, nade: null, retreating: false, reinf: 0, dig: null,
     garrison: -1, enter: -1, board: 0, amove: null, face: null, xp: 0, fireAt: -1, sprint: 0,
     // board: the carrier it is walking to; riding: the carrier it is in; cargo: the squad a carrier holds
-    riding: 0, cargo: 0,
+    riding: 0, cargo: [],
     // incoming fire: who shot last, on which tick, and from where; drift = why a path was not ordered (rally, cover,
     // space, back); reverse = the path end a vehicle backs up to; react = seconds until it next looks for cover
     hitBy: 0, hitAt: -1e9, hitFrom: null, drift: false, reverse: null, react: 0,
@@ -2161,6 +2264,14 @@ function groundMul(g, c, veh) {
 // A unit's speed is the average over what it stands on, so a tank half on a road gets half the bonus and nothing
 // snaps at a cell's edge. Water and walls beside it do not count.
 const FOOT = [[0, 0], [1, 0], [-1, 0], [0, 1], [0, -1]];
+// Road march (World Conquest): a unit that has not fought for CFG.march.calm seconds moves this much faster on its own
+// side's land, so armies cross a continent at a column's pace and slow to a fighting pace near the enemy.
+function marchMul(g, u, def) {
+  if (g.mode?.kind !== 'world' || def.naval || def.air || u.attackId || u.targetId) return 1;
+  const calm = CFG.march.calm / TICK;
+  if (g.tick - u.hitAt <= calm || g.tick - (u.shotAt ?? -1e9) <= calm) return 1;
+  return worldRegionAt(g, u)?.team === g.players[u.owner]?.team ? CFG.march.speed : 1;
+}
 function speedMul(g, u) {
   const def = UNITS[u.type], r = def.radius * 0.6;
   if (def.naval) return 1;
@@ -2203,16 +2314,23 @@ function exitBuilding(g, u) {
 }
 // A squad gets out of its carrier c beside it. thrown: the carrier was wrecked under it, and it is hurt.
 function leaveCarrier(g, u, c, thrown = false) {
-  if (c) c.cargo = 0;
+  if (c) c.cargo = c.cargo.filter(id => id !== u?.id);
   if (!u) return;
   u.riding = 0;
-  const at = cellCenter(g, nearestFree(g, u.x, u.z)), drowned = thrown && dist(u, at) > CFG.shoreReach;
+  const at = cellCenter(g, nearestFree(g, u.x, u.z, blockOf(UNITS[u.type]))), drowned = thrown && dist(u, at) > CFG.shoreReach;
   Object.assign(u, at);
   updateGrid(g, u);
   if (drowned) { u.hp = 0; g.shots.push({ t: u.id, to: u.owner, x: u.x, z: u.z, k: 'hurt', kill: true }); return; }
   if (!thrown) return;
   u.hp -= UNITS[u.type].models * UNITS[u.type].hpPer * CFG.aid.evict;
   g.shots.push({ t: u.id, to: u.owner, x: u.x, z: u.z, k: 'hurt', kill: u.hp <= 0 });
+}
+// Tank riders (carries + riders): squads sitting on a tank's deck, out in the open. Blasts reach them, and the moment
+// the tank or a rider is hit by the enemy they all jump down, shaken, and fight on foot.
+const onDeck = (g, u) => !!u.riding && !!UNITS[g.units.get(u.riding)?.type]?.riders;
+function jumpOff(g, c, owner) {
+  if (!c?.cargo.length || !UNITS[c.type].riders || owner === undefined || owner < 0 || allied(g, owner, c.owner)) return;
+  for (const id of [...c.cargo]) { const u = g.units.get(id); leaveCarrier(g, u, c); if (u) u.supp = Math.max(u.supp, CFG.riderShock); }
 }
 function boardingReachable(g, u, c) {
   if (flagsAt(g, u.x, u.z) & MOVE) return false;
@@ -2286,6 +2404,8 @@ function worldCellData(g, c) {
   const section = g.structuralCells?.get(c), result = { ground: g.ground?.[c] ?? g.chars[c], object: g.objects?.[c] ?? '.', material: worldMaterial(g, c).name, groundMaterial: worldMaterial(g, c, true).name, groundWear: g.objects?.[c] === 'T' ? g.surfaceWear?.[c] ?? 0 : g.wear?.[c] ?? 0 };
   if (Number.isFinite(g.trenchFront?.[c])) result.trenchFront = g.trenchFront[c];
   if (g.mineLayer?.[c]) { result.mine = true; if (g.mineMaterials?.has(c)) result.mineMaterial = g.mineMaterials.get(c); }
+  if (g.world?.railAt?.has(c)) result.rail = g.world.railAt.get(c); // explored track and stations reach clients with the terrain
+  if (g.world?.stationAt?.has(c)) result.station = g.world.stationAt.get(c);
   if (section) result.section = { id: section.id, structureId: section.structureId, state: section.state, hp: Math.max(0, Math.round(section.hp * 10) / 10), maxHp: section.maxHp, material: section.material, anchor: section.anchor };
   return result;
 }
@@ -2988,6 +3108,7 @@ export function placementCheck(g, { kind, x, z, dir = 0, team }, sees = () => tr
   if (!cells) return fail('blocked', extra);
   if (g.mode?.kind === 'world' ? !cells.every(k => sees(cellCenter(g, k))) : !sees(center)) return fail('notVisible', extra);
   if (g.mode?.kind === 'world' && !cells.every(k => worldRegionAt(g, cellCenter(g, k))?.team === team)) return fail('territory', extra);
+  if (g.world?.railYard && cells.some(k => g.world.railYard.has(k))) return fail('rail', extra);
   if (kind !== 'depot') {
     const taken = new Set((g.nodes ?? []).flatMap(n => footprint(g, n.c, 2) ?? []));
     if (cells.some(k => taken.has(k))) return fail('blocked', extra);
@@ -3108,7 +3229,7 @@ export function command(g, slot, cmd, auto = false) {
   if (cmd.t === 'orders' && Array.isArray(cmd.commands)) return dispatchOrderGroups(g, slot, cmd);
   if (cmd.t === 'spawn') return sandboxSpawn(g, slot, cmd);
   // a squad riding in a carrier takes no orders: its carrier does (unload)
-  const mine = (id) => { const u = g.units.get(id); if (!(u && u.owner === slot && !u.operative && !UNITS[u.type].structure && !u.riding && (!u.logistics?.forced || ['move', 'stop', 'retreat', 'holdFire', 'holdPos', 'autoRetreat'].includes(cmd.t) || u.logistics.stranded && ['attack', 'ability'].includes(cmd.t)))) return null; u.follow = 0; return u; }; // an order takes a squad back from the operative leading it
+  const mine = (id) => { const u = g.units.get(id); if (!(u && u.owner === slot && !u.operative && !UNITS[u.type].structure && !UNITS[u.type].rail && !u.riding && (!u.logistics?.forced || ['move', 'stop', 'retreat', 'holdFire', 'holdPos', 'autoRetreat'].includes(cmd.t) || u.logistics.stranded && ['attack', 'ability'].includes(cmd.t)))) return null; u.follow = 0; return u; }; // an order takes a squad back from the operative leading it
   const limit = Math.max(50, g.units.size), ids = Array.isArray(cmd.ids) ? cmd.ids.slice(0, limit) : [];
   if ((cmd.t === 'move' || cmd.t === 'amove') && Array.isArray(cmd.orders)) {
     const face = cmd.face === undefined ? null : normalizeFace(cmd.face);
@@ -3210,21 +3331,57 @@ export function command(g, slot, cmd, auto = false) {
     if (!ids.some(id => mine(id)?.air)) return 'needs';
     for (const id of ids) { const u = mine(id); if (u?.air) { u.orders = []; sendPlane(u, { kind: 'escort', id: t.id, x: t.x, z: t.z }); } }
   } else if (cmd.t === 'board') {
-    // infantry climb into one of their own carriers (a halftrack): one squad each, the nearest squad gets the seat
-    const c = g.units.get(cmd.target);
-    if (!c || c.owner !== slot || !UNITS[c.type].carries || c.hp <= 0) return 'unseen';
-    if (c.cargo || [...g.units.values()].some(o => o.board === c.id)) return 'max';
-    const u = ids.map(mine).filter(o => o && UNITS[o.type].infantry && !o.retreating).sort((a, b) => dist(a, c) - dist(b, c))[0];
-    if (!u) return ids.some(id => mine(id)?.retreating) ? 'retreating' : 'needs';
-    exitBuilding(g, u);
-    Object.assign(u, { traffic: null, trafficWait: 0, moveOutcome: 'interrupted', moveOutcomeTick: g.tick, worldGoal: null, orders: [], entrench: null, face: null, attackId: 0, targetId: 0, nade: null, dig: null, enter: -1, board: c.id, amove: null, fireAt: -1, build: 0, repath: 0, path: findPath(g, u, c) });
+    // infantry climb onto their own carriers (halftracks, trucks, boats, tanks for riders), up to each one's seats. With
+    // a target, every squad goes for that carrier; without one (mount up), each squad takes the nearest selected carrier
+    // with a free seat.
+    const seats = (c) => UNITS[c.type].carries - c.cargo.length - [...g.units.values()].filter(o => o.board === c.id).length;
+    const target = cmd.target !== undefined && g.units.get(cmd.target);
+    if (cmd.target !== undefined && (!target || target.owner !== slot || !UNITS[target.type].carries || target.hp <= 0)) return 'unseen';
+    const carriers = target ? [target] : ids.map(id => g.units.get(id)).filter(c => c?.owner === slot && c.hp > 0 && UNITS[c.type].carries && !UNITS[c.type].naval);
+    if (!carriers.length) return 'needs';
+    const squads = ids.map(mine).filter(o => o && UNITS[o.type].infantry && !o.retreating);
+    if (!squads.length) return ids.some(id => mine(id)?.retreating) ? 'retreating' : 'needs';
+    const free = new Map(carriers.map(c => [c, seats(c)]));
+    if (![...free.values()].some(n => n > 0)) return 'max';
+    const pairs = squads.flatMap(u => carriers.map(c => [u, c, dist(u, c)])).sort((a, b) => a[2] - b[2]), placed = new Set();
+    for (const [u, c] of pairs) {
+      if (placed.has(u) || free.get(c) <= 0) continue;
+      placed.add(u); free.set(c, free.get(c) - 1);
+      exitBuilding(g, u);
+      Object.assign(u, { traffic: null, trafficWait: 0, moveOutcome: 'interrupted', moveOutcomeTick: g.tick, worldGoal: null, orders: [], entrench: null, face: null, attackId: 0, targetId: 0, nade: null, dig: null, enter: -1, board: c.id, amove: null, fireAt: -1, build: 0, repath: 0, path: findPath(g, u, c) });
+    }
+  } else if (cmd.t === 'rail') {
+    // send units by rail: those within reach of one of the team's stations board a train to the team's station nearest
+    // the click, along open line only
+    if (g.mode?.kind !== 'world' || !g.world.stations?.length) return 'blocked';
+    const p = g.players[slot], x = num(cmd.x, g.w * CELL), z = num(cmd.z, g.h * CELL);
+    if (x === null || z === null) return 'blocked';
+    const own = (s) => g.world.regions[s.region].team === p.team;
+    const units = ids.map(mine).filter(u => u && !UNITS[u.type].air && !UNITS[u.type].naval && !u.logistics?.forced);
+    if (!units.length) return 'needs';
+    const near = g.world.stations.filter(own).map(s => [s, Math.min(...units.map(u => dist(u, s)))]).sort((a, b) => a[1] - b[1])[0];
+    if (!near || near[1] > CFG.rail.reach) return 'station';
+    const origin = near[0], to = g.world.stations.filter(s => s !== origin && own(s)).sort((a, b) => dist(a, { x, z }) - dist(b, { x, z }))[0];
+    if (!to) return 'station';
+    if ((origin.next[p.team] ?? 0) > g.tick) return 'cooldown';
+    const path = railRoute(g, p.team, origin, to);
+    if (!path) return 'railCut';
+    origin.next[p.team] = g.tick + Math.round(CFG.rail.every / TICK);
+    const train = spawnUnit(g, slot, 'train');
+    Object.assign(train, { x: origin.x, z: origin.z, autoRetreat: false, rail: { path, i: 0, wait: CFG.rail.load, to: to.region, bridges: new Set(path.filter(at => g.chars[at.c] === '=').map(at => at.c)) } });
+    updateGrid(g, train);
+    for (const u of units.filter(u => dist(u, origin) <= CFG.rail.reach).sort((a, b) => dist(a, origin) - dist(b, origin)).slice(0, CFG.rail.cars)) {
+      exitBuilding(g, u);
+      Object.assign(u, { traffic: null, trafficWait: 0, moveOutcome: 'interrupted', moveOutcomeTick: g.tick, worldGoal: null, orders: [], entrench: null, face: null, path: [], attackId: 0, targetId: 0, nade: null, dig: null, enter: -1, board: 0, amove: null, fireAt: -1, build: 0, retreating: false, riding: train.id });
+      train.cargo.push(u.id);
+    }
   } else if (cmd.t === 'unload') {
-    const carriers = ids.map(mine).filter(c => c?.cargo);
+    const carriers = ids.map(mine).filter(c => c?.cargo.length);
     if (!carriers.length) return 'needs';
     // a boat lands its squad only where dry ground (or wadeable surf) is within reach
     const landing = carriers.filter(c => !UNITS[c.type].naval || dist(c, cellCenter(g, nearestFree(g, c.x, c.z))) <= CFG.shoreReach);
     if (!landing.length) return 'shore';
-    for (const c of landing) leaveCarrier(g, g.units.get(c.cargo), c);
+    for (const c of landing) for (const id of [...c.cargo]) leaveCarrier(g, g.units.get(id), c);
   } else if (cmd.t === 'retreat') {
     if (!ids.some(mine)) return 'needs';
     for (const id of ids) { const u = mine(id); if (u) retreatUnit(g, u); }
@@ -3338,6 +3495,7 @@ export function command(g, slot, cmd, auto = false) {
     const p = g.players[slot], sp = SUPPORT[cmd.kind], x = num(cmd.x, g.w * CELL), z = num(cmd.z, g.h * CELL), { cur, cost } = supCost(g, cmd.kind);
     if (x === null || z === null || p.sup[cmd.kind] > 0 || !(p[cur] >= cost)) return x === null || z === null ? 'blocked' : p.sup[cmd.kind] > 0 ? 'cooldown' : cur;
     if (sp.units && (!teamSees(g, p.team, { x, z }) || popOf(g, slot) + dropPop(cmd.kind) > popCap(g, slot))) return !teamSees(g, p.team, { x, z }) ? 'unseen' : 'pop';
+    if (sp.units && !paraField(g, slot, { x, z })) return 'airfield';
     p[cur] -= cost; p.sup[cmd.kind] = sp.cd;
     tally(g, slot, 'supportCalls'); if (cur === 'mp') tally(g, slot, 'mpSpent', cost);
     const dir = angle(cmd.dir) ?? Math.atan2(z - p.spawn.z, x - p.spawn.x);
@@ -3859,6 +4017,7 @@ function flightDamage(g, p, t, at, direction) {
   if (g.tech) dmg *= techMul(g.players[p.owner], UNITS[p.source.type], g.players[t.owner], def);
   const before = t.hp;
   t.hp -= dmg;
+  jumpOff(g, t, p.owner);
   if (dmg > 0) { t.lastHit = p.owner; t.deathImpulse = { dir: Math.atan2(direction.z, direction.x), impulse: Math.max(0.25, Math.min(4, dmg / 100)) }; }
   if (inf || (w.veh >= 20 && !p.source.air)) { if (t.hitBy !== p.shooter) t.retarget = 0; t.hitBy = p.shooter; t.hitAt = g.tick; t.hitFrom = { x: p.launchOrigin.x, z: p.launchOrigin.z }; }
   if (!inf && !def.structure && w.veh >= 20 && dmg > 0) t.atHit = g.tick;
@@ -4376,12 +4535,13 @@ function hurt(g, t, src, fall, owner) {
     * (g.tech ? techMul(g.players[owner], WEAPON_UNIT.get(src), g.players[t.owner], UNITS[t.type]) : 1);
   if (inf) t.supp = Math.min(100, t.supp + src.supp * (1 - CFG.vetSupp * vet(t)));
   g.shots.push({ t: t.id, fo: owner, to: t.owner, x: t.x, z: t.z, k: 'hurt', kill: t.hp <= 0 });
+  jumpOff(g, t.riding ? g.units.get(t.riding) : t, owner);
 }
 function blast(g, list, at, radius, src, owner, context = {}) {
   const skipBuildings = new Set();
   for (const t of list) {
     const d = dist(t, at);
-    if (d > radius || !(t.hp > 0) || t.air || t.riding) continue;
+    if (d > radius || !(t.hp > 0) || t.air || (t.riding && !onDeck(g, t))) continue;
     if (UNITS[t.type].building && t.structureId) {
       if (src.terrain) continue;
       const section = g.structures.get(t.structureId).sections.filter(s => s.state !== 'failed').sort((a, b) => dist(cellCenter(g, a.c), at) - dist(cellCenter(g, b.c), at))[0];
@@ -4868,13 +5028,14 @@ export function step(g) {
     if (!def.structure && u.hp > 0) startQueuedOrders(g, u);
     if (def.building) { if (u.queue?.length && u.built >= 1 && !g.mode.suddenDeath) train(g, u, dt); if (def.gate && u.built >= 1) stepGate(g, u, dt); if (!w || u.built < 1) continue; }
     if (def.air) { stepPlane(g, u, dt); continue; }
+    if (def.rail) { if (u.rail) stepTrain(g, u, dt); continue; }
     // riding in a carrier: it goes where the carrier goes and does nothing else. A wrecked carrier throws it out.
     if (u.riding) {
       const c = g.units.get(u.riding);
       if (!c || c.hp <= 0) leaveCarrier(g, u, c, true);
       else { Object.assign(u, { x: c.x, z: c.z, rot: c.rot, supp: 0, targetId: 0, still: 0 }); u.cd -= dt; updateGrid(g, u); continue; }
     }
-    if (u.cargo && g.units.get(u.cargo)?.riding !== u.id) u.cargo = 0;
+    if (u.cargo.length) u.cargo = u.cargo.filter(id => g.units.get(id)?.riding === u.id);
     if (def.infantry) u.supp = Math.max(0, u.supp - (inTrench(g, u) ? CFG.trench.rally : 8) * dt);
     u.cooldown -= dt; u.retarget -= dt; u.repath -= dt; u.cd -= dt; u.buff -= dt; u.sprint -= dt; u.react -= dt;
 
@@ -4957,8 +5118,8 @@ export function step(g) {
     // boarding: walk up to the carrier, then climb in
     if (u.board) {
       const c = g.units.get(u.board);
-      if (!c || c.hp <= 0 || c.cargo) u.board = 0;
-      else if (dist(u, c) <= CFG.aid.board && boardingReachable(g, u, c)) { Object.assign(u, { riding: c.id, board: 0, path: [], attackId: 0, targetId: 0 }); c.cargo = u.id; continue; }
+      if (!c || c.hp <= 0 || c.cargo.length >= UNITS[c.type].carries) u.board = 0;
+      else if (dist(u, c) <= CFG.aid.board && boardingReachable(g, u, c)) { Object.assign(u, { riding: c.id, board: 0, path: [], attackId: 0, targetId: 0 }); c.cargo.push(u.id); continue; }
       else if (!u.path.length && u.repath <= 0) requestStepPath(g, u, c, 'board');
     }
 
@@ -4998,7 +5159,7 @@ export function step(g) {
     if (g.height && u.path.length) { const wp = u.path[0], d = dist(u, wp) || 1; grade = heightAt(g, u.x + (wp.x - u.x) / d, u.z + (wp.z - u.z) / d) - heightAt(g, u.x, u.z); }
     if (u.pace && (u.attackId || u.retreating || !u.path.length)) u.pace = 0;
     let speed = (u.pace ? Math.min(def.speed, u.pace) : def.speed) * (u.retreating ? CFG.retreatSpeed : u.sprint > 0 ? def.ab.speed : sm.speed) * speedMul(g, u)
-      * (1 - CFG.slope[def.infantry ? 0 : 1] * Math.min(1, Math.max(0, grade))) * weatherSpeed(g, def);
+      * (1 - CFG.slope[def.infantry ? 0 : 1] * Math.min(1, Math.max(0, grade))) * weatherSpeed(g, def) * marchMul(g, u, def);
     if (u.logistics?.fuel !== null && u.logistics?.fuel !== undefined) speed *= Math.min(1, (u.logistics.fuel + (u.logistics.forced ? u.logistics.emergency : 0)) / dt);
     if (u.convoy) speed = Math.min(speed, convoyTravelBudget(g, u, speed * dt) / dt);
     rememberTrafficPosition(u, dt);
@@ -5194,13 +5355,13 @@ export function step(g) {
   };
   for (let i = 0; i < list.length; i++) {
     const a = list[i], radius = (UNITS[a.type].radius + maxRadius) * 0.8;
-    if (a.garrison >= 0 || a.air || a.riding) continue;
+    if (a.garrison >= 0 || a.air || a.riding || a.rail) continue;
     const grid = sep, size = grid.size;
     let x0 = Math.floor((a.x - radius) / size), x1 = Math.floor((a.x + radius) / size), z0 = Math.floor((a.z - radius) / size), z1 = Math.floor((a.z + radius) / size);
     let candidates = grid.candidates(a, radius, true, b => order.get(b.id) > i);
     for (let k = 0; k < candidates.length; k++) {
       const b = candidates[k], j = order.get(b.id), min = (UNITS[a.type].radius + UNITS[b.type].radius) * 0.8;
-      if (a.garrison >= 0 || b.garrison >= 0 || a.air || b.air || b.riding) continue;
+      if (a.garrison >= 0 || b.garrison >= 0 || a.air || b.air || b.riding || b.rail) continue;
       let dx = b.x - a.x, dz = b.z - a.z, d = Math.hypot(dx, dz);
       if (d >= min) continue;
       if (d === 0) { dx = a.id < b.id ? 1e-6 : -1e-6; dz = 0; d = 1e-6; }
@@ -5337,7 +5498,7 @@ export function step(g) {
   const atBase = (u) => (bases ? bases.some(b => (isSkirmishBaseMode(g) ? productionAccess(g, b, u.owner) : allied(g, b.owner, u.owner)) && dist(u, b) <= CFG.reinforceRadius) : dist(u, g.players[u.owner].spawn) <= CFG.reinforceRadius)
     || depots.some(q => allied(g, q.owner, u.owner) && dist(u, q) <= CFG.reinforceRadius);
   // forward aid, infantry only and slower: near their side's Field Hospital, or beside (or inside) a halted halftrack
-  const tents = [...g.aid].map(([c, by]) => ({ by, ...cellCenter(g, c) })), tracks = list.filter(h => UNITS[h.type].carries && !UNITS[h.type].naval && h.hp > 0 && h.still >= 2);
+  const tents = [...g.aid].map(([c, by]) => ({ by, ...cellCenter(g, c) })), tracks = list.filter(h => UNITS[h.type].reinforces && h.hp > 0 && h.still >= 2);
   const atAid = (u) => UNITS[u.type].infantry && (tents.some(t => allied(g, t.by, u.owner) && dist(u, t) <= CFG.aid.radius) || tracks.some(h => allied(g, h.owner, u.owner) && dist(u, h) <= CFG.aid.carrier));
   if (g.tick % 10 === 0) { healWounded(g, list, dt * 10); if (g.mines.size) sweepMines(g, list); }
   if (g.supply && g.tick % CFG.supply.every === 1) supplyLines(g, list);
@@ -5573,7 +5734,8 @@ export const GATE_OPEN_FLAG = 65536; // a gate standing open
 export const OPERATIVE_FLAG = 131072; // a first-person operative: one man, drawn on his own spot
 export const AUTO_FLAG = 16384; // a unit's autocast is on; only its owner is told (1024 marks a mass entrenchment)
 export const RIDING_FLAG = 262144, CARGO_FLAG = 524288; // inside a carrier (its side sees that); a carrier with a squad in it
-const unitFlags = (g, u) => (u.operative ? OPERATIVE_FLAG : 0) | (u.riding ? RIDING_FLAG : 0) | (u.cargo ? CARGO_FLAG : 0) | (u.retreating ? 1 : 0) | (u.buff > 0 ? 2 : 0) | (u.ap ? 4 : 0) | (u.reinf > 0 || g.tick - (u.healAt ?? -1e9) < 12 ? 8 : 0) | (u.dig ? 16 : 0) | (u.garrison >= 0 ? 32 | g.house[u.garrison] << 20 : 0) | (u.amove ? 64 : 0) | (u.build ? 128 : 0) | (UNITS[u.type].camo && u.still >= 3 && g.tick - (u.shotAt ?? -1e9) >= 80 ? 256 : 0) | (u.air && !airborne(u) ? 512 : 0) | (u.entrench ? 1024 : 0) | (dusty(g, u) ? 32768 : 0) | (u.open ? GATE_OPEN_FLAG : 0);
+export const CARGO_SHIFT = 23; // flags >> CARGO_SHIFT & 3: how many squads a carrier holds (tank riders are drawn on the hull)
+const unitFlags = (g, u) => (u.operative ? OPERATIVE_FLAG : 0) | (u.riding ? RIDING_FLAG : 0) | (u.cargo?.length ? CARGO_FLAG | u.cargo.length << CARGO_SHIFT : 0) | (u.retreating ? 1 : 0) | (u.buff > 0 ? 2 : 0) | (u.ap ? 4 : 0) | (u.reinf > 0 || g.tick - (u.healAt ?? -1e9) < 12 ? 8 : 0) | (u.dig ? 16 : 0) | (u.garrison >= 0 ? 32 | g.house[u.garrison] << 20 : 0) | (u.amove ? 64 : 0) | (u.build ? 128 : 0) | (UNITS[u.type].camo && u.still >= 3 && g.tick - (u.shotAt ?? -1e9) >= 80 ? 256 : 0) | (u.air && !airborne(u) ? 512 : 0) | (u.entrench ? 1024 : 0) | (dusty(g, u) ? 32768 : 0) | (u.open ? GATE_OPEN_FLAG : 0);
 // after how far built: a ground vehicle's motion [speed, vx, vz, travel direction], or a digging squad's progress (0-1)
 const rowTail = (u) => (isGroundVehicle(UNITS[u.type]) ? [rounded(u.moveSpeed ?? 0), rounded(u.vx ?? 0), rounded(u.vz ?? 0), rounded(u.travelDir ?? u.rot)] : u.dig ? [Math.round(digProgress(u) * 100) / 100] : []);
 function unitRow(g, u) {

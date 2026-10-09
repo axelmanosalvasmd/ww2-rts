@@ -16,7 +16,7 @@ import { createFormationPreview } from './formation-preview.js';
 import { facingSpots, slotSize, SHAPES } from '/shared/formation.js';
 import { availability, denySentence, placementState, rememberPlacementTerrain } from './availability.js';
 import { createFeedback } from './feedback.js';
-import { UNITS, UNIT_TYPES, CELL, CFG, SUPPORT, SUPPORT_TYPES, GATE_OPEN_FLAG, BUILDABLE, builderTypes, isSkirmishBaseMode, productionAccess, levelOf, levelChar, startState, canBuild, winVp, supCost, popCap, abCost, priceOf, FORTS, lineFort, placementCheck, ENTRENCH, entrenchPlan, segmentCost, RIDING_FLAG, OPERATIVE_FLAG, TERRAIN, TRENCH } from '/shared/sim.js';
+import { UNITS, UNIT_TYPES, CELL, CFG, SUPPORT, SUPPORT_TYPES, GATE_OPEN_FLAG, BUILDABLE, builderTypes, isSkirmishBaseMode, productionAccess, levelOf, levelChar, startState, canBuild, winVp, supCost, popCap, abCost, priceOf, FORTS, lineFort, placementCheck, ENTRENCH, entrenchPlan, segmentCost, RIDING_FLAG, OPERATIVE_FLAG, CARGO_FLAG, CARGO_SHIFT, TERRAIN, TRENCH } from '/shared/sim.js';
 import { alerts } from './alerts.js';
 import { setupLight, renderFrame } from './light.js';
 import { createAtmosphere } from './atmosphere.js';
@@ -43,7 +43,7 @@ import { createAviation } from './aircraft.js';
 import { epilogue } from './epilogue.js';
 import { createObjectives } from './objectives.js';
 import { endgame } from './endgame.js';
-import { buildModel, animate, createBodies, setSurfaces, setBuildings, crowd, drawSoldiers, animationInterest, vehicleBody, updateBuildingBreach, releaseBuildingBreach } from './unit-models.js';
+import { buildModel, animate, createBodies, setSurfaces, setBuildings, crowd, drawSoldiers, animationInterest, vehicleBody, updateBuildingBreach, releaseBuildingBreach, setRiders } from './unit-models.js';
 import { releaseWheels, wheelMaterial } from './wheel-motion.js';
 import { loadModelTextures } from './model-textures.js';
 import { perf, renderScale } from './perf.js';
@@ -55,15 +55,16 @@ import { createCoverPreview } from './cover-preview.js';
 import { createMapView } from './map-view.js';
 import { territoryEdges } from '/shared/world-territories.js';
 import { createWorldRegions } from './world-regions.js';
+import { createRailways } from './railways.js';
 import { createAutocast } from './autocast.js';
 import { t as tr } from './i18n.js';
 import { decodeLogistics, logisticsIndicator, overlayItems, createLogisticsAlerts } from './logistics.js';
 
 // Each player has a faction (names, uniforms, tanks, voice) and their own color (by slot).
 const FACTIONS = [
-  { name: 'USA', uniform: 0x6b7248, vehicle: 0x59623d, names: { rifle: 'Rifle Squad', mg: '.30 cal MG', at: '57mm AT Gun', tank: 'M5 Stuart', rocket: 'T34 Calliope', ranger: 'Ranger Squad', bunker: 'Command Bunker', mortar: '81mm Mortar', sniper: 'Sniper Team', armoredcar: 'M8 Greyhound', medium: 'M4 Sherman', flak: '40mm Bofors', flaktrack: 'M16 Half-track', fighter: 'P-51 Mustang', attacker: 'P-47 Thunderbolt', halftrack: 'M3 Half-track', medic: 'Medics', lcvp: 'LCVP', gunboat: 'PT Boat', destroyer: 'Fletcher Destroyer', tankdestroyer: 'M10 Wolverine', howitzer: 'M2A1 105mm Howitzer', flamer: 'Flamethrower Team', bomber: 'B-25 Mitchell' } },
-  { name: 'Germany', uniform: 0x5c6266, vehicle: 0x50565a, names: { rifle: 'Grenadiers', mg: 'MG 42 Team', at: 'PaK 40', tank: 'Panzer II', rocket: 'Panzerwerfer', tiger: 'Tiger I', bunker: 'Command Bunker', mortar: 'GrW 34 Mortar', sniper: 'Scharfschützen', armoredcar: 'Sd.Kfz. 222', medium: 'Panzer IV', flak: 'Flak 38', flaktrack: 'Wirbelwind', fighter: 'Bf 109', attacker: 'Ju 87 Stuka', halftrack: 'Sd.Kfz. 251', medic: 'Sanitäter', lcvp: 'Sturmboot', gunboat: 'S-Boot', destroyer: 'Zerstörer 1936', tankdestroyer: 'StuG III', howitzer: 'leFH 18', flamer: 'Flammenwerfer Team', bomber: 'He 111' } },
-  { name: 'USSR', uniform: 0x7d7250, vehicle: 0x4e5a38, names: { rifle: 'Riflemen', mg: 'Maxim MG', at: '45mm AT Gun', tank: 'T-70', rocket: 'Katyusha', conscript: 'Conscripts', bunker: 'Command Bunker', mortar: '82mm Mortar', sniper: 'Snipers', armoredcar: 'BA-64', medium: 'T-34', flak: '61-K AA Gun', flaktrack: 'ZSU-37', fighter: 'Yak-9', attacker: 'Il-2 Sturmovik', halftrack: 'M5 Half-track', medic: 'Sanitary Team', lcvp: 'Assault Boat', gunboat: 'Armored Boat', destroyer: 'Gnevny Destroyer', tankdestroyer: 'SU-85', howitzer: '122mm M-30 Howitzer', flamer: 'ROKS-2 Flamethrower Team', bomber: 'Pe-2' } },  { name: 'UK', uniform: 0x6f6448, vehicle: 0x565640, names: { rifle: 'Rifle Section', mg: 'Vickers MG', at: '6-pounder', tank: 'Stuart V', rocket: 'Land Mattress', churchill: 'Churchill VII', commando: 'Commandos', bunker: 'Command Bunker', mortar: '3-inch Mortar', sniper: 'Sniper Pair', armoredcar: 'Daimler Armoured Car', medium: 'Cromwell', flak: '40mm Bofors', flaktrack: 'Crusader AA', fighter: 'Spitfire', attacker: 'Typhoon', halftrack: 'Universal Carrier', medic: 'Stretcher Bearers', lcvp: 'LCA', gunboat: 'MTB', destroyer: 'Tribal-class Destroyer', tankdestroyer: 'Achilles', howitzer: '25-pounder', flamer: 'Lifebuoy Flamethrower Team', bomber: 'Mosquito' } },
+  { name: 'USA', uniform: 0x6b7248, vehicle: 0x59623d, names: { rifle: 'Rifle Squad', mg: '.30 cal MG', at: '57mm AT Gun', tank: 'M5 Stuart', rocket: 'T34 Calliope', ranger: 'Ranger Squad', bunker: 'Command Bunker', mortar: '81mm Mortar', sniper: 'Sniper Team', armoredcar: 'M8 Greyhound', medium: 'M4 Sherman', flak: '40mm Bofors', flaktrack: 'M16 Half-track', fighter: 'P-51 Mustang', attacker: 'P-47 Thunderbolt', halftrack: 'M3 Half-track', lorry: 'GMC CCKW', medic: 'Medics', lcvp: 'LCVP', gunboat: 'PT Boat', destroyer: 'Fletcher Destroyer', tankdestroyer: 'M10 Wolverine', howitzer: 'M2A1 105mm Howitzer', flamer: 'Flamethrower Team', bomber: 'B-25 Mitchell' } },
+  { name: 'Germany', uniform: 0x5c6266, vehicle: 0x50565a, names: { rifle: 'Grenadiers', mg: 'MG 42 Team', at: 'PaK 40', tank: 'Panzer II', rocket: 'Panzerwerfer', tiger: 'Tiger I', bunker: 'Command Bunker', mortar: 'GrW 34 Mortar', sniper: 'Scharfschützen', armoredcar: 'Sd.Kfz. 222', medium: 'Panzer IV', flak: 'Flak 38', flaktrack: 'Wirbelwind', fighter: 'Bf 109', attacker: 'Ju 87 Stuka', halftrack: 'Sd.Kfz. 251', lorry: 'Opel Blitz', medic: 'Sanitäter', lcvp: 'Sturmboot', gunboat: 'S-Boot', destroyer: 'Zerstörer 1936', tankdestroyer: 'StuG III', howitzer: 'leFH 18', flamer: 'Flammenwerfer Team', bomber: 'He 111' } },
+  { name: 'USSR', uniform: 0x7d7250, vehicle: 0x4e5a38, names: { rifle: 'Riflemen', mg: 'Maxim MG', at: '45mm AT Gun', tank: 'T-70', rocket: 'Katyusha', conscript: 'Conscripts', bunker: 'Command Bunker', mortar: '82mm Mortar', sniper: 'Snipers', armoredcar: 'BA-64', medium: 'T-34', flak: '61-K AA Gun', flaktrack: 'ZSU-37', fighter: 'Yak-9', attacker: 'Il-2 Sturmovik', halftrack: 'M5 Half-track', lorry: 'ZiS-5', medic: 'Sanitary Team', lcvp: 'Assault Boat', gunboat: 'Armored Boat', destroyer: 'Gnevny Destroyer', tankdestroyer: 'SU-85', howitzer: '122mm M-30 Howitzer', flamer: 'ROKS-2 Flamethrower Team', bomber: 'Pe-2' } },  { name: 'UK', uniform: 0x6f6448, vehicle: 0x565640, names: { rifle: 'Rifle Section', mg: 'Vickers MG', at: '6-pounder', tank: 'Stuart V', rocket: 'Land Mattress', churchill: 'Churchill VII', commando: 'Commandos', bunker: 'Command Bunker', mortar: '3-inch Mortar', sniper: 'Sniper Pair', armoredcar: 'Daimler Armoured Car', medium: 'Cromwell', flak: '40mm Bofors', flaktrack: 'Crusader AA', fighter: 'Spitfire', attacker: 'Typhoon', halftrack: 'Universal Carrier', lorry: 'Bedford QL', medic: 'Stretcher Bearers', lcvp: 'LCA', gunboat: 'MTB', destroyer: 'Tribal-class Destroyer', tankdestroyer: 'Achilles', howitzer: '25-pounder', flamer: 'Lifebuoy Flamethrower Team', bomber: 'Mosquito' } },
 ];
 const COLORS = [0x3b73d6, 0xcc3a2e, 0xece6d6, 0xe2832b, 0x9b5cd4, 0x35b6c0]; // grease-pencil palette: blue, red, chalk, orange, violet, cyan
 const AI_LEVELS = ['easy', 'normal', 'hard'];
@@ -160,7 +161,7 @@ positionRoomBanners();
 let me = -1, names = [], lobbyState = null, lastSnap = null, rtt = null, paused = false, seatActive = true;
 let watching = false; // a spectator: no seat, the whole map, no orders (the server sends the first seat's view with the fog lifted)
 const observing = () => operative || watching || !!lastSnap?.out?.[me];
-const observerControls = new Set(['fps', 'ping', 'resync', 'name', 'pause', 'resume', 'restart', 'end', 'leave', 'handAi']);
+const observerControls = new Set(['fps', 'ping', 'resync', 'name', 'pause', 'resume', 'restart', 'end', 'leave', 'handAi', 'save']);
 let snapshotAt = 0, snapshotGap = 100;
 const connection = createConnection({
   url: `${location.protocol === 'https:' ? 'wss' : 'ws'}://${location.host}/ws?room=${room}`,
@@ -178,6 +179,7 @@ connection.on('start', receiveStart);
 connection.on('s', (m, size) => { perf.net(size); applySnapshot(m); });
 connection.on('ping', (m) => pings.receive(m));
 connection.on('deny', (m) => feedback.show(denySentence(m.reason, m.cmd)));
+connection.on('saved', () => feedback.show("Match saved. Load it from this room's lobby"));
 connection.on('pong', (m) => { rtt = perf.pong(m) ?? rtt; });
 connection.on('pause', receivePause);
 connection.on('retry', ({ left, reason }) => {
@@ -274,7 +276,7 @@ $('watchBtn').onclick = () => sendCmd({ t: watching ? 'sit' : 'spectate' });
 const menuOpen = (on) => $('menu').classList.toggle('hidden', !on);
 function renderMatchMenu() {
   const host = !!lobbyState?.amHost;
-  for (const id of ['restartBtn', 'endBtn', 'pauseBtn']) $(id).classList.toggle('hidden', !host);
+  for (const id of ['restartBtn', 'endBtn', 'pauseBtn', 'saveBtn']) $(id).classList.toggle('hidden', !host);
   $('leaveBtn').classList.toggle('hidden', watching); // a spectator has no army to hand over: closing the tab leaves
   $('pauseBtn').textContent = paused ? 'Resume match' : 'Pause match';
   $('offlineSeats').innerHTML = host && lobbyState.state === 'play' ? lobbyState.players.map((p, i) => !p.ai && !p.connected ? `<button data-slot="${i}">Hand ${esc(p.name)} to AI</button>` : '').join('') : '';
@@ -282,6 +284,7 @@ function renderMatchMenu() {
 }
 $('menuBtn').onclick = () => { renderMatchMenu(); menuOpen($('menu').classList.contains('hidden')); };
 $('pauseBtn').onclick = () => { sendCmd({ t: paused ? 'resume' : 'pause' }); menuOpen(false); };
+$('saveBtn').onclick = () => { sendCmd({ t: 'save' }); menuOpen(false); };
 const confirmClick = (id, label, act) => {
   let armed = 0;
   $(id).onclick = () => { if (Date.now() - armed < 3000) { act(); menuOpen(false); $(id).textContent = label; armed = 0; return; } armed = Date.now(); $(id).textContent = 'Click again to confirm'; setTimeout(() => ($(id).textContent = label), 3000); };
@@ -296,9 +299,10 @@ const MODE_INFO = {
   annihilation: 'Every side starts with a fortified command bunker. Destroy every enemy bunker: last side standing wins. No clock.',
   classic: 'Build a base with engineers and train an army. Destroy every enemy HQ, Barracks, Motor Pool and Airfield.',
   tutorial: 'Learn to play: Sergeant Hollis walks you from a glider landing to a bridge, one order at a time. Friends can join as co-op.',
-  world: 'Scout a hidden continent, destroy regional military bases, then claim regions with infantry. Build your own bases on owned territory. Your side wins by owning every region. No clock.',
+  world: 'Scout a hidden continent, destroy regional military bases, then claim regions with infantry. Build your own bases on owned territory. Your side wins by owning 60% of the regions or by outlasting every rival nation. No clock. Saves itself every 2 minutes.',
   horde: 'Co-op: everyone shares one HQ and defends one command bunker against waves that keep growing. The next wave comes when the last one is dead. How far can you get?',
 };
+const MODE_NAMES = { conquest: 'Conquest', assault: 'Assault', annihilation: 'Annihilation', classic: 'Classic', horde: 'Horde', tutorial: 'Tutorial', world: 'World Conquest' };
 const prettyMap = (n) => n.replace(/-/g, ' ').replace(/\b\w/g, c => c.toUpperCase()).replace(/\bXl\b/, 'XL');
 // lobby map preview: terrain shaded by height, capture points, and spawns (in Assault: red defend, blue attack)
 const mapCache = new Map();
@@ -415,6 +419,12 @@ function renderLobby(m) {
   if (r) $('result').textContent = r.ended ? 'Match ended by the host' : r.horde ? `Overrun on wave ${r.horde.wave}: ${r.horde.kills} kills in ${mins(r.horde.time)}${r.horde.record ? ', a new record' : r.horde.best ? `. Record: wave ${r.horde.best.wave}` : ''}` : w === -1 ? 'Draw' : w === r.teams[me] ? 'Victory'
     : `${r.names.filter((_, i) => r.teams[i] === w).join(' & ') || 'Enemy'} win${r.teams.filter(t => t === w).length > 1 ? '' : 's'}`;
   renderReport(r, $('report'), { colors: COLORS.map(css), me: m.you }); // the chart and table under it (client/report.js)
+  // this room's saved matches, newest first; the host loads one (it opens paused until the host resumes)
+  const saves = m.saves ?? [], when = (t) => new Date(t).toLocaleString([], { month: 'short', day: 'numeric', hour: '2-digit', minute: '2-digit' });
+  $('saves').classList.toggle('hidden', !lobby || !saves.length);
+  $('saveList').innerHTML = saves.map(s => `<div class="slot"><span class="who"><span class="nm">${esc(MODE_NAMES[s.mode] ?? s.mode)}, ${s.minutes} min${s.world ? `, ${s.world.owned.join(' / ')} of ${s.world.total} regions` : ''}</span>
+    <span class="muted">${esc(s.names.join(', '))} · ${s.kind === 'auto' ? 'autosave' : 'saved'} ${when(s.savedAt)}</span></span>${host ? `<button style="margin-left:auto" data-save="${esc(s.id)}">Load</button>` : ''}</div>`).join('');
+  $('saveList').querySelectorAll('button').forEach(b => (b.onclick = () => sendCmd({ t: 'loadSave', id: b.dataset.save })));
   if (lobby) { lastStart = null; matchMemory.clear(); menuOpen(false); $('hud').classList.add('hidden'); receivePause({ paused: false }); audio.end(); epilogue.reset(); }
   positionRoomBanners();
 }
@@ -456,7 +466,7 @@ let world, MW = 0, MH = 0, fogOfWar = null, points = [], groundMesh = null, fogM
 const SHARED_GEOS = new Set(Object.values(GEO));
 
 // Ground height and the terrain surface come from client/relief.js: cliffs, eased slopes, river beds and banks.
-let relief = null, mapView = null, worldRegions = null;
+let relief = null, mapView = null, worldRegions = null, railways = null;
 function hAt(x, z) { return relief?.hAt(x, z) ?? 0; }
 const units = new Map(), selected = new Set(), groups = {}, fx = [];
 let logisticsData = decodeLogistics({}, units, -1), logisticsOverlay = false, logisticsSelection = false;
@@ -477,7 +487,7 @@ function startGame(m, restored = null) {
   if (!EDIT) audio.start({ faction: facOf(me), slot: me });
   const map = m.map;
   rememberPlacementTerrain(map, m.cells); // capture original facts before applying current heights and World rows
-  worldRegions?.dispose(); worldRegions = null;
+  worldRegions?.dispose(); worldRegions = null; railways?.dispose(); railways = null;
   terrain?.ground.dispose();
   rubbleDecals?.dispose(); rubbleDecals = null;
   relief?.dispose(); apron?.dispose(); fogMesh?.material.dispose(); fogMesh = null;
@@ -523,7 +533,8 @@ function startGame(m, restored = null) {
   buildStructures();
   water?.dispose(); water = createWater(terrain.physicalGrid, map, hAt); if (water) world.add(water.mesh);
 
-  props?.dispose(); props = EDIT ? null : createProps({ map, grid: terrain.physicalGrid, hAt, parent: world });
+  if (map.world) { railways = createRailways({ parent: world, hAt, w: map.w, center: id => lastSnap?.world?.regions?.find(r => r.id === id) }); railways.cells(m.cells); }
+  props?.dispose(); props = EDIT ? null : createProps({ map, grid: terrain.physicalGrid, hAt, parent: world, skip: c => !!railways?.has(c) });
 
   // capture points
   const assault = ['assault', 'annihilation', 'horde'].includes(lobbyState?.mode); // no VP in these
@@ -600,7 +611,7 @@ function terrainFrame(dt) {
       const batch = propPreparation.work.next();
       if (batch.done) {
         if (!propPreparation.props) {
-          const pending = propPreparation.props = createProps({ map: lastStart.map, grid: terrain.physicalGrid, hAt, parent: world, prepared: batch.value, deferRefresh: true });
+          const pending = propPreparation.props = createProps({ map: lastStart.map, grid: terrain.physicalGrid, hAt, parent: world, prepared: batch.value, deferRefresh: true, skip: c => !!railways?.has(c) });
           pending.group.visible = false; pending.setNodes(lastSnap?.nodes, false);
           propPreparation.work = pending.refreshBatches();
         } else {
@@ -634,6 +645,7 @@ function setLevel(map, cell, lv) {
 
 function applyCells(cells) {
   if (!cells?.length || !terrain) return;
+  railways?.cells(cells);
   rememberPlacementTerrain(lastStart.map, cells);
   groundVersion++;
   // Ground wear and scorching only change the paint. The relief, the 3D pieces, the scenery and the water are redone
@@ -914,8 +926,10 @@ function applySnapshot(s) {
     if (!isVeh(type)) v.models.forEach((man, i) => { man.position.y = cover === 2 ? -0.6 : 0; man.visible = i < v.alive && !v.garr; });
     if (v.squad) manTrench(v);
     v.base.visible = !v.garr;
-    // riding in a halftrack: not drawn, not selectable; it comes back when it gets out
+    // riding in a carrier (halftrack, truck, boat, or on a tank's deck): not drawn, not selectable; it comes back when it gets out
     if (!isAir(type)) { const riding = !!(flags & RIDING_FLAG); v.root.visible = !riding && !(fps.active && id === s.operative?.id); v.bars.visible = !riding && !fps.active; if (riding) selected.delete(id); }
+    // tank riders: the carrier draws its squads kneeling on the deck (client/unit-models.js), from the count in its flags
+    if (def.riders) setRiders(v, flags & CARGO_FLAG ? flags >> CARGO_SHIFT & 3 : 0, look(owner), facOf(owner));
     if (UNITS[type].camo && v.camo !== (flags & 256)) { v.camo = flags & 256; v.models.forEach(man => man.traverse(o => { if (o.isMesh && !o.material.userData.camo) { o.material = o.material.clone(); o.material.userData.camo = true; o.material.transparent = true; } if (o.isMesh) o.material.opacity = flags & 256 ? 0.45 : 1; })); }
     const frac = Math.max(0, hp / (def.models * def.hpPer));
     v.hpBar.scale.x = 2.3 * frac; v.hpBar.position.x = -1.15 * (1 - frac);
@@ -1054,7 +1068,7 @@ function aimShape(kind, color) {
   }
   if (UNITS[kind]?.building) return aimMarker({ len: UNITS[kind].size * CELL, width: UNITS[kind].size * CELL, arrow: false }, color);
   if (SUPPORT[kind]?.point) return aimMarker({ r: SUPPORT[kind].radius ?? SUPPORT[kind].blast ?? 4 }, color);
-  if (kind === 'grenade' || kind === 'barrage' || kind === 'satchel' || kind === 'amove' || kind === 'rally' || kind === 'area' || kind === 'spawn')
+  if (kind === 'grenade' || kind === 'barrage' || kind === 'satchel' || kind === 'amove' || kind === 'rally' || kind === 'area' || kind === 'spawn' || kind === 'rail')
     return aimMarker({ r: kind === 'grenade' ? UNITS.rifle.ab.radius : kind === 'barrage' || kind === 'area' ? UNITS.rocket.w.spread : kind === 'satchel' ? UNITS.ranger.ab.radius : 2 }, color);
   const [len, width] = kind === 'dig' ? (FORTS[fortKind].nest ? [3 * CELL, 2 * CELL] : [FORTS[fortKind].n * CELL, CELL]) : [SUPPORT[kind].len, SUPPORT[kind].width];
   return aimMarker({ len, width }, color); // an arrow past the far end shows which way it runs
@@ -1088,7 +1102,7 @@ const hud = createHud({
   toggleLogisticsOverlay: () => { logisticsOverlay = !logisticsOverlay; if (lastSnap) updateHud(lastSnap); },
   toggleLogisticsSelection: () => { logisticsSelection = !logisticsSelection; if (lastSnap) updateHud(lastSnap); },
   retreat: () => retreat(), takeCover: (q) => takeCover(q), stance: (k) => toggleStance(k), entrench: (k) => startEntrench(k), stop: () => { sendCmd({ t: 'stop', ids: [...selected] }); blip(330); }, amove: () => selected.size && setAim('amove'), area: () => startArea(), rally: () => startRally(),
-  transferGroup: (n) => transferGroup(n), dig: (k) => startDig(k), form: () => fm, setForm: (p) => setFormation(p), reform: (d) => reform(d), unload: () => unload(), build: (k) => startBuild(k), ability: (t) => useAbility(t), support: (k) => aimSupport(k), fType: () => fKeyType(),
+  transferGroup: (n) => transferGroup(n), dig: (k) => startDig(k), form: () => fm, setForm: (p) => setFormation(p), reform: (d) => reform(d), unload: () => unload(), mountUp: () => mountUp(), rail: () => startRail(), worldMatch: () => lastSnap?.mode?.kind === 'world', build: (k) => startBuild(k), ability: (t) => useAbility(t), support: (k) => aimSupport(k), fType: () => fKeyType(),
   autocast: (t) => { const on = autocast.toggle(t, [...selected].map(id => units.get(id)).filter(v => v?.type === t && v.owner === me), classicMode()); if (on !== null) blip(); },
   builders: () => builders(), owns: (t) => owns(t), canPlace: (k) => canPlace(k), explain: (reason) => feedback.show(reason),
   // add: Shift/Ctrl adds the unit to the selection, or takes it out if it is already in
@@ -1264,6 +1278,8 @@ function unload() {
   const ids = [...selected].filter(id => UNITS[units.get(id)?.type]?.carries);
   if (ids.length) { sendCmd({ t: 'unload', ids }); blip(520); }
 }
+// Mount up (Shift+Q): each selected squad takes the nearest selected land carrier with a free seat (the sim pairs them)
+function mountUp() { if (selected.size) { sendCmd({ t: 'board', ids: [...selected] }); blip(600); } }
 function retreat() { if (selected.size) { sendCmd({ t: 'retreat', ids: [...selected] }); blip(260); bark('retreat'); } }
 // stance switches: on for the whole selection unless every selected unit already has it
 const STANCE_BIT = { holdFire: 2048, holdPos: 4096, autoRetreat: 8192 };
@@ -1278,6 +1294,10 @@ function takeCover(queue = false) { if (!selected.size || explainUnavailable(ava
 let targeting = null, aimCenter = null, aimMesh = null, home = null, aimedUnit = null;
 // the selected units that can shell open ground: every salvo weapon (mortar, howitzer, rocket truck, destroyer, bomber)
 const shellers = () => [...selected].map(id => units.get(id)).filter(v => v?.owner === me && UNITS[v.type].w?.salvo);
+// Send by rail (World Conquest): the selected ground units near one of your stations ride to your station nearest a click
+const railers = () => [...selected].map(id => units.get(id)).filter(v => v?.owner === me && !UNITS[v.type].structure && !UNITS[v.type].air && !UNITS[v.type].naval && !UNITS[v.type].rail);
+const startRail = () => { if (lastSnap?.mode?.kind !== 'world') return; if (railers().length) { setAim('rail'); blip(560); } else $('hint').textContent = 'Select ground units near one of your stations to send them by rail'; };
+function railTo(g) { const ids = railers().map(v => v.id); cancelAim(); if (ids.length) { sendCmd({ t: 'rail', ids, x: g.x, z: g.z }); marker(g.x, g.z, 0x9dd0ff); blip(600); bark('move'); } }
 const startArea = () => { if (shellers().length) { setAim('area'); blip(560); } else $('hint').textContent = 'Select a mortar, howitzer, rocket truck, destroyer or bomber to shell an area'; };
 function cancelAim() { clearFacing(); feedback.reset(); targeting = null; aimedUnit = null; aimCenter = null; $('hint').textContent = ''; }
 function setAim(kind, unit = null) {
@@ -1285,7 +1305,7 @@ function setAim(kind, unit = null) {
   clearFacing();
   feedback.reset();
   targeting = kind; aimedUnit = unit; aimCenter = null;
-  $('hint').textContent = { depot: 'Click a resource node', barracks: 'Click where to build', motorpool: 'Click where to build', grenade: 'Click where to throw', barrage: 'Click where to fire the salvo', satchel: 'Click where to plant the charge', amove: 'Click where to attack-move', area: 'Click the ground to shell (they keep firing until given another order)', rally: 'Click where recruits should gather', spawn: 'Click the map to spawn (once per click)' }[kind] ?? 'Click to set the center';
+  $('hint').textContent = { depot: 'Click a resource node', barracks: 'Click where to build', motorpool: 'Click where to build', grenade: 'Click where to throw', barrage: 'Click where to fire the salvo', satchel: 'Click where to plant the charge', amove: 'Click where to attack-move', area: 'Click the ground to shell (they keep firing until given another order)', rail: 'Click the destination: they ride to your station nearest it', rally: 'Click where recruits should gather', spawn: 'Click the map to spawn (once per click)' }[kind] ?? 'Click to set the center';
   $('hint').textContent += '. Right-click cancels';
 }
 function startRally() {
@@ -1463,7 +1483,7 @@ function transferGroup(number) {
 const actions = {
   stop: () => { sendCmd({ t: 'stop', ids: [...selected] }); blip(330); },
   destroy: () => { if (selected.size) { sendCmd({ t: 'destroy', ids: [...selected] }); blip(110); } },
-  retreat, unload, cover: () => takeCover(), ability: () => useAbility(fKeyType()), amove: () => selected.size && setAim('amove'), area: startArea,
+  retreat, unload, mountUp, rail: startRail, cover: () => takeCover(), ability: () => useAbility(fKeyType()), amove: () => selected.size && setAim('amove'), area: startArea,
   mute: toggleMute,
   alert: () => { rig.cancelFollow(); const al = alerts.newest(); if (al) { cam.x = al.x; cam.z = al.z; } else centerSelection([...selected].map(id => units.get(id)).filter(Boolean)); },
   alertHistory: () => alerts.toggleHistory(), alertPrevious: () => alerts.navigate(1), alertNext: () => alerts.navigate(-1),
@@ -1579,6 +1599,7 @@ renderer.domElement.addEventListener('mousedown', (e) => {
     if (!g) { feedback.show(denySentence('blocked')); return; }
     if (kind === 'rally') { rallyAt(g); return; }
     if (kind === 'spawn') { sendCmd({ t: 'spawn', unit: $('sbUnit').value, enemy: $('sbSide').value === 'enemy', x: g.x, z: g.z }); marker(g.x, g.z, 0xe8c860); return; } // stays armed: right-click stops
+    if (kind === 'rail') { railTo(g); return; }
     if (UNITS[kind]?.building) {
       if (explainUnavailable(available({ t: 'build', kind }))) return;
       const f = footAt(kind, g);
@@ -1694,6 +1715,7 @@ function mmTerrain() {
     const lv = hAt((x + 0.5) * CELL, (y + 0.5) * CELL) / CFG.levelHeight, [r, g, b] = MM_COLORS[ch] ?? MM_COLORS['.'], k = 1 + lv * 0.12, i = (y * w + x) * 4;
     img.data[i] = r * k; img.data[i + 1] = g * k; img.data[i + 2] = b * k; img.data[i + 3] = 255;
   }));
+  for (const k of railways?.track() ?? []) { const i = k * 4; img.data[i] = 46; img.data[i + 1] = 40; img.data[i + 2] = 36; } // the railway, dark
   x2.putImageData(img, 0, 0);
   mmImage = c;
 }
@@ -1745,6 +1767,11 @@ function drawMinimap() {
   for (const r of lastSnap.world?.regions ?? []) {
     const rate = supplyTint?.get(r.id);
     if (rate !== undefined && r.runs) { c.fillStyle = rate <= 0 ? '#d4574a55' : rate < 1 ? '#e8c86044' : '#95c88833'; for (const [y, x0, x1] of r.runs) c.fillRect(x0 * 2, y * 2, (x1 - x0) * 2, 2); }
+  }
+  // stations: a small block in the colour of the side holding the region
+  for (const st of lastSnap.world?.stations ?? []) {
+    const r = lastSnap.world.regions.find(q => q.id === st.region);
+    c.fillStyle = '#1b1b18'; c.fillRect(st.x - 7, st.z - 7, 14, 14); c.fillStyle = regionTeamColor(r?.team ?? -1); c.fillRect(st.x - 4.5, st.z - 4.5, 9, 9);
   }
   for (const r of lastSnap.world?.regions ?? []) {
     c.strokeStyle = regionTeamColor(r.team); c.lineWidth = 1 / S;
@@ -1801,6 +1828,7 @@ function drawMinimap() {
     const p = at(e);
     if (e.button === 0 && e.altKey && !rig.intro) { e.preventDefault(); pings.send(p.x, p.z); return; }
     if (targeting === 'rally') { if (e.button === 0) rallyAt(p); else if (e.button === 2) cancelAim(); return; }
+    if (targeting === 'rail' && e.button === 0) { railTo(p); return; }
     if (targeting && e.button === 2) { cancelAim(); return; }
     if (e.button === 0) { mmDrag = true; cam.x = p.x; cam.z = p.z; }
     else if (e.button === 2 && selected.size && lastSnap) orders.dispatch(minimapCursor(p), e);
@@ -1880,7 +1908,7 @@ renderer.setAnimationLoop(() => {
     const e = fx[i]; e.life -= sdt;
     if (e.life <= 0) { world.remove(e.obj); e.dispose?.(); fx.splice(i, 1); } else e.update(e.max ? e.life / e.max : 1);
   }
-  worldRegions?.frame(sdt);
+  worldRegions?.frame(sdt); railways?.frame(sdt);
   objectives.frame(sdt); projectiles.frame(); debris.frame(); effects.update(sdt); atmos.update(sdt);
   aviation.update(sdt);
   fogOfWar?.frame(dt, !lastStart?.map.world && epilogue.active()); // the match is decided: the fog lifts

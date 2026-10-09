@@ -77,7 +77,7 @@ Verification lives in `test-skirmish-bases.js`, `test-skirmish-client.js` and `t
 ## HQ tiers and Armory (decided 2026-10-07, built 2026-10-08)
 
 Classic-RTS progression for the skirmish base modes (Conquest, Assault, Annihilation, Horde) and Classic.
-World Conquest and the Tutorial stay unchanged. Tech is open: variety comes from what a player can afford
+World Conquest uses the same tiers (since 2026-10-08); the Tutorial stays unchanged. Tech is open: variety comes from what a player can afford
 first, not from exclusive doctrines.
 
 - Tier belongs to the player, not the building. A rebuilt HQ keeps the tier reached. The HQ keeps recruiting while it upgrades.
@@ -267,8 +267,9 @@ world information. The server keeps the generation seed and full map private dur
 
 Fortifications (2026-10-08): capturing a region hands every Pillbox, Scout Tower, wall and gate standing in it to the capturing player (`seizeForts`). They never block a capture. At setup the farthest 40% of guard regions (by distance to the nearest home, so it scales with map size and player count) get a guard Pillbox 14 m out toward that home; the farthest 15% also a Scout Tower and 4-cell walls either side of the Pillbox (`WORLD_FORTS`). Guard buildings that are armed or lookouts see for the guards, without a line-of-sight test.
 
-Losing an HQ does not cause defeat. Losing the last team region does. Winning requires all regions, including
-those still held by local defenders. Classic's production-loss defeat and Sudden Death do not apply. The intended
+Losing an HQ does not cause defeat. Losing the last team region does. A team wins by owning 60% of all regions
+(`WORLD_TUNING.winShare`, local defenders' regions included in the total) or by being the last nation with land
+(2026-10-08; owning every region was rarely reached). A match with a single team still needs every region. Classic's production-loss defeat and Sudden Death do not apply. The intended
 Huge match length is 45 to 60 minutes, a balance target that needs playtesting rather than a victory timer.
 The full acceptance criteria are in [the World Conquest spec](docs/world-conquest-spec.md) and issue #37.
 
@@ -281,6 +282,26 @@ walking home, and every HQ trains Engineers. Local defenders vary by region kind
 2 rifles, an MG, an AT gun and a mortar, industrial a rifle squad, an AT gun and an armored car, resource a rifle
 squad, an MG and a mortar (`WORLD_GUARDS`). Regions carry generated place names (Falkburg, Dornburg Works,
 Brayford Mines) from their own seeded stream, so names never shift a seed's geography.
+
+Railways, transport and saves (2026-10-08):
+- Rails are an overlay generated after the regions (`shared/world-rails.js`): a station in each home, city and
+  industrial region (a flat 5 by 5 spot 9 to 16 cells from the objective, 16 to 23 in a home region, toward the
+  map centre), joined by a proximity spanning tree plus short loops, routed by A* on a 2-cell grid that avoids grades,
+  water and the 13 cells around each home objective and uses only existing bridges. Homes keep the same building room
+  as without rails (the World acceptance check). The server keeps lines and stations; clients learn track cells and stations with explored terrain.
+- A rail move (`CFG.rail`) starts within 30 m of an owned station and goes to the owned station nearest the click,
+  along lines whose every region the team owns and whose bridges stand. Up to 8 units, 8 s loading, 2 s unloading,
+  one train per station and team every 20 s. The train is an unsteerable unit that can be shot; a cut line ahead
+  ends the trip where it stands. The track and station yards block construction.
+- `carries` is a seat count (halftrack and landing craft 1, Troop Truck 3, light and medium tank and tank destroyer
+  2, Tiger and Churchill 3). Tanks carry riders (`riders`): exposed to blasts, and every rider jumps down with
+  `CFG.riderShock` suppression once the tank or a rider takes enemy fire. Only the halftrack (`reinforces`)
+  reinforces nearby infantry.
+- Road march: `CFG.march`, 1.5 times speed on own land after 10 s without shooting or being hit.
+- Paratroopers in World Conquest drop within `CFG.paraRange` (300 m) of a finished Airfield of the caller.
+- Saves (`server/saves.js`) hold the whole sim as a gzipped v8 clone, the room settings, seats and AI memories.
+  A room lists and loads only its own saves; a loaded match opens paused for the host. Autosave every 2 game minutes.
+- Pacing over natural all-AI matches with the new win rule is measured with `tools/world-pacing.mjs`.
 
 Distant movement plans 64 metre legs beyond 96 metres, using only remembered terrain. The original destination
 remains active across legs, queued moves wait for full arrival and retreat continues to friendly ground.

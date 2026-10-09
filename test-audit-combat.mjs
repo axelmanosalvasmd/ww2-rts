@@ -80,7 +80,7 @@ test('B07 a manual aimed ability replaces a pending boarding order', () => {
   assert.equal(sim.command(g, 0, { t: 'ability', ids: [squad.id], x: 81, z: 31 }), undefined);
   ticks(g, 4);
   assert.equal(squad.riding, 0, 'the replaced boarding order cannot hide the ability user');
-  assert.equal(carrier.cargo, 0);
+  assert.deepEqual(carrier.cargo, []);
 });
 
 test('B08 a halftrack cannot board infantry through an unbridged river, wall or cliff', () => {
@@ -96,7 +96,7 @@ test('B08 a halftrack cannot board infantry through an unbridged river, wall or 
     assert.equal(sim.command(g, 0, { t: 'board', ids: [squad.id], target: carrier.id }), undefined);
     ticks(g, 80);
     assert.equal(squad.riding, 0, `${obstacle} prevents distance-only boarding`);
-    assert.equal(carrier.cargo, 0);
+    assert.deepEqual(carrier.cargo, []);
     assert.ok(squad.x < 40, `${obstacle} keeps the squad on its original side`);
   }
 });

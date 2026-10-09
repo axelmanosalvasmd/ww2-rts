@@ -5,7 +5,10 @@
 //   WW2_TEST_TIMES=1     print each check's duration
 //   WW2_TEST_SHARDS=n    how many processes `node test.js` splits into (default: a third of the cores, 1 to 4)
 //   WW2_TEST_JOBS=n      child files each process runs at once
-import { dirname } from 'node:path';
+import { dirname, join } from 'node:path';
+import { tmpdir } from 'node:os';
+// rooms that play long World matches autosave: keep test saves out of the repository's saves/ (children inherit it)
+process.env.SAVES_DIR ??= join(tmpdir(), 'ww2-test-saves');
 const only = process.env.WW2_TEST_ONLY?.toLowerCase();
 const [shard, shards] = (process.env.WW2_TEST_SHARD ?? '1/1').split('/').map(Number);
 const slowToo = process.env.WW2_TEST_SLOW === '1', times = process.env.WW2_TEST_TIMES === '1';

@@ -39,7 +39,7 @@ export function ammoPrice(def) {
 export function initializeUnit(g, u, def) {
   if (!enabledFor(g) || !def || !Number.isInteger(u.owner) || u.owner < 0 || !g.players?.[u.owner]
     || u.guardHome || def.building || def.structure || def.air || def.naval || !(def.speed > 0)
-    || def.logisticsTruck || u.type === 'supplytruck') return null;
+    || def.logisticsTruck || def.rail || u.type === 'supplytruck') return null;
   // Repeated setup, commands and reconnects cannot manufacture starting stock.
   if (u.logistics) return u.logistics;
   const w = def.w, armed = w && w.range > 0 && w.interval > 0 && (w.inf > 0 || w.veh > 0);

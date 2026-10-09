@@ -10,7 +10,8 @@ import { createGame, step, command, snapshotFor, snapshotCache, unitDelta, terra
 import { generateWorldMap } from './shared/world-conquest.js';
 import { mapForClient } from './shared/world-layers.js';
 import { WEATHER_CHOICES, weatherRow } from './shared/weather.js';
-import { observe, resetAI, AI_LEVEL_NAMES } from './shared/ai.js';
+import { observe, resetAI, aiMemories, restoreAIMemories, AI_LEVEL_NAMES } from './shared/ai.js';
+import { SAVES_DIR, snapshotState, writeSave, listSaves, readSave, validSaveId } from './server/saves.js';
 import { aiTick } from './shared/ai-schedule.js';
 import { resetCommander } from './shared/ai-human.js';
 import { mapPing } from './server/map-pings.js';
@@ -300,9 +301,10 @@ const seats = (room) => (room.mode === 'world' ? MAX_PLAYERS : room.mode === 'ho
 
 async function lobby(room) {
   const maps = await listMaps(), horde = room.mode === 'horde' ? await hordeMaps() : undefined;
+  const saves = listSaves(saves_dir(), room.code).map(s => ({ id: s.id, kind: s.kind, savedAt: s.savedAt, mode: s.mode, minutes: s.minutes, names: s.names, world: s.world }));
   everyone(room).forEach((p) => { const i = room.players.indexOf(p); send(p.ws, {
     role: p.role ?? 'commander', commander: p.role === 'operative' ? room.players.indexOf(p.commander) : undefined, operatives: (room.operatives ?? []).map(o => ({ name: o.name, commander: room.players.indexOf(o.commander), online: connected(o) })), spectator: i < 0 && p.role !== 'operative', amHost: isHost(room, p), spectators: room.spectators.map(s => s.name),
-    listed: !!room.listed,
+    listed: !!room.listed, saves,
     hordeMaps: horde, hordeBest: room.mode === 'horde' ? recordOf(room) : null,
     t: 'lobby', code: room.code, state: room.state, you: i, host: hostOf(room), maps, mapName: room.mode === 'world' ? 'world' : room.mapName, spawns: seats(room), publicUrl: PUBLIC_URL,
     mode: room.mode, worldSize: room.worldSize ?? 'huge', defenderTeam: room.defenderTeam, army: room.army ?? 'standard', weather: room.weather ?? 'map', sandbox: !!room.sandbox,
@@ -347,12 +349,18 @@ async function startMatch(room) {
     await lobby(room);
     return;
   }
+  await beginMatch(room, map, game);
+}
+
+// a new or loaded match takes the room: everyone gets the lobby, then its start
+async function beginMatch(room, map, game, paused) {
   resumeRoom(room);
   room.autoPaused = new Set(); room.matchId = (room.matchId ?? 0) + 1; // a new match: nobody has used their auto-pause yet
   room.result = null;
   room.snapEvery = 2; room.tickMeter = createTickMeter({ now: Date.now() });
   room.map = map;
   room.game = game;
+  room.savedTick = game.tick;
   const startView = snapshotCache(room.game), startSeats = [...room.players.keys()].filter(i => room.players[i].ai);
   if (room.game.mode?.kind === 'horde') startSeats.push(room.game.mode.slot); // the horde plays by the same view rules
   room.aiViews = [];
@@ -360,10 +368,50 @@ async function startMatch(room) {
   // lobby() reads the map list first, so wait for it: everyone gets the lobby (playing, no old result) before the start
   await lobby(room);
   if (room.game !== game) return; // ended or restarted meanwhile
+  if (paused) pauseRoom(room, paused, 'host'); // a loaded match waits for the host to resume it
   room.players.forEach((_, i) => sendStart(room, i));
   room.spectators.forEach(s => sendStart(room, 0, s));
   for (const op of room.operatives ?? []) sendOperativeStart(room, op);
   room.starting = null;
+}
+
+// Saves: the host saves at any time, World Conquest saves itself every AUTOSAVE minutes of play. A loaded match puts
+// each saved seat back: AIs as they were, a human seat to whoever in the room holds its token (the same browser), else
+// to the next human in the room without one, else it waits offline for its owner to come back with the link.
+const AUTOSAVE = 2, saves_dir = () => process.env.SAVES_DIR ?? SAVES_DIR;
+const SETTINGS = ['mode', 'worldSize', 'mapName', 'mapSpawns', 'army', 'weather', 'defenderTeam', 'logistics', 'tech'];
+async function saveRoom(room, kind) {
+  const g = room.game;
+  if (!g || room.saving) return null;
+  room.saving = true;
+  try {
+    const seats = room.players.map(p => ({ name: p.name.replace(/ \(AI\)$/, ''), token: p.token, ai: !!p.ai, level: p.level, team: p.team, faction: p.faction }));
+    const buf = snapshotState(g, { map: g.mode?.kind === 'world' ? null : room.map, seats, settings: Object.fromEntries(SETTINGS.map(k => [k, room[k]])), ai: aiMemories(g) });
+    room.savedTick = g.tick;
+    return await writeSave(saves_dir(), room.code, kind, buf, { mode: room.mode, minutes: Math.floor(g.tick * TICK / 60), names: seats.map(s => s.name),
+      world: g.world ? { total: g.world.total, owned: [...new Set(g.players.map(p => p.team))].map(t => g.world.regions.filter(r => r.team === t).length) } : undefined });
+  } catch (e) { console.error('save failed', e); return null; }
+  finally { room.saving = false; }
+}
+async function loadRoom(room, id, host) {
+  let state;
+  try { state = await readSave(saves_dir(), id); } catch { return false; }
+  if (room.state === 'play') return false;
+  const { g, map, seats, settings, ai } = state;
+  Object.assign(room, settings);
+  const present = [...room.players, ...room.spectators].filter(p => !p.ai), owner = new Map(), free = (q) => ![...owner.values()].includes(q);
+  seats.forEach((seat, i) => { const p = !seat.ai && present.find(q => q.token && q.token === seat.token && free(q)); if (p) owner.set(i, p); });
+  seats.forEach((seat, i) => { const p = !seat.ai && !owner.has(i) && present.find(q => connected(q) && free(q)); if (p) owner.set(i, p); });
+  const players = seats.map((seat, i) => seat.ai ? { token: '', name: seat.name, ws: null, ai: true, level: seat.level ?? 'normal', team: seat.team, faction: seat.faction }
+    : owner.has(i) ? Object.assign(owner.get(i), { team: seat.team, faction: seat.faction }) : { token: seat.token, name: seat.name, ws: null, team: seat.team, faction: seat.faction });
+  for (const p of present) clock.clearTimeout(p.cleanupTimer);
+  room.spectators = present.filter(p => free(p) && connected(p));
+  room.players = players;
+  restoreAIMemories(g, ai);
+  for (let i = 0; i < players.length; i++) if (!players[i].ai) { resetAI(g, i); resetCommander(g, i); }
+  room.state = 'play';
+  await beginMatch(room, map, g, host);
+  return true;
 }
 
 // watcher: a spectator, who gets seat i's start without a fog mask (the client then hides nothing)
@@ -599,6 +647,12 @@ wss.on('connection', (ws, req) => {
       if (net) net.full = true;
     } else if (msg.t === 'restart' && host && room.state === 'play' && room.game) {
       await startMatch(room); // same map, mode and teams, from scratch
+    } else if (msg.t === 'save' && host && room.state === 'play' && room.game) {
+      const id = await saveRoom(room, 'manual');
+      send(ws, id ? { t: 'saved', id } : { t: 'deny', cmd: 'save', reason: 'save' });
+      if (id) lobby(room);
+    } else if (msg.t === 'loadSave' && host && room.state === 'lobby' && validSaveId(msg.id) && msg.id.startsWith(room.code + '-')) {
+      if (!await loadRoom(room, msg.id, me)) { send(ws, { t: 'deny', cmd: 'loadSave', reason: 'save' }); lobby(room); }
     } else if (msg.t === 'end' && host && room.state === 'play') {
       finishMatch(room, { ended: true });
     } else if (msg.t === 'nextwave' && host && room.state === 'play' && room.game?.mode?.kind === 'horde' && !room.pause) {
@@ -739,6 +793,7 @@ export function tickRooms() {
     room.players.forEach((p, i) => (g.players[i].away = !p.ws && !p.ai));
     if (holdEnding(room)) continue;
     timedRoomTick(room);
+    if (g.mode?.kind === 'world' && g.winner === null && g.tick - (room.savedTick ?? 0) >= AUTOSAVE * 60 / TICK) saveRoom(room, 'auto');
     diag?.tick(room, () => tickStats(room.tickMeter));
   }
 }

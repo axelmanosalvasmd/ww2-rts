@@ -302,6 +302,15 @@ const DEFS = {
   truck: ['Supply Truck', 'logistics', 'Supply truck: an unarmed cargo lorry',
     poly([8, 43], [60, 43], [60, 72], [8, 72]) + poly([64, 48], [82, 48], [94, 60], [94, 72], [64, 72]) +
     poly([67, 51], [80, 51], [88, 60], [67, 60]) + circle(24, 78, 8) + circle(51, 78, 8) + circle(80, 78, 8)],
+  lorry: ['Troop Truck', 'infantry', 'Troop truck: a lorry with a round-topped canvas tilt, its side curtains rolled up between the bows',
+    poly([8, 72], ...arc(17, 42, 9, 9, 180, 270), ...arc(51, 42, 9, 9, 270, 360), [60, 72]) +
+    [12, 24, 36, 48].map((x) => poly([x, 52], [x + 8, 52], [x + 8, 63], [x, 63])).join('') +
+    poly([64, 48], [82, 48], [94, 60], [94, 72], [64, 72]) + poly([67, 51], [80, 51], [88, 60], [67, 60]) +
+    circle(22, 78, 8) + circle(48, 78, 8) + circle(80, 78, 8)],
+  train: ['Train', 'transport', 'Train: a steam locomotive seen from the side, cab at the back, boiler and chimney in front',
+    poly([8, 36], [36, 36], [36, 40], [34, 40], [34, 72], [10, 72], [10, 40], [8, 40]) + poly([15, 45], [29, 45], [29, 56], [15, 56]) +
+    poly([34, 50], [86, 50], [86, 72], [34, 72]) + poly([72, 34], [80, 34], [80, 50], [72, 50]) + poly([54, 44], [62, 44], [62, 50], [54, 50]) +
+    poly([86, 62], [95, 76], [86, 76]) + circle(20, 78, 6) + circle(44, 78, 7) + circle(62, 78, 7) + circle(78, 79, 5)],
   supplycache: ['Supply Cache', 'logistics', 'Supply cache: cargo crates under a canopy',
     poly([6, 42], [50, 22], [94, 42]) + poly([12, 45], [17, 45], [17, 86], [12, 86]) +
     poly([83, 45], [88, 45], [88, 86], [83, 86]) + crate(23, 62, 22) + crate(50, 62, 22) + crate(37, 37, 22)],
@@ -456,6 +465,8 @@ const GLYPH_DEFS = {
   demine: ellipse(50, 74, 38, 12) + poly([44, 58], [56, 58], [56, 30], [66, 30], [50, 10], [34, 30], [44, 30]),
   aid: poly([38, 12], [62, 12], [62, 38], [88, 38], [88, 62], [62, 62], [62, 88], [38, 88], [38, 62], [12, 62], [12, 38], [38, 38]),
   unload: poly([6, 28], [50, 28], [50, 72], [6, 72]) + poly([14, 36], [42, 36], [42, 64], [14, 64]) + poly([56, 44], [76, 44], [76, 32], [96, 50], [76, 68], [76, 56], [56, 56]),
+  // mount up: into the box, the unload arrow turned around
+  mountup: poly([4, 44], [24, 44], [24, 32], [44, 50], [24, 68], [24, 56], [4, 56]) + poly([50, 28], [94, 28], [94, 72], [50, 72]) + poly([58, 36], [86, 36], [86, 64], [58, 64]),
   idle: place(widen(poly(...MAN)), { s: 0.8, ox: 50, oy: 84, dx: -20 }) + Z + place(Z, { s: 0.6, ox: 54, oy: 16, dx: 12, dy: 36 }),
   unknown: poly([10, 10], [90, 10], [90, 90], [10, 90]) + poly([18, 18], [82, 18], [82, 82], [18, 82]) +
     band([...arc(50, 40, 13, 13, 190, 405, 18), [50, 56], [50, 62]], 9) + circle(50, 73, 5),
