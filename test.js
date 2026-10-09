@@ -54,7 +54,7 @@ const settledRubble = (g, cells, message) => {
 // parallel with the checks below, each in its own process.
 const childFiles = runFiles(['test-audit-commands.mjs', 'test-audit-combat.mjs', 'test-audit-logistics.mjs', 'test-audit-client.mjs', 'test-audit-ai.mjs', 'test-audit-world.mjs', 'test-world-rules.mjs', 'test-transport.mjs', 'test-saves.mjs', 'test-audit-server.mjs', 'test-infantry-dig.mjs', 'test-snapshot-backpressure.mjs',
     'test-logistics.mjs', 'test-convoy-scheduler.mjs', 'test-world-supply.mjs', 'test-territory-supply.mjs', 'test-logistics-server.mjs', 'test-operative-server.mjs', 'test-world-waterways.js', 'test-world-multiple-rivers.js', 'test-world-generation.js', 'test-world-territories.js',
-    'test-world-conquest.js', 'test-world-teams.js', 'test-world-acceptance.js', 'test-world-observation.js', 'test-world-movement.js', 'test-world-river.js',
+    'test-world-conquest.js', 'test-world-teams.js', 'test-world-acceptance.js', 'test-world-observation.js', 'test-world-movement.js', 'test-world-river.js', 'test-world-scenery.js',
     'test-engine-controls.js', 'test-engine-world.js', 'test-engine-movement.js', 'test-movement-lab.js', 'test-engine-projectiles.js', 'test-engine-scenarios.js', 'test-engine-ai.js', 'test-ai-human.js', 'test-engine-acceptance.js', 'test-engine-presentation.mjs',
     'test-engine-spectators.js', 'test-engine-scenario-start.js', 'test-engine-breaches.mjs', 'test-engine-authoring.js', 'test-engine-vehicle-pose.mjs', 'test-engine-ai-privacy.js', 'test-engine-localization.mjs',
     'test-engine-debris.js', 'test-engine-traffic-privacy.js', 'test-engine-horde-queue.js'], { cwd: import.meta.dirname });
@@ -897,12 +897,22 @@ await check("Scarring", async () => {
   for (let c = 0; c < s.height.length; c++) if (c % s.w > 0) assert.ok(Math.abs(s.height[c] - s.height[c - 1]) <= 1, 'no cliffs from shelling');
 });
 
+// Shelling that has not sunk a cell yet still shows: the state's shelling bits (5-6) step up from the first hit.
+await check("Shelling short of a crater marks the ground", async () => {
+  const g = fresh(), c = Math.floor(21 / CELL) * g.w + Math.floor(21 / CELL);
+  sim.damageCells(g, [], { x: 21, z: 21 }, 1, 40, 1);
+  assert.ok(g.scar[c] > 0.02 && g.scar[c] < 1 && g.chars[c] === '.', 'churned, not cratered');
+  assert.ok(g.cellState[c] >> 5 & 3, 'clients are told');
+});
+
 // Wrecks settle near the knocked-out tank and cover infantry behind their final hull.
 await check("Wrecks settle near the knocked-out tank and cover infantry behind their final hull", async () => {
   const g = fresh(); g.players[0].mp = g.players[1].mp = 5000;
   const t = put(g, 0, 'tank', 20, 21), from = { x: 35, z: 21 };
   t.hp = 0; settleDebris(g);
   assert.ok(!g.units.has(t.id) && g.wrecks.length === 1, 'the tank is gone, its wreck is not');
+  const under = Math.floor(21 / CELL) * g.w + Math.floor(20 / CELL);
+  assert.ok(g.burnt[under] && g.cellState[under] & 4, 'the hulk scorches the ground under it');
   const wreck = g.wrecks[0];
   assert.equal(wreck.motion, null, 'the hull has settled');
   assert.ok(Math.hypot(wreck.x - 20, wreck.z - 21) < CELL, 'the stationary killed tank settles within its original cell width');

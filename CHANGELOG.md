@@ -95,6 +95,26 @@ AI-vs-AI runs (see DESIGN.md for the balance log). Add new entries under **Unrel
 - Fixed pings climbing to 10 s and beyond late in big fights. The server tick grew with the battle (3 ms at 66 units to 70 ms at 268 in a 2v2 Annihilation), and once it overran, snapshots piled up 3 MB deep per socket with pongs stuck behind them. Now a player whose connection is 256 KB behind skips snapshots and gets one fresh snapshot when it catches up, so a slow server or connection costs smoothness, not a minute of lag.
 - The server does about 44% less work in large battles (CPU 119 s to 67 s over a 6000-tick Massive 2v2 Annihilation with the same result): remembered terrain no longer rechecks every pending crater for every player each tick, team sight checks no longer copy the whole unit list per cell, and vehicle traffic skips a sort it never needed. Path searches and crowd separation are the next biggest costs, left for later.
 
+### 2026-10-08: World Conquest scenery (`be8dbf8`)
+
+- World Conquest regions now look different from each other. Each region has a biome (farmland, pine, marsh,
+  highland, orchard or steppe) with its own ground tint and scenery: hedgerows with gates in farmland, pine woods,
+  marsh mud, orchard rows, reeds, dry steppe grass, rocky highlands. Cities have a church on a paved square and a
+  town around it, industrial regions a brick works with a chimney and warehouses, resource regions a mine head
+  (new landmark: 800 hp, 0.25x damage, garrison vision 1.5) under a steel headframe with spoil tips beside it.
+  Farm hamlets fill the countryside. A seed keeps its rivers, roads, regions, homes and names. Biomes and landmark
+  names reach a player only with the discovered cell.
+- Battle scars last: known craters keep a crater mark on the ground in World Conquest, shelled ground shows as churned
+  earth from the first hit (before it sinks), and a destroyed vehicle leaves a scorch mark under its hulk.
+- Tests: new `test-world-scenery.js` (scenery leaves the geography alone, landmarks sit in their kind of region,
+  biomes and landmarks arrive only with discovered cells); `test.js` gains a shelling-marks check and a scorch
+  assertion in the wreck check. `generateWorldMap` takes `scenery: false` for the bare map.
+  `test-ground-performance.mjs`: the pinned pixel hashes of the three fixtures with a burnt cell were regenerated,
+  since burnt ground is now charred darker (the others are unchanged). `test-world-river.js`: its tank now starts
+  east of the rifle, since its old spot on seed 4111514762 is inside one of the new houses.
+- Fixed before release: a World map's spoil tips (rubble from the start) counted as battle damage, so supply through
+  a resource region was a step weaker than it should be and engineers could "fill in" the heaps.
+
 ### 2026-10-08: World Conquest railways, transport and saves (`0ff7cc4`)
 
 - World Conquest polish: railways, transport, saved games and a reachable win.

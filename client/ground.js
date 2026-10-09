@@ -22,6 +22,17 @@ const LOOK = [
   { tex: 'shelled', m: 7, mul: [1, 1, 1], sat: 0.72, avg: [81, 63, 53] },
   { tex: 'earth', m: 5, mul: [1.1, 1.1, 1.1], sat: 0.75, avg: [69, 49, 34] },
 ];
+// World Conquest region looks (BIOMES order, shared/world-layers.js): a ground tint (multiplier, blended over about
+// a dozen cells across a border), the soil that shows through the grass, how much open ground is ploughed, and the
+// scenery mix client/props.js reads (tree, pine, bush, rock, grass and haystack weights; orchards; reeds; dry grass).
+export const BIOME_LOOKS = [
+  { name: 'farmland', tint: [1.02, 1.03, 0.9], soil: DIRT, bare: 0.08, fields: 0.5, trees: 0.7, pine: 0.12, bush: 1.2, rocks: 0.5, grass: 1, hay: 1 },
+  { name: 'pine', tint: [0.78, 0.9, 0.86], soil: MUD, bare: 0.12, fields: 0.03, trees: 3, pine: 0.92, bush: 0.7, rocks: 1.5, grass: 0.6, hay: 0 },
+  { name: 'marsh', tint: [0.84, 0.94, 0.82], soil: MUD, bare: 0.22, fields: 0.02, trees: 0.45, pine: 0, bush: 1.6, rocks: 0.1, grass: 2.6, hay: 0, reeds: true },
+  { name: 'highland', tint: [1.04, 0.96, 0.84], soil: DIRT, bare: 0.24, fields: 0.05, trees: 0.5, pine: 0.75, bush: 0.6, rocks: 9, grass: 0.9, hay: 0 },
+  { name: 'orchard', tint: [0.96, 1.08, 0.86], soil: DIRT, bare: 0, fields: 0.18, trees: 0.8, pine: 0.05, bush: 1, rocks: 0.3, grass: 1.4, hay: 0.4, orchard: true },
+  { name: 'steppe', tint: [1.26, 1.1, 0.7], soil: DIRT, bare: 0.2, fields: 0.28, trees: 0.15, pine: 0.2, bush: 0.45, rocks: 0.8, grass: 2, hay: 0.6, dry: true },
+];
 const TILE = 4; // cells per repaint tile
 const WARP = 0.32; // how far (in cells) the blend edges wander
 const FOAM = [184, 178, 146];
@@ -136,7 +147,8 @@ function* fieldBatches(map) {
   const { w, h, rows } = map, f = new Uint8Array(w * h), BW = 10, BH = 8;
   const keep = [...(map.spawns || []).filter(Boolean).map(p => ({ ...p, r: 9 })), ...(map.points || []).map(p => ({ ...p, r: 5 }))]; // clear of HQ rings and points
   for (let by = 0; by * BH < h; by++) { yield; for (let bx = 0; bx * BW < w; bx++) {
-    if (rnd(bx, by, 7) > 0.24) continue;
+    const look = BIOME_LOOKS[map.biome?.[Math.min(h - 1, by * BH + 4) * w + Math.min(w - 1, bx * BW + 5)]];
+    if (rnd(bx, by, 7) > (look?.fields ?? 0.24)) continue;
     const x0 = bx * BW + 1, y0 = by * BH + 1, x1 = Math.min(w - 1, bx * BW + BW - 1), y1 = Math.min(h - 1, by * BH + BH - 1);
     if (x1 - x0 < 4 || y1 - y0 < 3) continue;
     if (keep.some(p => p.x > x0 - p.r && p.x < x1 + p.r - 1 && p.y > y0 - p.r && p.y < y1 + p.r - 1)) continue;
@@ -155,14 +167,16 @@ function* cellIndices(n) { for (let i = 0; i < n; i++) yield i; }
 
 function cellAttrs(S, grid, changed = null) {
   const { w, h, map, fields } = S, rows = map.rows, n = w * h;
-  const { prim, sec, amt, lev, ov, key, scar } = changed ? S.attrs : {
+  const { prim, sec, amt, lev, ov, key, scar, char, tr, tg, tb } = changed ? S.attrs : {
     prim: new Uint8Array(n), sec: new Uint8Array(n), amt: new Float32Array(n), lev: new Float32Array(n),
-    ov: new Uint8Array(n), key: new Uint8Array(n), scar: new Uint8Array(n),
-  }; // scar: 0 none, 1 shell or burnt, 2 rubble. The base material stays ordinary ground.
+    ov: new Uint8Array(n), key: new Uint8Array(n), scar: new Uint8Array(n), char: new Uint8Array(n),
+    tr: new Float32Array(n), tg: new Float32Array(n), tb: new Float32Array(n),
+  }; // scar: 0 none, 1 shell or burnt, 2 rubble. The base material stays ordinary ground. char: burnt ground goes black.
+  const tint = biomeTint(S); // tr, tg, tb: the region's tint per cell
   const at = (x, y) => grid[y]?.[x];
   for (const i of changed ?? cellIndices(n)) {
     const x = i % w, y = Math.floor(i / w), object = grid[y][x], ch = object === 'N' ? S.objectGrid?.[y]?.[x] && S.objectGrid[y][x] !== '.' ? S.objectGrid[y][x] : S.groundGrid?.[y]?.[x] ?? '.' : object, L = levelOf(map.heights?.[y]?.[x] ?? '0');
-    ov[i] = scar[i] = 0;
+    ov[i] = scar[i] = char[i] = 0;
     const st = S.state ? S.state[i] : startState(ch, i), worn = st & 3;
     lev[i] = L;
     let p = GRASS, s = DIRT, a = 0;
@@ -173,14 +187,20 @@ function cellAttrs(S, grid, changed = null) {
         if (c === 'W' || c === 'F' || c === '=') wet = true;
         if (rows[y + dy]?.[x + dx] === 'B') town = true;
       }
+      const look = BIOME_LOOKS[S.map.biome?.[i]];
       if (fields[i]) { p = fields[i]; s = GRASS; a = 0.3; }
       else if (wet) { s = MUD; a = 0.55; }
       else if (town) { p = ROAD; s = GRASS; a = 0.3; }
       else if (L < 0) { s = MUD; a = Math.min(0.6, 0.25 + 0.12 * -L); }
-      else a = 0.1 + 0.3 * (nA(x * 3 + 41, y * 3 + 77) * 0.5 + 0.5);
+      else { a = 0.1 + 0.3 * (nA(x * 3 + 41, y * 3 + 77) * 0.5 + 0.5); if (look) { s = look.soil; a += look.bare; } }
       // tracks cut the ground up step by step until it is mud; a burn is a scar, not a new square of earth
       if (worn) { s = MUD; a = Math.max(a, 0.24 * worn); }
-      if (st & 4) scar[i] = 1;
+      // shelling that has not sunk the cell churns it: torn-up earth from the first hit, a blast mark when it is pounded
+      const shelled = st >> 5 & 3;
+      if (shelled && !fields[i]) { s = SHELL; a = Math.max(a, 0.22 + 0.16 * shelled); }
+      else if (shelled) a = Math.max(a, 0.3 + 0.15 * shelled);
+      if (shelled === 3) scar[i] = 1;
+      if (st & 4) { scar[i] = 1; char[i] = 1; }
     }
     else if (ch === 'B' || ch === 'K') { p = DIRT; s = ROAD; a = 0.3; }
     else if (ch === 'R') { p = DIRT; s = GRASS; a = 0.35; scar[i] = 2; }
@@ -202,6 +222,9 @@ function cellAttrs(S, grid, changed = null) {
     else if (ch === 'A') { p = DIRT; a = 0.2; }
     if (!a) s = p;
     prim[i] = p; sec[i] = s; amt[i] = a; key[i] = p | s << 4;
+    // the region's tint is for growing ground: none on water, a little on roads and yards
+    const k = p === WATER ? 0 : p === ROAD || p === DIRT || p === EARTH ? 0.4 : 1;
+    tr[i] = 1 + (tint.r[i] - 1) * k; tg[i] = 1 + (tint.g[i] - 1) * k; tb[i] = 1 + (tint.b[i] - 1) * k;
   }
   // pixels this far from a scar run the blast-mark pass; everyone else stays on the fast material blend.
   // The mark itself can reach almost two cells past a scar, so the pass covers three.
@@ -242,7 +265,46 @@ function cellAttrs(S, grid, changed = null) {
     }
     depth[i] = best;
   }
-  return { prim, sec, amt, lev, ov, key, scar, near, depth };
+  return { prim, sec, amt, lev, ov, key, scar, near, depth, char, tr, tg, tb };
+}
+
+// The biome tint per cell, a 13-cell box blur of the known cells' looks, so a border is a broad blend. Kept on S and
+// redone only around cells whose biome arrived since the last paint (map.biomeCells, filled by client/main.js).
+const ONE = { r: null, g: null, b: null };
+function biomeTint(S) {
+  const { w, h, map } = S, n = w * h;
+  if (!map.biome) { if (!ONE.r || ONE.r.length !== n) { ONE.r = new Float32Array(n).fill(1); ONE.g = ONE.r; ONE.b = ONE.r; } return ONE; }
+  let T = S.tint;
+  const fresh = !T || T.map !== map;
+  if (fresh) T = S.tint = { map, r: new Float32Array(n).fill(1), g: new Float32Array(n).fill(1), b: new Float32Array(n).fill(1) };
+  const todo = map.biomeCells ?? [];
+  if (!fresh && !todo.length) return T;
+  const R = 6;
+  let x0 = 0, y0 = 0, x1 = w - 1, y1 = h - 1;
+  if (!fresh) {
+    x0 = w; y0 = h; x1 = 0; y1 = 0;
+    for (const c of todo) { const x = c % w, y = (c / w) | 0; if (x < x0) x0 = x; if (x > x1) x1 = x; if (y < y0) y0 = y; if (y > y1) y1 = y; }
+    x0 = Math.max(0, x0 - R); y0 = Math.max(0, y0 - R); x1 = Math.min(w - 1, x1 + R); y1 = Math.min(h - 1, y1 + R);
+  }
+  map.biomeCells = [];
+  // summed-area tables over the box plus its blur margin
+  const ax = Math.max(0, x0 - R), ay = Math.max(0, y0 - R), bx = Math.min(w - 1, x1 + R), by = Math.min(h - 1, y1 + R);
+  const W = bx - ax + 2, H = by - ay + 2, sw = new Float32Array(W * H), sr = new Float32Array(W * H), sg = new Float32Array(W * H), sb = new Float32Array(W * H);
+  for (let y = ay; y <= by; y++) for (let x = ax; x <= bx; x++) {
+    const look = BIOME_LOOKS[map.biome[y * w + x]], i = (y - ay + 1) * W + x - ax + 1, up = i - W;
+    sw[i] = (look ? 1 : 0) + sw[i - 1] + sw[up] - sw[up - 1];
+    sr[i] = (look ? look.tint[0] : 0) + sr[i - 1] + sr[up] - sr[up - 1];
+    sg[i] = (look ? look.tint[1] : 0) + sg[i - 1] + sg[up] - sg[up - 1];
+    sb[i] = (look ? look.tint[2] : 0) + sb[i - 1] + sb[up] - sb[up - 1];
+  }
+  const box = (t, qx0, qy0, qx1, qy1) => t[qy1 * W + qx1] - t[qy0 * W + qx1] - t[qy1 * W + qx0] + t[qy0 * W + qx0];
+  for (let y = y0; y <= y1; y++) for (let x = x0; x <= x1; x++) {
+    const qx0 = Math.max(ax, x - R) - ax, qy0 = Math.max(ay, y - R) - ay, qx1 = Math.min(bx, x + R) - ax + 1, qy1 = Math.min(by, y + R) - ay + 1;
+    const k = box(sw, qx0, qy0, qx1, qy1), c = y * w + x;
+    if (k < 0.5) { T.r[c] = T.g[c] = T.b[c] = 1; continue; }
+    T.r[c] = box(sr, qx0, qy0, qx1, qy1) / k; T.g[c] = box(sg, qx0, qy0, qx1, qy1) / k; T.b[c] = box(sb, qx0, qy0, qx1, qy1) / k;
+  }
+  return T;
 }
 
 // Smooth noise at cell scale. The ground fBm is far too low-frequency to tear a scar's edge.
@@ -429,7 +491,7 @@ const tq = (m, i, j) => (tSwap[m]
 
 const wt = new Float32Array(NMAT);
 function raster(S, X0, Y0, W, H, img) {
-  const { P, w, h } = S, { prim, sec, amt, key, near } = S.attrs, d = img.data;
+  const { P, w, h } = S, { prim, sec, amt, key, near, char, tr, tg, tb } = S.attrs, d = img.data, tinted = !!S.map.biome;
   useTiles(ready && tiles);
   // everything that depends only on the column, worked out once
   const cU = new Float32Array(W), cWx = new Int32Array(W), cWy = new Int32Array(W), cP0 = new Int32Array(W), cP1 = new Int32Array(W), cPt = new Float32Array(W);
@@ -493,13 +555,22 @@ function raster(S, X0, Y0, W, H, img) {
           r += wm * dd[k]; g += wm * dd[k + 1]; bl += wm * dd[k + 2];
         }
       }
+      // the region's tint, blended like the materials (World Conquest only: other maps keep their exact pixels)
+      const w00 = (1 - tx) * (1 - ty), w01 = tx * (1 - ty), w10 = (1 - tx) * ty, w11 = tx * ty;
+      if (tinted) {
+        r *= tr[c00] * w00 + tr[c01] * w01 + tr[c10] * w10 + tr[c11] * w11;
+        g *= tg[c00] * w00 + tg[c01] * w01 + tg[c10] * w10 + tg[c11] * w11;
+        bl *= tb[c00] * w00 + tb[c01] * w01 + tb[c10] * w10 + tb[c11] * w11;
+      }
       // the blast mark sits on the ordinary ground. Only pixels near a scar pay for it.
       const gx = u <= 0 ? 0 : u >= w ? w - 1 : u | 0, gy = v <= 0 ? 0 : v >= h ? h - 1 : v | 0;
       if (near[gy * w + gx]) {
         const sc = S.sampleScar(u, v);
         if (sc.cover > 0.015) {
           const cover = sc.cover, sd = tData[SHELL], sk = tq(SHELL, i, j), rd = tData[RUBBLE], rk = tq(RUBBLE, i, j);
-          const shade = 0.7 + 0.3 * (1 - cover * cover); // churned earth, not tar: the middle of a crater field stays brown
+          // churned earth, not tar: the middle of a crater field stays brown. Burnt ground (fire, a wreck) is charred.
+          const burn = char[c00] * w00 + char[c01] * w01 + char[c10] * w10 + char[c11] * w11;
+          const shade = (0.7 + 0.3 * (1 - cover * cover)) * (1 - 0.5 * burn);
           const sr = sc.shell * sd[sk] * shade + sc.rubble * rd[rk];
           const sg = sc.shell * sd[sk + 1] * shade + sc.rubble * rd[rk + 1];
           const sb = sc.shell * sd[sk + 2] * shade * 1.06 + sc.rubble * rd[rk + 2];
@@ -684,6 +755,8 @@ function queuePaint(S, dirty) {
 function paint(S, grid, cells) {
   const prev = S.attrs;
   let affected = null, before = null;
+  // fields follow the biomes discovered so far; a field reaches past the cells around a change, so a new one repaints all
+  if (S.map.world) { const fields = fieldsOf(S.map); if (S.fields && fields.some((v, i) => v !== S.fields[i])) cells = null; S.fields = fields; }
   if (prev && cells) {
     affected = new Set(); before = new Map();
     // Material neighbors extend one cell; scar depth looks six cells beyond them.
@@ -692,7 +765,7 @@ function paint(S, grid, cells) {
       for (let ny = Math.max(0, y - 7); ny <= Math.min(S.h - 1, y + 7); ny++)
         for (let nx = Math.max(0, x - 7); nx <= Math.min(S.w - 1, x + 7); nx++) affected.add(ny * S.w + nx);
     }
-    for (const i of affected) before.set(i, [prev.prim[i], prev.sec[i], prev.amt[i], prev.lev[i], prev.ov[i], prev.scar[i], prev.near[i], prev.depth[i]]);
+    for (const i of affected) before.set(i, [prev.prim[i], prev.sec[i], prev.amt[i], prev.lev[i], prev.ov[i], prev.scar[i], prev.near[i], prev.depth[i], prev.char[i], prev.tr[i], prev.tg[i], prev.tb[i]]);
   }
   S.attrs = cellAttrs(S, grid, affected);
   S.sampleScar = createScarSampler(S.attrs.scar, S.attrs.depth, S.w, S.h, S.scarNoise ??= createCellNoise());
@@ -704,7 +777,9 @@ function paint(S, grid, cells) {
   for (const i of affected ?? cellIndices(n)) {
     const old = before?.get(i);
     if (old ? A.prim[i] === old[0] && A.sec[i] === old[1] && A.amt[i] === old[2] && A.lev[i] === old[3] && A.ov[i] === old[4] && A.scar[i] === old[5] && A.near[i] === old[6] && A.depth[i] === old[7]
-      : A.prim[i] === prev.prim[i] && A.sec[i] === prev.sec[i] && A.amt[i] === prev.amt[i] && A.lev[i] === prev.lev[i] && A.ov[i] === prev.ov[i] && A.scar[i] === prev.scar[i] && A.near[i] === prev.near[i] && A.depth[i] === prev.depth[i]) continue;
+        && A.char[i] === old[8] && A.tr[i] === old[9] && A.tg[i] === old[10] && A.tb[i] === old[11]
+      : A.prim[i] === prev.prim[i] && A.sec[i] === prev.sec[i] && A.amt[i] === prev.amt[i] && A.lev[i] === prev.lev[i] && A.ov[i] === prev.ov[i] && A.scar[i] === prev.scar[i] && A.near[i] === prev.near[i] && A.depth[i] === prev.depth[i]
+        && A.char[i] === prev.char[i] && A.tr[i] === prev.tr[i] && A.tg[i] === prev.tg[i] && A.tb[i] === prev.tb[i]) continue;
     const x = i % w, y = (i / w) | 0;
     for (let ty = Math.max(0, y - R) / TILE | 0; ty <= (Math.min(h - 1, y + R) / TILE | 0); ty++)
       for (let tx = Math.max(0, x - R) / TILE | 0; tx <= (Math.min(w - 1, x + R) / TILE | 0); tx++) dirty.add(ty * tw + tx);

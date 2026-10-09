@@ -250,6 +250,7 @@ const KINDS = {
   bag: { geo: BAG, mat: () => surface('burlap'), lowShadow: false },
   chunk: { geo: CHUNK, mat: () => surface('rubble'), lowShadow: false },
   hedgehog: { geo: HEDGEHOG, mat: () => surface('steel') },
+  steel: { geo: BOX, mat: () => surface('steel') }, // girders: a mine's headframe
   wire: { geo: WIRE, mat: () => materials().wire, shadow: false },
   rail: { geo: RAIL, mat: () => surface('darkwood'), lowShadow: false },
   duck: { geo: DUCK, mat: () => surface('wood'), shadow: false },
@@ -338,14 +339,15 @@ function houses(C) {
   }
   // about half of the big timber blocks are barns, the rest big sheds
   for (const r of rects) if (r.type === 0 && dims(r)[0] >= 3 && rnd(r.x0, r.y0, 8) < 0.5) r.kind = 'barn';
-  // a map's landmarks (CFG.houses 3 and 4): a church wears the church look, a factory a multi-storey block, both stone
-  for (const r of rects) if (r.type > 2) { r.kind = r.type === 3 ? 'church' : 'block'; r.type = 2; }
+  // a map's landmarks (CFG.houses 3 to 5): a church wears the church look (stone), a factory a brick works block with a
+  // chimney, a mine head a brick winding house under its headframe
+  for (const r of rects) if (r.type > 2) { r.kind = ['church', 'factory', 'mine'][r.type - 3] ?? 'block'; r.type = 2; }
   for (const r of rects) {
-    const [s, l] = dims(r), alongX = r.x1 - r.x0 >= r.y1 - r.y0;
-    if (s >= 5) r.kind = 'block';
+    const [s, l] = dims(r), alongX = r.x1 - r.x0 >= r.y1 - r.y0, works = r.kind === 'factory' || r.kind === 'mine';
+    if (s >= 5 && !works) r.kind = 'block';
     const block = r.kind === 'block', parts = [];
     // long rows become terraces of 2-3 cell houses (city blocks: 3-5 cells), each with its own height and paint
-    if (r.kind === 'church' || r.kind === 'barn' || l < 4 || (block && l < 6) || (!block && l === 4 && rnd(r.x0, r.y0, 11) < 0.4)) parts.push(l);
+    if (works || r.kind === 'church' || r.kind === 'barn' || l < 4 || (block && l < 6) || (!block && l === 4 && rnd(r.x0, r.y0, 11) < 0.4)) parts.push(l);
     else for (let left = l, i = 0; left > 0; i++) {
       const q = rnd(r.x0 + i, r.y0, 12);
       const k = block ? (left <= 5 ? left : left === 6 ? 3 : left === 7 ? 3 + (q < 0.5 ? 1 : 0) : 3 + Math.floor(q * 3))
@@ -376,14 +378,14 @@ function frame(C, r) {
 // one house's look, from its own cell, shared by the standing house and its ruins
 function spec(r) {
   const kind = r.kind ?? 'house', t = (k) => rnd(r.x0, r.y0, k), type = r.type ?? 1;
-  const church = kind === 'church', barn = kind === 'barn', block = kind === 'block';
+  const church = kind === 'church', barn = kind === 'barn', factory = kind === 'factory', mine = kind === 'mine', block = kind === 'block' || factory;
   // the game's three types read at a glance: timber (sheds and barns), brick or limewashed render under clay tiles
-  // (houses), bare stone under slate (stone buildings, the church among them)
-  const wood = type === 0, stone = type === 2, shed = wood && !barn, brick = type === 1 && !block && t(25) < 0.5;
-  const storeys = church || wood ? 1 : block ? 2 + Math.floor(t(9) * 2) : stone || t(1) < 0.55 ? 2 : 1;
+  // (houses), bare stone under slate (stone buildings, the church among them); works and mine heads are brick
+  const wood = type === 0, stone = type === 2 && !factory && !mine, shed = wood && !barn, brick = factory || mine || (type === 1 && !block && t(25) < 0.5);
+  const storeys = church || wood || mine ? 1 : block ? 2 + Math.floor(t(9) * 2) : stone || t(1) < 0.55 ? 2 : 1;
   return {
-    kind, church, barn, block, storeys, t, wood, shed, stone, brick,
-    H: church ? 6.2 : barn ? 4.4 + 0.6 * t(2) : shed ? 2.5 + 0.5 * t(2) : block ? storeys * 3.1 + 0.5 : storeys === 2 ? (stone ? 6.1 : 5.6) + 0.9 * t(2) : 3.6 + 0.8 * t(2),
+    kind, church, barn, block, factory, mine, storeys, t, wood, shed, stone, brick,
+    H: church ? 6.2 : mine ? 5.2 : barn ? 4.4 + 0.6 * t(2) : shed ? 2.5 + 0.5 * t(2) : block ? storeys * 3.1 + 0.5 : storeys === 2 ? (stone ? 6.1 : 5.6) + 0.9 * t(2) : 3.6 + 0.8 * t(2),
     k: church ? 1.25 : barn ? 1.3 : shed ? 0.7 + 0.25 * t(10) : 0.85 + 0.3 * t(10), // roof pitch: ridge height = 0.4 * span * k
     tint: barn ? pick(BARN, t(4)) : shed ? pick(SHED, t(4)) : church ? [1.04, 1, 0.92] : stone ? pick(STONE, t(4)) : brick ? pick(BRICK, t(4)) : pick(PLASTER, t(4)),
     roof: wood ? pick(SHINGLE, t(5)) : stone ? pick(SLATE, t(5)) : pick(ROOFS, t(5)),
@@ -450,7 +452,52 @@ function quoins(C, r, F, H) {
   }
 }
 
+// a works chimney at one end of the roof: tall, tapering a little, banded below a sooty mouth
+function chimney(F, sp) {
+  const { L, base, P } = F, a = (sp.t(26) < 0.5 ? -1 : 1) * (L / 2 - 1.3), top = base + sp.H + 10 + 3 * sp.t(27), mid = (base + top) / 2;
+  P('brick', 0, mid - 2, a, 1.7, top - base - 4, 1.7, mul(sp.tint, 0.82));
+  P('brick', 0, top - 2.5, a, 1.45, 5, 1.45, mul(sp.tint, 0.78));
+  for (const y of [top - 1.1, top - 3.2]) P('stone', 0, y, a, 1.62, 0.22, 1.62, 0.55);
+  P('paint', 0, top + 0.02, a, 1.2, 0.06, 1.2, DARK);
+}
+// a pit's headframe over the shaft: four legs leaning in to a deck, cross braces, two back-stays to the winding house
+// and the sheave wheels on top. It stands on the block end the winding house leaves free.
+function headframe(F, sp) {
+  const { L, S, base, P } = F, end = sp.t(19) < 0.5 ? -1 : 1, span = L * 0.4, as = end * (L / 2 - span / 2), hw = Math.min(S, span) / 2 - 0.35;
+  const top = base + 12.5, lean = 0.55, legH = top - base, tilt = Math.atan2(hw * (1 - lean), legH), steel = [0.62, 0.36, 0.3];
+  for (const sx of [-1, 1]) for (const sz of [-1, 1]) P('steel', sx * hw * (1 + lean) / 2, base + legH / 2, as + sz * hw * (1 + lean) / 2, 0.28, legH + 0.3, 0.28, steel, 0, -sz * tilt, sx * tilt);
+  for (let i = 1; i <= 4; i++) {
+    const y = base + legH * i / 4.6, k = hw * (1 - (1 - lean) * i / 4.6);
+    for (const s2 of [-1, 1]) {
+      P('steel', 0, y, as + s2 * k, 2 * k, 0.16, 0.16, steel);
+      P('steel', s2 * k, y, as, 0.16, 0.16, 2 * k, steel);
+    }
+  }
+  P('steel', 0, top + 0.1, as, 2 * hw * lean + 0.8, 0.25, 2 * hw * lean + 0.8, mul(steel, 0.8)); // the deck
+  // back-stays: from the deck down to the far end of the winding house
+  const reach = L - span, stay = Math.hypot(reach, legH * 0.9), pitch = Math.atan2(reach, legH * 0.9);
+  for (const sx of [-1, 1]) P('steel', sx * hw * 0.6, base + legH * 0.55, as - end * reach / 2, 0.24, stay, 0.24, steel, 0, end * pitch, 0);
+  // sheave wheels: rims of short girders standing in the plane along the block, facing the winding engine
+  for (const sx of [-0.45, 0.45]) for (let i = 0; i < 12; i++) {
+    const ang = i / 12 * Math.PI * 2, R = 1.25;
+    P('steel', sx, top + 1.5 + Math.sin(ang) * R, as + Math.cos(ang) * R, 0.12, 0.7, 0.14, mul(steel, 0.7), 0, -ang, 0);
+  }
+  P('steel', 0, top + 1.5, as, 1.4, 0.2, 0.2, mul(steel, 0.6)); // axle
+}
+// the winding house of a mine head: a long brick engine shed on the part of the block the headframe leaves free
+function mineHead(C, r, sp) {
+  const F = frame(C, r), { L, S, base, P } = F, { H, k, tint, t } = sp, end = t(19) < 0.5 ? -1 : 1, Lh = L * 0.6, ah = -end * (L - Lh) / 2, oh = 0.35;
+  P('brick', 0, base - 1 + (H + 1) / 2, ah, S, H + 1, Lh, tint);
+  P('stone', 0, base - 1.55 + 2.1 / 2, ah, S + 0.14, 2.1, Lh + 0.14, 0.85);
+  P('gableBrick', 0, base + H, ah, S, S * k, Lh, tint);
+  P('roof', 0, base + H - 0.8 * k * oh, ah, S + 2 * oh, (S + 2 * oh) * k, Lh + 2 * oh, sp.roof);
+  for (const s2 of [-1, 1]) for (let i = 0; i < 3; i++) P('paint', s2 * (S / 2 + 0.03), base + 2.6, ah + (i - 1) * Lh / 3.4, 0.06, 2.4, 1.0, lin(0x5a6470)); // tall engine-house windows
+  P('stone', 0, base - 0.2, end * (L - Lh) / 2, S - 0.4, 0.5, L - Lh - 0.4, 0.75); // the concrete shaft collar
+  headframe(F, sp);
+}
+
 function house(C, r, sp) {
+  if (sp.mine) return mineHead(C, r, sp);
   const F = frame(C, r), { L, S, base, P } = F, { H, k, tint, t } = sp, oh = 0.35, ph = sp.shed ? 0.2 : 0.55;
   P(wallKind(sp), 0, base - 1 + (H + 1) / 2, 0, S, H + 1, L, tint);
   if (!sp.stone && !sp.wood) quoins(C, r, F, H);
@@ -470,6 +517,7 @@ function house(C, r, sp) {
       P('stone', s, base + H + 0.6, a, 0.7, 1.2, 1.1, 0.8);
       P('stone', s, base + H + 1.26, a, 0.85, 0.12, 1.25, 0.55);
     }
+    if (sp.factory) chimney(F, sp);
   } else {
     // pitched roof: gable ends in the wall paint, a tiled roof with eaves overhanging by oh
     P(sp.wood ? 'gableWood' : sp.stone ? 'gableStone' : sp.brick ? 'gableBrick' : 'gable', 0, base + H, 0, S, S * k, L, tint);
@@ -577,6 +625,12 @@ function ruin(C, r, sp, standing) {
       put(jag, cx + dx * out - dy * slide, g - 0.1, cz + dy * out + dx * slide, len, ht, 0.28, yaw, tint, (rnd(x, y, 126 + i) - 0.5) * 0.2, 0);
     });
   }
+  if (sp.factory || sp.mine) {
+    // the chimney or the headframe stays up while the cell under its middle does
+    const F = frame(C, r), a = sp.factory ? (sp.t(26) < 0.5 ? -1 : 1) * (F.L / 2 - 1.3) : (sp.t(19) < 0.5 ? -1 : 1) * F.L * 0.3;
+    const [fx, fz] = F.at(0, a);
+    if (C.at(Math.floor(fx / CELL), Math.floor(fz / CELL)) === 'B') (sp.factory ? chimney : headframe)(F, sp);
+  }
   if (sp.church) {
     // the tower stays up while its own cells do
     const F = frame(C, r), end = sp.t(19) < 0.5 ? -1 : 1, T = Math.min(F.S - 0.8, 3.4), aT = end * (F.L / 2 - T / 2 - 0.1);
@@ -594,6 +648,15 @@ function rubble(C) {
   for (let y = 0; y < h; y++) for (let x = 0; x < w; x++) {
     if (at(x, y) !== 'R') continue;
     const cx = (x + 0.5) * CELL, cz = (y + 0.5) * CELL, g = hAt(cx, cz), house = C.tint.get(y * w + x);
+    if (C.spoil.has(y * w + x)) {
+      // a mine's spoil tip: dark waste in overlapping cones, tallest in the middle of the heap
+      let n = 0;
+      for (let dy = -1; dy <= 1; dy++) for (let dx = -1; dx <= 1; dx++) if ((dx || dy) && C.spoil.has((y + dy) * w + x + dx) && at(x + dx, y + dy) === 'R') n++;
+      const s = 3.4 + 1.2 * rnd(x, y, 140), grey = 0.36 + 0.08 * rnd(x, y, 142);
+      put('earth', cx + (rnd(x, y, 143) - 0.5) * 0.8, g - 0.2, cz + (rnd(x, y, 144) - 0.5) * 0.8, s, 0.7 + 0.32 * n + 0.4 * rnd(x, y, 141), s, rnd(x, y, 145) * 6.28, [grey, grey * 0.97, grey * 1.02]);
+      if (!low) put('chunk', cx + (rnd(x, y, 146) - 0.5) * 1.6, g + 0.1, cz + (rnd(x, y, 147) - 0.5) * 1.6, 0.6, 0.35, 0.5, rnd(x, y, 148) * 6.28, [0.5, 0.48, 0.47]);
+      continue;
+    }
     const n = (low ? 2 : 3) + (house && !low ? 1 : 0);
     for (let k = 0; k < n; k++) {
       if (rnd(x, y, k + 3) < 0.22) continue;
@@ -838,7 +901,8 @@ function rebuild() {
   const { group, grid, orig, hAt, cells, buildings, mineGrid } = state, h = grid.length, w = grid[0]?.length ?? 0;
   clearGroup(group);
   // stage: 0 whole, 1 damaged, 2 nearly gone (bits 3-4 of the cell state the server sends)
-  const C = { grid, orig, hAt, w, h, buildings, mineGrid, low: gfx.low, at: (x, y) => grid[y]?.[x], tint: new Map(), stage: (x, y) => (cells ? cells[y * w + x] >> 3 & 3 : 0) };
+  const C = { grid, orig, hAt, w, h, buildings, mineGrid, low: gfx.low, at: (x, y) => grid[y]?.[x], tint: new Map(), stage: (x, y) => (cells ? cells[y * w + x] >> 3 & 3 : 0),
+    spoil: new Set((buildings ?? []).filter(b => b.kind === 'spoil').map(b => b.y * w + b.x)) }; // World mine tips (client/main.js)
   houses(C); rubble(C); hedges(C); walls(C); trenches(C); wire(C); traps(C); mines(C); hospitals(C); bridges(C);
   flush(group, C.low);
 }

@@ -2,6 +2,8 @@
 export const WORLD_VERSION = 2;
 export const BASE_SURFACES = '.D+MWF';
 export const OBJECT_TYPES = '.BH#TXY=RNAQKO';
+// World Conquest region looks (shared/world-conquest.js). Clients get the index per discovered cell, never the region list.
+export const BIOMES = ['farmland', 'pine', 'marsh', 'highland', 'orchard', 'steppe'];
 export const MATERIALS = Object.freeze({
   soil: Object.freeze({ name: 'soil', hardness: 0.12, absorption: 0.9, rebound: 0.02, crater: 1, fire: 0 }),
   road: Object.freeze({ name: 'road', hardness: 0.45, absorption: 0.65, rebound: 0.12, crater: 0.5, fire: 0 }),

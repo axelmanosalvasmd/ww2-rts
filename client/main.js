@@ -2,6 +2,7 @@ import * as THREE from 'three';
 import { createOperativeView } from './operative-view.js';
 import { worldLayers, composeWorldCell } from '/shared/world-layers.js';
 import { createRubbleDecals } from './rubble-decals.js';
+import { createCraterDecals } from './crater-decals.js';
 import { createHud } from './hud.js';
 import { setPortraitSource } from './portraits.js';
 import { createLobbyView } from './lobby-view.js';
@@ -489,7 +490,7 @@ function startGame(m, restored = null) {
   rememberPlacementTerrain(map, m.cells); // capture original facts before applying current heights and World rows
   worldRegions?.dispose(); worldRegions = null; railways?.dispose(); railways = null;
   terrain?.ground.dispose();
-  rubbleDecals?.dispose(); rubbleDecals = null;
+  rubbleDecals?.dispose(); rubbleDecals = null; craterDecals?.dispose(); craterDecals = null;
   relief?.dispose(); apron?.dispose(); fogMesh?.material.dispose(); fogMesh = null;
   for (const v of units.values()) releaseBuildingBreach(v);
   for (const v of ghosts.values()) releaseBuildingBreach(v);
@@ -518,7 +519,7 @@ function startGame(m, restored = null) {
   // what the server says about a cell besides its type: wear, burnt, damage stage (see startState in shared/sim.js)
   terrain.state = Uint8Array.from(map.rows.join(''), startState);
   if (map.world) map.discovered = new Uint8Array(map.w * map.h);
-  for (const [cell, ch, lv, st, data] of m.cells || []) { if (data) { terrain.groundGrid[Math.floor(cell / map.w)][cell % map.w] = data.ground; terrain.objectGrid[Math.floor(cell / map.w)][cell % map.w] = data.object; terrain.materials.set(cell, data.material); if (data.section) terrain.structuralSections.set(cell, data.section); } terrain.mineGrid[Math.floor(cell / terrain.w)][cell % terrain.w] = ch === 'N' ? 1 : 0; terrain.physicalGrid[Math.floor(cell / terrain.w)][cell % terrain.w] = ch === 'N' ? composeWorldCell(terrain.groundGrid[Math.floor(cell / terrain.w)][cell % terrain.w], terrain.objectGrid[Math.floor(cell / terrain.w)][cell % terrain.w]) : ch; if (map.discovered) map.discovered[cell] = 1; terrain.grid[Math.floor(cell / map.w)][cell % map.w] = ch; terrain.state[cell] = st ?? 0; if (lv !== undefined) setLevel(map, cell, lv); }
+  for (const [cell, ch, lv, st, data] of m.cells || []) { if (data) { terrain.groundGrid[Math.floor(cell / map.w)][cell % map.w] = data.ground; terrain.objectGrid[Math.floor(cell / map.w)][cell % map.w] = data.object; terrain.materials.set(cell, data.material); if (data.section) terrain.structuralSections.set(cell, data.section); } terrain.mineGrid[Math.floor(cell / terrain.w)][cell % terrain.w] = ch === 'N' ? 1 : 0; terrain.physicalGrid[Math.floor(cell / terrain.w)][cell % terrain.w] = ch === 'N' ? composeWorldCell(terrain.groundGrid[Math.floor(cell / terrain.w)][cell % terrain.w], terrain.objectGrid[Math.floor(cell / terrain.w)][cell % terrain.w]) : ch; if (map.discovered) { map.discovered[cell] = 1; rememberLook(map, cell, data); } terrain.grid[Math.floor(cell / map.w)][cell % map.w] = ch; terrain.state[cell] = st ?? 0; if (lv !== undefined) setLevel(map, cell, lv); }
   if (map.world) map.rows = terrain.grid.map(r => r.join(''));
   gp.paint(terrain.grid, terrain.state, terrain.groundGrid, terrain.objectGrid);
   // the fog overlay shares the relief's live geometry, which a crater replaces
@@ -593,7 +594,7 @@ function startGame(m, restored = null) {
 // ---------- terrain that can change mid-match (digging, destruction) ----------
 let terrain = null;
 let props = null;
-let rubbleDecals = null;
+let rubbleDecals = null, craterDecals = null; // craterDecals: World Conquest's lasting crater marks
 // big battles change cells every snapshot: the 3D pieces and the minimap's terrain are redone at most every 0.25 s
 const terrainDue = { pieces: false, minimap: false, props: false, wait: 0 };
 let propPreparation = null;
@@ -634,6 +635,20 @@ function terrainFrame(dt) {
 function buildStructures() {
   buildPieces(terrain.group, terrain.physicalGrid, lastStart.map.rows.map((row, y) => [...row].map((ch, x) => ch === 'N' ? composeWorldCell(terrain.groundGrid[y][x], terrain.objectGrid[y][x]) : ch).join('')), hAt, terrain.state, lastStart.map.buildings, terrain.mineGrid);
   if (!rubbleDecals) { rubbleDecals = createRubbleDecals({ parent: world, hAt, w: terrain.w, grid: terrain.objectGrid, materialAt: c => terrain.materials.get(c) }); rubbleDecals.update(terrain.objectGrid.flatMap((row, y) => row.flatMap((ch, x) => ch === 'R' ? [y * terrain.w + x] : []))); }
+  if (!craterDecals && lastStart.map.world) { craterDecals = createCraterDecals({ parent: world, hAt, w: terrain.w, grid: terrain.grid }); craterDecals.update(terrain.grid.flatMap((row, y) => row.flatMap((ch, x) => ch === '+' ? [y * terrain.w + x] : []))); }
+}
+
+// World Conquest: a discovered cell brings its region's look (client/ground.js paints and client/props.js dresses it)
+// and, on a church, works or mine head, the landmark's name (client/structures.js builds its look from map.buildings)
+function rememberLook(map, cell, data) {
+  if (data?.biome !== undefined && map.biome?.[cell] !== data.biome) {
+    (map.biome ??= new Uint8Array(map.w * map.h).fill(255))[cell] = data.biome; (map.biomeCells ??= []).push(cell);
+  }
+  // a cell that started as rubble is a mine's spoil tip (the generator's only rubble), drawn as a heap
+  const kind = data?.landmark ?? (data?.initial?.[0] === 'R' ? 'spoil' : null);
+  if (kind && !(map.landmarks ??= new Set()).has(cell)) {
+    map.landmarks.add(cell); (map.buildings ??= []).push({ x: cell % map.w, y: Math.floor(cell / map.w), kind });
+  }
 }
 
 // bombs and shells lower the ground: patch the map's height rows
@@ -657,12 +672,12 @@ function applyCells(cells) {
     const physical = ch === 'N' ? composeWorldCell(data?.ground ?? terrain.groundGrid[y][x], data?.object ?? terrain.objectGrid[y][x]) : ch;
     const moved = terrain.grid[y][x] !== ch || terrain.physicalGrid[y][x] !== physical || (lv !== undefined && levelOf(heights?.[y]?.[x] ?? '0') !== lv);
     if (moved) shaped.push(entry);
-    pieces ||= moved || (terrain.state[cell] ^ st) >> 3 > 0;
+    pieces ||= moved || ((terrain.state[cell] ^ st) >> 3 & 3) > 0; // damage stage; the shelling bits only repaint
     terrain.grid[y][x] = ch; terrain.state[cell] = st;
     if (data) { terrain.groundGrid[y][x] = data.ground; terrain.objectGrid[y][x] = data.object; terrain.materials.set(cell, data.material); if (data.section) terrain.structuralSections.set(cell, data.section); } terrain.mineGrid[Math.floor(cell / terrain.w)][cell % terrain.w] = ch === 'N' ? 1 : 0; terrain.physicalGrid[Math.floor(cell / terrain.w)][cell % terrain.w] = ch === 'N' ? composeWorldCell(terrain.groundGrid[Math.floor(cell / terrain.w)][cell % terrain.w], terrain.objectGrid[Math.floor(cell / terrain.w)][cell % terrain.w]) : ch;
     if (lastStart.map.world) {
       if (!lastStart.map.discovered[cell]) terrainDue.props = true;
-      lastStart.map.discovered[cell] = 1;
+      lastStart.map.discovered[cell] = 1; rememberLook(lastStart.map, cell, data);
       const row = lastStart.map.rows[y]; lastStart.map.rows[y] = row.slice(0, x) + ch + row.slice(x + 1);
     }
     if (lv !== undefined) setLevel(lastStart.map, cell, lv);
@@ -686,7 +701,7 @@ function applyCells(cells) {
       if (nx >= 0 && nx < terrain.w && ny >= 0 && ny < terrain.grid.length && terrain.objectGrid[ny][nx] === 'R') rubbleCells.add(ny * terrain.w + nx);
     }
   }
-  rubbleDecals?.update(rubbleCells);
+  rubbleDecals?.update(rubbleCells); craterDecals?.update(rubbleCells);
   if (pieces) terrainDue.pieces = true; // rebuilt at most 4 times a second (frame loop)
   coverPreview.dirty(); // cover marks follow new cells and shot-up walls
 }
