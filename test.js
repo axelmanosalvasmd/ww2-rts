@@ -7114,6 +7114,18 @@ await check("Weather (shared/weather.js)", async () => {
   assert.deepEqual(snow.ids, [10, 20, 28], 'weather: snow cuts sight by 10%');
   assert.ok(fog.rows < rain.rows && rain.rows < clear.rows, 'weather: shorter sight sends fewer snapshot rows (server-side fog of war)');
 });
+// Vehicles sent through the only gap in a wall queue and file through it instead of dodging each other in its mouth
+// (drills/gap-column.js). Before the queue, 2 of 40 seeds got all twelve light tanks through in 90 s.
+await check("A tank group files through a narrow gap", async () => {
+  const { runDrill } = await import('./drills/drill.js'), gap = await import('./drills/gap-column.js');
+  for (const seed of [1, 2, 3]) assert.ok(runDrill(gap, { seed, params: { kind: 'tank' } }).all, `seed ${seed}: all twelve tanks get through the gap within 90 s`);
+});
+// Sent through the same gap both ways, tanks take turns: one side holds short until the other has come through, instead
+// of the two columns meeting nose to nose in the gap. Without turns these seeds took 85 s, 88 s or never finished.
+await check("Tanks crossing a narrow gap both ways take turns", async () => {
+  const { runDrill } = await import('./drills/drill.js'), gap = await import('./drills/gap-column.js');
+  for (const seed of [2, 3, 4]) assert.ok(runDrill(gap, { seed, params: { kind: 'tank', twoWay: true } }).last <= 60, `seed ${seed}: all twelve tanks are across within 60 s`);
+});
 // Horde: one shared HQ and bunker, waves from the attacker spawns, the break only after a wave is dead.
 await check("Horde", async () => {
   const map = { name: 'Horde fixture', w: 60, h: 60, rows: Array(60).fill('.'.repeat(60)), spawns: [{ x: 30, y: 5 }, { x: 10, y: 54 }, { x: 50, y: 54 }], defend: [0], points: [{ x: 30, y: 30 }] };
@@ -7131,9 +7143,10 @@ await check("Horde", async () => {
   // each takes its own spot around the bunker (unit behavior: settle within coverSeek, then step off a held spot)
   assert.ok(horde().every(u => u.amove && Math.hypot(u.amove.x - bunker.x, u.amove.z - bunker.z) <= 2 * CFG.behavior.coverSeek + 2), 'every horde unit attack-moves on the bunker');
   assert.equal(g.players[2].inc, 0, 'the horde has no income');
-  // two friendly tanks gridlocked with no room to yield: the one waiting passes through as a ghost within a few seconds
+  // two friendly tanks gridlocked with no room to yield, the front one stuck (not just waiting its turn in a queue): the
+  // one behind passes through as a ghost within a few seconds
   const { trafficStep } = await import('./shared/local-traffic.js');
-  const front = { id: 1, type: 'tank', owner: 2, hp: 1, x: 3, z: 0, vx: 0, vz: 0, trafficWait: 20, garrison: -1, path: [{ x: 10, z: 0 }] };
+  const front = { id: 1, type: 'tank', owner: 2, hp: 1, x: 3, z: 0, vx: 0, vz: 0, trafficWait: 20, stuck: 20, garrison: -1, path: [{ x: 10, z: 0 }] };
   const back = { id: 2, type: 'tank', owner: 2, hp: 1, x: 0, z: 0, garrison: -1, path: [{ x: 10, z: 0 }] };
   const jam = { tick: 0, units: new Map([[1, front], [2, back]]) }, through = [];
   const ctx = { defs: UNITS, dt: 0.05, grid: { candidates: (u, r, _, keep) => [front].filter(keep) }, clear: () => false, coverRank: () => 3, visible: () => true };

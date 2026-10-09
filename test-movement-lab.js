@@ -2,7 +2,7 @@ import assert from 'node:assert/strict';
 import { registerHooks } from 'node:module';
 import { execFileSync } from 'node:child_process';
 import { fileURLToPath } from 'node:url';
-import { MOVEMENT_SCENARIOS, MOVEMENT_TYPES } from './tools/movement-lab-scenarios.js';
+import { MOVEMENT_SCENARIOS, MOVEMENT_TYPES, createMovementCase } from './tools/movement-lab-scenarios.js';
 import { runMovementCase } from './tools/movement-lab-runner.js';
 
 const dropMiddleControl = process.argv.includes('--drop-middle-control');
@@ -29,6 +29,18 @@ for (const type of MOVEMENT_TYPES) for (const scenario of MOVEMENT_SCENARIOS) {
   const result = runMovementCase(sim, motion, scenario.id, { type });
   assert.deepEqual(result.failures, [], `${type}/${scenario.id}: ${result.failures.join('; ')}`);
   cases++;
+}
+// A hull takes a bend at the speed it can turn at instead of stopping to pivot on every corner of its route: a light
+// tank rounds the wall corner in under 9 s (11.6 s when it stopped at each bend).
+{
+  const fixture = createMovementCase(sim, 'corner', { type: 'tank' }), [unit] = fixture.g.units.values();
+  let finished = false;
+  for (let n = 0; n < 9 / sim.TICK && !finished; n++) {
+    fixture.advance();
+    const goal = fixture.goals.get(unit.id);
+    finished = !!goal && !unit.path.length && !unit.worldGoal && Math.abs(unit.moveSpeed) < 0.1 && Math.hypot(unit.x - goal.x, unit.z - goal.z) < 0.5;
+  }
+  assert.ok(finished, 'a light tank rounds the wall corner within 9 s');
 }
 for (const type of Object.keys(motion.VEHICLE_PROFILES)) {
   const def = sim.UNITS[type], profile = motion.VEHICLE_PROFILES[type];

@@ -14,7 +14,7 @@ import { supportedSections, validateStructures, STRUCTURE_LIMITS } from './struc
 import { DEBRIS_LIMITS, SECTION_MASS, wreckMass, debrisBody, stepDebris, settleDebris, debrisRow } from './debris-motion.js';
 import { navigationLeg } from './navigation.js';
 import { tierOf, techCost, techMul, TECH } from './tech.js';
-import { isGroundVehicle, movementProfile, bodyRadius, vehiclePositionClear, sweptVehicleClear, vehicleStep, vehicleNavigationView, vehicleDestinationClear, segmentCliffClear } from './vehicle-motion.js';
+import { isGroundVehicle, movementProfile, bodyRadius, vehiclePositionClear, sweptVehicleClear, vehicleStep, vehicleNavigationView, vehicleDestinationClear, segmentCliffClear, angleDelta } from './vehicle-motion.js';
 import { trafficStep, rememberTrafficPosition, trafficWins, TRAFFIC } from './local-traffic.js';
 import { initializeUnit, tickReserves, consumeDrivingFuel, consumeAmmo, canFire, shortageRate, recoveryRate } from './logistics.js';
 import { setupConvoys, stepConvoys, convoyDeath, commandConvoy, logisticsSnapshot, supportProvision } from './supply-convoys.js';
@@ -5346,9 +5346,10 @@ export function step(g) {
     const traffic = def.naval || def.structure ? { goal: u.path[0], blocked: false } : trafficStep(g, u, u.path[0], {
       defs: UNITS, grid: gridFor(g), dt, visible: v => seenBy(g, u.owner, v.id), friend: v => allied(g, u.owner, v.owner),
       clear: (a, b) => walkable(trafficView(), a, b, blockOf(def), groundVehicle ? bodyRadius(def) : 0.9),
+      open: (x, z) => { const view = trafficView(), c = cellOf(view, x, z); return c >= 0 && !(view.flags[c] & blockOf(def)); },
       coverRank: at => def.infantry ? coverRank(trafficView(), at, u.hitFrom) : 3,
     });
-    const stalledRoute = (groundVehicle || def.infantry && !traffic.blocked && !traffic.yielding) && u.stuck > 0.75;
+    const stalledRoute = (groundVehicle || def.infantry && !traffic.blocked && !traffic.yielding) && u.stuck > 0.75 && !traffic.waiting;
     if (!(u.convoy && !u.convoy.manual) && (traffic.replan || stalledRoute) && u.repath <= 0) {
       const goal = u.worldGoal ?? u.amove ?? u.path.at(-1);
       if (goal) {
@@ -5404,8 +5405,14 @@ export function step(g) {
         u.trafficWait = (u.trafficWait ?? 0) + dt;
       }
       u.travelDir = next.travelDir;
-      const nextLeg = route[1], straightLeg = nextLeg && Math.abs(Math.atan2(Math.sin(Math.atan2(nextLeg.z - route[0].z, nextLeg.x - route[0].x) - u.travelDir), Math.cos(Math.atan2(nextLeg.z - route[0].z, nextLeg.x - route[0].x) - u.travelDir))) < 0.2;
-      if (route.length && dist(u, route[0]) < (straightLeg ? Math.max(0.12, Math.abs(u.moveSpeed) * dt * 1.5) : 0.12) && (straightLeg || Math.abs(u.moveSpeed) < 1.5) && !traffic.yielding && !u.motionClearance) u.path.shift();
+      // A bend is taken at speed (vehicleStep brakes to it): turn onto the next leg a little early, or just past the
+      // waypoint, where the hull has a clear straight line to the next one; otherwise on reaching the waypoint.
+      const nextLeg = route[1], near = route.length ? dist(u, route[0]) : Infinity, pace = Math.abs(u.moveSpeed);
+      const bend = nextLeg ? Math.abs(angleDelta(u.travelDir, Math.atan2(nextLeg.z - route[0].z, nextLeg.x - route[0].x))) : Math.PI;
+      const lead = bend < Math.PI / 2 ? pace / movementProfile(u.type, def).hullTurn * Math.tan(bend / 2) : 0;
+      const passed = near < 2 && Math.cos(Math.atan2(u.z - route[0]?.z, u.x - route[0]?.x) - u.travelDir) > 0;
+      const reached = near < Math.max(0.12, pace * dt * 1.5) || nextLeg && (near < lead || passed) && walkable(trafficView(), u, nextLeg, blockOf(def), bodyRadius(def));
+      if (reached && !traffic.yielding && !u.motionClearance) u.path.shift();
     } else {
       // Infantry responds on the command tick. Naval motion keeps its original class rules.
       if (def.infantry && !traffic.yielding) {

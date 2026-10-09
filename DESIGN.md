@@ -1651,6 +1651,55 @@ ghost 27 to 29%, without the slide 5 to 8%. Holding units at a full gate, stoppi
 another (instead of both) and shorter back-up moves made no difference and were dropped. All ghosting (spawn, traffic,
 bodies) is between allies (`allied`, your own units included), never enemies.
 
+Queues at gaps (2026-10-09): friends whose routes run the same way over the next 8 m queue instead of negotiating
+(`trafficStep`). One clearly in front (within 60 degrees of a unit's own travel) is waited for; one behind is ignored;
+one alongside is ordinary traffic, so of two that meet side by side in a gap's mouth the one already in it goes. When
+each sees the other in front, the first to wait holds and the other goes (`queuedBehind`, followed down the line so
+no ring of waiting units forms). Queue waiting does not age priority or lead to a ghost. If the one in front is stuck
+(over 1 s) without waiting on anyone, it is likely stuck on the one waiting, which then gives way with the usual
+maneuver. Before, every hull at a gap's mouth saw the others as oncoming, dodged sideways (the one in front backed
+out for the one behind), and after 3 s they all ghosted in at once and locked together.
+
+Bends at speed (2026-10-09): `vehicleStep` brakes for each bend within 40 m of route to the speed it can be taken at
+(`turnSpeed`: the arc, radius speed / hullTurn, may stray `CORNER_BULGE` 0.4 m off the line; a quarter turn or more
+is a stop and pivot), not to a stop, and drives while turning on such an arc where it used to wait for the hull to
+point within 0.16 rad (0.45 wheeled). The sim moves on to the next leg early (by speed / hullTurn x tan(bend / 2)) or
+just past the waypoint, where the remembered terrain gives the hull a clear straight line to the next one, and
+otherwise on reaching the waypoint at any speed. Swept hull checks still refuse any step into a wall. Movement lab
+completion times summed over the nine vehicle types: wall corner 120 to 76 s, cliff ramp 231 to 165 s, reverse around
+a new obstacle 170 to 135 s, road bends 146 to 121 s, the rest 0 to 14% faster; all 264 cases still pass.
+
+One-lane turns (2026-10-09): a vehicle with an oncoming friend (any unit heading the other way within 32 m ahead)
+looks along its route for ground too narrow for two of its hulls to pass (open width across the route under twice
+the hull width plus twice the body radius plus 1.5 m, on remembered terrain; `LANE`). From 16 m beyond its own length
+short of such a stretch until its nose is in, it holds while an oncoming friend is in the stretch, or is on its way
+(not waiting on anyone) and nearer the 2 m cell at the stretch's middle (ties to the lower id), so both sides agree.
+A holder still gives way to anyone that runs into it, and one coming through treats a unit holding for it as its own
+to pass. Hold distance (two-way tanks, all through, 20 seeds): 4 m 13, 8 m 20 (56 s), 12 m 20 (40 s), 16 m 20 (38 s).
+Without the shared middle cell each side measured differently and both held; without requiring the nearer one to be
+on its way, two columns each held for the other's waiting head. Cost, measured paired in one process (each version
+twice, stepping the same seeded match in turn, main-thread CPU): the first version made the six-AI Massive Conquest
+step 16% slower (117 s against 101 s over 6000 ticks). Two thirds of that were route searches (22% more): a unit
+waiting in a queue or holding short counted as stuck and searched for a new route every second; such waits now
+return `waiting` and skip that. The rest was the 32 m scan for oncoming units on every tick; now the route is searched
+for a one-lane stretch only every half second or on a new route (`laneScan`), and oncoming units only within holding
+distance of one. After: Massive Conquest +1.7% (the two copies of one version differ by up to 2.6%), late armor
+Horde wave on Stalingrad Factory +5.7% (0.36 ms a tick), 48 tanks and 24 squads crossing three gaps both ways +5.4%
+(65 of 72 across in 90 s against 17). Tried and dropped: counting each second held as 1.5 m nearer the stretch, so a
+holder far back is not passed over (one medium seed of 20 waited 35 s); with it, two-way tanks fell to 10 of 20.
+
+Measures (`drills/gap-column.js`: twelve units in a block sent 30 m past the only 6 m gap in a wall, shuffled per seed,
+all through within 90 s). One way, 40 seeds: light tanks 2 to 40 (median 45 s with queues alone, 24.5 s with bends),
+mediums 0 to 40, halftracks 12 to 40, trucks 22 to 40, rifles and tanks mixed 14 of 20 to 40 of 40. Rifles never used
+this (squads pass squads by soft separation) and stay at 40 of 40, 9 s. Half each way, 20 seeds: light tanks,
+halftracks and trucks 0 to 20, mediums 0 to 19 (tanks 34 s, trucks 28 s), mixed 16 to 20, rifles 20. Late armor Horde
+wave (wave 12, four defenders), vehicles under 10% closer to the bunker 60 s after walking on and not fighting:
+Stalingrad Factory 6.0% to 2.4% (19 seeds; 8% with queues alone), Bastogne 1% to 0%, Hill 112 0% (3 seeds each).
+Tried and dropped: ghosting a queue that has not moved for 10 s (mediums through the gap 20 to 16 of 20), and
+ordering a pair along the sum of both headings (a leader drove into a follower beside it). Left for later: a one-lane
+stretch longer than the 32 m look-ahead is seen only in part, so two columns can still meet deep inside one. Not
+measured: whether a fast unit right behind a slower friend on the same route now trails it where it used to pass.
+
 Bridge group recovery (2026-10-05): same-direction infantry on or beside a bridge or ford keep lateral soft
 separation without letting it undo their attempted forward steps. Infantry within 1 m of an intermediate
 waypoint may continue to the next one only when its complete segment clears remembered terrain and wire.

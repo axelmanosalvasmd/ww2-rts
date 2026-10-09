@@ -5,6 +5,29 @@ AI-vs-AI runs (see DESIGN.md for the balance log). Add new entries under **Unrel
 
 ## Unreleased
 
+- Vehicles sent through a narrow gap form a line instead of jamming its mouth. Friends heading the same way now
+  queue: the one behind waits its turn instead of dodging sideways, and of two that arrive side by side the one
+  already in the mouth goes first. Before, every tank at the mouth treated the others as oncoming traffic, the one in
+  front backed out of the way of the one behind, and they ended up locked together.
+- Vehicles take bends at speed instead of stopping to turn on the spot at every corner of their route. A hull brakes
+  only as much as the bend needs (a gentle bend at full speed, a sharp one slowly, a quarter turn or more still a
+  stop), turns while it drives, and cuts onto the next leg early where the ground it remembers is clear for its hull.
+  In the movement lab: wall corner 37% faster, cliff ramp 29%, road bends 17%, every case still passing.
+- Two columns sent through the same one-lane gap take turns. A vehicle whose route runs through ground too narrow for
+  two hulls to pass holds about 16 m short of it while an oncoming friend (a squad too) is in it, or is nearer it
+  and on its way; the stretch empties, then it goes. Before, the two leading vehicles met nose to nose in the gap.
+- Measured with the new drill `drills/gap-column.js` (twelve units sent through a 6 m gap in a wall, all through within
+  90 s). One way, 40 seeds: light tanks 2 to 40 (median 24.5 s), mediums 0 to 40, halftracks 12 to 40, trucks 22 to
+  40, rifles 40 to 40 (squads already passed each other, 9 s). Half each way, 20 seeds: light tanks,
+  halftracks and trucks 0 to 20, mediums 0 to 19 (tanks 34 s), rifles and tanks mixed 16 to 20. Late armor Horde waves, vehicles
+  stuck near their gate after 60 s: Stalingrad Factory 6.0% to 2.4% (19 seeds), Bastogne 1% to 0%, Hill 112 0%. The
+  changes cost +1.7% of simulation time in the six-AI Massive benchmark and +5.7% in a late armor Horde wave
+  (measured paired in one process; the first version cost +16%, mostly from waiting vehicles searching for new routes
+  every second, now skipped). New checks "A tank group files through a narrow gap", "Tanks crossing a narrow
+  gap both ways take turns" and a wall-corner time in `test-movement-lab.js`.
+  The Horde check's gridlocked tank fixture now marks the front tank stuck, as the sim does: behind a stuck friend
+  you still ghost through after 3 s, behind one just waiting its turn you wait. Left for later: a long one-lane
+  stretch (over 32 m) is only seen in part, so two columns can still meet deep inside one.
 - Classic balance re-measured over 60 free-for-alls with the 40-minute limit: USA 37%, Germany 35%, USSR 28% of
   decisive matches (three draws), all inside 25-42%. The earlier 30-match reading of USA 43% was noise.
 

@@ -79,28 +79,34 @@ export function segmentCliffClear(g, from, to, cell = 2) {
   return x === ex && y === ey;
 }
 
+// How fast a hull may drive while turning through angle: slow enough that its arc (radius speed / hullTurn) strays
+// at most CORNER_BULGE metres off the straight line. A quarter turn or more is a stop and pivot.
+export const CORNER_BULGE = 0.4;
+export const turnSpeed = (profile, angle) => angle >= Math.PI / 2 ? 0 : angle < 1e-3 ? Infinity : profile.hullTurn * CORNER_BULGE / (1 - Math.cos(angle));
 // Return a candidate transform. Contacts may reduce it, but cannot increase its speed.
 export function vehicleStep(u, def, path, topSpeed, dt, reverse = false) {
   const profile = movementProfile(u.type, def), wp = path[0], speed = u.moveSpeed ?? 0;
-  let bearing = u.travelDir ?? u.rot, remaining = 0;
+  // Leave one discrete step of braking room instead of chasing a point just passed.
+  const brakeStep = profile.braking * dt / 2, reach = (distance, end) => Math.sqrt(2 * profile.braking * distance + (end + brakeStep) ** 2) - brakeStep;
+  let bearing = u.travelDir ?? u.rot, arrivalSpeed = Infinity;
   if (wp) {
+    // Brake for each bend ahead to the speed it can be taken at, and to a stop at the end of the route.
     bearing = Math.atan2(wp.z - u.z, wp.x - u.x);
-    let at = u;
-    for (let i = 0; i < path.length; i++) {
-      const p = path[i], incoming = Math.atan2(p.z - at.z, p.x - at.x);
+    let at = u, remaining = 0;
+    for (let i = 0; i < path.length && arrivalSpeed > 0; i++) {
+      const p = path[i], incoming = Math.atan2(p.z - at.z, p.x - at.x), next = path[i + 1];
       remaining += Math.hypot(p.x - at.x, p.z - at.z); at = p;
-      const next = path[i + 1];
-      if (next && Math.abs(angleDelta(incoming, Math.atan2(next.z - p.z, next.x - p.x))) > 0.2) break;
+      const bend = next ? Math.abs(angleDelta(incoming, Math.atan2(next.z - p.z, next.x - p.x))) : Math.PI;
+      if (bend > 0.2) arrivalSpeed = Math.min(arrivalSpeed, reach(remaining, turnSpeed(profile, bend)));
+      if (remaining > 40) break;
     }
   }
   const hullGoal = reverse ? bearing + Math.PI : bearing;
   const error = Math.abs(angleDelta(u.rot, hullGoal)), rot = wp ? turnAngle(u.rot, hullGoal, profile.hullTurn * dt) : u.rot;
-  const alignment = Math.max(0, Math.cos(error));
-  // Leave one discrete step of braking room instead of chasing a point just passed.
-  const brakeStep = profile.braking * dt / 2;
-  const arrivalSpeed = Math.sqrt(2 * profile.braking * remaining + brakeStep * brakeStep) - brakeStep;
+  const alignment = Math.max(0, Math.cos(error)), toPoint = wp ? Math.hypot(wp.x - u.x, wp.z - u.z) : 0;
   let desired = wp ? Math.min(topSpeed * (reverse ? profile.reverseSpeed : 1), arrivalSpeed) * alignment : 0;
-  if (error > (profile.tracked ? 0.16 : 0.45)) desired = 0;
+  // Drive while turning only on an arc tight enough to stay near the line and still pass through the waypoint.
+  desired = Math.min(desired, turnSpeed(profile, error), error > 1e-3 ? profile.hullTurn * toPoint / (2 * Math.sin(Math.min(error, Math.PI / 2))) : Infinity);
   if (reverse) desired = -desired;
   const increasing = desired !== 0 && (!speed || Math.sign(desired) === Math.sign(speed)) && Math.abs(desired) > Math.abs(speed);
   const rate = increasing ? (reverse ? profile.reverseAcceleration : profile.acceleration) : profile.braking;
