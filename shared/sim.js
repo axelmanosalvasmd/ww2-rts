@@ -2325,7 +2325,7 @@ function nearCover(g, u) {
   const c = Math.floor(u.z / CELL) * g.w + Math.floor(u.x / CELL);
   if (SOLID.has(g.chars[c + 1]) || SOLID.has(g.chars[c - 1]) || SOLID.has(g.chars[c + g.w]) || SOLID.has(g.chars[c - g.w])) return true;
   if (WALLS.has(g.chars[c + g.w + 1]) || WALLS.has(g.chars[c + g.w - 1]) || WALLS.has(g.chars[c - g.w + 1]) || WALLS.has(g.chars[c - g.w - 1])) return true; // a house corner
-  return gridFor(g).candidates(u, 3.5, false, v => v !== u && !v.air && !UNITS[v.type].infantry, true).some(v => dist(u, v) < 3.5);
+  return gridFor(g).some(u, 3.5, v => v !== u && !v.air && !UNITS[v.type].infantry && dist(u, v) < 3.5, true);
 }
 export const vet = (u) => (UNITS[u.type].cost ? CFG.vetXp.filter(k => u.xp >= k * UNITS[u.type].cost).length : 0); // free units (the bunker) never rank up
 const cellCenter = (g, c) => ({ x: (c % g.w + 0.5) * CELL, z: (Math.floor(c / g.w) + 0.5) * CELL });
@@ -2500,8 +2500,8 @@ function registerBridgeSection(g, c) {
 function occupiedVehicleCell(g, c, list) {
   const at = cellCenter(g, c);
   const radius = g.worldFootprintRadius ??= Math.max(...Object.values(UNITS).map(def => def.radius ?? 0));
-  return gridFor(g).candidates(at, radius + CELL, false, undefined, true).some(u => u.hp > 0 && !u.air && !u.riding && !UNITS[u.type].infantry && !UNITS[u.type].structure
-    && Math.abs(u.x - at.x) < UNITS[u.type].radius + CELL / 2 && Math.abs(u.z - at.z) < UNITS[u.type].radius + CELL / 2);
+  return gridFor(g).some(at, radius + CELL, u => u.hp > 0 && !u.air && !u.riding && !UNITS[u.type].infantry && !UNITS[u.type].structure
+    && Math.abs(u.x - at.x) < UNITS[u.type].radius + CELL / 2 && Math.abs(u.z - at.z) < UNITS[u.type].radius + CELL / 2, true);
 }
 function failWorldSection(g, section, list, direction) {
   if (section.state === 'failed') return;
@@ -4131,7 +4131,7 @@ function stepGate(g, u, dt) {
   if ((u.gateT = (u.gateT ?? 0) - dt) > 0) return;
   u.gateT = 0.5;
   const c = u.cells[0], { shut } = UNITS[u.type].gate;
-  const near = (r, f) => gridFor(g).candidates(u, r, false, v => v.hp > 0 && !v.air && !v.riding && !UNITS[v.type].building && f(v)).length > 0;
+  const near = (r, f) => gridFor(g).some(u, r, v => v.hp > 0 && !v.air && !v.riding && !UNITS[v.type].building && f(v));
   const foe = near(u.open === false ? shut + 4 : shut, v => !allied(g, v.owner, u.owner));
   const open = !foe || (u.open !== false && near(3, v => dist(v, u) < CELL * 0.7 + (UNITS[v.type].radius ?? 1)));
   if (open === u.open) return;
@@ -5066,6 +5066,7 @@ function stepWorldDebris(g, dt) {
 function separateCrowds(g, list) {
   const order = new Map(list.map((u, i) => [u.id, i])), maxRadius = Math.max(0, ...list.map(u => UNITS[u.type].radius));
   const sep = new SpatialGrid(g.units, 4); // fine 4 m cells: this query is tiny and runs for every unit
+  const nearby = []; // scoped to this separation pass, never shared with nested queries
   const nearCrossing = u => {
     const c = cellOf(g, u.x, u.z), x = c % g.w, y = Math.floor(c / g.w);
     for (let ny = Math.max(0, y - 1); ny <= Math.min(g.h - 1, y + 1); ny++)
@@ -5078,7 +5079,7 @@ function separateCrowds(g, list) {
     if (a.garrison >= 0 || a.air || a.riding || a.rail) continue;
     const grid = sep, size = grid.size;
     let x0 = Math.floor((a.x - radius) / size), x1 = Math.floor((a.x + radius) / size), z0 = Math.floor((a.z - radius) / size), z1 = Math.floor((a.z + radius) / size);
-    let candidates = grid.candidates(a, radius, true, b => order.get(b.id) > i);
+    let candidates = grid.candidates(a, radius, true, b => order.get(b.id) > i, false, nearby);
     for (let k = 0; k < candidates.length; k++) {
       const b = candidates[k], j = order.get(b.id), min = (UNITS[a.type].radius + UNITS[b.type].radius) * 0.8;
       if (a.garrison >= 0 || b.garrison >= 0 || a.air || b.air || b.riding || b.rail) continue;
@@ -5112,7 +5113,7 @@ function separateCrowds(g, list) {
       const nx0 = Math.floor((a.x - radius) / size), nx1 = Math.floor((a.x + radius) / size), nz0 = Math.floor((a.z - radius) / size), nz1 = Math.floor((a.z + radius) / size);
       if (nx0 !== x0 || nx1 !== x1 || nz0 !== z0 || nz1 !== z1) {
         x0 = nx0; x1 = nx1; z0 = nz0; z1 = nz1;
-        candidates = grid.candidates(a, radius, true, next => order.get(next.id) > j); k = -1;
+        candidates = grid.candidates(a, radius, true, next => order.get(next.id) > j, false, nearby); k = -1;
       }
     }
   }

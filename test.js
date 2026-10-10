@@ -6555,6 +6555,30 @@ await check("Unit models (client/unit-models.js)", async () => {
   assert.ok(gunner.chestDrop > 0.08 && gunner.handMove > 0.25, `a dead gunner is not frozen on an empty grip (chest ${gunner.chestDrop.toFixed(3)}, hands ${gunner.handMove.toFixed(3)})`);
   console.log(`fallen versus aim passed: rifle chest ${rifleman.chestDrop.toFixed(3)} elbows ${rifleman.elbowMove.toFixed(3)} barrel shift ${rifleman.barrel.shift.toFixed(3)} dot ${rifleman.barrel.dot.toFixed(3)}; ranger chest ${ranger.chestDrop.toFixed(3)} elbows ${ranger.elbowMove.toFixed(3)} barrel shift ${ranger.barrel.shift.toFixed(3)} dot ${ranger.barrel.dot.toFixed(3)}; mg chest ${gunner.chestDrop.toFixed(3)} hands ${gunner.handMove.toFixed(3)}`);
 });
+await check("Spatial existence queries stop at the first live match", async () => {
+  const a = { id: 1, owner: 0, x: -16, z: 0 }, b = { id: 2, owner: 0, x: -15, z: 0 };
+  const units = new Map([[a.id, a], [b.id, b]]), grid = new SpatialGrid(units);
+  let visits = 0;
+  assert.equal(grid.some(a, 2, u => { visits++; return u === a; }), true);
+  assert.equal(visits, 1, 'existence queries do not inspect later candidates');
+  units.delete(a.id);
+  assert.equal(grid.some(a, 2, u => u === a), false, 'deleted records cannot match');
+  assert.equal(grid.some(a, 2, u => u === b), true);
+  b.x = 80; grid.update(b);
+  assert.equal(grid.some(a, 2), false, 'moving out of the queried buckets removes the match');
+  assert.equal(grid.some(b, 0), true, 'zero radius includes the current bucket');
+  const output = [a, a];
+  assert.equal(grid.candidates(b, 0, true, undefined, false, output), output, 'callers can reuse a result buffer');
+  assert.deepEqual(output, [b], 'reused results discard previous entries');
+  assert.deepEqual(grid.candidates(a, 0, false, undefined, false, output), [], 'empty queries clear a reused buffer');
+  assert.equal(grid.some(b, 0, () => true, true), grid.candidates(b, 0, false, undefined, true).length > 0, 'heavy-only existence uses the same buckets');
+  const replacement = { ...b };
+  units.set(b.id, replacement);
+  assert.equal(grid.some(b, 0), false, 'replaced records cannot match before their update');
+  grid.update(replacement);
+  assert.equal(grid.some(b, 0, u => u === replacement), true, 'replacement updates are visible');
+});
+
 // Spatial queries keep the brute-force order, including borders, duplicate positions and exact ties.
 await check("Spatial queries keep the brute-force order, including borders, duplicate positions and exact ties", async () => {
   let seed = 0x519ac;

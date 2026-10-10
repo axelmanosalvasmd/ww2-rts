@@ -5,6 +5,14 @@ AI-vs-AI runs (see DESIGN.md for the balance log). Add new entries under **Unrel
 
 ## Unreleased
 
+- Nearby-unit queries do less allocation without changing unit order or gameplay. Candidate results are converted
+  in place, crowd separation reuses one result buffer per pass, and gate/occupancy checks stop at the first match.
+  Three interleaved baseline/current runs of each six-AI Massive benchmark (6,000 ticks) reduced the median mean
+  tick cost from 3.084 to 2.965 ms in Classic (3.85%) and 6.456 to 6.357 ms in Conquest (1.52%) on this Linux host,
+  Node 26.7.0. Every paired final-state hash and random-call count matched. These are headless CPU measurements,
+  not browser FPS or network measurements. A focused spatial-query check protects early exit, result reuse and
+  stale-record handling; existing ordering and dense-separation checks remain unchanged.
+
 - Merging the gap traffic work with the unit shapes: its new `queuedBehind` and `laneScan` are declared in
   `spawnUnit` too. The shape check in test.js caught the first (two unit shapes after a seeded match), a scan of four
   modes the second.

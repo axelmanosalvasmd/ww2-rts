@@ -38,18 +38,38 @@ export class SpatialGrid {
     return [...(this.owners.get(owner) ?? [])].filter(record => this.units.get(record.unit.id) === record.unit)
       .sort((a, b) => a.order - b.order).map(record => record.unit);
   }
-  candidates(at, radius, ordered = true, match = () => true, heavyOnly = false) {
-    const result = [], size = this.size, buckets = heavyOnly ? this.heavyBuckets : this.buckets;
-    for (let z = Math.floor((at.z - radius) / size); z <= Math.floor((at.z + radius) / size); z++) {
+  candidates(at, radius, ordered = true, match = () => true, heavyOnly = false, result = []) {
+    result.length = 0;
+    const size = this.size, buckets = heavyOnly ? this.heavyBuckets : this.buckets;
+    const x0 = Math.floor((at.x - radius) / size), x1 = Math.floor((at.x + radius) / size);
+    const z1 = Math.floor((at.z + radius) / size);
+    for (let z = Math.floor((at.z - radius) / size); z <= z1; z++) {
       const row = buckets.get(z);
       if (!row) continue;
-      for (let x = Math.floor((at.x - radius) / size); x <= Math.floor((at.x + radius) / size); x++) {
+      for (let x = x0; x <= x1; x++) {
         const bucket = row.get(x);
         if (bucket) for (const record of bucket) if (this.units.get(record.unit.id) === record.unit && match(record.unit)) result.push(record);
       }
     }
     if (ordered && result.length > 1) result.sort((a, b) => a.order - b.order);
-    return result.map(record => record.unit);
+    // Convert in place: no second result allocation or map callback per candidate.
+    for (let i = 0; i < result.length; i++) result[i] = result[i].unit;
+    return result;
+  }
+  // Existence checks need neither a candidate array nor insertion-order sorting.
+  some(at, radius, match = () => true, heavyOnly = false) {
+    const size = this.size, buckets = heavyOnly ? this.heavyBuckets : this.buckets;
+    const x0 = Math.floor((at.x - radius) / size), x1 = Math.floor((at.x + radius) / size);
+    const z1 = Math.floor((at.z + radius) / size);
+    for (let z = Math.floor((at.z - radius) / size); z <= z1; z++) {
+      const row = buckets.get(z);
+      if (!row) continue;
+      for (let x = x0; x <= x1; x++) {
+        const bucket = row.get(x);
+        if (bucket) for (const record of bucket) if (this.units.get(record.unit.id) === record.unit && match(record.unit)) return true;
+      }
+    }
+    return false;
   }
   radius(at, radius, match = () => true) {
     return this.candidates(at, radius, true, u => Math.hypot(u.x - at.x, u.z - at.z) <= radius && match(u));
