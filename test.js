@@ -58,7 +58,7 @@ const childFiles = runFiles(['test-audit-commands.mjs', 'test-audit-combat.mjs',
     'test-world-conquest.js', 'test-world-teams.js', 'test-world-acceptance.js', 'test-world-observation.js', 'test-world-movement.js', 'test-world-river.js', 'test-world-scenery.js',
     'test-engine-controls.js', 'test-engine-world.js', 'test-engine-movement.js', 'test-movement-lab.js', 'test-engine-projectiles.js', 'test-engine-scenarios.js', 'test-engine-ai.js', 'test-ai-human.js', 'test-engine-acceptance.js', 'test-engine-presentation.mjs',
     'test-engine-spectators.js', 'test-engine-scenario-start.js', 'test-engine-breaches.mjs', 'test-engine-authoring.js', 'test-engine-vehicle-pose.mjs', 'test-engine-ai-privacy.js', 'test-engine-localization.mjs',
-    'test-engine-debris.js', 'test-engine-traffic-privacy.js', 'test-engine-horde-queue.js'], { cwd: import.meta.dirname });
+    'test-engine-debris.js', 'test-engine-traffic-privacy.js', 'test-engine-horde-queue.js', 'test-discovery-client.mjs', 'test-terrain-chunks.mjs', 'test-structure-chunks.mjs'], { cwd: import.meta.dirname });
 
 
 // Sight rays ending on a cell border must stop at the destination, including mixed-sign diagonals.
@@ -5465,6 +5465,31 @@ await check("Visible soldiers and roof bars remain selectable when the logical s
   assert.equal(selectionDragged({ x: 10, y: 10 }, { clientX: 50, clientY: 50 }), true, 'release distance identifies a drag even without a move event');
   assert.equal(selectionDragged({ x: 10, y: 10 }, { clientX: 13, clientY: 14 }), false, 'small mouse jitter remains a click');
 });
+// A camouflaged squad turns see-through but keeps its uniform: three's material clone() drops onBeforeCompile,
+// which left the men in bare cream vertex colors, still drawing themselves after the camouflage ended.
+await check('Camouflaged soldiers keep their uniform texture and rejoin the crowd', async () => {
+  const THREE = await import('three');
+  const { buildModel, camouflage } = await import('./client/unit-models.js');
+  const fragment = material => {
+    const shader = { uniforms: {}, vertexShader: THREE.ShaderLib.standard.vertexShader, fragmentShader: THREE.ShaderLib.standard.fragmentShader };
+    material.onBeforeCompile(shader, null);
+    return shader.fragmentShader;
+  };
+  for (const type of ['sniper', 'commando']) {
+    const v = { type, root: new THREE.Group(), models: [] };
+    buildModel(v, v.root, { uniform: 0x6b7248, vehicle: 0x59623d, color: 0x3b73d6 }, UNITS[type].faction ?? 0, UNITS[type]);
+    const men = v.models.flatMap(man => man.userData.meshes).filter(m => m.userData.baked?.defaultAttributeValues?.modelUV);
+    assert.ok(men.length, `${type}: the men use the textured infantry paint`);
+    camouflage(v, true);
+    for (const m of men) {
+      assert.ok(m.material.transparent && m.material.opacity === 0.45, `${type}: hidden men are see-through`);
+      assert.match(fragment(m.material), /uInfantryColor/, `${type}: hidden men keep the uniform atlas`);
+      assert.equal(m.material.customProgramCacheKey(), m.userData.baked.customProgramCacheKey(), `${type}: same shader program as the uniform`);
+    }
+    camouflage(v, false);
+    assert.ok(men.every(m => m.material === m.userData.baked), `${type}: revealed men go back to the shared crowd material`);
+  }
+});
 // Rendered bounds cover posed sniper boots and the ends of rooftop bars, without selecting gaps or rings.
 await check("Rendered bounds cover posed sniper boots and the ends of rooftop bars, without selecting gaps or rings", async () => {
   const THREE = await import('three');
@@ -8792,14 +8817,14 @@ await check("Path regions relabelled around a few changed cells match a whole-ma
   }
 });
 
-await check("Structure pieces rebuilt in the parts a change reaches match a whole rebuild", async () => {
+await check("Structure pieces rebuilt in the chunks a change reaches match a whole rebuild", async () => {
   // the pieces' materials paint canvas textures: a canvas that draws nothing but hands back pixel arrays
   const pixels = (x, y, w = 1, h = 1) => ({ width: w, height: h, data: new Uint8ClampedArray(Math.max(1, w * h) * 4) });
   const pen = new Proxy({}, { get: (_, k) => (k === 'getImageData' || k === 'createImageData' ? pixels : k === 'measureText' ? () => ({ width: 1 }) : () => pen), set: () => true });
   const saved = globalThis.document;
   globalThis.document ??= { createElement: () => ({ width: 0, height: 0, getContext: () => pen, toDataURL: () => '' }), createElementNS: () => ({ addEventListener() {}, removeEventListener() {}, setAttribute() {} }) };
   try {
-  const { buildStructures } = await import('./client/structures.js'), THREE = await import('three');
+  const { createStructures } = await import('./client/structures.js'), THREE = await import('three');
   const W = 80, H = 70, grid = Array.from({ length: H }, () => Array(W).fill('.')), orig = grid.map(row => row.join(''));
   for (let x = 4; x < 70; x++) grid[10][x] = 'H';
   for (let x = 20; x < 60; x++) grid[40][x] = '#';
@@ -8811,14 +8836,15 @@ await check("Structure pieces rebuilt in the parts a change reaches match a whol
   const housesOrig = orig.map((row, y) => row.split('').map((ch, x) => grid[y][x] === 'B' ? 'B' : ch).join(''));
   for (let x = 34; x < 37; x++) grid[66][x] = 'R'; // its far end already in ruins
   const meshes = group => Object.fromEntries(group.children.map(m => [m.name, [...m.instanceMatrix.array.subarray(0, m.count * 16)].map(v => +v.toFixed(5))]));
-  const incremental = new THREE.Group(), fresh = new THREE.Group();
-  buildStructures(incremental, grid, housesOrig, () => 0);
+  const incremental = createStructures({ group: new THREE.Group(), grid, orig: housesOrig, hAt: () => 0 });
+  incremental.rebuild();
   const step = (cells, what) => {
-    buildStructures(incremental, grid, housesOrig, () => 0, undefined, undefined, undefined, { cells });
-    const got = meshes(incremental);
-    buildStructures(fresh, grid, housesOrig, () => 0);
-    assert.deepEqual(got, meshes(fresh), `pieces after ${what}`);
-    buildStructures(incremental, grid, housesOrig, () => 0); // the fresh build took the module's state: start again
+    incremental.update(cells);
+    const fresh = createStructures({ group: new THREE.Group(), grid, orig: housesOrig, hAt: () => 0 });
+    fresh.rebuild();
+    assert.ok(incremental.stats.lastChunks < Math.ceil(W / incremental.area) * Math.ceil(H / incremental.area), `${what} redid only some chunks`);
+    assert.deepEqual(meshes(incremental.group), meshes(fresh.group), `pieces after ${what}`);
+    fresh.clear();
   };
   // hedges and walls across a part's edge (x 31 to 33), a wall cell knocked out, wire cut
   for (const x of [31, 32, 33]) grid[5][x] = 'H';

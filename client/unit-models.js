@@ -12,7 +12,7 @@
 // (part(..., mat), see MATS in client/models/geom.js) and how much grime it has gathered (baked here, by height).
 import * as THREE from 'three';
 import { gfx } from './gfx.js';
-import { modelMaterial } from './model-textures.js';
+import { modelMaterial, modelVariant } from './model-textures.js';
 import { MATS, UNSET, matId, baseMat } from './models/geom.js';
 import { soldier, AIM_SHIFT } from './models/infantry.js';
 import { infantryMaterial, loadInfantryTextures } from './infantry-material.js';
@@ -658,6 +658,18 @@ export function drawSoldiers(units, camera) {
     v.crew.visible = self;
   }
   for (const p of pools.values()) { p.mesh.count = p.n; p.mesh.instanceMatrix.needsUpdate = true; p.mesh.morphTexture.needsUpdate = true; }
+}
+
+// See-through camouflage for a still sniper or commando squad (main.js, flag 256): one shared see-through copy per
+// material, and the man's own material back once revealed so he rejoins the crowd (drawSoldiers).
+const seeThrough = new WeakMap();
+export function camouflage(v, on) {
+  v.models.forEach(man => man.traverse(o => {
+    if (!o.isMesh) return;
+    const own = o.userData.plain ??= o.material;
+    if (on && !seeThrough.has(own)) seeThrough.set(own, modelVariant(own, { transparent: true, opacity: 0.45 }));
+    o.material = on ? seeThrough.get(own) : own;
+  }));
 }
 
 // Corpses: the soldier's own fallen build, instanced, up to CAP bodies in all. One mesh per uniform, so a battle

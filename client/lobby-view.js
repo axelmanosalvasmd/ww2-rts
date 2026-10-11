@@ -69,7 +69,7 @@ export function createLobbyView(host) {
     world.add(out.relief.mesh);
     await step();
     const pieces = new THREE.Group(); world.add(pieces);
-    buildStructures(pieces, grid, map.rows, out.hAt, undefined, map.buildings);
+    out.pieces = buildStructures(pieces, grid, map.rows, out.hAt, undefined, map.buildings);
     await step();
     out.water = createWater(grid, map, out.hAt); if (out.water) world.add(out.water.mesh);
     await step();
@@ -86,7 +86,7 @@ export function createLobbyView(host) {
   function drop() {
     if (!built) return;
     gl?.scene.remove(built.world);
-    built.props?.dispose(); built.water?.dispose(); built.relief?.dispose();
+    built.props?.dispose(); built.water?.dispose(); built.relief?.dispose(); built.pieces?.clear();
     built.ground.tex.needsUpdate = true; // the next match uploads the shared ground canvas whole
     built = null;
   }

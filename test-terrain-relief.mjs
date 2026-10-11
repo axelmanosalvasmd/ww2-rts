@@ -332,10 +332,10 @@ for (const low of [true, false]) {
     } finally { relief.dispose(); }
   }
 
-  // A taller hilly map: an update rebuilds only the rows it reaches and copies the rest, and still matches a fresh
-  // build after changes at the top, the bottom and the middle, cliffs and a crater included (#58).
+  // A taller hilly map in 8-cell chunks: an update redraws only the chunks it reaches and keeps the rest, and still
+  // matches a fresh build after changes at the top, the bottom and the middle, cliffs and a crater included (#58).
   const tallMap = makeMap(24, 48, (x, z) => Math.round(1.5 + 1.5 * Math.sin(x * 0.7) + 2 * Math.sin(z * 0.31)));
-  const tallGrid = tallMap.rows.map(row => [...row]), tall = createRelief(tallMap, tallGrid, { low });
+  const tallGrid = tallMap.rows.map(row => [...row]), tall = createRelief(tallMap, tallGrid, { low, chunk: 8 });
   try {
     // a line of eight craters is a bombing run: its lips sway up to six cells from the craters (scarRun)
     const run = Array.from({ length: 8 }, (_, i) => [4 + i, 20 + (i >> 2), -1, '+']);
@@ -347,8 +347,8 @@ for (const low of [true, false]) {
       }
       tall.update(cells.map(([x, z]) => z * tallMap.w + x));
       const [x, z] = cells[0];
-      assert.ok(tall.stats.rowsRebuilt < tallMap.h, `${quality}: an update at row ${z} rebuilt ${tall.stats.rowsRebuilt} of ${tallMap.h} rows`);
-      const fresh = createRelief(tallMap, tallGrid, { low });
+      assert.ok(tall.stats.chunksMarked > 0 && tall.stats.chunksMarked < tall.stats.chunks, `${quality}: an update at row ${z} redrew ${tall.stats.chunksMarked} of ${tall.stats.chunks} chunks`);
+      const fresh = createRelief(tallMap, tallGrid, { low, chunk: 8 });
       try { checkSameRelief(tall, fresh, tallMap, `${quality} tall update ${x},${z}`); } finally { fresh.dispose(); }
     }
   } catch (error) {

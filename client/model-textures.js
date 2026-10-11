@@ -143,6 +143,18 @@ export function modelMaterial(material, { mat = 'armor-paint', grime = false } =
   return material;
 }
 
+// A copy of a patched material with other settings (see-through camouflage). three's clone() keeps neither
+// onBeforeCompile nor the program key, so a plain clone draws bare vertex colors without textures or atlas.
+export function modelVariant(material, settings) {
+  const copy = Object.assign(material.clone(), settings);
+  copy.onBeforeCompile = material.onBeforeCompile;
+  copy.customProgramCacheKey = material.customProgramCacheKey;
+  copy.defaultAttributeValues = material.defaultAttributeValues;
+  const entry = patched.find(e => e.material === material);
+  if (entry) { const own = { material: copy, grime: entry.grime }; patched.push(own); defines(own); }
+  return copy;
+}
+
 function patch(shader, own) {
   Object.assign(shader.uniforms, shared, own);
   shader.vertexShader = shader.vertexShader

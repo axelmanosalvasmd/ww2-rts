@@ -446,7 +446,9 @@ async function loadRoom(room, id, host) {
   room.players = players;
   restoreAIMemories(g, ai);
   for (let i = 0; i < players.length; i++) if (!players[i].ai) { resetAI(g, i); resetCommander(g, i); }
-  room.state = 'play';
+  // claimed like startMatch: the room loop skips a starting room, so the loaded match neither steps nor sends a
+  // snapshot before beginMatch has sent everyone its start
+  room.state = 'play'; room.starting = {};
   await beginMatch(room, map, g, host);
   return true;
 }

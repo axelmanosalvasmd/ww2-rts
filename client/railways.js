@@ -91,5 +91,5 @@ export function createRailways({ parent, hAt, w, center = () => null }) {
     return g;
   }
   function dispose() { for (const m of meshes) m.dispose?.(); parent.remove(group); }
-  return { cells, frame, dispose, has: (c) => track.has(c) || stations.has(c), track: () => track.keys(), stations: () => [...stations.entries()].map(([c, region]) => ({ region, x: (c % w + 0.5) * CELL, z: (Math.floor(c / w) + 0.5) * CELL })), group };
+  return { cells, frame, dispose, has: (c) => track.has(c) || stations.has(c), onTrack: (c) => track.has(c), track: () => track.keys(), stations: () => [...stations.entries()].map(([c, region]) => ({ region, x: (c % w + 0.5) * CELL, z: (Math.floor(c / w) + 0.5) * CELL })), group };
 }

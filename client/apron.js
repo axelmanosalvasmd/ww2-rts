@@ -318,13 +318,14 @@ export function createApron({ ground, relief, grid, map }) {
     uniforms.uMetersB.value.set(fresh.meters[3], fresh.meters[4], fresh.meters[5]);
   });
 
-  let watched = relief.mesh.geometry;
+  // the relief's logical version (client/relief.js): it changes with every terrain update, before the drawn chunks
+  let watched = relief.version ?? relief.mesh.geometry;
   return {
     mesh, fogMesh, overlayGeometry, loaded,
     // Call once a frame: follows craters that change the edge heights and cells that change the paint.
     update() {
-      if (relief.mesh.geometry !== watched) {
-        watched = relief.mesh.geometry;
+      if ((relief.version ?? relief.mesh.geometry) !== watched) {
+        watched = relief.version ?? relief.mesh.geometry;
         let changed = false;
         for (let c = 0; c < N && !changed; c++) {
           const h = relief.hAt(Math.min(W, Math.max(0, cols[c].x)), Math.min(H, Math.max(0, cols[c].z)));

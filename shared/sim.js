@@ -2272,26 +2272,25 @@ const coverQ = (g, c) => {
 // chars: the map's cells in row order, w: its width (the client draws each type from the same answer)
 // buildings: the map's list; an entry on any cell of a house gives the whole house that type by name
 export function houseKinds(chars, w, buildings = []) {
-  const kind = new Uint8Array(chars.length);
-  houseKindsWhere(c => chars[c] === 'B', chars.length, w, buildings, null, (q, k) => { for (const c of q) kind[c] = k; });
+  const kind = new Uint8Array(chars.length), seen = new Uint8Array(chars.length), named = houseNames(buildings, w), isB = c => chars[c] === 'B';
+  for (let c0 = 0; c0 < kind.length; c0++) {
+    if (chars[c0] !== 'B' || seen[c0]) continue;
+    const { cells, kind: k } = houseBlock(isB, kind.length, w, c0, seen, named);
+    for (const c of cells) kind[c] = k;
+  }
   return kind;
 }
-// houseKinds over the cells where isB(c), for the connected blocks that hold one of seeds (ascending cells; null: every
-// cell): each(cells, kind) per block. The client redoes only the blocks a newly found house cell touches.
-export function houseKindsWhere(isB, n, w, buildings = [], seeds = null, each) {
-  const seen = new Uint8Array(n);
-  const named = new Map(buildings.map(b => [b.y * w + b.x, CFG.houses.findIndex(h => h.name === b.kind)]).filter(([, k]) => k >= 0));
-  const visit = (c0) => {
-    if (!isB(c0) || seen[c0]) return;
-    const q = [c0]; seen[c0] = 1;
-    for (let i = 0; i < q.length; i++) for (const n2 of [q[i] - 1, q[i] + 1, q[i] - w, q[i] + w]) {
-      if (n2 < 0 || n2 >= n || seen[n2] || !isB(n2) || (Math.abs(n2 - q[i]) === 1 && Math.floor(n2 / w) !== Math.floor(q[i] / w))) continue;
-      seen[n2] = 1; q.push(n2);
-    }
-    each(q, q.reduce((a, c) => named.get(c) ?? a, CFG.houses.findLastIndex(h => q.length >= h.min)));
-  };
-  if (seeds) for (const c of seeds) visit(c);
-  else for (let c = 0; c < n; c++) visit(c);
+// the named buildings' cells and their house types (an index into CFG.houses)
+export const houseNames = (buildings = [], w) => new Map(buildings.map(b => [b.y * w + b.x, CFG.houses.findIndex(h => h.name === b.kind)]).filter(([, k]) => k >= 0));
+// one house block: its cells from c0 (its first cell in row order) and its type, as houseKinds works it out
+// (client/structures.js redoes only the blocks a change touches)
+export function houseBlock(isB, n, w, c0, seen, named) {
+  const q = [c0]; seen[c0] = 1;
+  for (let i = 0; i < q.length; i++) for (const c of [q[i] - 1, q[i] + 1, q[i] - w, q[i] + w]) {
+    if (c < 0 || c >= n || seen[c] || !isB(c) || (Math.abs(c - q[i]) === 1 && Math.floor(c / w) !== Math.floor(q[i] / w))) continue;
+    seen[c] = 1; q.push(c);
+  }
+  return { cells: q, kind: q.reduce((a, c) => named.get(c) ?? a, CFG.houses.findLastIndex(h => q.length >= h.min)) };
 }
 // a structure cell's full hit points
 export const physicalWorldCell = (g, c) => composeWorldCell(g.ground?.[c] ?? g.chars[c], g.objects?.[c] ?? '.');
