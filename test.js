@@ -8744,6 +8744,35 @@ console.log('all infantry model checks passed');
 // Shell holes, rubble and burnt ground are painted by the client, then read back. A filled cell square fails.
 // The map's pieces are rebuilt only in the parts a change reaches (32 by 32 cells, plus the map-wide houses, rubble and
 // bridges when one of those is involved), and come out exactly as a whole rebuild draws them (#58).
+await check("Path regions relabelled around a few changed cells match a whole-map flood", () => {
+  // a small hilly maze (many narrow passages to cut and open): after each crater, wall run or single cell, the same
+  // cells share a region as after a full flood
+  let seed = 5; const rnd = () => (seed = (seed * 1103515245 + 12345) >>> 0) / 4294967296;
+  const W = 48, H = 48, g = { w: W, h: H, flags: new Uint16Array(W * H), height: new Int8Array(W * H), infantryRegionVersion: 0, vehicleRegionVersion: 0 };
+  for (let c = 0; c < W * H; c++) { if (rnd() < 0.38) g.flags[c] = sim.MOVE; g.height[c] = Math.floor(rnd() * 3); }
+  const samePartition = (a, b) => {
+    const there = new Map(), back = new Map();
+    for (let c = 0; c < a.length; c++) {
+      if ((a[c] < 0) !== (b[c] < 0)) return false;
+      if (a[c] < 0) continue;
+      if (there.has(a[c]) ? there.get(a[c]) !== b[c] : back.has(b[c])) return false;
+      there.set(a[c], b[c]); back.set(b[c], a[c]);
+    }
+    return true;
+  };
+  for (const block of [sim.MOVE, sim.MOVE | sim.VBLOCK]) {
+    sim.regionsFor(g, block);
+    for (let t = 0; t < 300; t++) {
+      const kind = rnd(), x = 1 + Math.floor(rnd() * (W - 2)), y = 1 + Math.floor(rnd() * (H - 2));
+      if (kind < 0.3) for (let dy = -1; dy <= 1; dy++) for (let dx = -1; dx <= 1; dx++) g.height[(y + dy) * W + x + dx] += rnd() < 0.5 ? -2 : 2;
+      else if (kind < 0.6) { const len = 1 + Math.floor(rnd() * 12), across = rnd() < 0.5; for (let i = 0; i < len; i++) g.flags[across ? y * W + Math.min(W - 1, x + i) : Math.min(H - 1, y + i) * W + x] ^= sim.MOVE; }
+      else g.flags[y * W + x] ^= sim.MOVE;
+      g.infantryRegionVersion++; g.vehicleRegionVersion++;
+      assert.ok(samePartition(sim.regionsFor(g, block), sim.regionsFor({ ...g }, block)), `regions after change ${t} (mask ${block})`);
+    }
+  }
+});
+
 await check("Structure pieces rebuilt in the parts a change reaches match a whole rebuild", async () => {
   // the pieces' materials paint canvas textures: a canvas that draws nothing but hands back pixel arrays
   const pixels = (x, y, w = 1, h = 1) => ({ width: w, height: h, data: new Uint8ClampedArray(Math.max(1, w * h) * 4) });

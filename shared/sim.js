@@ -2888,7 +2888,60 @@ function nearestFree(g, x, z, block = MOVE, origin = null) {
 
 const pathRegions = new WeakMap();
 const regionDx = [-1, 1, 0, 0, -1, 1, -1, 1], regionDy = [0, 0, -1, 1, -1, -1, 1, 1];
-function regionsFor(g, block) {
+// Can a unit step from free cell c to free cell n (direction k, offset as in regionsFor)? Flat maps use the four sides.
+function regionEdge(c, n, k, x, W, N, flags, heights, block) {
+  const dx = regionDx[k];
+  if (dx < 0 && x === 0 || dx > 0 && x === W - 1 || n < 0 || n >= N || flags[n] & block) return false;
+  if (!heights) return true;
+  const height = heights[c], nextHeight = heights[n];
+  if (Math.abs(nextHeight - height) > 1) return false;
+  if (k < 4) return true;
+  const a = c + dx, b = c + regionDy[k] * W;
+  if (flags[a] & block || flags[b] & block) return false;
+  const ah = heights[a], bh = heights[b];
+  return Math.abs(ah - height) <= 1 && Math.abs(bh - height) <= 1 || Math.abs(ah - nextHeight) <= 1 && Math.abs(bh - nextHeight) <= 1;
+}
+// A few cells changed (a crater, a wall knocked down): flood only the cells within two of them, and give each piece found
+// the label of the regions it reaches outside (joining them when it reaches several, or a new label when none). Edges
+// further out are unchanged, so this is exact unless one region is reached by two pieces: it may have split, and the
+// caller floods the whole map (false). Labels only ever mean "same region or not".
+function relabelNear(entry, changed, flags, heights, block, W, N) {
+  const { labels } = entry, piece = new Map(), directions = heights ? 8 : 4, offsets = [-1, 1, -W, W, -W - 1, -W + 1, W - 1, W + 1];
+  for (const d of changed) {
+    const x = d % W, y = (d - x) / W;
+    for (let dy = -2; dy <= 2; dy++) for (let dx = -2; dx <= 2; dx++) {
+      const nx = x + dx, ny = y + dy;
+      if (nx >= 0 && nx < W && ny >= 0 && ny * W < N) piece.set(ny * W + nx, 0);
+    }
+  }
+  const reach = [null], owner = new Map(); // reach[p]: the outside labels piece p touches; owner: label -> piece
+  for (const seed of piece.keys()) {
+    if (piece.get(seed) !== 0 || flags[seed] & block) continue;
+    const p = reach.length, touched = new Set(), queue = [seed];
+    reach.push(touched); piece.set(seed, p);
+    for (let head = 0; head < queue.length; head++) {
+      const c = queue[head], x = c % W;
+      for (let k = 0; k < directions; k++) {
+        const n = c + offsets[k];
+        if (!regionEdge(c, n, k, x, W, N, flags, heights, block)) continue;
+        const inside = piece.get(n);
+        if (inside === 0) { piece.set(n, p); queue.push(n); }
+        else if (inside === undefined && labels[n] > 0 && !touched.has(labels[n])) {
+          if (owner.has(labels[n])) return false; // two pieces reach this region: it may have split
+          owner.set(labels[n], p); touched.add(labels[n]);
+        }
+      }
+    }
+  }
+  // each piece's label: the first region it reaches (the others join it) or a new one
+  const label = reach.map(t => (t?.size ? t.values().next().value : ++entry.fresh)), join = new Map();
+  for (let p = 1; p < reach.length; p++) for (const l of reach[p]) if (l !== label[p]) join.set(l, label[p]);
+  if (join.size) for (let c = 0; c < N; c++) { const to = join.get(labels[c]); if (to !== undefined) labels[c] = to; }
+  for (const [c, p] of piece) labels[c] = p ? label[p] : -1;
+  return true;
+}
+// regionsFor: a label per cell, the same for cells a unit with this block mask can walk between (-1: blocked).
+export function regionsFor(g, block) {
   let data = pathRegions.get(g);
   const version = block === MOVE ? g.infantryRegionVersion ?? 0 : block & LAND ? g.navalRegionVersion ?? 0 : g.vehicleRegionVersion ?? 0, W = g.w, N = W * g.h;
   if (!data || data.w !== W || data.h !== g.h) {
@@ -2896,14 +2949,18 @@ function regionsFor(g, block) {
   }
   let entry = data.masks.get(block);
   if (entry?.version === version) return entry.labels;
-  if (!entry) { entry = { labels: new Int32Array(N), version: -1, blocked: new Uint8Array(N), heights: new Int8Array(N) }; data.masks.set(block, entry); }
+  if (!entry) { entry = { labels: new Int32Array(N), version: -1, blocked: new Uint8Array(N), heights: new Int8Array(N), fresh: N }; data.masks.set(block, entry); }
   const { labels } = entry, flags = g.flags, heights = g.height, queue = buffersFor(N).freeQueue;
   // Regions follow only which cells block and their heights. Most version moves change neither (an observed path view
   // moves its versions for any remembered cell: wear, cover, a crater's material), so look before flooding again.
+  // A few changed cells (up to 64) are relabelled where they are; a full flood of a Huge World map took up to 23 ms (#58).
   if (entry.version >= 0) {
-    let c = 0;
-    while (c < N && entry.blocked[c] === (flags[c] & block ? 1 : 0) && entry.heights[c] === (heights ? heights[c] : 0)) c++;
-    if (c === N) { entry.version = version; return labels; }
+    const changed = [];
+    for (let c = 0; c < N && changed.length <= 64; c++) if (entry.blocked[c] !== (flags[c] & block ? 1 : 0) || entry.heights[c] !== (heights ? heights[c] : 0)) changed.push(c);
+    if (changed.length <= 64) {
+      for (const c of changed) { entry.blocked[c] = flags[c] & block ? 1 : 0; entry.heights[c] = heights ? heights[c] : 0; }
+      if (!changed.length || relabelNear(entry, changed, flags, heights, block, W, N)) { entry.version = version; return labels; }
+    }
   }
   for (let c = 0; c < N; c++) { entry.blocked[c] = flags[c] & block ? 1 : 0; entry.heights[c] = heights ? heights[c] : 0; labels[c] = flags[c] & block ? -1 : 0; }
   const offsets = [-1, 1, -W, W, -W - 1, -W + 1, W - 1, W + 1], directions = heights ? 8 : 4;

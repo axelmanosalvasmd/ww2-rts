@@ -5,6 +5,13 @@ AI-vs-AI runs (see DESIGN.md for the balance log). Add new entries under **Unrel
 
 ## Unreleased
 
+- Craters and knocked-down walls no longer make the server flood the whole map to work out which ground connects
+  (issue #58, B3). When up to 64 cells changed, only the cells within two of them are flooded again and joined to the
+  regions they reach; the whole map is flooded only when a region may have split. In a seeded six-AI World match
+  (3,000 ticks) the time spent on regions drops from 2.7 s to 0.28 s; the match, the Classic benchmark and the Conquest
+  benchmark end in exactly the same state as before. New check: regions after random craters, wall runs and single
+  cells on a small hilly maze match a whole-map flood.
+
 - Scouting or fighting among hedges, walls and houses no longer redraws every 3D piece on the map (issue #58, A2). The
   pieces are kept in 32 x 32 cell parts plus one part per house, and a change redoes only the parts within two cells of
   it; the house layout is redone only when a house cell appears or goes, and rubble and bridges are redone only where

@@ -1571,6 +1571,11 @@ the page. Adding text to the game means adding its Spanish to `client/es.js`.
   process is `server.js` with `WW2_SHARD` set and keeps today's room code unchanged. Shared state has one owner: the
   front merges the processes' `/api/rooms`, writes Horde records they send, and tells them when a map is saved.
   `MAX_ROOMS` applies per game process. A game process that exits is started again after a second.
+- Path regions (2026-10-11, issue #58): `regionsFor` labels which cells a block mask can walk between. After a version
+  bump it compares each cell's blocked bit and height with its last pass; up to 64 changed cells are relabelled by
+  `relabelNear` (flood the cells within two of them, join each piece to the outside regions it reaches, fresh labels
+  above N), and a region reached by two pieces (a possible split) or more changes floods the whole map. Labels only
+  mean same or different region; nothing may read their values.
 - Structure pieces (2026-10-11, issue #58): `client/structures.js` keeps its instances in parts, one per house
   (by rectangle, kind and type) and one per 32 x 32 cells for everything else (hedges, walls, trenches, wire, traps,
   mines, hospitals, rubble, bridges), and joins them into one InstancedMesh per kind. `buildStructures(..., { cells })`
