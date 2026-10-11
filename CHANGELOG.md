@@ -5,6 +5,12 @@ AI-vs-AI runs (see DESIGN.md for the balance log). Add new entries under **Unrel
 
 ## Unreleased
 
+- The test suite no longer loads copies of `shared/sim.js` rebuilt from its text to reach private functions (issue #58,
+  D5). The simulation exports the few it tests as `internals`, and the separation check, which used to splice an old
+  copy of the separation loop into a copy of `step()`, now runs `separateCrowds` and the old loop side by side for
+  twenty passes (rewritten, same positions compared). Left for later: `test-world-discovery.js` and
+  `test-engine-controls.js` still load copies of `client/ground.js` and `client/alerts.js`.
+
 - Craters and knocked-down walls no longer make the server flood the whole map to work out which ground connects
   (issue #58, B3). When up to 64 cells changed, only the cells within two of them are flooded again and joined to the
   regions they reach; the whole map is flooded only when a region may have split. In a seeded six-AI World match

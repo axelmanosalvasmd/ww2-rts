@@ -6141,3 +6141,7 @@ export function snapshotFor(g, slot, shots, cells = [], cache) {
       }),
   };
 }
+
+// Internals the test suite checks directly (test.js), so it calls the real module instead of loading a copy of this
+// file's text with extra exports. Not for game code: these may change shape with the simulation.
+export const internals = { updateVision, nearCover, behindCover, entryCell, aimPoint, flagsAt, dist, spawnUnit, placeBuilding, wreckBuilding, setCell, logCell, pickTarget, breathe, separateCrowds, shovedFromCover };

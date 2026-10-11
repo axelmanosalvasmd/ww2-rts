@@ -3259,12 +3259,8 @@ await check("Formation facing client dispatch", async () => {
   assert.ok(!Object.hasOwn(mixed.sent[0].commands[1], 'face'), 'the grouped rally ignores facing');
 });
 
-// A copy of shared/sim.js loaded from a data: URL (to reach its internals). Its relative imports (story.js, grid.js)
-// point at the real files, so the copy shares those modules with the normal import.
-const simCopy = (source) => import('data:text/javascript;base64,' + Buffer.from(source.replace(/from '\.\/([\w-]+\.js)'/g, (_, file) => `from '${new URL(`./shared/${file}`, import.meta.url)}'`)).toString('base64'));
-// Fixed Massive fixture for exact comparisons and repeatable subsystem timings.
-const massiveInternals = await simCopy(readFileSync('shared/sim.js', 'utf8')
-  + '\nexport { updateVision, nearCover, behindCover, aimPoint, flagsAt, dist, spawnUnit, placeBuilding, wreckBuilding, setCell, logCell, pickTarget, breathe };');
+// The simulation with the internals it exports for tests (sim.internals).
+const massiveInternals = { ...sim, ...sim.internals };
 // A trench dug in sight reaches the snapshot even when a moving unit's path view read the full terrain memory first.
 await check("A trench dug in sight reaches the snapshot even when a moving unit's path view read the full terrain memory fi", async () => {
   const S = massiveInternals, g = S.createGame(JSON.parse(readFileSync('maps/default.json', 'utf8')), ['A', 'B'], false, [0, 1]);
@@ -3494,8 +3490,8 @@ await check("test.js:3331", async () => {
 });
 
 // Reference before the cheap separation gates. Pair order and floating-point pushes are unchanged.
-const referenceSeparation = `
-  const list = [...g.units.values()];
+const referenceSeparation = (g) => {
+  const { flagsAt, shovedFromCover } = massiveInternals, levelAt = sim.levelAt, list = [...g.units.values()];
   for (let i = 0; i < list.length; i++) for (let j = i + 1; j < list.length; j++) {
     const a = list[i], b = list[j], min = (UNITS[a.type].radius + UNITS[b.type].radius) * 0.8;
     if (a.garrison >= 0 || b.garrison >= 0 || a.air || b.air) continue;
@@ -3506,17 +3502,13 @@ const referenceSeparation = `
     const push = (min - d) / 2 * (sa || sb ? 1 : 0.5), px = dx / d * push, pz = dz / d * push;
     // a squad holding its cover is not pushed off it, and does not push back at a friend walking past
     const ha = !sa && shovedFromCover(g, a, a.x - px, a.z - pz), hb = !sb && shovedFromCover(g, b, b.x + px, b.z + pz);
-    if (!sa && !ha && !(hb && a.path.length) && !(flagsAt(g, a.x - px, a.z - pz) & blockOf(UNITS[a.type])) && Math.abs(levelAt(g, a.x - px, a.z - pz) - levelAt(g, a.x, a.z)) <= 1) { a.x -= px; a.z -= pz; }
-    if (!sb && !hb && !(ha && b.path.length) && !(flagsAt(g, b.x + px, b.z + pz) & blockOf(UNITS[b.type])) && Math.abs(levelAt(g, b.x + px, b.z + pz) - levelAt(g, b.x, b.z)) <= 1) { b.x += px; b.z += pz; }
+    if (!sa && !ha && !(hb && a.path.length) && !(flagsAt(g, a.x - px, a.z - pz) & sim.blockOf(UNITS[a.type])) && Math.abs(levelAt(g, a.x - px, a.z - pz) - levelAt(g, a.x, a.z)) <= 1) { a.x -= px; a.z -= pz; }
+    if (!sb && !hb && !(ha && b.path.length) && !(flagsAt(g, b.x + px, b.z + pz) & sim.blockOf(UNITS[b.type])) && Math.abs(levelAt(g, b.x + px, b.z + pz) - levelAt(g, b.x, b.z)) <= 1) { b.x += px; b.z += pz; }
   }
-`;
+};
 
-// Twenty ticks of a seeded crowded infantry army preserve the old separation coordinates.
-await check("Twenty ticks of a seeded crowded infantry army preserve the old separation coordinates", async () => {
-  // step() calls separateCrowds right after making its unit list: the reference takes the place of both
-  const source = readFileSync('shared/sim.js', 'utf8'), start = source.indexOf('  const list = [...g.units.values()];\n  separateCrowds(g, list);'), end = source.indexOf('  // grenades:', start);
-  assert.ok(start > 0 && end > start, 'the separation call and the grenades comment are still in step()');
-  const old = await simCopy(source.slice(0, start) + referenceSeparation + source.slice(end));
+// Twenty passes of separation over a seeded crowded infantry army preserve the old separation coordinates.
+await check("Twenty ticks of a seeded crowded infantry army preserve the old separation coordinates", () => {
   const g = massiveFixture(); g.players.forEach(p => { p.team = 0; }); g.mode.teams = 1;
   let seed = 123456;
   const random = () => { seed = Math.imul(seed, 1664525) + 1013904223 | 0; return (seed >>> 0) / 4294967296; };
@@ -3531,14 +3523,11 @@ await check("Twenty ticks of a seeded crowded infantry army preserve the old sep
   }
   const ground = [...g.units.values()].filter(u => !UNITS[u.type].structure && !u.air && u.garrison < 0);
   ground[1].x = ground[0].x + 0.05; ground[1].z = ground[0].z; // compare the unchanged nonzero-distance infantry rule
-  const expected = structuredClone(g), savedRandom = Math.random;
-  try {
-    for (let tick = 0; tick < 20; tick++) {
-      seed = tick + 1; Math.random = random; step(g);
-      seed = tick + 1; Math.random = random; old.step(expected);
-      assert.deepEqual([...g.units.values()].map(u => [u.id, u.x, u.z]), [...expected.units.values()].map(u => [u.id, u.x, u.z]), `crowded positions exactly match after tick ${tick + 1}`);
-    }
-  } finally { Math.random = savedRandom; }
+  const expected = structuredClone(g);
+  for (let pass = 0; pass < 20; pass++) {
+    massiveInternals.separateCrowds(g, [...g.units.values()]); referenceSeparation(expected);
+    assert.deepEqual([...g.units.values()].map(u => [u.id, u.x, u.z]), [...expected.units.values()].map(u => [u.id, u.x, u.z]), `crowded positions exactly match after pass ${pass + 1}`);
+  }
 });
 
 // Units and the game keep the shape they were created with (spawnUnit and createGame declare every property), so V8
@@ -3582,7 +3571,7 @@ await check("Snapshot cover hints retain the old terrain, vehicle, structure and
 // cells a squad can garrison, and directional cover from walls and vehicles toward a shooter.
 await check("The cover preview (client/cover-preview.js) reads cover with the sim's own rules", async () => {
   const preview = await import('./client/cover-preview.js');
-  const real = await simCopy(readFileSync('shared/sim.js', 'utf8') + '\nexport { behindCover, entryCell };');
+  const real = massiveInternals;
   const rows = [...empty];
   rows[3] = '...#....H....R......'; rows[5] = '....BBB...TTT..+....'; rows[6] = '....BBB.....Y...X...';
   rows[7] = '....BB....F=....##..'; rows[15] = '...O.....Q..........'; rows[9] = '..H.H....WWW........'; rows[12] = '.........#.#........';
