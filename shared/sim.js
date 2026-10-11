@@ -1167,6 +1167,9 @@ function setupWorld(g, map) {
   const error = validateWorldMap(map); if (error) throw new Error(error);
   g.mode = { kind: 'world', teams: new Set(g.players.map(p => p.team)).size, total: map.world.total };
   g.world = { size: map.world.size, total: map.world.total, seed: map.world.seed, regionMap: map.world.regionMap ? Int16Array.from(map.world.regionMap) : null, biomes: map.world.biomes ? Uint8Array.from(map.world.biomes) : null, regionCells: map.world.regionCells, memory: new Map(), regions: map.world.regions.map(r => ({ ...r, x: (r.x + 0.5) * CELL, z: (r.y + 0.5) * CELL, bounds: r.bounds.map(v => v * CELL), team: r.home === undefined ? -1 : g.players[r.home].team, progress: r.home === undefined ? 0 : 1, capper: -1 })) };
+  // every cell whose remembered World row may have changed, in order (worldTerrainMemory reads only these and newly
+  // visible cells); journalBase is the position of its first entry since the last trim
+  g.cellJournal = []; g.journalBase = 0;
   if (map.world.rails) setupRails(g, map.world.rails);
   // An array property keeps the hostile local actor out of lobby seats, results and competitive team loops.
   Object.defineProperty(g.players, '-1', { value: { slot: -1, name: 'Local defenders', team: -1, faction: 0, spawn: { x: 0, z: 0 }, visible: new Set(), mp: 0, mun: 0, fuel: 0 }, configurable: true });
@@ -1386,21 +1389,57 @@ function sameValue(a, b) {
 }
 function worldTerrainMemory(g, team) {
   const f = teamFog(g, team), all = g.world.memory;
-  let m = all.get(team); if (!m) all.set(team, m = { cells: new Map(), regions: new Map(), wrecks: new Map(), key: null, version: 0 });
+  let m = all.get(team); if (!m) all.set(team, m = { cells: new Map(), regions: new Map(), wrecks: new Map(), key: null, version: 0, log: [], logBase: 0 });
+  m.log ??= []; m.logBase ??= 0; // memories from saves made before the change log
   const key = `${g.visionTick}:${g.terrainVersion ?? 0}:${g.reveal ? 1 : 0}`;
   if (m.key !== key) {
     m.key = key;
-    const cells = g.reveal ? g.chars.keys() : f.visibleCells;
-    for (const c of cells) {
+    const visit = c => {
       const row = seenWorldCell(g, c, team), old = m.cells.get(c);
-      if (!old || !sameValue(old, row)) { m.cells.set(c, row); m.version++; }
+      if (!old || !sameValue(old, row)) { m.cells.set(c, row); m.version++; m.log.push(c); }
+    };
+    const J = g.cellJournal, full = !J || g.reveal || !m.seen || m.journalAt < g.journalBase;
+    if (full) for (const c of g.reveal ? g.chars.keys() : f.visibleCells) visit(c);
+    else {
+      // A cell that stayed in view and is not in the journal reads the same as on the last pass: only cells newly in
+      // view and cells changed since (journaled) are read again. Rereading every visible cell every pass cost about a
+      // fifth of the World server's time (#58).
+      const stamp = m.stamp ??= new Uint32Array(g.w * g.h), mark = ++m.pass;
+      for (const c of f.visibleCells) if (!m.seen[c]) { stamp[c] = mark; visit(c); }
+      for (let i = m.journalAt - g.journalBase; i < J.length; i++) {
+        const c = J[i];
+        if (f.vis[c] && stamp[c] !== mark) { stamp[c] = mark; visit(c); }
+      }
+    }
+    if (J) {
+      (m.seen ??= new Uint8Array(g.w * g.h)).set(f.vis);
+      m.journalAt = g.journalBase + J.length; m.pass ??= 0;
+      trimJournal(g);
     }
   }
   return m;
 }
+// Drop the journal entries every team memory has read. A memory left far behind reads its whole view again instead.
+function trimJournal(g) {
+  const J = g.cellJournal;
+  if (J.length < 65536) return;
+  let at = g.journalBase + J.length;
+  for (const m of g.world.memory.values()) if (m.journalAt !== undefined) at = Math.min(at, m.journalAt);
+  if (J.length > 1 << 20) at = g.journalBase + J.length;
+  if (at > g.journalBase) { J.splice(0, at - g.journalBase); g.journalBase = at; }
+}
+// The rows this player has not been sent. Each player keeps its place in the memory's change log (worldTerrainAt), so a
+// snapshot reads only the rows changed since its last one instead of the whole memory (#58); a player whose place was
+// trimmed away, or a full read, walks the whole memory as before.
 function worldTerrainFor(g, slot, full) {
   const p = g.players[slot], m = worldTerrainMemory(g,p.team), sent = p.worldTerrainSent ??= new Map(), rows=[];
-  for (const [c,row] of m.cells) if (full || sent.get(c) !== row) { rows.push(row); sent.set(c,row); }
+  if (full || !(p.worldTerrainAt >= m.logBase)) { for (const [c,row] of m.cells) if (full || sent.get(c) !== row) { rows.push(row); sent.set(c,row); } }
+  else for (let i = p.worldTerrainAt - m.logBase; i < m.log.length; i++) {
+    const c = m.log[i], row = m.cells.get(c);
+    if (sent.get(c) !== row) { rows.push(row); sent.set(c,row); }
+  }
+  p.worldTerrainAt = m.logBase + m.log.length;
+  if (m.log.length > 4 * m.cells.size + 4096) { m.logBase += m.log.length; m.log = []; } // laggards read it whole once
   return rows;
 }
 export function worldMapFor(g, slot) {
@@ -2291,7 +2330,9 @@ const stateOf = (g, c) => packState(g.wear[c], g.burnt[c], g.cellHp[c], maxHp(g,
 export const startState = (ch, c) => packState(startWear(ch, c), 0, 1, 1);
 // tell the clients when a cell's state crosses into another step
 // (a look-only change: it does not move terrainVersion, see logCell)
-function touch(g, c) { const s = stateOf(g, c); if (s !== g.cellState[c]) { g.cellState[c] = s; logCell(g, c, [c, g.chars[c]], true); } }
+// touch follows every change of a cell's wear or damage: the World journal takes the cell even when its state is the same,
+// since the remembered row carries the exact wear
+function touch(g, c) { g.cellJournal?.push(c); const s = stateOf(g, c); if (s !== g.cellState[c]) { g.cellState[c] = s; logCell(g, c, [c, g.chars[c]], true); } }
 // how fast a unit moves on one cell (1 = open dry ground)
 function groundMul(g, c, veh) {
   const f = g.flags[c], w = g.wear ? g.wear[c] : 0, wet = g.wx ? g.wx.wet * (g.height && g.height[c] < 0 ? 2 : 1) : 0;
@@ -2594,6 +2635,7 @@ function logCell(g, c, change, look = false) {
   g.watchPending?.add(index); // the spectators' shared terrain memory (server.js)
   if (!look) g.terrainVersion = (g.terrainVersion ?? 0) + 1;
   g.newCells.push(latest);
+  g.cellJournal?.push(c);
 }
 
 // water within CFG.shoal cells of land or surf gets SHOAL (a breadth-first pass out from the shore)
@@ -4716,7 +4758,7 @@ function burn(g, list, dt) {
     const t = left - dt * (1 + 3 * rain);
     if (t > 0) { g.fires.set(c, t); continue; }
     g.fires.delete(c); g.burnt[c] = 1;
-    const section = g.structuralCells?.get(c); if (section && section.state !== 'failed') section.state = section.hp < section.maxHp ? 'damaged' : 'intact';
+    const section = g.structuralCells?.get(c); if (section && section.state !== 'failed') { section.state = section.hp < section.maxHp ? 'damaged' : 'intact'; g.cellJournal?.push(c); }
     if (ch === 'H' || ch === 'O') wreckCell(g, list, c, '.'); else touch(g, c);
   }
 }

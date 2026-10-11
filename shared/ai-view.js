@@ -128,10 +128,11 @@ export function viewFor(g, slot, memory = {}, cache) {
   if (g.players[-1]) players[-1] = g.players[-1];
   // World terrain comes from the team's memory (worldTerrainFor); the replay of every logged cell is Classic's only
   players[slot] = { ...seat, terrainMemory: memory.terrainCells, ...(!world && { terrainPending: new Set(g.cellLog.keys()) }),
-    ...(world && { worldTerrainSent: memory.worldTerrainSent ??= new Map() }) };
+    ...(world && { worldTerrainSent: memory.worldTerrainSent ??= new Map(), worldTerrainAt: memory.worldTerrainAt }) };
   const projection = { ...g, players, omitFogMask: true }; // omit browser masks without revealing terrain or effects
   const seed = first ? terrainFor(projection, slot, true) : [];
   const snap = snapshotFor(projection, slot, [], [], cache);
+  if (world) memory.worldTerrainAt = players[slot].worldTerrainAt; // the seat's place in the team memory's change log
   updateTerrain(memory, first ? [...seed, ...snap.cells] : snap.cells, g.w * g.h, world ? memory.bridgeCells : null);
   if (world) { memory.mapChars = memory.terrain.chars; memory.mapHeight = memory.terrain.height; }
   const view = {

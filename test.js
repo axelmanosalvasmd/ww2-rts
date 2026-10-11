@@ -3700,6 +3700,33 @@ await check("The preview marks only ground this side has explored (the server's 
 
 // World Conquest's fog: explored ground fades into ground never seen over a few cells, rounded, instead of a staircase
 // of black 2 m squares. Ground never seen stays fully dark, and the fog's own answers (seen, explored) do not change.
+// World terrain memory rereads only cells newly in view and cells journaled as changed, and ends up remembering exactly
+// what rereading every visible cell on every vision pass remembers (#58). Two seeded games run the same script: troops
+// march into unexplored ground, a crater is dug at their feet every 50 ticks, and snapshots are built as the server does.
+await check("World terrain memory rereads only new and changed cells and remembers what a full reread does", async () => {
+  const { generateWorldMap } = await import('./shared/world-conquest.js');
+  const play = journal => {
+    let seed = 4242; const random = Math.random;
+    Math.random = () => { let t = seed += 0x6D2B79F5; t = Math.imul(t ^ t >>> 15, t | 1); t ^= t + Math.imul(t ^ t >>> 7, t | 61); return ((t ^ t >>> 14) >>> 0) / 4294967296; };
+    try {
+      const g = createGame(generateWorldMap({ size: 'huge', seed: 31, players: 2, teams: [0, 1] }), ['A', 'B'], true, [0, 1], [0, 1], { mode: 'world', worldSize: 'huge' });
+      if (!journal) g.cellJournal = null;
+      const mine = [...g.units.values()].filter(u => u.owner === 0 && !UNITS[u.type].building);
+      sim.command(g, 0, { t: 'move', orders: mine.map(u => [u.id, u.x + 140, u.z + 60]) });
+      for (let t = 1; t <= 400; t++) {
+        sim.step(g);
+        if (t % 50 === 0) { const u = mine.find(v => v.hp > 0); if (u) sim.mutateWorldCell(g, Math.floor(u.z / CELL) * g.w + Math.floor(u.x / CELL) + 2, { ground: '+' }); }
+        if (t % 2 === 0) { const cache = snapshotCache(g); snapshotFor(g, 0, [], [], cache); snapshotFor(g, 1, [], [], cache); }
+      }
+      return g;
+    } finally { Math.random = random; }
+  };
+  const quick = play(true), full = play(false), memory = g => [...g.world.memory].sort((a, b) => a[0] - b[0]).map(([team, m]) => [team, [...m.cells].sort((a, b) => a[0] - b[0])]);
+  assert.ok(quick.world.memory.get(0).pass > 50, 'the journaled game reads cells incrementally');
+  assert.ok(memory(quick)[0][1].some(([, row]) => row[1] === '+'), 'a dug crater is remembered');
+  assert.deepEqual(memory(quick), memory(full), 'both games remember the same rows');
+});
+
 await check("World Conquest's fog fades explored ground into ground never seen", async () => {
   const { createFog } = await import('./client/fog.js'), W = 24, C = 12;
   const disc = r => Uint8Array.from({ length: W * W }, (_, c) => +(Math.hypot(c % W - C, Math.floor(c / W) - C) <= r));

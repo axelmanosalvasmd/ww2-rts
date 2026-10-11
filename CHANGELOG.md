@@ -5,6 +5,17 @@ AI-vs-AI runs (see DESIGN.md for the balance log). Add new entries under **Unrel
 
 ## Unreleased
 
+- World Conquest's server time is about halved (issue #58, B4). Each team's terrain memory reread and compared every
+  visible cell on every vision pass, and each snapshot walked a player's whole memory to find what it had not been
+  sent. Now cells are journaled as they change (every `logCell`, every wear or damage `touch`, a fire burning out), a
+  vision pass rereads only cells newly in view and journaled cells in view, and each player (AI seats included) keeps
+  its place in its team memory's change log, so a snapshot reads only rows changed since its last one. A seeded
+  six-AI World match of 6,000 ticks took 41 s on the Vostro against 83 s rereading everything, and ends with the same
+  memories and the same game state (also on the Mac, 2,400 and 6,000 ticks). Saved games carry the journal (trimmed
+  past 65,536 entries) and two bytes per cell per team. New check in test.js: two seeded World games, one journaled
+  and one rereading everything, march troops into unexplored ground and dig craters at their feet, and remember the
+  same rows (it fails when `logCell` stops journaling).
+
 - The server can run its rooms on every core (issue #58, B2): start it with `WW2_SHARDS=N` and the first process
   serves the pages, the maps and the public lobby list while N game processes run the rooms, each room in the process
   its code picks (server/shards.js), so a busy match no longer slows every other room down. On the Vostro (i5-12400)
@@ -47,11 +58,7 @@ AI-vs-AI runs (see DESIGN.md for the balance log). Add new entries under **Unrel
   views in World Conquest also stop building a set of every cell changed all match, which only Classic's terrain
   replay reads. A seeded six-AI World match (2,400 ticks) ends in the same state and ran in 17.1 s against 19.7 s;
   the 6-AI Massive Classic and Conquest benchmarks end in the same state as before.
-  Found and left for later: the team terrain memory (`worldTerrainMemory`, `seenWorldCell`, `sameValue`) rebuilds and
-  compares every visible cell's row on every vision pass, and `worldTerrainFor` walks every remembered cell for each
-  player on each snapshot (about 30% of the server's time in World Conquest together). Redoing only newly visible and
-  changed cells needs every write to a remembered cell's inputs to be journaled; mine detection (`mineSeen`), burning
-  sections settling, section repairs and removals, and new rails do not go through `logCell` today.
+  The team terrain memory found here (about 30% of the server's time in World Conquest) is the entry above.
 
 - Finding water no longer freezes the game (issue #58, A3). Every time scouting revealed more of a river or lake, the
   water was redone for the whole map: its mask (four texels a cell) blurred whole, its flow scanned the whole map for

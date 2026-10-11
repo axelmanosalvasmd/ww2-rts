@@ -1557,6 +1557,11 @@ is rewritten every frame. Terms: Manpower = Mano de obra (MO), Munitions = Munic
 the page. Adding text to the game means adding its Spanish to `client/es.js`.
 
 ### Runtime
+- World terrain memory (2026-10-11, issue #58): `g.cellJournal` lists every cell whose remembered row may have changed
+  (`logCell`, `touch`, a fire burning out). `worldTerrainMemory` rereads the cells newly in view (against the view at its
+  last pass, `m.seen`) and journaled cells in view; a memory behind the trimmed journal rereads its whole view.
+  `worldTerrainFor` keeps each player's place in the memory's change log (`worldTerrainAt`; AI views keep it in the
+  seat's AI memory). A new input to `seenWorldCell` must reach the journal, or memories go stale.
 - Game processes (2026-10-11, issue #58): `WW2_SHARDS=N` makes the started process a front that serves HTTP and the
   public lobby list and forwards each `/ws?room=code` upgrade to one of N forked game processes (`server/shards.js`,
   FNV-1a of the room code modulo N; the request line and headers are replayed and the sockets piped). Each game
