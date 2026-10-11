@@ -5,6 +5,15 @@ AI-vs-AI runs (see DESIGN.md for the balance log). Add new entries under **Unrel
 
 ## Unreleased
 
+- Scouting or fighting among hedges, walls and houses no longer redraws every 3D piece on the map (issue #58, A2). The
+  pieces are kept in 32 x 32 cell parts plus one part per house, and a change redoes only the parts within two cells of
+  it; the house layout is redone only when a house cell appears or goes, and rubble and bridges are redone only where
+  that changed their colours or stone decks. Huge World map, fully known, on the Mac: a 20-cell hedge and wall change
+  takes 1.1 to 1.4 ms instead of about 28 ms, a house cell falling 5.5 to 6.1 ms instead of 28 to 32 ms, and a newly
+  found house cell 15 to 17.5 ms. The client also stops copying every map row before each rebuild (only rows with
+  mines are rewritten). New check: pieces rebuilt part by part match a whole rebuild after hedge, wall, wire and house
+  changes, a terrace cell cleared and a house cell found.
+
 - Two steps toward clearer simulation modules (issue #58, C2 and C5), with the game unchanged (the Classic and Conquest
   benchmarks and a seeded six-AI World match end in exactly the same state): the seven places that each chose between
   World Conquest's team-memory terrain and the remembered map now ask one function, `knownTerrainFor`, so a new mode

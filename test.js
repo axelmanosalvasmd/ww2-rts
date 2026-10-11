@@ -8742,6 +8742,52 @@ await check("Infantry rigs must keep complete morph targets, one body per LOD, a
 console.log('all infantry model checks passed');
 
 // Shell holes, rubble and burnt ground are painted by the client, then read back. A filled cell square fails.
+// The map's pieces are rebuilt only in the parts a change reaches (32 by 32 cells, plus the map-wide houses, rubble and
+// bridges when one of those is involved), and come out exactly as a whole rebuild draws them (#58).
+await check("Structure pieces rebuilt in the parts a change reaches match a whole rebuild", async () => {
+  // the pieces' materials paint canvas textures: a canvas that draws nothing but hands back pixel arrays
+  const pixels = (x, y, w = 1, h = 1) => ({ width: w, height: h, data: new Uint8ClampedArray(Math.max(1, w * h) * 4) });
+  const pen = new Proxy({}, { get: (_, k) => (k === 'getImageData' || k === 'createImageData' ? pixels : k === 'measureText' ? () => ({ width: 1 }) : () => pen), set: () => true });
+  const saved = globalThis.document;
+  globalThis.document ??= { createElement: () => ({ width: 0, height: 0, getContext: () => pen, toDataURL: () => '' }), createElementNS: () => ({ addEventListener() {}, removeEventListener() {}, setAttribute() {} }) };
+  try {
+  const { buildStructures } = await import('./client/structures.js'), THREE = await import('three');
+  const W = 80, H = 70, grid = Array.from({ length: H }, () => Array(W).fill('.')), orig = grid.map(row => row.join(''));
+  for (let x = 4; x < 70; x++) grid[10][x] = 'H';
+  for (let x = 20; x < 60; x++) grid[40][x] = '#';
+  for (let x = 48; x < 56; x++) grid[20][x] = 'T';
+  for (let y = 50; y < 60; y++) grid[y][70] = 'X';
+  for (let y = 60; y < 63; y++) for (let x = 60; x < 63; x++) grid[y][x] = 'B';
+  for (let y = 30; y < 33; y++) for (let x = 5; x < 13; x++) grid[y][x] = 'B'; // a terrace far from it, reused as kept
+  for (let x = 26; x < 38; x++) grid[66][x] = 'B'; // a row of houses across a part's edge (x 32)
+  const housesOrig = orig.map((row, y) => row.split('').map((ch, x) => grid[y][x] === 'B' ? 'B' : ch).join(''));
+  for (let x = 34; x < 37; x++) grid[66][x] = 'R'; // its far end already in ruins
+  const meshes = group => Object.fromEntries(group.children.map(m => [m.name, [...m.instanceMatrix.array.subarray(0, m.count * 16)].map(v => +v.toFixed(5))]));
+  const incremental = new THREE.Group(), fresh = new THREE.Group();
+  buildStructures(incremental, grid, housesOrig, () => 0);
+  const step = (cells, what) => {
+    buildStructures(incremental, grid, housesOrig, () => 0, undefined, undefined, undefined, { cells });
+    const got = meshes(incremental);
+    buildStructures(fresh, grid, housesOrig, () => 0);
+    assert.deepEqual(got, meshes(fresh), `pieces after ${what}`);
+    buildStructures(incremental, grid, housesOrig, () => 0); // the fresh build took the module's state: start again
+  };
+  // hedges and walls across a part's edge (x 31 to 33), a wall cell knocked out, wire cut
+  for (const x of [31, 32, 33]) grid[5][x] = 'H';
+  grid[40][32] = '.'; grid[55][70] = '.';
+  step([5 * W + 31, 5 * W + 32, 5 * W + 33, 40 * W + 32, 55 * W + 70], 'hedges, a wall and wire');
+  // a house cell falls to rubble
+  grid[61][61] = 'R';
+  step([61 * W + 61], 'a house falling');
+  // a terrace cell is cleared down to bare ground: the houses beside it lose a party wall
+  grid[31][8] = '.';
+  step([31 * W + 8], 'a terrace cell cleared');
+  // a house cell found at the row's near end: the row is laid out again and the far end's rubble takes the new colours
+  grid[66][25] = 'B';
+  step([66 * W + 25], 'a house cell found');
+  } finally { if (saved === undefined) delete globalThis.document; }
+});
+
 await check("Shell holes, rubble and burnt ground are painted by the client, then read back", async () => {
   class ImageData {
     constructor(w, h) { this.width = w; this.height = h; this.data = new Uint8ClampedArray(w * h * 4); }
