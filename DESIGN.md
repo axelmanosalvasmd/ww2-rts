@@ -2308,7 +2308,7 @@ Formation settings live on the client and shape the slots it sends (the server k
 - Tighten and Spread (`[` and `]`) scale every gap from 1x to 2.5x and re-form the selection around its center, facing its last ordered facing, or up the screen.
 - March together (on by default) sends `together: true`: the server caps every unit of the order at the slowest one's speed (`u.pace`) until it arrives, attacks or retreats. Queued legs replay one unit at a time and do not keep the pace.
 - Snap to trenches (on by default): an infantry slot within 3 m of a trench cell no other slot took moves onto it.
-- A double right-click (two releases within 350 ms, 16 px) turns the selection in place toward the spot.
+- Repeated right-clicks keep issuing moves to the clicked destination, including Shift queueing and Ctrl attack-move. Facing is set by right-drag; double right-click no longer turns the selection in place or cancels its move.
 - Ctrl+number saves the formation settings with the group; recalling the group restores them. Facing is not saved.
 
 ## Behavior balance investigation (2026-10-01)

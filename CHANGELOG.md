@@ -5,6 +5,8 @@ AI-vs-AI runs (see DESIGN.md for the balance log). Add new entries under **Unrel
 
 ## Unreleased
 
+- Fixed: double right-click no longer cancels a move by turning units in place. Repeated clicks keep their destination, Shift queueing and Ctrl attack-move; right-drag still sets facing and width. Updated the Formation tooltip in English and Spanish and added a deterministic mouse-handler regression. Existing formation and facing tests remain.
+
 - Merging the gap traffic work with the unit shapes: its new `queuedBehind` and `laneScan` are declared in
   `spawnUnit` too. The shape check in test.js caught the first (two unit shapes after a seeded match), a scan of four
   modes the second.

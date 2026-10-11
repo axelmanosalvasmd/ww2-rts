@@ -839,7 +839,7 @@ export default {
   'Take cover ({0}): infantry run to the nearest trench, wall or rubble within {1} m. Shift+click queues it': 'A cubierto ({0}): la infantería corre a la trinchera, muro o escombros más cercanos a menos de {1} m. Shift+clic lo encola',
   'Unload': 'Descargar',
   'Unload ({0}): the squad inside gets out beside the halftrack. To board, right-click the halftrack with infantry selected': 'Descargar ({0}): el pelotón de dentro baja junto al semioruga. Para embarcar, clic derecho sobre el semioruga con infantería seleccionada',
-  'Formation: shape, spacing, marching together and snapping to trenches. Right-drag sets the facing and the width; double right-click turns to face a spot': 'Formación: forma, separación, marchar juntos y ajustar a trincheras. Arrastrar con clic derecho fija la orientación y el ancho; doble clic derecho gira hacia un punto',
+  'Formation: shape, spacing, marching together and snapping to trenches. Right-drag sets the facing and the width': 'Formación: forma, separación, marchar juntos y ajustar a trincheras. Arrastrar con clic derecho fija la orientación y el ancho',
   'Build: defenses, sandbags, wire, traps, mines, bridges and more': 'Construir: defensas, sacos terreros, alambre, obstáculos, minas, puentes y más',
   'Trench patterns: lines, zigzags, rings and strongpoints the builder squads dig together': 'Patrones de trinchera: líneas, zigzags, anillos y puntos fuertes que los pelotones constructores cavan juntos',
   '{0}: {1}, click where. {2}s cooldown. Right-click: autocast on/off': '{0}: {1}, haz clic en el objetivo. Recarga de {2} s. Clic derecho: uso automático sí/no',
