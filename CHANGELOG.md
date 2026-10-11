@@ -5,6 +5,15 @@ AI-vs-AI runs (see DESIGN.md for the balance log). Add new entries under **Unrel
 
 ## Unreleased
 
+- Two steps toward clearer simulation modules (issue #58, C2 and C5), with the game unchanged (the Classic and Conquest
+  benchmarks and a seeded six-AI World match end in exactly the same state): the seven places that each chose between
+  World Conquest's team-memory terrain and the remembered map now ask one function, `knownTerrainFor`, so a new mode
+  cannot miss one; and a ground vehicle's tick of movement (its hull motion, backing or sliding out when walled in, the
+  fuel limit, the swept check, ghosting past a friend, taking the next leg) is `driveVehicle`, out of `step()`'s unit
+  loop. Left for later, as larger moves with less to gain now: one module owning everything a team has observed,
+  spatial queries named by intent, one module for all unit movement (local traffic still sets ghosting on its own),
+  and a HUD that reads decoded state and returns intents.
+
 - Runtime and hosting measured, nothing switched (issue #58, B6 and B7). Bun 1.4 runs the server: the public lobby
   (compressed snapshots), snapshot backpressure and game-process checks pass under it. On the Vostro (i5-12400) it ran
   the 6-AI Massive benchmarks 12 to 14% faster than Node 26 in Classic and 1 to 4% in Conquest (two rounds each); the
