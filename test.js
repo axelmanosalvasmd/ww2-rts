@@ -4565,17 +4565,16 @@ await check("Between delivered snapshots the planner must use its supplied earli
 
 // Exercise the real room tick's delivery ordering without opening a server port.
 await check("Exercise the real room tick's delivery ordering without opening a server port", async () => {
-  const source = readFileSync('server.js', 'utf8');
-  const body = source.slice(source.indexOf('function timedRoomTick(room)'), source.indexOf('export function tickRooms()'));
+  const { createRoomTick } = await import('./server/room-tick.js');
   for (const cadence of [2, 4]) {
     const decisions = [], deliveries = [];
     // The real schedule (shared/ai-schedule.js) with a recording AI in every seat.
     const recording = { thinkEvery, observe: g => ({ tick: g.tick }), think: (g, slot, opts) => { decisions.push([g.tick, slot, opts.view.tick]); } };
     const recordedTick = (g, seats, views, options) => aiTick(g, seats.map(seat => ({ ...seat, brain: planner(recording) })), views, { ...options, sim: { snapshotCache: () => ({}) } });
-    const tick = new Function('aiTick', 'step', 'snapshotCache', 'snapshotFor', 'createTickMeter', 'recordTick', 'tickStats', 'trimmed', 'connected',
-      body + '\nreturn timedRoomTick;')(
-      recordedTick, g => { g.tick++; },
-      () => ({}), g => ({ tick: g.tick }), () => ({}), () => cadence, () => ({}), (room, net, msg) => msg, p => p.ws?.readyState === 1);
+    // the server's own room tick (server/room-tick.js) with stand-ins for the game, the snapshots and the sockets
+    const tick = createRoomTick({ aiTick: recordedTick, step: g => { g.tick++; }, snapshotCache: () => ({}), snapshotFor: g => ({ tick: g.tick }),
+      createTickMeter: () => ({}), recordTick: () => cadence, tickStats: () => ({}), trimmed: (room, net, msg) => msg,
+      connected: p => p.ws?.readyState === 1, backedUp: () => false, sendSnapshot: (room, p, json) => p.ws.send(json), sendWatchers: () => {} });
     const game = { tick: 0, winner: null, shots: [], newCells: [] };
     const room = { game, snapEvery: cadence, aiViews: [{ tick: 0 }, { tick: 0 }, { tick: 0 }],
       players: [{ ws: { readyState: 1, send: raw => deliveries.push(JSON.parse(raw).tick) } }, { ai: true, level: 'easy' }, { ai: true, level: 'hard' }] };

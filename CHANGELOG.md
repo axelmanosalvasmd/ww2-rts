@@ -5,6 +5,14 @@ AI-vs-AI runs (see DESIGN.md for the balance log). Add new entries under **Unrel
 
 ## Unreleased
 
+- The room tick is a module of its own (issue #58, C1 and D5): `server/room-tick.js` builds a room's running tick (step,
+  AI seats, snapshots, the timing that thins them) from the parts it is given; server.js gives it its own. The check of
+  the tick's delivery beat now runs that module with stand-ins instead of slicing server.js's text and evaluating it,
+  so renaming or moving code in server.js no longer breaks it. The two copies of "send every viewer the game as it
+  stands" (a paused match, the last seconds of a decided one) are one function, `sendFrame`. Left for later: a room
+  module owning seats, the lobby and message handling (server.js's message handler is still one long chain), and the
+  test.js checks that copy sim.js's text to reach private functions (`massiveInternals`, the separation splice).
+
 - Less work per revealed snapshot on the client, and on the server for route planning (issue #58, A5, B3 and the relief
   upload): the props and the overlay's height samples are refreshed per 16-cell tile of changed cells, not over one box
   around all of them (teammates scouting far apart made that box most of the map; the result is the same, only the
