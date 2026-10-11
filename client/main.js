@@ -25,7 +25,7 @@ import { createApron } from './apron.js';
 import { createWeatherView } from './weather-view.js';
 import { createGround } from './ground.js';
 import { setWind } from './wind.js';
-import { surface, setFogMap } from './surfaces.js';
+import { surface, setFogMap, setFogTime, fogMistShader } from './surfaces.js';
 import { createFog } from './fog.js';
 import { buildStructures as buildPieces, sandbagRing, hqCamp, buildingModel, PIECE_CELLS } from './structures.js';
 import { createRelief } from './relief.js';
@@ -557,6 +557,7 @@ function startGame(m, restored = null) {
   fogOfWar = createFog(map.w, map.h, m.fog, EDIT, !!map.world);
   setFogMap(EDIT ? null : fogOfWar.texture, MW, MH); // walls, roofs and props darken in the fog too
   const fog = fogMesh = new THREE.Mesh(ground.geometry, new THREE.MeshBasicMaterial({ map: fogOfWar.texture, transparent: true, depthWrite: false, polygonOffset: true, polygonOffsetFactor: -2, polygonOffsetUnits: -6 }));
+  fog.material.onBeforeCompile = fogMistShader;
   fog.renderOrder = 1; fog.visible = !EDIT;
   world.add(fog);
   // zoomed out, the paper war map (client/map-view.js, a prototype)
@@ -1945,6 +1946,7 @@ renderer.setAnimationLoop(() => {
   objectives.frame(sdt); projectiles.frame(); debris.frame(); effects.update(sdt); atmos.update(sdt);
   aviation.update(sdt);
   fogOfWar?.frame(dt, !lastStart?.map.world && epilogue.active()); // the match is decided: the fog lifts
+  setFogTime(performance.now() / 1000); // the mist in the fog drifts
   alerts.frame();
   pings.frame();
   endgame.frame();

@@ -1502,6 +1502,12 @@ holds against its red and green, so bare ground keeps its color. Graphics Low sk
   `opaque_fragment`, in the shader's linear space. High draws into a linear render target and tone maps and converts
   in `client/light.js`'s last pass, Low converts in the material, so a constant placed after `colorspace_fragment`
   (the first version used 0.22) matches the ground on Low only and turns pieces pale on High.
+- World Conquest's soft frontier (2026-10-10): explored cells within 4 cells of a cell never seen get extra darkness,
+  full next to it and none 4.5 cells in (smoothstep on the distance), redone around newly explored cells only. The
+  texture is linearly filtered on every map. Never-seen cells stay at 255, so the fade adds no information. A
+  drifting mist (`fowMist` in `client/surfaces.js`, two layers of value noise in metres) moves the alpha of partly
+  fogged ground by up to 0.35 x a(1 - a): zero on clear and fully dark cells. The ground overlay, the 3D pieces and the
+  fog past the map edge share it. `fogOfWar.at` and the minimap read the unsoftened look.
 - Not hidden yet: terrain changes in fog still reach every client, as noted under Classic.
 
 ## Tech

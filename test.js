@@ -3698,6 +3698,25 @@ await check("The preview marks only ground this side has explored (the server's 
   } finally { delete globalThis.document; delete globalThis.addEventListener; } // node has neither
 });
 
+// World Conquest's fog: explored ground fades into ground never seen over a few cells, rounded, instead of a staircase
+// of black 2 m squares. Ground never seen stays fully dark, and the fog's own answers (seen, explored) do not change.
+await check("World Conquest's fog fades explored ground into ground never seen", async () => {
+  const { createFog } = await import('./client/fog.js'), W = 24, C = 12;
+  const disc = r => Uint8Array.from({ length: W * W }, (_, c) => +(Math.hypot(c % W - C, Math.floor(c / W) - C) <= r));
+  const seen = disc(6), fog = createFog(W, W, { v: sim.packRuns(seen), e: sim.packRuns(seen) }, false, true);
+  const alpha = (x, y) => fog.texture.image.data[((W - 1 - y) * W + x) * 4 + 3];
+  assert.equal(alpha(0, 0), 255, 'ground never seen stays fully dark');
+  assert.equal(alpha(C, C), 0, 'the middle of what is seen stays clear');
+  const row = Array.from({ length: 7 }, (_, i) => alpha(C + i, C));
+  assert.ok(row.every((a, i) => !i || a >= row[i - 1]) && row[6] > row[3] && row[6] < 255, `darkness grows toward the frontier: ${row}`);
+  assert.equal(fog.at((C + 6.5) * CELL, (C + 0.5) * CELL), 'seen', 'a cell in the fade is still seen');
+  const wider = disc(9);
+  fog.snapshot({ fog: sim.packRuns(wider, seen), units: [] });
+  fog.frame(1);
+  assert.ok(alpha(C + 6, C) < row[6], 'scouting further moves the fade outward');
+  assert.equal(alpha(C, 0), 255, 'ground still never seen stays fully dark');
+});
+
 // Unit row deltas: a fresh client gets every row, a row that stops changing is not resent, a unit that dies or goes
 // under fog is named in gone, and a spectator joining the shared stream (full) gets every row again.
 await check("Unit row deltas", async () => {

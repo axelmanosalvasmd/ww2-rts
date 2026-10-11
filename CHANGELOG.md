@@ -5,6 +5,14 @@ AI-vs-AI runs (see DESIGN.md for the balance log). Add new entries under **Unrel
 
 ## Unreleased
 
+- World Conquest's fog of war is soft. Ground never seen used to end in a staircase of black 2 m squares; now explored
+  ground fades into it over about 8 m, following the distance to the nearest unseen cell, so the frontier reads as a
+  rounded curve. The fade lies on the explored side: ground never seen is still fully dark and nothing new shows.
+  A slow drifting mist moves through every partly fogged area (explored ground, the frontier's fade, the fog past the
+  map's edge) on the ground and on houses, trees and walls alike; clear and fully dark fog stay as they were. The
+  minimap and the fog's own answers to the game (seen, explored) are unchanged. New check in test.js: explored ground
+  darkens toward ground never seen, which stays fully dark, and scouting moves the fade (it fails on the old fog).
+
 - World Conquest scouting stutters less (issue #58, A1 and A2). Revealing a cell inside a candidate crop field used to
   recompute the ground of the whole map: 20 times in 47 s of two squads scouting a Huge map, 73 to 90 ms each. Now
   only the fields of the blocks holding the revealed cells are rechecked and repainted: over 40 s of the same scouting

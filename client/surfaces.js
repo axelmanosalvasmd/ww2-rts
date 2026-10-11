@@ -26,13 +26,31 @@ export function loadTexture(name, onReady) {
 // color. One set of uniforms, shared by every material.
 const noFog = new THREE.DataTexture(new Uint8Array(4), 1, 1);
 noFog.needsUpdate = true;
-const FOW = { fowMap: { value: noFog }, fowSize: { value: new THREE.Vector2(1, 1) } };
+const FOW = { fowMap: { value: noFog }, fowSize: { value: new THREE.Vector2(1, 1) }, fowTime: { value: 0 } };
 // tex: the fog DataTexture (row 0 = the far edge, like the overlay) or null for none; w, h: map size in metres
 export function setFogMap(tex, w, h) { FOW.fowMap.value = tex ?? noFog; FOW.fowSize.value.set(w || 1, h || 1); }
+// seconds since the match began: the mist in the fog drifts with it
+export function setFogTime(t) { FOW.fowTime.value = t; }
+// Drifting mist where the fog is partly drawn (explored ground, the frontier's fade into ground never seen): two
+// layers of value noise in metres, sliding slowly. Clear and fully dark fog stay exactly as they are.
+const MIST = `
+uniform float fowTime; uniform vec2 fowSize;
+float fowHash(vec2 p) { p = fract(p * vec2(0.1031, 0.1030)); p += dot(p, p.yx + 33.33); return fract((p.x + p.y) * p.x); }
+float fowNoise(vec2 p) {
+  vec2 i = floor(p), f = fract(p); f = f * f * (3.0 - 2.0 * f);
+  return mix(mix(fowHash(i), fowHash(i + vec2(1.0, 0.0)), f.x), mix(fowHash(i + vec2(0.0, 1.0)), fowHash(i + vec2(1.0)), f.x), f.y);
+}
+float fowMist(float a, vec2 uv) {
+  vec2 p = vec2(uv.x, 1.0 - uv.y) * fowSize;
+  float m = fowNoise(p * 0.05 + fowTime * vec2(0.04, 0.015)) * 0.65 + fowNoise(p * 0.13 - fowTime * vec2(0.02, 0.05)) * 0.35;
+  return clamp(a + (m - 0.5) * 1.4 * a * (1.0 - a), 0.0, 1.0);
+}
+`;
 // patch a Lambert shader; call from any onBeforeCompile
 function fogCoordinates(shader) {
   shader.uniforms.fowMap = FOW.fowMap;
   shader.uniforms.fowSize = FOW.fowSize;
+  shader.uniforms.fowTime = FOW.fowTime;
   shader.vertexShader = shader.vertexShader
     .replace('#include <common>', '#include <common>\nuniform vec2 fowSize;\nvarying vec2 vFowUv;')
     .replace('#include <project_vertex>', `#include <project_vertex>
@@ -49,8 +67,15 @@ export function fogShader(shader) {
   // overlay's own color (10 / 255, SHADE in client/fog.js). Both graphics levels then treat a piece like the ground:
   // Both High and Low mix before the output conversion, matching the ground overlay.
   shader.fragmentShader = shader.fragmentShader
-    .replace('#include <common>', '#include <common>\nuniform sampler2D fowMap;\nvarying vec2 vFowUv;')
-    .replace('#include <opaque_fragment>', '#include <opaque_fragment>\ngl_FragColor.rgb = mix( gl_FragColor.rgb, vec3( 0.0392 ), texture2D( fowMap, vFowUv ).a );');
+    .replace('#include <common>', '#include <common>\nuniform sampler2D fowMap;\nvarying vec2 vFowUv;' + MIST)
+    .replace('#include <opaque_fragment>', '#include <opaque_fragment>\ngl_FragColor.rgb = mix( gl_FragColor.rgb, vec3( 0.0392 ), fowMist( texture2D( fowMap, vFowUv ).a, vFowUv ) );');
+}
+// The fog overlay on the ground (a basic material whose map is the fog texture): the same mist as the pieces.
+export function fogMistShader(shader) {
+  fogCoordinates(shader);
+  shader.fragmentShader = shader.fragmentShader
+    .replace('#include <common>', '#include <common>\nvarying vec2 vFowUv;' + MIST)
+    .replace('#include <opaque_fragment>', '#include <opaque_fragment>\ngl_FragColor.a = fowMist( gl_FragColor.a, vFowUv );');
 }
 // Continue the server vision mask past the edge, then ease into unexplored ground.
 export function fogOverlayShader(shader, uniforms) {
@@ -59,11 +84,11 @@ export function fogOverlayShader(shader, uniforms) {
   shader.fragmentShader = shader.fragmentShader
     .replace('#include <common>', `#include <common>
       uniform sampler2D fowMap; varying vec2 vFowUv;
-      uniform vec2 uMapSize; uniform float uUnseen;`)
+      uniform vec2 uMapSize; uniform float uUnseen;` + MIST)
     .replace('#include <opaque_fragment>', `#include <opaque_fragment>
       vec2 fogXZ = vec2(vFowUv.x, 1.0 - vFowUv.y) * uMapSize;
       float fogEdge = length(fogXZ - clamp(fogXZ, vec2(0.0), uMapSize));
-      gl_FragColor.a *= mix(texture2D(fowMap, vFowUv).a, uUnseen, smoothstep(6.0, 32.0, fogEdge));`);
+      gl_FragColor.a *= fowMist(mix(texture2D(fowMap, vFowUv).a, uUnseen, smoothstep(6.0, 32.0, fogEdge)), vFowUv);`);
 }
 function fogOnly(shader) { fogShader(shader); }
 // a plain (untextured) material that still goes dark in the fog of war
