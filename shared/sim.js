@@ -15,7 +15,7 @@ import { DEBRIS_LIMITS, SECTION_MASS, wreckMass, debrisBody, stepDebris, settleD
 import { navigationLeg } from './navigation.js';
 import { tierOf, techCost, techMul, TECH } from './tech.js';
 import { isGroundVehicle, movementProfile, bodyRadius, vehiclePositionClear, sweptVehicleClear, vehicleStep, vehicleNavigationView, vehicleDestinationClear, segmentCliffClear, angleDelta } from './vehicle-motion.js';
-import { trafficStep, rememberTrafficPosition, trafficWins, TRAFFIC } from './local-traffic.js';
+import { trafficStep, rememberTrafficPosition, trafficWins, TRAFFIC, startGhost, ghostPair as ghosts } from './local-traffic.js';
 import { initializeUnit, tickReserves, consumeDrivingFuel, consumeAmmo, canFire, shortageRate, recoveryRate } from './logistics.js';
 import { setupConvoys, stepConvoys, convoyDeath, commandConvoy, logisticsSnapshot, supportProvision } from './supply-convoys.js';
 
@@ -1093,11 +1093,11 @@ function stepOut(g, u, at, r, a, origin = null) {
     if ((!labels || labels[spot] === home) && out.every(t => dist(t, cellCenter(g, spot)) > (UNITS[t.type].radius + def.radius) * 0.8)) c = spot;
   }
   if (c < 0) c = nearestFree(origin ? g : nav, at.x + Math.cos(a) * (r + def.radius), at.z + Math.sin(a) * (r + def.radius), block, origin);
-  Object.assign(u, cellCenter(g, c), { rot: a, aim: a, ghost: g.tick + Math.round(CFG.spawnGhost / TICK) });
+  Object.assign(u, cellCenter(g, c), { rot: a, aim: a }); startGhost(g, u, CFG.spawnGhost, TICK);
   updateGrid(g, u);
 }
 // two friends (own or allied) that overlap because one just stepped out pass through each other instead of locking up
-const ghostPair = (g, a, b) => allied(g, a.owner, b.owner) && ((a.ghost ?? 0) > g.tick || (b.ghost ?? 0) > g.tick);
+const ghostPair = (g, a, b) => allied(g, a.owner, b.owner) && ghosts(g, a, b, true);
 function wreckBuilding(g, u) {
   const structure = g.structures?.get(u.structureId);
   if (structure) for (const section of structure.sections) failWorldSection(g, section, [...g.units.values()], { x: 0, z: 1 });
@@ -5324,7 +5324,7 @@ function driveVehicle(g, u, def, route, speed, dt, back, traffic, before, traffi
     });
     clearMotion = !blocker;
     // boxed in by a friend for a while (a crowded gate or street): pass through friends for a moment
-    if (blocker && allied(g, blocker.owner, u.owner) && u.stuck > TRAFFIC.ghost) u.ghost = g.tick + Math.round(TRAFFIC.ghostTime / dt);
+    if (blocker && allied(g, blocker.owner, u.owner) && u.stuck > TRAFFIC.ghost) startGhost(g, u, TRAFFIC.ghostTime, dt);
   }
   if (clearMotion) { u.x = next.x; u.z = next.z; u.rot = next.rot; u.moveSpeed = next.moveSpeed; }
   else {
@@ -5342,6 +5342,23 @@ function driveVehicle(g, u, def, route, speed, dt, back, traffic, before, traffi
   const passed = near < 2 && Math.cos(Math.atan2(u.z - route[0]?.z, u.x - route[0]?.x) - u.travelDir) > 0;
   const reached = near < Math.max(0.12, pace * dt * 1.5) || nextLeg && (near < lead || passed) && walkable(trafficView(), u, nextLeg, blockOf(def), bodyRadius(def));
   if (reached && !traffic.yielding && !u.motionClearance) u.path.shift();
+}
+// One tick of infantry or a boat along its route (from step's unit loop), the counterpart of driveVehicle: straight legs
+// at full speed, the next waypoint taken on reaching it. Infantry responds on the command tick; boats keep their class
+// rules. A leg that runs into a blocked cell drops the route and asks for a new one shortly.
+function walkRoute(g, u, def, route, speed, dt, back, traffic, trafficView) {
+  if (def.infantry && !traffic.yielding) {
+    // Crowded squads can pass beside a waypoint. Keep required terrain corners and the exact final spot.
+    while (route.length > 1 && dist(u, route[0]) < 1 && walkable(trafficView(), u, route[1], blockOf(def) | WIRE)) route.shift();
+  }
+  let budget = speed * dt * (back ? CFG.behavior.reverseSpeed : 1);
+  while (budget > 0 && route.length) {
+    const wp = route[0], d = dist(u, wp), advance = Math.min(d, budget), next = { x: u.x + (wp.x - u.x) / (d || 1) * advance, z: u.z + (wp.z - u.z) / (d || 1) * advance };
+    if (!walkable(g, u, next, blockOf(def))) { u.repath = 0.2; if (!traffic.yielding) u.path = []; break; }
+    if (!back) u.rot = Math.atan2(wp.z - u.z, wp.x - u.x);
+    u.x = next.x; u.z = next.z; budget -= advance;
+    if (d <= advance + 1e-9) { if (traffic.yielding) break; route.shift(); } else break;
+  }
 }
 export function step(g) {
   for (const u of g.units.values()) if (u.structureId) syncBuildingSections(g, u);
@@ -5544,21 +5561,7 @@ export function step(g) {
     }
     const route = traffic.goal ? (traffic.yielding ? [traffic.goal] : u.path) : [];
     if (groundVehicle) driveVehicle(g, u, def, route, speed, dt, back, traffic, before, trafficView);
-    else {
-      // Infantry responds on the command tick. Naval motion keeps its original class rules.
-      if (def.infantry && !traffic.yielding) {
-        // Crowded squads can pass beside a waypoint. Keep required terrain corners and the exact final spot.
-        while (route.length > 1 && dist(u, route[0]) < 1 && walkable(trafficView(), u, route[1], blockOf(def) | WIRE)) route.shift();
-      }
-      let budget = speed * dt * (back ? CFG.behavior.reverseSpeed : 1);
-      while (budget > 0 && route.length) {
-        const wp = route[0], d = dist(u, wp), advance = Math.min(d, budget), next = { x: u.x + (wp.x - u.x) / (d || 1) * advance, z: u.z + (wp.z - u.z) / (d || 1) * advance };
-        if (!walkable(g, u, next, blockOf(def))) { u.repath = 0.2; if (!traffic.yielding) u.path = []; break; }
-        if (!back) u.rot = Math.atan2(wp.z - u.z, wp.x - u.x);
-        u.x = next.x; u.z = next.z; budget -= advance;
-        if (d <= advance + 1e-9) { if (traffic.yielding) break; route.shift(); } else break;
-      }
-    }
+    else walkRoute(g, u, def, route, speed, dt, back, traffic, trafficView);
     u.vx = (u.x - before.x) / dt; u.vz = (u.z - before.z) / dt;
     const moved = dist(u, before);
     consumeDrivingFuel(u, Math.min(dt, moved / Math.max(speed, 0.001)));

@@ -5,6 +5,13 @@ AI-vs-AI runs (see DESIGN.md for the balance log). Add new entries under **Unrel
 
 ## Unreleased
 
+- Unit movement reads as two counterparts and one ghost rule (issue #58, C5): infantry and boats follow their route in
+  `walkRoute`, beside `driveVehicle` for ground vehicles, both out of `step()`'s unit loop; and passing through friends
+  (a ghost) is started and checked only by `startGhost` and `ghostPair` in `shared/local-traffic.js`, which spawns,
+  separation, the swept check and traffic all call (it was set in three places with the same formula). The Classic,
+  Conquest and six-AI World seeded runs end in exactly the same state. Left for later: both movers still live in
+  `shared/sim.js`, which they need for terrain and unit lookups.
+
 - The spatial index's queries say what the caller needs (issue #58, C3): `inOrder` (first or best match wins, so the
   units Map's order), `unordered`, `heavy` (vehicles and other non-infantry only), and `has` / `hasHeavy`, which stop
   at the first match, replace `candidates(at, r, true|false, match, heavyOnly)` in the simulation, local traffic and
