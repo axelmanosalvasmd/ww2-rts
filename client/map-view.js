@@ -11,9 +11,9 @@
 // The floating 3D labels fade out while the map is up (client/markers.js fadeLabels).
 import * as THREE from 'three';
 import { drawSymbol } from './symbols.js';
-import { territoryEdges } from '/shared/world-territories.js';
+import { territoryEdges } from '../shared/world-territories.js';
 import { t as tr } from './i18n.js';
-import { CELL, CFG, UNITS, SUPPORT } from '/shared/sim.js';
+import { CELL, CFG, UNITS, SUPPORT } from '../shared/sim.js';
 
 const PAPER = '#e8dec3', INK = '#3b3226', CONTOUR = '#9a6b3c', WATER = '#9fbcc4', WOOD = '#b5c194', GRID = 'rgba(60, 90, 130, 0.22)';
 const PENCIL = { move: '#2f3d6b', attack: '#a3241c', retreat: '#6b5a2f', other: '#3b3226' };

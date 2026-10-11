@@ -1,4 +1,4 @@
-import { UNITS } from '/shared/sim.js';
+import { UNITS } from '../shared/sim.js';
 import { t as tr } from './i18n.js';
 import { formatWorldAuthoringError } from './world-authoring-error.js';
 

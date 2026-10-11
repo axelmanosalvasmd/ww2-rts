@@ -1,7 +1,7 @@
 // Weather on screen: the lobby's Weather select and one quiet line under the score strip. The server decides the
 // weather and what it does (shared/weather.js, and the living ground's showers in shared/sim.js); this only shows it.
 // main.js calls lobby() from renderLobby, mapDefault() from the map preview, start() and snapshot() during a match.
-import { WEATHER, WEATHER_CHOICES, mapWeather, weatherEffects } from '/shared/weather.js';
+import { WEATHER, WEATHER_CHOICES, mapWeather, weatherEffects } from '../shared/weather.js';
 
 const LABEL = { map: 'Map default', clear: 'Clear', fog: 'Ground fog', rain: 'Rain', mud: 'Mud', snow: 'Snow', random: 'Random' };
 const clock = (s) => `${Math.floor(s / 60)}:${String(Math.round(s % 60)).padStart(2, '0')}`;

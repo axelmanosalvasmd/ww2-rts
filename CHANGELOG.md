@@ -5,6 +5,18 @@ AI-vs-AI runs (see DESIGN.md for the balance log). Add new entries under **Unrel
 
 ## Unreleased
 
+- The last of issue #58's leftovers, with play unchanged (seeded Classic, Conquest and six-AI World runs end in the
+  same state):
+  - Anything that puts a unit somewhere at once (spawn spots, garrison doors, rail and train stops, paradrops,
+    buildings, a bunker at setup) goes through `placeUnit`, which keeps the spatial index current; only `spawnUnit` and
+    the per-tick movers update the index themselves.
+  - `driveVehicle` and `walkRoute` moved to `shared/movement.js`. The simulation hands them its walkability test, who
+    is allied and its tables (`createMovers`), so the module does not import `shared/sim.js`.
+  - No test loads a rebuilt copy of a source file any more (six did): `test-world-discovery.js` reads
+    `client/ground.js`'s `internals`, and `test-engine-controls.js`, `test-terrain-relief.mjs`,
+    `test-engine-localization.mjs`, `test-audit-client.mjs` and the Camera check import the client modules directly.
+    The 17 client modules that imported `/shared/...` now import `../shared/...`, the same files in the browser.
+
 - A newly found or cleared house cell no longer lays out every house on the map again (issue #58, last A2 item). The
   house layout is now kept as blocks (rectangles with their game type), and only the blocks of the footprint a flipped
   cell touches are redone; churches, barns and terraces are then picked again in one quick pass. On a fully known Huge

@@ -5,15 +5,15 @@
 // Each panel builds its HTML only when what it shows changes shape (the teams, the selection, the selected building)
 // and otherwise only updates text, widths and disabled states: rebuilding the buttons 10 times a second ate clicks.
 
-import { UNITS, UNIT_TYPES, CFG, SUPPORT, SUPPORT_TYPES, FORTS, lineFort, ENTRENCH, ENTRENCH_TYPES, BUILDABLE, buildKinds, isSkirmishBaseMode, canBuild, winVp, supCost, popCap, popUse, abCost, priceOf, AUTO_FLAG, RIDING_FLAG, CARGO_FLAG, CARGO_SHIFT } from '/shared/sim.js';
+import { UNITS, UNIT_TYPES, CFG, SUPPORT, SUPPORT_TYPES, FORTS, lineFort, ENTRENCH, ENTRENCH_TYPES, BUILDABLE, buildKinds, isSkirmishBaseMode, canBuild, winVp, supCost, popCap, popUse, abCost, priceOf, AUTO_FLAG, RIDING_FLAG, CARGO_FLAG, CARGO_SHIFT } from '../shared/sim.js';
 import { symbolSVG, icon } from './symbols.js';
 import { portrait } from './portraits.js';
 import { unitRole } from './unit-roles.js';
-import { SHAPES } from '/shared/formation.js';
+import { SHAPES } from '../shared/formation.js';
 import { SUPPORT_KEYS, FORT_KEYS, FORT_BADGES, BUILD_KEYS, CARD_KEYS, label, badge } from './keys.js';
 import { availability, buyCount, cooldownSeconds, recruitAction } from './availability.js';
 import { setAvailability, installTooltips } from './feedback.js';
-import { TECH, TIER_NAMES, techCost } from '/shared/tech.js';
+import { TECH, TIER_NAMES, techCost } from '../shared/tech.js';
 import { t as tr } from './i18n.js';
 import { reserveLabels, truckLabels, storeLabels, storeForUnit, logisticsIndicator } from './logistics.js';
 

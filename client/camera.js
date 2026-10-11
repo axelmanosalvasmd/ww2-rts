@@ -1,5 +1,5 @@
 import * as THREE from 'three';
-import { CELL } from '/shared/sim.js';
+import { CELL } from '../shared/sim.js';
 
 const raycaster = new THREE.Raycaster(), cursor = new THREE.Vector2();
 const flat = new THREE.Plane(new THREE.Vector3(0, 1, 0), 0);

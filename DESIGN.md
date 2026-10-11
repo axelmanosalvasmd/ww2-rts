@@ -1571,6 +1571,9 @@ the page. Adding text to the game means adding its Spanish to `client/es.js`.
   process is `server.js` with `WW2_SHARD` set and keeps today's room code unchanged. Shared state has one owner: the
   front merges the processes' `/api/rooms`, writes Horde records they send, and tells them when a map is saved.
   `MAX_ROOMS` applies per game process. A game process that exits is started again after a second.
+- Unit placement and movement (2026-10-11, issue #58): code that sets a unit's position outside its tick of movement
+  calls `placeUnit(g, u, fields)`, which also updates the spatial index; the movers (`shared/movement.js` for routes,
+  plus trains, planes, the operative and separation in `shared/sim.js`) update it themselves.
 - Team knowledge (2026-10-11, issue #58): `knowledgeOf(g)` picks the adapter for what a side knows: `world`
   (`worldTerrainFor`, `worldPathView`, the team memory's version, `worldWrecksFor`) or `observed` (`observedTerrainFor`,
   `observedPathView`, its `navigationKnowledgeVersion`, `observedWrecksFor`). A new mode with its own memory adds an

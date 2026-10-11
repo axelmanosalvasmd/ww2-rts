@@ -8,7 +8,7 @@
 // canvas, which a match on that map then reuses instead of painting again. On a machine that only has a software
 // renderer (SwiftShader), or when the player asks for reduced motion, it draws a single frame and stops.
 import * as THREE from 'three';
-import { CELL } from '/shared/sim.js';
+import { CELL } from '../shared/sim.js';
 import { gfx } from './gfx.js';
 import { createGround } from './ground.js';
 import { createRelief } from './relief.js';

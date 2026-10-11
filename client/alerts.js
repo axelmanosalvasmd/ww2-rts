@@ -3,9 +3,9 @@
 // allied units, shots that touch your side, public points and strikes), so nothing under fog leaks.
 // Routine alerts sit above the minimap for ~6 s. Prominent unit losses stay above them on the right.
 // Each has a minimap ping and sound. Space prioritizes a visible loss; clicking a notice visits its spot.
-import { UNITS, SUPPORT, UNIT_ROW } from '/shared/sim.js';
+import { UNITS, SUPPORT, UNIT_ROW } from '../shared/sim.js';
 import { audio } from './audio.js';
-import { insideKnownRegion } from '/shared/world-territories.js';
+import { insideKnownRegion } from '../shared/world-territories.js';
 import { t as tr } from './i18n.js';
 import { createAlertHistory } from './alert-history.js';
 

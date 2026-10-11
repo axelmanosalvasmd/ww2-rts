@@ -1,7 +1,7 @@
 // Battle sounds that are not tied to a shot: the listener follows the camera, moving vehicles swell a tank engine
 // bed, and digging and building squads are heard now and then. main.js calls battleFrame() once per frame.
 // Shots, blasts, planes and wrecks sound from client/fx.js, at the moment their effect shows.
-import { UNITS } from '/shared/sim.js';
+import { UNITS } from '../shared/sim.js';
 import { audio } from './audio.js';
 
 const isVeh = (type) => UNITS[type] && !UNITS[type].infantry && !UNITS[type].structure && !UNITS[type].air;

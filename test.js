@@ -5524,10 +5524,7 @@ await check("Rendered bounds cover posed sniper boots and the ends of rooftop ba
 // of a match selects (it used to be swallowed). A right-click is still dropped: its order was aimed at a moving view.
 await check("Camera", async () => {
   const THREE = await import('three');
-  const source = readFileSync(new URL('./client/camera.js', import.meta.url), 'utf8')
-    .replace("from 'three'", `from '${import.meta.resolve('three')}'`)
-    .replace("from '/shared/sim.js'", `from '${new URL('./shared/sim.js', import.meta.url)}'`);
-  const { rig, groundAt: pickGround } = await import('data:text/javascript;base64,' + Buffer.from(source).toString('base64'));
+  const { rig, groundAt: pickGround } = await import('./client/camera.js');
   // A narrow crest and trench need the relief's quarter-cell surface, not whole-cell corner planes.
   const pickMap = { w: 8, h: 6, rows: ['........', '........', '...TT...', '........', '........', '........'], heights: Array(6).fill('00111004') };
   const pickRelief = createRelief(pickMap), pickCamera = new THREE.PerspectiveCamera(45, 1, 0.01, 100);

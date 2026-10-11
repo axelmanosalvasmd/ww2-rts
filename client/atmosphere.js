@@ -4,7 +4,7 @@ import * as THREE from 'three';
 import { gfx } from './gfx.js';
 import { setMood } from './light.js';
 import { MOODS, DEFAULT_MOOD, moodFor, WEATHER_LOOK as LOOK } from './moods.js';
-import { mapMood, roadMask } from '/shared/weather.js';
+import { mapMood, roadMask } from '../shared/weather.js';
 import { wind } from './wind.js';
 
 const TAU = Math.PI * 2;
