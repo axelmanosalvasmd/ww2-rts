@@ -4,7 +4,7 @@
 // draw calls. Every piece stands on the cells it represents; gameplay cells are never changed here.
 // Base buildings (HQ, barracks, motor pool, depot, command bunker) are one merged, vertex-colored mesh per type and team.
 import * as THREE from 'three';
-import { CELL, houseKinds } from '../shared/sim.js';
+import { CELL, houseKindsWhere } from '../shared/sim.js';
 import { surface, fogShader, fogged, loadTexture } from './surfaces.js';
 import { leafGeometry, leafMaterial } from './foliage.js';
 import { gfx } from './gfx.js';
@@ -328,18 +328,48 @@ function rectangles(x0, y0, x1, y1, ok) {
 const isHouse = (C, x, y) => x >= 0 && y >= 0 && x < C.w && y < C.h && C.foot[y * C.w + x] === 1 && (C.at(x, y) === 'B' || C.at(x, y) === 'R');
 const isFoot = (C, x, y) => C.orig[y]?.[x] === 'B' || C.at(x, y) === 'B';
 
-// The house layout: the footprint's rectangles, what each is, and the pieces each one is drawn as (one house each).
-function layout(C) {
-  const { w, h } = C;
-  C.foot = new Uint8Array(w * h);
-  for (let y = 0; y < h; y++) for (let x = 0; x < w; x++) if (isFoot(C, x, y)) C.foot[y * w + x] = 1;
-  // rectangles over the map's footprint, so a house keeps its shape (and its look) while it is shot to pieces
-  const rects = rectangles(0, 0, w, h, (x, y) => C.foot[y * w + x] === 1), out = [];
+// The house layout comes in two steps. Blocks: the footprint's rectangles, each with its game type (houseKinds), which
+// depend only on the connected footprint they lie in, so a found or cleared house cell redoes only the blocks it touches
+// (relayBlocks). Then layout(): churches (chosen across the map), barns, landmarks and terraces, a quick pass that
+// gives the pieces drawn as one house each.
+function footOf(C) {
+  const foot = new Uint8Array(C.w * C.h);
+  for (let y = 0; y < C.h; y++) for (let x = 0; x < C.w; x++) if (isFoot(C, x, y)) foot[y * C.w + x] = 1;
+  return foot;
+}
+// the blocks over the footprint cells in `cells` (ascending; null: all of it), in scan order of their corner
+function blocksIn(C, foot, cells = null) {
+  const { w } = C, inside = cells && new Set(cells), kind = new Map();
+  houseKindsWhere(c => foot[c] === 1, foot.length, w, C.buildings, cells, (q, k) => { for (const c of q) kind.set(c, k); });
+  let x0 = 0, y0 = 0, x1 = w, y1 = C.h;
+  if (cells) { x0 = Math.min(...cells.map(c => c % w)); x1 = Math.max(...cells.map(c => c % w)) + 1; y0 = Math.floor(cells[0] / w); y1 = Math.floor(cells.at(-1) / w) + 1; }
+  // rectangles over the footprint, so a house keeps its shape (and its look) while it is shot to pieces
+  return rectangles(x0, y0, x1, y1, (x, y) => foot[y * w + x] === 1 && (!inside || inside.has(y * w + x)))
+    .map(r => ({ ...r, type: kind.get(r.y0 * w + r.x0) }));
+}
+// house cells changed: the footprint (foot, updated in place) and the blocks of every connected footprint a flipped cell
+// touched, before or after, are redone; the rest are kept
+function relayBlocks(C, foot, changed, blocks) {
+  const { w } = C, N = foot.length, flips = changed.filter(c => foot[c] !== (isFoot(C, c % w, Math.floor(c / w)) ? 1 : 0));
+  if (!flips.length) return blocks;
+  const reach = () => {
+    const seen = new Set(), q = [];
+    const add = (n, from) => { if (n >= 0 && n < N && foot[n] === 1 && !seen.has(n) && (Math.abs(n - from) !== 1 || Math.floor(n / w) === Math.floor(from / w))) { seen.add(n); q.push(n); } };
+    for (const c of flips) for (const n of [c, c - 1, c + 1, c - w, c + w]) add(n, c);
+    for (let i = 0; i < q.length; i++) for (const n of [q[i] - 1, q[i] + 1, q[i] - w, q[i] + w]) add(n, q[i]);
+    return seen;
+  };
+  const before = reach();
+  for (const c of flips) foot[c] ^= 1;
+  const after = [...reach()].sort((a, b) => a - b);
+  const kept = blocks.filter(b => !before.has(b.y0 * w + b.x0)), made = after.length ? blocksIn(C, foot, after) : [];
+  return [...kept, ...made].sort((a, b) => a.y0 * w + a.x0 - (b.y0 * w + b.x0));
+}
+function layout(C, blocks) {
+  const rects = blocks.map(b => ({ ...b })), out = [];
   const dims = (r) => { const a = r.x1 - r.x0, b = r.y1 - r.y0; return [Math.min(a, b), Math.max(a, b)]; };
   const area = (r) => (r.x1 - r.x0) * (r.y1 - r.y0);
-  // what each block is in the game (0 timber shed, 1 brick house, 2 stone building): the look follows it
-  const types = houseKinds(Array.from(C.foot, f => (f ? 'B' : '.')), w, C.buildings);
-  for (const r of rects) r.type = types[r.y0 * w + r.x0];
+  // what each block is in the game (0 timber shed, 1 brick house, 2 stone building, blocksIn): the look follows it
   if (rects.length >= 4) {
     // churches: the biggest long stone block, one more per 25 houses, at least 40 cells apart
     const want = 1 + Math.floor(rects.length / 25), churches = [];
@@ -944,15 +974,16 @@ function rebuild(change = null) {
   const changed = whole ? [] : [...change.cells], extra = [];
   batch.clear();
   // houses: the layout is redone when the footprint or the landmarks changed, each house when a change comes near it
-  const relaid = whole || old.landmarks !== landmarks || changed.some(c => old.foot[c] !== (isFoot(C, c % w, Math.floor(c / w)) ? 1 : 0));
-  const nearHouse = !relaid && changed.some(c => {
+  const relaid = whole || old.landmarks !== landmarks, relay = !relaid && changed.some(c => old.foot[c] !== (isFoot(C, c % w, Math.floor(c / w)) ? 1 : 0));
+  const nearHouse = !relaid && !relay && changed.some(c => {
     const x = c % w, y = Math.floor(c / w);
     for (let dy = -2; dy <= 2; dy++) for (let dx = -2; dx <= 2; dx++) if (old.foot[(y + dy) * w + x + dx] === 1 && x + dx >= 0 && x + dx < w) return true;
     return false;
   });
-  if (relaid) parts.rects = layout(C);
-  else C.foot = parts.foot;
-  if (relaid || nearHouse) {
+  if (relaid) { C.foot = footOf(C); parts.blocks = blocksIn(C, C.foot); }
+  else { C.foot = parts.foot; if (relay) parts.blocks = relayBlocks(C, C.foot, changed, parts.blocks); }
+  if (relaid || relay) parts.rects = layout(C, parts.blocks);
+  if (relaid || relay || nearHouse) {
     C.houses = whole ? new Map() : parts.houses; C.changed = changed; C.housesNext = new Map();
     for (const r of parts.rects) piece(C, r);
     if (!whole) for (const c of new Set([...parts.tint.keys(), ...C.tint.keys()])) if (!sameTint(parts.tint.get(c), C.tint.get(c))) extra.push(c);

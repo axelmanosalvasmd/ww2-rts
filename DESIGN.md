@@ -1584,7 +1584,8 @@ the page. Adding text to the game means adding its Spanish to `client/es.js`.
   (by rectangle, kind and type) and one per 32 x 32 cells for everything else (hedges, walls, trenches, wire, traps,
   mines, hospitals, rubble, bridges), and joins them into one InstancedMesh per kind. `buildStructures(..., { cells })`
   redoes the parts within two cells of the changed cells. The map-wide inputs are compared rather than trusted: the
-  house footprint (a flip redoes the layout and `houseKinds`), each cell's house colours (rubble), the stone bridge
+  house footprint (a flip redoes the blocks of the connected footprint it touches, `relayBlocks`, then the quick
+  church, barn and terrace pass), each cell's house colours (rubble), the stone bridge
   spans and the spoil tips; cells whose value changed are redone too. A builder that reads further than two cells away
   must widen that margin, or parts go stale.
 - Plain JS ES modules, no build step. Deps: `ws` (server), `three` (client).
