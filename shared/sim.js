@@ -1489,8 +1489,8 @@ function worldWrecksFor(g, slot) {
   for (const [id,row] of m.wrecks) if (!g.wrecks.some(w=>w.id===id) && teamSees(g,p.team,{x:row[3],z:row[4]})) m.wrecks.delete(id);
   return knownWreckRows(g, p.team, m.wrecks);
 }
-function rememberedWrecksFor(g, slot) {
-  if (g.mode?.kind === 'world') return worldWrecksFor(g, slot);
+const rememberedWrecksFor = (g, slot) => knowledgeOf(g).wrecks(g, slot);
+function observedWrecksFor(g, slot) {
   const p = g.players[slot], memory = p.wreckMemory ??= new Map();
   for (const wreck of g.wrecks) if (g.reveal || g.skipFog || teamSees(g, p.team, wreck)) memory.set(wreck.id, wreckRow(g, wreck));
   for (const [id, row] of memory) if (!g.wrecks.some(w => w.id === id) && (g.reveal || g.skipFog || teamSees(g, p.team, { x: row[3], z: row[4] }))) memory.delete(id);
@@ -1600,10 +1600,21 @@ function setupSkirmishBases(g) {
   }
 }
 
+// What a player's side knows of the battlefield, one adapter per kind of memory. World Conquest: one journaled terrain
+// memory per team, filled by what the team sees (worldTerrainMemory). Every other mode: each player's remembered map,
+// replayed from the cell log (observed*). Callers ask knowledgeOf(g) instead of branching on the mode, so a new mode
+// chooses its adapter here, once.
+//   terrain(g, slot, full): the remembered cells for the snapshot (full: all of them, not only what changed)
+//   pathView(g, slot): the terrain as routes and movement read it
+//   version(g, slot): moves whenever what the path view knows changes (an unreachable goal is worth trying again)
+//   wrecks(g, slot): the remembered wreck rows
+const KNOWLEDGE = {
+  world: { terrain: worldTerrainFor, pathView: worldPathView, version: (g, slot) => worldTerrainMemory(g, g.players[slot].team).version, wrecks: worldWrecksFor },
+  observed: { terrain: observedTerrainFor, pathView: observedPathView, version: (g, slot) => observedPathView(g, slot).navigationKnowledgeVersion, wrecks: observedWrecksFor },
+};
+const knowledgeOf = (g) => (g.mode?.kind === 'world' ? KNOWLEDGE.world : KNOWLEDGE.observed);
+const knownTerrainFor = (g, slot) => knowledgeOf(g).pathView(g, slot);
 const observedPaths = new WeakMap();
-// The terrain a player's side knows, as routes and movement read it: the team memory's view in World Conquest, the
-// remembered map otherwise. One choice, so a new mode cannot miss a place that makes it.
-const knownTerrainFor = (g, slot) => (g.mode?.kind === 'world' ? worldPathView(g, slot) : observedPathView(g, slot));
 function observedPathView(g, slot) {
   let recipients = observedPaths.get(g); if (!recipients) observedPaths.set(g, recipients = new Map());
   let state = recipients.get(slot); if (state?.initial !== g.initialTerrain) state = null;
@@ -3203,7 +3214,7 @@ function performStepPath(g, u, to, kind, work) {
   if (kind === 'recovery') { if (route.length) u.path = route; return; }
   u.path = route;
   if (stats.failed === failures) return;
-  const version = g.mode?.kind === 'world' ? worldTerrainMemory(g, g.players[u.owner].team).version : observedPathView(g, u.owner).navigationKnowledgeVersion;
+  const version = knowledgeOf(g).version(g, u.owner);
   const count = previous?.key === key && previous.version === version ? previous.count + 1 : 1;
   if (count < (g.pathRetryLimit ?? 20)) { pathFailures.set(u, { key, version, count }); return; }
   u[kind === 'world' ? 'worldGoal' : kind] = kind === 'build' || kind === 'attackId' || kind === 'board' ? 0 : kind === 'enter' || kind === 'fireAt' ? -1 : null;
@@ -5896,8 +5907,8 @@ function planOf(g, u) {
 // Changes wait in an outbox per memory until the snapshot (the call without `full`) takes them: observedPathView reads
 // the full memory first whenever a unit moves, and its replay used to swallow them (dug trenches never reached the client).
 const terrainOutbox = new WeakMap();
-export function terrainFor(g, slot, full = false) {
-  if (g.mode?.kind === 'world') return worldTerrainFor(g, slot, full);
+export const terrainFor = (g, slot, full = false) => knowledgeOf(g).terrain(g, slot, full);
+function observedTerrainFor(g, slot, full) {
   const p = g.players[slot], memory = p.terrainMemory ??= new Map();
   const pending = p.terrainPending ??= new Set(g.cellLog.keys());
   // What is still pending waits on a new cell, a found mine or a vision pass; until one comes there is nothing to redo.

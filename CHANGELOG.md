@@ -5,6 +5,14 @@ AI-vs-AI runs (see DESIGN.md for the balance log). Add new entries under **Unrel
 
 ## Unreleased
 
+- What a side knows of the battlefield goes through one seam (issue #58, C2): `knowledgeOf(g)` in `shared/sim.js`
+  returns World Conquest's adapter (one journaled terrain memory per team) or the observed-map adapter every other
+  mode uses, each with the same four answers: the snapshot's remembered terrain, the path view routes read, the
+  version that tells a failed route to try again, and the remembered wrecks. `terrainFor`, `knownTerrainFor`, the
+  route retry and the wreck memory no longer branch on the mode themselves. The Classic, Conquest and six-AI World
+  seeded runs end in exactly the same state. Vision itself (`updateVision`, `teamSees`) is shared by both and stays
+  where it is.
+
 - Unit movement reads as two counterparts and one ghost rule (issue #58, C5): infantry and boats follow their route in
   `walkRoute`, beside `driveVehicle` for ground vehicles, both out of `step()`'s unit loop; and passing through friends
   (a ghost) is started and checked only by `startGhost` and `ghostPair` in `shared/local-traffic.js`, which spawns,

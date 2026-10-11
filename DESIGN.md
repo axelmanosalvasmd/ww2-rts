@@ -1571,6 +1571,10 @@ the page. Adding text to the game means adding its Spanish to `client/es.js`.
   process is `server.js` with `WW2_SHARD` set and keeps today's room code unchanged. Shared state has one owner: the
   front merges the processes' `/api/rooms`, writes Horde records they send, and tells them when a map is saved.
   `MAX_ROOMS` applies per game process. A game process that exits is started again after a second.
+- Team knowledge (2026-10-11, issue #58): `knowledgeOf(g)` picks the adapter for what a side knows: `world`
+  (`worldTerrainFor`, `worldPathView`, the team memory's version, `worldWrecksFor`) or `observed` (`observedTerrainFor`,
+  `observedPathView`, its `navigationKnowledgeVersion`, `observedWrecksFor`). A new mode with its own memory adds an
+  adapter there rather than a branch in each caller.
 - Path regions (2026-10-11, issue #58): `regionsFor` labels which cells a block mask can walk between. After a version
   bump it compares each cell's blocked bit and height with its last pass; up to 64 changed cells are relabelled by
   `relabelNear` (flood the cells within two of them, join each piece to the outside regions it reaches, fresh labels
