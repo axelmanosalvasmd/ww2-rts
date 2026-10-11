@@ -27,6 +27,7 @@ import { createGround } from './ground.js';
 import { setWind } from './wind.js';
 import { surface, setFogMap, setFogTime, fogMistShader } from './surfaces.js';
 import { createFog } from './fog.js';
+import { createWorldState } from './world-state.js';
 import { buildStructures as buildPieces, sandbagRing, hqCamp, buildingModel, PIECE_CELLS } from './structures.js';
 import { createRelief } from './relief.js';
 import { gfx } from './gfx.js';
@@ -502,7 +503,7 @@ function startGame(m, restored = null) {
     for (const id of restored.selected || []) if (Number.isSafeInteger(id)) selected.add(id);
     for (const [n, ids] of Object.entries(restored.groups || {})) if (/^[1-9]$/.test(n) && Array.isArray(ids)) groups[n] = ids.filter(Number.isSafeInteger);
   }
-  fx.length = 0; lastSnap = null; unitRows.clear(); hulks.clear(); projectiles.reset(); debris.reset(); effects.reset(); for (const m of strikeMarks.values()) m.dispose(); strikeMarks.clear(); aviation.reset(); epilogue.reset(); snapshotAt = 0; snapshotGap = 100;
+  fx.length = 0; lastSnap = null; worldState.reset(); hulks.clear(); projectiles.reset(); debris.reset(); effects.reset(); for (const m of strikeMarks.values()) m.dispose(); strikeMarks.clear(); aviation.reset(); epilogue.reset(); snapshotAt = 0; snapshotGap = 100;
   document.body.classList.toggle('observing', watching);
   objectives.reset(); endgame.reset();
   MW = map.w * CELL; MH = map.h * CELL;
@@ -904,26 +905,15 @@ const airShot = (sh) => AIR_SHOTS.has(sh.k) && !(sh.k === 'flak' && (sh.t !== un
 
 // The server sends only the unit rows that changed and the ids gone (dead or under fog), and the wrecks and resource
 // nodes only when they change; the full lists are put back together here, so everything after reads whole snapshots.
-const unitRows = new Map();
+const worldState = createWorldState(); // the unit rows, wrecks and nodes this player holds (client/world-state.js)
 let resyncAt = -Infinity;
 function applySnapshot(s) {
-  // a full resend replaces everything held; so does a snapshot without held, from a server older than the deltas that
-  // sends every row each time and never a gone list (a server left running across an update)
-  if (s.all || !s.held) unitRows.clear();
-  for (const id of s.gone ?? []) unitRows.delete(id);
-  for (const row of s.units) unitRows.set(row[0], row);
-  // held: what the server thinks this client now holds. A mismatch means a stale unit is drawn (dead, or fogged) or a
-  // live one is missing; ask for a full resend instead of waiting for a reload (at most once a second)
-  if (s.held) {
-    let xor = 0;
-    for (const id of unitRows.keys()) xor ^= id;
-    if ((unitRows.size !== s.held[0] || xor !== s.held[1]) && performance.now() - resyncAt > 1000) {
-      console.warn(`unit rows out of sync at tick ${s.tick}: holding ${unitRows.size}, the server sent ${s.held[0]}; asking for a full resend`);
-      resyncAt = performance.now(); sendCmd({ t: 'resync' });
-    }
+  // A mismatch with what the server says this client holds means a stale unit is drawn (dead, or fogged) or a live one
+  // is missing; ask for a full resend instead of waiting for a reload (at most once a second)
+  if (worldState.apply(s) && performance.now() - resyncAt > 1000) {
+    console.warn(`unit rows out of sync at tick ${s.tick}: holding ${worldState.size}, the server sent ${s.held[0]}; asking for a full resend`);
+    resyncAt = performance.now(); sendCmd({ t: 'resync' });
   }
-  s.units = [...unitRows.values()];
-  s.wrecks ??= lastSnap?.wrecks; s.nodes ??= lastSnap?.nodes;
   fogOfWar?.snapshot(s); // before the freeze: each fog change builds on the last one
   if (window.__freeze) return; // debug: hold the scene still (e.g. to inspect models)
   const arrived = performance.now();

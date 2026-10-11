@@ -30,6 +30,7 @@ import { createRelief, TRENCH_DEPTH } from './client/relief.js';
 import { createAutocast } from './client/autocast.js';
 import { normalizeFace, slotSize, facingSpots } from './shared/formation.js';
 import { createOrders } from './client/orders.js';
+import { createWorldState } from './client/world-state.js';
 await check('test-supply-convoys.mjs', () => import('./test-supply-convoys.mjs'));
 await check('test-logistics-client.mjs', () => import('./test-logistics-client.mjs'));
 await check('test-tutorial.js', () => import('./test-tutorial.js'));
@@ -4996,16 +4997,13 @@ async function serverHarness() {
       async close() { if (ws.readyState !== 3) ws.close(); await waitFor(() => client.closed, 'client closes'); await settleServer(); },
       wait(type, predicate = () => true, after = 0) { return waitFor(() => messages.slice(after).find(message => message.t === type && predicate(message)), `client receives ${type}`); },
     };
-    // snapshots carry changed unit rows, gone ids and the wrecks and nodes only when they change: rebuild them as client/main.js does
-    const rows = new Map(); let prev = null;
+    // snapshots carry changed unit rows, gone ids and the wrecks and nodes only when they change: the client's own
+    // decoder (client/world-state.js) rebuilds them, and must agree with what the server says the client holds
+    const held = createWorldState();
     ws.on('message', raw => {
       const m = JSON.parse(String(raw));
-      if (m.t === 'start') { rows.clear(); prev = null; }
-      if (m.t === 's') {
-        for (const id of m.gone ?? []) rows.delete(id);
-        for (const row of m.units) rows.set(row[0], row);
-        m.sent = m.units; m.units = [...rows.values()]; m.wrecks ??= prev?.wrecks; m.nodes ??= prev?.nodes; prev = m;
-      }
+      if (m.t === 'start') held.reset();
+      if (m.t === 's') assert.equal(held.apply(m), false, `the client's unit rows match what the server says it holds at tick ${m.tick}`);
       messages.push(m);
     });
     ws.on('close', () => { client.closed = true; });

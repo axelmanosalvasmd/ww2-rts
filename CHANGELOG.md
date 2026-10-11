@@ -5,6 +5,13 @@ AI-vs-AI runs (see DESIGN.md for the balance log). Add new entries under **Unrel
 
 ## Unreleased
 
+- The client's snapshot decoding is a module of its own (issue #58, C4): `client/world-state.js` rebuilds the unit rows,
+  wrecks and nodes this player holds from the server's deltas and says when they disagree with what the server thinks
+  the client holds; client/main.js uses it, and so does every room test's client, which asserted nothing before and
+  kept its own copy of the decoding without the full-resend and held handling. Every snapshot in the suite now has to
+  match what the server says the client holds (with the decoder ignoring gone ids, two checks fail). Left for later:
+  the HUD, alerts and availability still read snapshot rows by position (`v[7]`, `p[7]`).
+
 - The room tick is a module of its own (issue #58, C1 and D5): `server/room-tick.js` builds a room's running tick (step,
   AI seats, snapshots, the timing that thins them) from the parts it is given; server.js gives it its own. The check of
   the tick's delivery beat now runs that module with stand-ins instead of slicing server.js's text and evaluating it,
