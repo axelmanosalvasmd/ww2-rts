@@ -42,7 +42,8 @@ const minesNear = (view, p, r) => view.mines.filter(m => d(p, m) <= r).length;
 function rememberBridges(view, mem) {
   if (mem.bridgeMap === view.mapChars) return;
   const cells = new Set(mem.bridges ?? []);
-  view.mapChars.forEach((ch, c) => { if (ch === '=') cells.add(c); });
+  if (view.bridgeCells) for (const c of [...view.bridgeCells].sort((a, b) => a - b)) cells.add(c); // the map's order, as a scan gives
+  else view.mapChars.forEach((ch, c) => { if (ch === '=') cells.add(c); });
   mem.bridges = [...cells]; mem.bridgeMap = view.mapChars;
 }
 

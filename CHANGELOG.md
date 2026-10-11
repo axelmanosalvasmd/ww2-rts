@@ -5,6 +5,18 @@ AI-vs-AI runs (see DESIGN.md for the balance log). Add new entries under **Unrel
 
 ## Unreleased
 
+- World Conquest AI seats cost the server less (issue #58, B4). Each AI plan scanned the whole map for bridges
+  whenever its view's terrain had changed (9.5% of the server's time in a six-AI Huge World match); the AI view now
+  keeps the set of bridge cells as terrain arrives, and the planner reads it in the map's order, as the scan did. AI
+  views in World Conquest also stop building a set of every cell changed all match, which only Classic's terrain
+  replay reads. A seeded six-AI World match (2,400 ticks) ends in the same state and ran in 17.1 s against 19.7 s;
+  the 6-AI Massive Classic and Conquest benchmarks end in the same state as before.
+  Found and left for later: the team terrain memory (`worldTerrainMemory`, `seenWorldCell`, `sameValue`) rebuilds and
+  compares every visible cell's row on every vision pass, and `worldTerrainFor` walks every remembered cell for each
+  player on each snapshot (about 30% of the server's time in World Conquest together). Redoing only newly visible and
+  changed cells needs every write to a remembered cell's inputs to be journaled; mine detection (`mineSeen`), burning
+  sections settling, section repairs and removals, and new rails do not go through `logCell` today.
+
 - Finding water no longer freezes the game (issue #58, A3). Every time scouting revealed more of a river or lake, the
   water was redone for the whole map: its mask (four texels a cell) blurred whole, its flow scanned the whole map for
   each body of water, and every corner of the map's water grid recomputed. On a Huge World map that took about 0.95 s
