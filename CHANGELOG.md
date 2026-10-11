@@ -5,6 +5,19 @@ AI-vs-AI runs (see DESIGN.md for the balance log). Add new entries under **Unrel
 
 ## Unreleased
 
+- Finding water no longer freezes the game (issue #58, A3). Every time scouting revealed more of a river or lake, the
+  water was redone for the whole map: its mask (four texels a cell) blurred whole, its flow scanned the whole map for
+  each body of water, and every corner of the map's water grid recomputed. On a Huge World map that took about 0.95 s
+  for the first water found and 0.9 s for each further stretch (measured in Node; the browser showed one 804 ms
+  stall). Now the mask is blurred only in 16-cell tiles near cells whose water, ford or bridge changed (whole-number
+  sums, so a tile gives exactly what a whole blur does), only those tiles go to the GPU, each body of water walks its
+  own cells, and grid corners without water are written straight away: 91 ms for the first water and 34 to 58 ms for
+  each further stretch. What is left is the whole-map water-level and shore passes.
+  New check in test-world.js: water found later (river, ford, bridge, a stream on a tile's edge reaching the map edge)
+  gives the same mask as a fresh build, and the blur reaches across the tile edge (it fails when the reach is cut).
+  Fixed a test the soft-fog change broke: test-world.js (run by CI after test.js, not by `node test.js`) looked for the
+  overlay's old alpha line; it now checks that the overlay goes through the shared mist with the pieces' clock.
+
 - Scouting and shelling reshape the ground at a fraction of the cost (issue #58, A4). The relief mesh was rebuilt for
   the whole map after every revealed or cratered cell; now it is kept in rows and an update rebuilds only the rows it
   reaches (seven either side of every changed cell, since a crater line's lips follow the run up to six cells away)

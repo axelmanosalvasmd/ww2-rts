@@ -13,29 +13,34 @@ const LIFT = WATER_LIFT; // the surface sits this far above a flat bank
 const EDGE_REACH = 900; // metres water carries on past the map edge where it leaves the map
 const N4 = [[1, 0], [-1, 0], [0, 1], [0, -1]];
 
-// Separable box blur, run 3 times (close to a Gaussian). Edges repeat, so water that reaches the map edge stays full.
-function blur(src, w, h, r) {
-  const a = Float32Array.from(src), b = new Float32Array(a.length), n = 2 * r + 1;
+// Separable box blur of radius r, run 3 times (close to a Gaussian), over a window of a w x h image of 0s and 1s
+// (pick(x, y)). Edges repeat, so water that reaches the map edge stays full. The sums stay whole numbers, so a window
+// gives exactly what a blur of the whole image would wherever it is 3r inside the window or at the image's edge.
+// Returns the window's values times (2r + 1)^6 and where the window lies.
+function blurWindow(pick, w, h, r, x0, y0, x1, y1) {
+  const wx0 = Math.max(0, x0 - 3 * r), wy0 = Math.max(0, y0 - 3 * r), wx1 = Math.min(w, x1 + 3 * r), wy1 = Math.min(h, y1 + 3 * r);
+  const ww = wx1 - wx0, wh = wy1 - wy0, a = new Int32Array(ww * wh), b = new Int32Array(ww * wh);
+  for (let y = 0; y < wh; y++) for (let x = 0; x < ww; x++) a[y * ww + x] = pick(wx0 + x, wy0 + y) ? 1 : 0;
   for (let pass = 0; pass < 3; pass++) {
-    for (let y = 0; y < h; y++) {
-      const o = y * w;
+    for (let y = 0; y < wh; y++) {
+      const o = y * ww;
       let s = 0;
-      for (let k = -r; k <= r; k++) s += a[o + Math.min(w - 1, Math.max(0, k))];
-      for (let x = 0; x < w; x++) {
-        b[o + x] = s / n;
-        s += a[o + Math.min(w - 1, x + r + 1)] - a[o + Math.max(0, x - r)];
+      for (let k = -r; k <= r; k++) s += a[o + Math.min(ww - 1, Math.max(0, k))];
+      for (let x = 0; x < ww; x++) {
+        b[o + x] = s;
+        s += a[o + Math.min(ww - 1, x + r + 1)] - a[o + Math.max(0, x - r)];
       }
     }
-    for (let x = 0; x < w; x++) {
+    for (let x = 0; x < ww; x++) {
       let s = 0;
-      for (let k = -r; k <= r; k++) s += b[Math.min(h - 1, Math.max(0, k)) * w + x];
-      for (let y = 0; y < h; y++) {
-        a[y * w + x] = s / n;
-        s += b[Math.min(h - 1, y + r + 1) * w + x] - b[Math.max(0, y - r) * w + x];
+      for (let k = -r; k <= r; k++) s += b[Math.min(wh - 1, Math.max(0, k)) * ww + x];
+      for (let y = 0; y < wh; y++) {
+        a[y * ww + x] = s;
+        s += b[Math.min(wh - 1, y + r + 1) * ww + x] - b[Math.max(0, y - r) * ww + x];
       }
     }
   }
-  return a;
+  return { a, wx0, wy0, ww };
 }
 
 // Breadth-first step counts from the seed cells through cells that allow(c); -1 where it never reached.
@@ -218,7 +223,7 @@ export function createWater(grid, map, groundHeight) {
   mesh.renderOrder = -1; // first of the see-through pass: fog of war, smoke and effects draw over it
   mesh.receiveShadow = true;
 
-  let wet = new Uint8Array(n), bridges = new Uint8Array(n), raised = new Uint8Array(n), dirty = false, regeo = false;
+  let wet = new Uint8Array(n), bridges = new Uint8Array(n), fords = new Uint8Array(n), raised = new Uint8Array(n), dirty = false, regeo = false;
   const near = (arr, c) => {
     const x = c % w, y = (c - x) / w;
     for (let dy = -1; dy <= 1; dy++) for (let dx = -1; dx <= 1; dx++) {
@@ -230,12 +235,37 @@ export function createWater(grid, map, groundHeight) {
   // the ground level now, in world units (dents included)
   const groundAt = (c) => levelOf(map.heights?.[Math.floor(c / w)]?.[c % w] ?? '0') * CFG.levelHeight;
 
-  // one mask channel: cells where pick(c) is true, softened by a blur of radius r texels
-  function channel(k, pick, r) {
-    const bin = new Float32Array(MWs * MHs);
-    for (let y = 0; y < MHs; y++) for (let x = 0; x < MWs; x++) bin[y * MWs + x] = pick(Math.floor(y / SUB) * w + Math.floor(x / SUB)) ? 1 : 0;
-    const soft = blur(bin, MWs, MHs, r);
-    for (let i = 0; i < soft.length; i++) maskData[i * 4 + k] = Math.min(255, soft[i] * 255 + 0.5);
+  // The mask is redone in tiles of TILE x TILE cells: only tiles within the blur's reach of a changed cell. Redoing the
+  // whole 4-texel-per-cell mask cost about 0.7 s on a Huge World map, each time scouting found more water (#58).
+  const TILE = 16, REACH = 3, tw = Math.ceil(w / TILE); // REACH: cells the widest blur (radius 4 texels, 3 passes) spreads
+  const tilesNear = (cells) => {
+    const tiles = new Set();
+    for (const c of cells) {
+      const x = c % w, y = (c - x) / w;
+      for (let ty = Math.max(0, y - REACH) / TILE | 0; ty <= (Math.min(h - 1, y + REACH) / TILE | 0); ty++)
+        for (let tx = Math.max(0, x - REACH) / TILE | 0; tx <= (Math.min(w - 1, x + REACH) / TILE | 0); tx++) tiles.add(ty * tw + tx);
+    }
+    return tiles;
+  };
+  // one mask channel in the given tiles: cells where pick(c) is true, softened by a blur of radius r texels
+  function channel(k, pick, r, tiles) {
+    const scale = (2 * r + 1) ** 6, cell = (x, y) => pick(Math.floor(y / SUB) * w + Math.floor(x / SUB));
+    for (const t of tiles) {
+      const x0 = (t % tw) * TILE * SUB, y0 = Math.floor(t / tw) * TILE * SUB, x1 = Math.min(MWs, x0 + TILE * SUB), y1 = Math.min(MHs, y0 + TILE * SUB);
+      const { a, wx0, wy0, ww } = blurWindow(cell, MWs, MHs, r, x0, y0, x1, y1);
+      for (let y = y0; y < y1; y++) for (let x = x0; x < x1; x++) maskData[(y * MWs + x) * 4 + k] = Math.min(255, a[(y - wy0) * ww + x - wx0] / scale * 255 + 0.5);
+    }
+  }
+  // the tiles' texel rows go to the GPU; the first upload sends the whole mask
+  let uploaded = false;
+  mask.onUpdate = () => { uploaded = true; };
+  function upload(tiles) {
+    if (uploaded) for (const t of tiles) {
+      const x0 = (t % tw) * TILE * SUB, y0 = Math.floor(t / tw) * TILE * SUB, x1 = Math.min(MWs, x0 + TILE * SUB), y1 = Math.min(MHs, y0 + TILE * SUB);
+      for (let y = y0; y < y1; y++) mask.addUpdateRange((y * MWs + x0) * 4, (x1 - x0) * 4);
+    }
+    if (mask.updateRanges.length > 2 * MHs) mask.clearUpdateRanges();
+    mask.needsUpdate = true;
   }
 
   // surface height and flow per vertex, and triangles over the wet cells plus one cell of bank around them
@@ -246,16 +276,38 @@ export function createWater(grid, map, groundHeight) {
     raised = water.raised;
 
     // flow: toward one end of each body of water (the end on the map edge, if only one is), slower far from the banks
-    const shore = bfs(w, h, [...Array(n).keys()].filter((c) => !wet[c]), (k) => wet[k]);
+    const dry = [];
+    for (let c = 0; c < n; c++) if (!wet[c]) dry.push(c);
+    const shore = bfs(w, h, dry, (k) => wet[k]);
     const dist = new Int32Array(n).fill(-1), onEdge = (c) => c % w === 0 || c % w === w - 1 || c < w || c >= n - w;
+    // Each body's cells in map order, walked with one shared buffer: scanning the whole map several times per body
+    // cost tens of ms once scouting had found a river in many pieces (#58).
+    const members = Array.from({ length: compLevel.length }, () => []);
+    for (let c = 0; c < n; c++) if (comp[c] >= 0) members[comp[c]]?.push(c);
+    const steps = new Int32Array(n).fill(-1), queue = new Int32Array(n);
+    const reach = (seed, id, list) => {
+      for (const k of list) steps[k] = -1;
+      let head = 0, tail = 0;
+      steps[seed] = 0; queue[tail++] = seed;
+      while (head < tail) {
+        const c = queue[head++], x = c % w, y = (c - x) / w;
+        for (const [dx, dy] of N4) {
+          const nx = x + dx, ny = y + dy, k = ny * w + nx;
+          if (nx < 0 || ny < 0 || nx >= w || ny >= h || steps[k] >= 0 || comp[k] !== id) continue;
+          steps[k] = steps[c] + 1; queue[tail++] = k;
+        }
+      }
+    };
     for (let id = 0; id < compLevel.length; id++) {
-      const inComp = (k) => comp[k] === id, start = comp.indexOf(id);
-      const far = (d) => { let best = start; for (let k = 0; k < n; k++) if (d[k] > d[best]) best = k; return best; };
-      const a = far(bfs(w, h, [start], inComp));
-      let d = bfs(w, h, [a], inComp);
-      const b = far(d);
-      if (onEdge(b) && !onEdge(a)) d = bfs(w, h, [b], inComp);
-      for (let k = 0; k < n; k++) if (d[k] >= 0) dist[k] = d[k];
+      const list = members[id];
+      if (!list.length) continue;
+      const start = list[0], far = () => { let best = start; for (const k of list) if (steps[k] > steps[best]) best = k; return best; };
+      reach(start, id, list);
+      const a = far();
+      reach(a, id, list);
+      const b = far();
+      if (onEdge(b) && !onEdge(a)) reach(b, id, list);
+      for (const k of list) if (steps[k] >= 0) dist[k] = steps[k];
     }
     let fx = new Float32Array(n), fz = new Float32Array(n);
     for (let c = 0; c < n; c++) {
@@ -283,10 +335,19 @@ export function createWater(grid, map, groundHeight) {
 
     const W1 = w + 1, verts = W1 * (h + 1);
     const pos = new Float32Array(verts * 3), nor = new Float32Array(verts * 3), flow = new Float32Array(verts * 2);
+    // Only corners of cells with a water line carry triangles. Every other corner is flat at the lift with no flow,
+    // which is what the full sum below gives a corner without a water line, so it is written straight away.
+    const used = (cx, cy) => cx >= 0 && cy >= 0 && cx < w && cy < h && !Number.isNaN(wl[cy * w + cx]);
     for (let vy = 0; vy <= h; vy++) for (let vx = 0; vx <= w; vx++) {
       const v = vy * W1 + vx;
+      nor[v * 3 + 1] = 1;
+      if (!used(vx - 1, vy - 1) && !used(vx, vy - 1) && !used(vx - 1, vy) && !used(vx, vy)) {
+        pos[v * 3] = vx * CELL; pos[v * 3 + 1] = LIFT; pos[v * 3 + 2] = vy * CELL;
+        continue;
+      }
       let y = Infinity, sx = 0, sz = 0, m = 0, ground = 0, cells = 0, drape = false;
-      for (const [cx, cy] of [[vx - 1, vy - 1], [vx, vy - 1], [vx - 1, vy], [vx, vy]]) {
+      for (let corner = 0; corner < 4; corner++) {
+        const cx = vx - 1 + (corner & 1), cy = vy - 1 + (corner >> 1);
         if (cx < 0 || cy < 0 || cx >= w || cy >= h) continue;
         const c = cy * w + cx;
         if (wl[c] < y) y = wl[c];
@@ -296,7 +357,6 @@ export function createWater(grid, map, groundHeight) {
       // Relief supplies the visible surface; the nominal corner average remains the fallback.
       if (drape) y = Math.max(y, groundHeight ? groundHeight(vx * CELL, vy * CELL) : ground / cells);
       pos[v * 3] = vx * CELL; pos[v * 3 + 1] = (y === Infinity ? 0 : y) + LIFT; pos[v * 3 + 2] = vy * CELL;
-      nor[v * 3 + 1] = 1;
       if (m) { flow[v * 2] = sx / m; flow[v * 2 + 1] = sz / m; }
     }
     const index = [];
@@ -358,22 +418,27 @@ export function createWater(grid, map, groundHeight) {
 
   function rebuild() {
     dirty = false;
-    const nextWet = new Uint8Array(n), nextBridges = new Uint8Array(n);
+    const nextWet = new Uint8Array(n), nextBridges = new Uint8Array(n), nextFords = new Uint8Array(n), changed = [];
+    let wetChanged = false, bridgesChanged = false;
     for (let c = 0; c < n; c++) {
       const ch = grid[Math.floor(c / w)][c % w];
-      nextWet[c] = WET.has(ch) ? 1 : 0; nextBridges[c] = ch === '=' ? 1 : 0;
+      nextWet[c] = WET.has(ch) ? 1 : 0; nextBridges[c] = ch === '=' ? 1 : 0; nextFords[c] = ch === 'F' ? 1 : 0;
+      if (nextWet[c] !== wet[c]) wetChanged = true;
+      if (nextBridges[c] !== bridges[c]) bridgesChanged = true;
+      if (nextWet[c] !== wet[c] || nextBridges[c] !== bridges[c] || nextFords[c] !== fords[c]) changed.push(c);
     }
-    const wetChanged = nextWet.some((v, c) => v !== wet[c]), bridgesChanged = nextBridges.some((v, c) => v !== bridges[c]);
     const relevel = regeo;
     regeo = false;
-    if (!wetChanged && !bridgesChanged && !relevel) return;
-    wet = nextWet; bridges = nextBridges;
-    if (wetChanged) {
-      channel(0, (c) => wet[c], 2); // R: coverage, edge at about 0.3 (a third of a cell into the bank)
-      channel(1, (c) => wet[c], 4); // G: how far from the bank, read as depth
-      channel(2, (c) => grid[Math.floor(c / w)][c % w] === 'F', 2); // B: fords
+    if (!changed.length && !relevel) return;
+    wet = nextWet; bridges = nextBridges; fords = nextFords;
+    if (changed.length) {
+      const tiles = tilesNear(changed);
+      channel(0, (c) => wet[c], 2, tiles); // R: coverage, edge at about 0.3 (a third of a cell into the bank)
+      channel(1, (c) => wet[c], 4, tiles); // G: how far from the bank, read as depth
+      channel(2, (c) => fords[c], 2, tiles); // B: fords
+      channel(3, (c) => bridges[c], 2, tiles); // A: bridges
+      upload(tiles);
     }
-    if (wetChanged || bridgesChanged) { channel(3, (c) => bridges[c], 2); mask.needsUpdate = true; } // A: bridges
     if (wetChanged || bridgesChanged || relevel) rebuildGeometry();
   }
   rebuild();

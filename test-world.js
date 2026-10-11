@@ -28,6 +28,24 @@ for (const [label, rows, extents] of [
   water.dispose();
 }
 
+// Scouting finds more water: the mask is redone only in tiles near the new water, ford and bridge, and comes out
+// exactly as a fresh build of the whole map does (#58: redoing it whole took about 0.9 s on a Huge World map).
+{
+  const W = 64, rows = Array.from({ length: W }, (_, y) => Array.from({ length: W }, (_, x) => (x === 20 && y < 12 ? 'W' : '.')).join(''));
+  const map = { w: W, h: W, rows }, grid = rows.map(row => [...row]);
+  const maskOf = water => { const shader = { uniforms: {}, vertexShader: '#include <common>', fragmentShader: '#include <common>' }; water.mesh.material.onBeforeCompile(shader); return shader.uniforms.uMask.value.image.data; };
+  const water = createWater(grid, map, () => 0);
+  const found = [];
+  for (let y = 12; y < 40; y++) { grid[y][20] = y === 30 ? 'F' : y === 35 ? '=' : 'W'; found.push([y * W + 20, grid[y][20]]); }
+  for (let x = 40; x < 64; x++) { grid[48][x] = 'W'; found.push([48 * W + x, 'W']); } // a stream on a tile's edge, reaching the map edge
+  water.changed(found); water.tick(0);
+  const fresh = createWater(grid, map, () => 0);
+  assert.deepEqual(maskOf(water), maskOf(fresh), 'found water updates the mask exactly as a fresh build draws it');
+  // 4 texels a cell: the stream's soft bank spills over the tile edge into the texel row just above it
+  assert.ok(maskOf(water)[((48 * 4 - 1) * W * 4 + 50 * 4) * 4] > 50, 'the blur reaches across a tile edge');
+  water.dispose(); fresh.dispose();
+}
+
 // Removing a wet edge cell removes its continuation on the next water tick.
 {
   const map = { w: 4, h: 4, rows: ['.W..', '.W..', '....', '....'] }, grid = map.rows.map(row => [...row]);
@@ -50,7 +68,9 @@ for (const [label, rows, extents] of [
   assert.equal(overlay.uniforms.fowMap, piece.uniforms.fowMap);
   assert.equal(overlay.uniforms.fowMap.value, first);
   assert.equal(overlay.uniforms.uUnseen.value, 185 / 255);
-  assert.ok(overlay.fragmentShader.includes('gl_FragColor.a *= mix('));
+  // the mask, eased into unexplored ground past the edge, drifts with the same mist as the pieces (client/surfaces.js)
+  assert.ok(overlay.fragmentShader.includes('gl_FragColor.a *= fowMist(mix('));
+  assert.equal(overlay.uniforms.fowTime, piece.uniforms.fowTime);
   assert.ok(!overlay.fragmentShader.includes('gl_FragColor.rgb = mix('));
   setFogMap(next, 280, 280);
   assert.equal(overlay.uniforms.fowMap.value, next);
