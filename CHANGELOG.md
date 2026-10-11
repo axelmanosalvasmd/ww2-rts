@@ -5,6 +5,14 @@ AI-vs-AI runs (see DESIGN.md for the balance log). Add new entries under **Unrel
 
 ## Unreleased
 
+- The server's spatial index allocates far less per tick (issue #58, B5), with the game unchanged: buckets are arrays
+  under one numeric key instead of maps of maps of sets, the per-tick rebuild keeps the index and redoes only units
+  that moved, appeared or left, and ordered queries merge buckets that are already in order instead of sorting their
+  results. In a CPU profile of the 6-AI Massive Conquest benchmark the index went from about 12% of the time (5.1% of
+  it the result sort) to 6.6%. The whole tick did not measurably speed up: on the Mac and on the Vostro (i5-12400,
+  Node 26) the differences between runs (5 to 15%) were larger than the change. The Classic and Conquest benchmarks
+  and a seeded six-AI World match end in exactly the same state as before (checked on both machines).
+
 - World Conquest AI seats cost the server less (issue #58, B4). Each AI plan scanned the whole map for bridges
   whenever its view's terrain had changed (9.5% of the server's time in a six-AI Huge World match); the AI view now
   keeps the set of bridge cells as terrain arrives, and the planner reads it in the map's order, as the scan did. AI
