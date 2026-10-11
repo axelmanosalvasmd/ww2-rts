@@ -25,9 +25,10 @@ import { createApron } from './apron.js';
 import { createWeatherView } from './weather-view.js';
 import { createGround } from './ground.js';
 import { setWind } from './wind.js';
-import { surface, setFogMap } from './surfaces.js';
+import { surface, setFogMap, setFogTime, fogMistShader } from './surfaces.js';
 import { createFog } from './fog.js';
-import { buildStructures as buildPieces, sandbagRing, hqCamp, buildingModel } from './structures.js';
+import { createWorldState } from './world-state.js';
+import { buildStructures as buildPieces, sandbagRing, hqCamp, buildingModel, PIECE_CELLS } from './structures.js';
 import { createRelief } from './relief.js';
 import { gfx } from './gfx.js';
 import { rig, groundAt as marchGround } from './camera.js';
@@ -502,7 +503,7 @@ function startGame(m, restored = null) {
     for (const id of restored.selected || []) if (Number.isSafeInteger(id)) selected.add(id);
     for (const [n, ids] of Object.entries(restored.groups || {})) if (/^[1-9]$/.test(n) && Array.isArray(ids)) groups[n] = ids.filter(Number.isSafeInteger);
   }
-  fx.length = 0; lastSnap = null; unitRows.clear(); hulks.clear(); projectiles.reset(); debris.reset(); effects.reset(); for (const m of strikeMarks.values()) m.dispose(); strikeMarks.clear(); aviation.reset(); epilogue.reset(); snapshotAt = 0; snapshotGap = 100;
+  fx.length = 0; lastSnap = null; worldState.reset(); hulks.clear(); projectiles.reset(); debris.reset(); effects.reset(); for (const m of strikeMarks.values()) m.dispose(); strikeMarks.clear(); aviation.reset(); epilogue.reset(); snapshotAt = 0; snapshotGap = 100;
   document.body.classList.toggle('observing', watching);
   objectives.reset(); endgame.reset();
   MW = map.w * CELL; MH = map.h * CELL;
@@ -532,7 +533,7 @@ function startGame(m, restored = null) {
   setTerrain(hAt, MW, MH); // rings, order lines and zones follow this ground on the GPU (client/overlay.js)
 
   buildStructures();
-  water?.dispose(); water = createWater(terrain.physicalGrid, map, hAt); if (water) world.add(water.mesh);
+  water?.dispose(); water = createWater(terrain.physicalGrid, map, hAt, waterOptions(map)); if (water) world.add(water.mesh);
 
   if (map.world) { railways = createRailways({ parent: world, hAt, w: map.w, center: id => lastSnap?.world?.regions?.find(r => r.id === id) }); railways.cells(m.cells); }
   props?.dispose(); props = EDIT ? null : createProps({ map, grid: terrain.physicalGrid, hAt, parent: world, skip: c => !!railways?.has(c) });
@@ -557,6 +558,7 @@ function startGame(m, restored = null) {
   fogOfWar = createFog(map.w, map.h, m.fog, EDIT, !!map.world);
   setFogMap(EDIT ? null : fogOfWar.texture, MW, MH); // walls, roofs and props darken in the fog too
   const fog = fogMesh = new THREE.Mesh(ground.geometry, new THREE.MeshBasicMaterial({ map: fogOfWar.texture, transparent: true, depthWrite: false, polygonOffset: true, polygonOffsetFactor: -2, polygonOffsetUnits: -6 }));
+  fog.material.onBeforeCompile = fogMistShader;
   fog.renderOrder = 1; fog.visible = !EDIT;
   world.add(fog);
   // zoomed out, the paper war map (client/map-view.js, a prototype)
@@ -651,6 +653,18 @@ function rememberLook(map, cell, data) {
   }
 }
 
+// a cell client/structures.js draws a piece on, judged from the current grids (the map file's houses count too)
+function hasPiece(x, y) {
+  return PIECE_CELLS.has(terrain.physicalGrid[y]?.[x]) || terrain.mineGrid[y]?.[x] === 1 || lastStart.map.rows[y]?.[x] === 'B';
+}
+function nearPiece(x, y) {
+  for (let dy = -2; dy <= 2; dy++) for (let dx = -2; dx <= 2; dx++) if (hasPiece(x + dx, y + dy)) return true;
+  return false;
+}
+
+// World Conquest: water runs on under ground this player has not discovered (client/water.js)
+const waterOptions = map => (map.world ? { unknown: c => !map.discovered?.[c] } : {});
+
 // bombs and shells lower the ground: patch the map's height rows
 function setLevel(map, cell, lv) {
   map.heights ??= map.rows.map(r => '0'.repeat(r.length));
@@ -665,14 +679,14 @@ function applyCells(cells) {
   groundVersion++;
   // Ground wear and scorching only change the paint. The relief, the 3D pieces, the scenery and the water are redone
   // only for cells whose type, height or damage stage changed: traffic wears many cells in a big battle.
-  const shaped = [];
+  const shaped = [], landmarks = lastStart.map.buildings?.length ?? 0;
   let pieces = false;
   for (const entry of cells) {
     const [cell, ch, lv, st = 0, data] = entry, x = cell % terrain.w, y = Math.floor(cell / terrain.w), heights = lastStart.map.heights;
     const physical = ch === 'N' ? composeWorldCell(data?.ground ?? terrain.groundGrid[y][x], data?.object ?? terrain.objectGrid[y][x]) : ch;
     const moved = terrain.grid[y][x] !== ch || terrain.physicalGrid[y][x] !== physical || (lv !== undefined && levelOf(heights?.[y]?.[x] ?? '0') !== lv);
     if (moved) shaped.push(entry);
-    pieces ||= moved || ((terrain.state[cell] ^ st) >> 3 & 3) > 0; // damage stage; the shelling bits only repaint
+    pieces ||= (moved && hasPiece(x, y)) || ((terrain.state[cell] ^ st) >> 3 & 3) > 0; // a piece stood here, or its damage stage changed
     terrain.grid[y][x] = ch; terrain.state[cell] = st;
     if (data) { terrain.groundGrid[y][x] = data.ground; terrain.objectGrid[y][x] = data.object; terrain.materials.set(cell, data.material); if (data.section) terrain.structuralSections.set(cell, data.section); } terrain.mineGrid[Math.floor(cell / terrain.w)][cell % terrain.w] = ch === 'N' ? 1 : 0; terrain.physicalGrid[Math.floor(cell / terrain.w)][cell % terrain.w] = ch === 'N' ? composeWorldCell(terrain.groundGrid[Math.floor(cell / terrain.w)][cell % terrain.w], terrain.objectGrid[Math.floor(cell / terrain.w)][cell % terrain.w]) : ch;
     if (lastStart.map.world) {
@@ -682,16 +696,25 @@ function applyCells(cells) {
     }
     if (lv !== undefined) setLevel(lastStart.map, cell, lv);
   }
+  // Scouting reveals mostly open ground, woods and water, which have no 3D pieces: the whole-map rebuild (about 20 ms
+  // on a Huge World map) runs only when a changed cell has a piece within two cells, or a landmark arrived.
+  pieces ||= (lastStart.map.buildings?.length ?? 0) !== landmarks || shaped.some(([cell]) => nearPiece(cell % terrain.w, Math.floor(cell / terrain.w)));
   terrain.ground.paint(terrain.grid, terrain.state, terrain.groundGrid, terrain.objectGrid, cells);
  // repaints only the tiles around changed cells
   if (shaped.length) {
-    const xs = shaped.map(([cell]) => cell % terrain.w), ys = shaped.map(([cell]) => Math.floor(cell / terrain.w));
-    const box = [Math.min(...xs) * CELL, Math.min(...ys) * CELL, (Math.max(...xs) + 1) * CELL, (Math.max(...ys) + 1) * CELL];
-    relief.update(shaped); props?.refresh(box);
+    // One box per 16-cell tile with changes: teammates scouting far apart no longer refresh all the ground between them.
+    const tiles = new Map();
+    for (const [cell] of shaped) {
+      const x = cell % terrain.w, y = Math.floor(cell / terrain.w), key = (y >> 4) * 65536 + (x >> 4), t = tiles.get(key);
+      if (!t) tiles.set(key, [x, y, x, y]); else { t[0] = Math.min(t[0], x); t[1] = Math.min(t[1], y); t[2] = Math.max(t[2], x); t[3] = Math.max(t[3], y); }
+    }
+    const boxes = [...tiles.values()].map(([x0, y0, x1, y1]) => [x0 * CELL, y0 * CELL, (x1 + 1) * CELL, (y1 + 1) * CELL]);
+    const box = boxes.reduce(mergePropBox); // all of it, for props still being prepared
+    relief.update(shaped); props?.refresh(boxes);
     if (propPreparation?.props) propPreparation.dirtyBox = mergePropBox(propPreparation.dirtyBox, box);
-    if (!water && shaped.some(([, ch]) => 'WF='.includes(ch))) { water = createWater(terrain.physicalGrid, lastStart.map, hAt); if (water) world.add(water.mesh); }
+    if (!water && shaped.some(([, ch]) => 'WF='.includes(ch))) { water = createWater(terrain.physicalGrid, lastStart.map, hAt, waterOptions(lastStart.map)); if (water) world.add(water.mesh); }
     else water?.changed(shaped); terrainDue.minimap = true; // the fog overlay follows the relief through onGeometry
-    refreshTerrain(...box);
+    for (const b of boxes) refreshTerrain(...b);
   }
   const rubbleCells = new Set(cells.map(entry => entry[0]));
   for (const [c, , lv] of cells) if (lv !== undefined) {
@@ -882,26 +905,15 @@ const airShot = (sh) => AIR_SHOTS.has(sh.k) && !(sh.k === 'flak' && (sh.t !== un
 
 // The server sends only the unit rows that changed and the ids gone (dead or under fog), and the wrecks and resource
 // nodes only when they change; the full lists are put back together here, so everything after reads whole snapshots.
-const unitRows = new Map();
+const worldState = createWorldState(); // the unit rows, wrecks and nodes this player holds (client/world-state.js)
 let resyncAt = -Infinity;
 function applySnapshot(s) {
-  // a full resend replaces everything held; so does a snapshot without held, from a server older than the deltas that
-  // sends every row each time and never a gone list (a server left running across an update)
-  if (s.all || !s.held) unitRows.clear();
-  for (const id of s.gone ?? []) unitRows.delete(id);
-  for (const row of s.units) unitRows.set(row[0], row);
-  // held: what the server thinks this client now holds. A mismatch means a stale unit is drawn (dead, or fogged) or a
-  // live one is missing; ask for a full resend instead of waiting for a reload (at most once a second)
-  if (s.held) {
-    let xor = 0;
-    for (const id of unitRows.keys()) xor ^= id;
-    if ((unitRows.size !== s.held[0] || xor !== s.held[1]) && performance.now() - resyncAt > 1000) {
-      console.warn(`unit rows out of sync at tick ${s.tick}: holding ${unitRows.size}, the server sent ${s.held[0]}; asking for a full resend`);
-      resyncAt = performance.now(); sendCmd({ t: 'resync' });
-    }
+  // A mismatch with what the server says this client holds means a stale unit is drawn (dead, or fogged) or a live one
+  // is missing; ask for a full resend instead of waiting for a reload (at most once a second)
+  if (worldState.apply(s) && performance.now() - resyncAt > 1000) {
+    console.warn(`unit rows out of sync at tick ${s.tick}: holding ${worldState.size}, the server sent ${s.held[0]}; asking for a full resend`);
+    resyncAt = performance.now(); sendCmd({ t: 'resync' });
   }
-  s.units = [...unitRows.values()];
-  s.wrecks ??= lastSnap?.wrecks; s.nodes ??= lastSnap?.nodes;
   fogOfWar?.snapshot(s); // before the freeze: each fog change builds on the last one
   if (window.__freeze) return; // debug: hold the scene still (e.g. to inspect models)
   const arrived = performance.now();
@@ -1933,6 +1945,7 @@ renderer.setAnimationLoop(() => {
   objectives.frame(sdt); projectiles.frame(); debris.frame(); effects.update(sdt); atmos.update(sdt);
   aviation.update(sdt);
   fogOfWar?.frame(dt, !lastStart?.map.world && epilogue.active()); // the match is decided: the fog lifts
+  setFogTime(performance.now() / 1000); // the mist in the fog drifts
   alerts.frame();
   pings.frame();
   endgame.frame();

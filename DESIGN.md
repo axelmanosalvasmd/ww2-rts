@@ -1502,6 +1502,12 @@ holds against its red and green, so bare ground keeps its color. Graphics Low sk
   `opaque_fragment`, in the shader's linear space. High draws into a linear render target and tone maps and converts
   in `client/light.js`'s last pass, Low converts in the material, so a constant placed after `colorspace_fragment`
   (the first version used 0.22) matches the ground on Low only and turns pieces pale on High.
+- World Conquest's soft frontier (2026-10-10): explored cells within 4 cells of a cell never seen get extra darkness,
+  full next to it and none 4.5 cells in (smoothstep on the distance), redone around newly explored cells only. The
+  texture is linearly filtered on every map. Never-seen cells stay at 255, so the fade adds no information. A
+  drifting mist (`fowMist` in `client/surfaces.js`, two layers of value noise in metres) moves the alpha of partly
+  fogged ground by up to 0.35 x a(1 - a): zero on clear and fully dark cells. The ground overlay, the 3D pieces and the
+  fog past the map edge share it. `fogOfWar.at` and the minimap read the unsoftened look.
 - Not hidden yet: terrain changes in fog still reach every client, as noted under Classic.
 
 ## Tech
@@ -1551,6 +1557,20 @@ is rewritten every frame. Terms: Manpower = Mano de obra (MO), Munitions = Munic
 the page. Adding text to the game means adding its Spanish to `client/es.js`.
 
 ### Runtime
+- World terrain memory (2026-10-11, issue #58): `g.cellJournal` lists every cell whose remembered row may have changed
+  (`logCell`, `touch`, a fire burning out). `worldTerrainMemory` rereads the cells newly in view (against the view at its
+  last pass, `m.seen`) and journaled cells in view; a memory behind the trimmed journal rereads its whole view.
+  `worldTerrainFor` keeps each player's place in the memory's change log (`worldTerrainAt`; AI views keep it in the
+  seat's AI memory). A new input to `seenWorldCell` must reach the journal, or memories go stale.
+- Runtime choice (2026-10-11, issue #58): Node stays. Bun 1.4 runs the server and its transport checks but is only 1 to
+  14% faster than Node 26 on the Vostro, plays seeds differently and cannot run the test suite. On a host with several
+  cores (a VPS, Railway), run with `WW2_SHARDS` about the core count: one process uses one core.
+- Game processes (2026-10-11, issue #58): `WW2_SHARDS=N` makes the started process a front that serves HTTP and the
+  public lobby list and forwards each `/ws?room=code` upgrade to one of N forked game processes (`server/shards.js`,
+  FNV-1a of the room code modulo N; the request line and headers are replayed and the sockets piped). Each game
+  process is `server.js` with `WW2_SHARD` set and keeps today's room code unchanged. Shared state has one owner: the
+  front merges the processes' `/api/rooms`, writes Horde records they send, and tells them when a map is saved.
+  `MAX_ROOMS` applies per game process. A game process that exits is started again after a second.
 - Plain JS ES modules, no build step. Deps: `ws` (server), `three` (client).
 - Server-authoritative: `shared/sim.js` runs at 20 Hz on the server and snapshots go out at 10 Hz (every 3 or 4
   ticks while a room falls behind, see round 3 above).
@@ -2627,6 +2647,17 @@ upload, so it does not guarantee a 6 ms frame. Pending dirty tiles merge across 
 captured cell attributes. One upload per paint frame regenerates mipmaps once. Initial painting, texture readiness
 and the editor stay synchronous. Replacing or disposing ground cancels pending work; owner tokens protect newer
 handles when a same-sized backing canvas is reused.
+
+World Conquest fields follow the ground discovered so far. A field block (10 by 8 cells) reads only its own cells
+and one biome sample inside it, so after a reveal `paint` rechecks only the blocks holding the changed cells and
+repaints the cells whose field changed with the rest (`refreshFields` in `client/ground.js`); a full recheck runs only
+on a full paint. The 3D pieces (`client/structures.js`) are still rebuilt for the whole map, but only when a changed
+cell had or has a piece within two cells (`PIECE_CELLS`), its damage stage changed, or a landmark arrived.
+
+The relief mesh (`client/relief.js`) is assembled from rows of cells whose vertices are kept between rebuilds. An
+update rebuilds the rows within seven of every dirty cell and copies the others; the fan-detail budget, the one input
+all rows share, is replayed over every row's runs and a row whose fans change is rebuilt too, so the mesh always
+equals a full build. `stats.rowsRebuilt` and `stats.geometryMs` report the last rebuild.
 
 The corpse module owns its fallen geometry and instance buffers. The camera chooses near or far fallen detail,
 with the existing soldier distance thresholds and 4 m hysteresis. Frustum tests use transformed fallen bounds,

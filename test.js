@@ -30,6 +30,7 @@ import { createRelief, TRENCH_DEPTH } from './client/relief.js';
 import { createAutocast } from './client/autocast.js';
 import { normalizeFace, slotSize, facingSpots } from './shared/formation.js';
 import { createOrders } from './client/orders.js';
+import { createWorldState } from './client/world-state.js';
 await check('test-supply-convoys.mjs', () => import('./test-supply-convoys.mjs'));
 await check('test-logistics-client.mjs', () => import('./test-logistics-client.mjs'));
 await check('test-tutorial.js', () => import('./test-tutorial.js'));
@@ -3698,6 +3699,52 @@ await check("The preview marks only ground this side has explored (the server's 
   } finally { delete globalThis.document; delete globalThis.addEventListener; } // node has neither
 });
 
+// World Conquest's fog: explored ground fades into ground never seen over a few cells, rounded, instead of a staircase
+// of black 2 m squares. Ground never seen stays fully dark, and the fog's own answers (seen, explored) do not change.
+// World terrain memory rereads only cells newly in view and cells journaled as changed, and ends up remembering exactly
+// what rereading every visible cell on every vision pass remembers (#58). Two seeded games run the same script: troops
+// march into unexplored ground, a crater is dug at their feet every 50 ticks, and snapshots are built as the server does.
+await check("World terrain memory rereads only new and changed cells and remembers what a full reread does", async () => {
+  const { generateWorldMap } = await import('./shared/world-conquest.js');
+  const play = journal => {
+    let seed = 4242; const random = Math.random;
+    Math.random = () => { let t = seed += 0x6D2B79F5; t = Math.imul(t ^ t >>> 15, t | 1); t ^= t + Math.imul(t ^ t >>> 7, t | 61); return ((t ^ t >>> 14) >>> 0) / 4294967296; };
+    try {
+      const g = createGame(generateWorldMap({ size: 'huge', seed: 31, players: 2, teams: [0, 1] }), ['A', 'B'], true, [0, 1], [0, 1], { mode: 'world', worldSize: 'huge' });
+      if (!journal) g.cellJournal = null;
+      const mine = [...g.units.values()].filter(u => u.owner === 0 && !UNITS[u.type].building);
+      sim.command(g, 0, { t: 'move', orders: mine.map(u => [u.id, u.x + 140, u.z + 60]) });
+      for (let t = 1; t <= 400; t++) {
+        sim.step(g);
+        if (t % 50 === 0) { const u = mine.find(v => v.hp > 0); if (u) sim.mutateWorldCell(g, Math.floor(u.z / CELL) * g.w + Math.floor(u.x / CELL) + 2, { ground: '+' }); }
+        if (t % 2 === 0) { const cache = snapshotCache(g); snapshotFor(g, 0, [], [], cache); snapshotFor(g, 1, [], [], cache); }
+      }
+      return g;
+    } finally { Math.random = random; }
+  };
+  const quick = play(true), full = play(false), memory = g => [...g.world.memory].sort((a, b) => a[0] - b[0]).map(([team, m]) => [team, [...m.cells].sort((a, b) => a[0] - b[0])]);
+  assert.ok(quick.world.memory.get(0).pass > 50, 'the journaled game reads cells incrementally');
+  assert.ok(memory(quick)[0][1].some(([, row]) => row[1] === '+'), 'a dug crater is remembered');
+  assert.deepEqual(memory(quick), memory(full), 'both games remember the same rows');
+});
+
+await check("World Conquest's fog fades explored ground into ground never seen", async () => {
+  const { createFog } = await import('./client/fog.js'), W = 24, C = 12;
+  const disc = r => Uint8Array.from({ length: W * W }, (_, c) => +(Math.hypot(c % W - C, Math.floor(c / W) - C) <= r));
+  const seen = disc(6), fog = createFog(W, W, { v: sim.packRuns(seen), e: sim.packRuns(seen) }, false, true);
+  const alpha = (x, y) => fog.texture.image.data[((W - 1 - y) * W + x) * 4 + 3];
+  assert.equal(alpha(0, 0), 255, 'ground never seen stays fully dark');
+  assert.equal(alpha(C, C), 0, 'the middle of what is seen stays clear');
+  const row = Array.from({ length: 7 }, (_, i) => alpha(C + i, C));
+  assert.ok(row.every((a, i) => !i || a >= row[i - 1]) && row[6] > row[3] && row[6] < 255, `darkness grows toward the frontier: ${row}`);
+  assert.equal(fog.at((C + 6.5) * CELL, (C + 0.5) * CELL), 'seen', 'a cell in the fade is still seen');
+  const wider = disc(9);
+  fog.snapshot({ fog: sim.packRuns(wider, seen), units: [] });
+  fog.frame(1);
+  assert.ok(alpha(C + 6, C) < row[6], 'scouting further moves the fade outward');
+  assert.equal(alpha(C, 0), 255, 'ground still never seen stays fully dark');
+});
+
 // Unit row deltas: a fresh client gets every row, a row that stops changing is not resent, a unit that dies or goes
 // under fog is named in gone, and a spectator joining the shared stream (full) gets every row again.
 await check("Unit row deltas", async () => {
@@ -4519,17 +4566,16 @@ await check("Between delivered snapshots the planner must use its supplied earli
 
 // Exercise the real room tick's delivery ordering without opening a server port.
 await check("Exercise the real room tick's delivery ordering without opening a server port", async () => {
-  const source = readFileSync('server.js', 'utf8');
-  const body = source.slice(source.indexOf('function timedRoomTick(room)'), source.indexOf('export function tickRooms()'));
+  const { createRoomTick } = await import('./server/room-tick.js');
   for (const cadence of [2, 4]) {
     const decisions = [], deliveries = [];
     // The real schedule (shared/ai-schedule.js) with a recording AI in every seat.
     const recording = { thinkEvery, observe: g => ({ tick: g.tick }), think: (g, slot, opts) => { decisions.push([g.tick, slot, opts.view.tick]); } };
     const recordedTick = (g, seats, views, options) => aiTick(g, seats.map(seat => ({ ...seat, brain: planner(recording) })), views, { ...options, sim: { snapshotCache: () => ({}) } });
-    const tick = new Function('aiTick', 'step', 'snapshotCache', 'snapshotFor', 'createTickMeter', 'recordTick', 'tickStats', 'trimmed',
-      body + '\nreturn timedRoomTick;')(
-      recordedTick, g => { g.tick++; },
-      () => ({}), g => ({ tick: g.tick }), () => ({}), () => cadence, () => ({}), (room, net, msg) => msg);
+    // the server's own room tick (server/room-tick.js) with stand-ins for the game, the snapshots and the sockets
+    const tick = createRoomTick({ aiTick: recordedTick, step: g => { g.tick++; }, snapshotCache: () => ({}), snapshotFor: g => ({ tick: g.tick }),
+      createTickMeter: () => ({}), recordTick: () => cadence, tickStats: () => ({}), trimmed: (room, net, msg) => msg,
+      connected: p => p.ws?.readyState === 1, backedUp: () => false, sendSnapshot: (room, p, json) => p.ws.send(json), sendWatchers: () => {} });
     const game = { tick: 0, winner: null, shots: [], newCells: [] };
     const room = { game, snapEvery: cadence, aiViews: [{ tick: 0 }, { tick: 0 }, { tick: 0 }],
       players: [{ ws: { readyState: 1, send: raw => deliveries.push(JSON.parse(raw).tick) } }, { ai: true, level: 'easy' }, { ai: true, level: 'hard' }] };
@@ -4951,16 +4997,13 @@ async function serverHarness() {
       async close() { if (ws.readyState !== 3) ws.close(); await waitFor(() => client.closed, 'client closes'); await settleServer(); },
       wait(type, predicate = () => true, after = 0) { return waitFor(() => messages.slice(after).find(message => message.t === type && predicate(message)), `client receives ${type}`); },
     };
-    // snapshots carry changed unit rows, gone ids and the wrecks and nodes only when they change: rebuild them as client/main.js does
-    const rows = new Map(); let prev = null;
+    // snapshots carry changed unit rows, gone ids and the wrecks and nodes only when they change: the client's own
+    // decoder (client/world-state.js) rebuilds them, and must agree with what the server says the client holds
+    const held = createWorldState();
     ws.on('message', raw => {
       const m = JSON.parse(String(raw));
-      if (m.t === 'start') { rows.clear(); prev = null; }
-      if (m.t === 's') {
-        for (const id of m.gone ?? []) rows.delete(id);
-        for (const row of m.units) rows.set(row[0], row);
-        m.sent = m.units; m.units = [...rows.values()]; m.wrecks ??= prev?.wrecks; m.nodes ??= prev?.nodes; prev = m;
-      }
+      if (m.t === 'start') held.reset();
+      if (m.t === 's') assert.equal(held.apply(m), false, `the client's unit rows match what the server says it holds at tick ${m.tick}`);
       messages.push(m);
     });
     ws.on('close', () => { client.closed = true; });
@@ -5929,6 +5972,20 @@ await check("Room lifecycle checks use one fake clock for captured timers and th
       await ana.send({ t: 'end' }); assert.equal(room.state, 'lobby', 'the spectating host can end the match');
       await ana.close();
       assert.ok(room.emptySince != null && !room.spectators.length, 'a spectator who disconnects is gone, and the room starts its grace period');
+    });
+    // A spectator whose connection falls megabytes behind is dropped (its client reconnects and starts from a whole
+    // snapshot): spectators share one delta stream, so it cannot skip snapshots the way a seat does (#58).
+    await check(async code => {
+      const [ana] = await humans(code, ['Ana']), room = h.rooms.get(code);
+      await ana.send({ t: 'spectate' }); await ana.send({ t: 'addAi' }); await ana.send({ t: 'addAi' });
+      await start(code, ana);
+      await h.tick(2);
+      const watcher = room.spectators[0].ws;
+      watcher.bufferedAmount = 5 * 1024 * 1024;
+      const tick = room.game.tick;
+      await h.tick(2);
+      assert.notEqual(watcher.readyState, 1, 'a spectator five megabytes behind is dropped');
+      assert.equal(room.game.tick, tick + 2, 'the match runs on without it');
     });
     console.log(`Room lifecycle: ${caseId} scenarios passed`);
   }
@@ -8886,6 +8943,8 @@ await stopServerHarness(); // the last server check is done
 // The public lobby checks own a fresh server with a deliberately small room cap.
 // The public lobby checks own a fresh server with a deliberately small room cap.
 await runFiles(['test-public-lobby.js'], { cwd: import.meta.dirname, timeoutMs: 30000 });
+// Rooms in several game processes (WW2_SHARDS): a sharded server of its own, over real sockets.
+await runFiles(['test-shards.js'], { cwd: import.meta.dirname, timeoutMs: 60000 });
 await childFiles;
 // Performance checks exercise the same painting, rendering and path interfaces used by the game. They run alone,
 // after everything else, so other test processes cannot eat their time budgets (a sharded run does this itself).

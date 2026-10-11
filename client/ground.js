@@ -149,22 +149,42 @@ export function* fieldCellBatches(map) {
   return fields.map(v => (v === FIELD ? 1 : v === FIELD_V ? 2 : 0));
 }
 function fieldsOf(map) { return finishBatches(fieldBatches(map)); }
+const FIELD_BW = 10, FIELD_BH = 8;
+const fieldKeep = map => [...(map.spawns || []).filter(Boolean).map(p => ({ ...p, r: 9 })), ...(map.points || []).map(p => ({ ...p, r: 5 }))]; // clear of HQ rings and points
+// One block's field (0, FIELD or FIELD_V) and the cells it covers. It reads only cells inside its own block: their
+// open ground and the biome at one sample cell, so a changed cell can only change the field of the block it is in.
+function fieldBlock(map, keep, bx, by) {
+  const { w, h, rows } = map;
+  const x0 = bx * FIELD_BW + 1, y0 = by * FIELD_BH + 1, x1 = Math.min(w - 1, bx * FIELD_BW + FIELD_BW - 1), y1 = Math.min(h - 1, by * FIELD_BH + FIELD_BH - 1);
+  const look = BIOME_LOOKS[map.biome?.[Math.min(h - 1, by * FIELD_BH + 4) * w + Math.min(w - 1, bx * FIELD_BW + 5)]];
+  const block = { dir: 0, x0, y0, x1, y1 };
+  if (rnd(bx, by, 7) > (look?.fields ?? 0.24) || x1 - x0 < 4 || y1 - y0 < 3) return block;
+  if (keep.some(p => p.x > x0 - p.r && p.x < x1 + p.r - 1 && p.y > y0 - p.r && p.y < y1 + p.r - 1)) return block;
+  for (let y = y0; y < y1; y++) for (let x = x0; x < x1; x++) if (rows[y][x] !== '.') return block;
+  block.dir = rnd(bx, by, 8) < 0.5 ? FIELD : FIELD_V;
+  return block;
+}
 function* fieldBatches(map) {
-  const { w, h, rows } = map, f = new Uint8Array(w * h), BW = 10, BH = 8;
-  const keep = [...(map.spawns || []).filter(Boolean).map(p => ({ ...p, r: 9 })), ...(map.points || []).map(p => ({ ...p, r: 5 }))]; // clear of HQ rings and points
-  for (let by = 0; by * BH < h; by++) { yield; for (let bx = 0; bx * BW < w; bx++) {
-    const look = BIOME_LOOKS[map.biome?.[Math.min(h - 1, by * BH + 4) * w + Math.min(w - 1, bx * BW + 5)]];
-    if (rnd(bx, by, 7) > (look?.fields ?? 0.24)) continue;
-    const x0 = bx * BW + 1, y0 = by * BH + 1, x1 = Math.min(w - 1, bx * BW + BW - 1), y1 = Math.min(h - 1, by * BH + BH - 1);
-    if (x1 - x0 < 4 || y1 - y0 < 3) continue;
-    if (keep.some(p => p.x > x0 - p.r && p.x < x1 + p.r - 1 && p.y > y0 - p.r && p.y < y1 + p.r - 1)) continue;
-    let ok = true;
-    for (let y = y0; y < y1 && ok; y++) for (let x = x0; x < x1; x++) if (rows[y][x] !== '.') { ok = false; break; }
-    if (!ok) continue;
-    const dir = rnd(bx, by, 8) < 0.5 ? FIELD : FIELD_V;
-    for (let y = y0; y < y1; y++) for (let x = x0; x < x1; x++) f[y * w + x] = dir;
+  const { w, h } = map, f = new Uint8Array(w * h), keep = fieldKeep(map);
+  for (let by = 0; by * FIELD_BH < h; by++) { yield; for (let bx = 0; bx * FIELD_BW < w; bx++) {
+    const { dir, x0, y0, x1, y1 } = fieldBlock(map, keep, bx, by);
+    if (dir) for (let y = y0; y < y1; y++) for (let x = x0; x < x1; x++) f[y * w + x] = dir;
   } }
   return f;
+}
+// Brings S.fields up to date after the given cells changed, rechecking only their blocks; returns the cells whose field
+// changed. A whole-map recheck here cost 70 to 90 ms on a Huge World map, several times a second while scouting.
+function refreshFields(S, cells) {
+  const { w, map, fields } = S, keep = fieldKeep(map), blocks = new Set(), flipped = [];
+  for (const entry of cells) {
+    const c = typeof entry === 'number' ? entry : entry[0];
+    blocks.add(Math.floor(Math.floor(c / w) / FIELD_BH) * w + Math.floor((c % w) / FIELD_BW));
+  }
+  for (const b of blocks) {
+    const { dir, x0, y0, x1, y1 } = fieldBlock(map, keep, b % w, Math.floor(b / w));
+    for (let y = y0; y < y1; y++) for (let x = x0; x < x1; x++) { const i = y * w + x; if (fields[i] !== dir) { fields[i] = dir; flipped.push(i); } }
+  }
+  return flipped;
 }
 
 // S.state: per cell, what the server says besides the type (wear in quarters, burnt, damage stage); a map cell the
@@ -761,8 +781,11 @@ function queuePaint(S, dirty) {
 function paint(S, grid, cells) {
   const prev = S.attrs;
   let affected = null, before = null;
-  // fields follow the biomes discovered so far; a field reaches past the cells around a change, so a new one repaints all
-  if (S.map.world) { const fields = fieldsOf(S.map); if (S.fields && fields.some((v, i) => v !== S.fields[i])) cells = null; S.fields = fields; }
+  // World fields follow the ground and biomes discovered so far; cells whose field changed are repainted with the rest
+  if (S.map.world) {
+    if (cells && S.fields) { const flipped = refreshFields(S, cells); if (flipped.length) cells = [...cells, ...flipped]; }
+    else S.fields = fieldsOf(S.map);
+  }
   if (prev && cells) {
     affected = new Set(); before = new Map();
     // Material neighbors extend one cell; scar depth looks six cells beyond them.

@@ -1167,6 +1167,9 @@ function setupWorld(g, map) {
   const error = validateWorldMap(map); if (error) throw new Error(error);
   g.mode = { kind: 'world', teams: new Set(g.players.map(p => p.team)).size, total: map.world.total };
   g.world = { size: map.world.size, total: map.world.total, seed: map.world.seed, regionMap: map.world.regionMap ? Int16Array.from(map.world.regionMap) : null, biomes: map.world.biomes ? Uint8Array.from(map.world.biomes) : null, regionCells: map.world.regionCells, memory: new Map(), regions: map.world.regions.map(r => ({ ...r, x: (r.x + 0.5) * CELL, z: (r.y + 0.5) * CELL, bounds: r.bounds.map(v => v * CELL), team: r.home === undefined ? -1 : g.players[r.home].team, progress: r.home === undefined ? 0 : 1, capper: -1 })) };
+  // every cell whose remembered World row may have changed, in order (worldTerrainMemory reads only these and newly
+  // visible cells); journalBase is the position of its first entry since the last trim
+  g.cellJournal = []; g.journalBase = 0;
   if (map.world.rails) setupRails(g, map.world.rails);
   // An array property keeps the hostile local actor out of lobby seats, results and competitive team loops.
   Object.defineProperty(g.players, '-1', { value: { slot: -1, name: 'Local defenders', team: -1, faction: 0, spawn: { x: 0, z: 0 }, visible: new Set(), mp: 0, mun: 0, fuel: 0 }, configurable: true });
@@ -1386,21 +1389,57 @@ function sameValue(a, b) {
 }
 function worldTerrainMemory(g, team) {
   const f = teamFog(g, team), all = g.world.memory;
-  let m = all.get(team); if (!m) all.set(team, m = { cells: new Map(), regions: new Map(), wrecks: new Map(), key: null, version: 0 });
+  let m = all.get(team); if (!m) all.set(team, m = { cells: new Map(), regions: new Map(), wrecks: new Map(), key: null, version: 0, log: [], logBase: 0 });
+  m.log ??= []; m.logBase ??= 0; // memories from saves made before the change log
   const key = `${g.visionTick}:${g.terrainVersion ?? 0}:${g.reveal ? 1 : 0}`;
   if (m.key !== key) {
     m.key = key;
-    const cells = g.reveal ? g.chars.keys() : f.visibleCells;
-    for (const c of cells) {
+    const visit = c => {
       const row = seenWorldCell(g, c, team), old = m.cells.get(c);
-      if (!old || !sameValue(old, row)) { m.cells.set(c, row); m.version++; }
+      if (!old || !sameValue(old, row)) { m.cells.set(c, row); m.version++; m.log.push(c); }
+    };
+    const J = g.cellJournal, full = !J || g.reveal || !m.seen || m.journalAt < g.journalBase;
+    if (full) for (const c of g.reveal ? g.chars.keys() : f.visibleCells) visit(c);
+    else {
+      // A cell that stayed in view and is not in the journal reads the same as on the last pass: only cells newly in
+      // view and cells changed since (journaled) are read again. Rereading every visible cell every pass cost about a
+      // fifth of the World server's time (#58).
+      const stamp = m.stamp ??= new Uint32Array(g.w * g.h), mark = ++m.pass;
+      for (const c of f.visibleCells) if (!m.seen[c]) { stamp[c] = mark; visit(c); }
+      for (let i = m.journalAt - g.journalBase; i < J.length; i++) {
+        const c = J[i];
+        if (f.vis[c] && stamp[c] !== mark) { stamp[c] = mark; visit(c); }
+      }
+    }
+    if (J) {
+      (m.seen ??= new Uint8Array(g.w * g.h)).set(f.vis);
+      m.journalAt = g.journalBase + J.length; m.pass ??= 0;
+      trimJournal(g);
     }
   }
   return m;
 }
+// Drop the journal entries every team memory has read. A memory left far behind reads its whole view again instead.
+function trimJournal(g) {
+  const J = g.cellJournal;
+  if (J.length < 65536) return;
+  let at = g.journalBase + J.length;
+  for (const m of g.world.memory.values()) if (m.journalAt !== undefined) at = Math.min(at, m.journalAt);
+  if (J.length > 1 << 20) at = g.journalBase + J.length;
+  if (at > g.journalBase) { J.splice(0, at - g.journalBase); g.journalBase = at; }
+}
+// The rows this player has not been sent. Each player keeps its place in the memory's change log (worldTerrainAt), so a
+// snapshot reads only the rows changed since its last one instead of the whole memory (#58); a player whose place was
+// trimmed away, or a full read, walks the whole memory as before.
 function worldTerrainFor(g, slot, full) {
   const p = g.players[slot], m = worldTerrainMemory(g,p.team), sent = p.worldTerrainSent ??= new Map(), rows=[];
-  for (const [c,row] of m.cells) if (full || sent.get(c) !== row) { rows.push(row); sent.set(c,row); }
+  if (full || !(p.worldTerrainAt >= m.logBase)) { for (const [c,row] of m.cells) if (full || sent.get(c) !== row) { rows.push(row); sent.set(c,row); } }
+  else for (let i = p.worldTerrainAt - m.logBase; i < m.log.length; i++) {
+    const c = m.log[i], row = m.cells.get(c);
+    if (sent.get(c) !== row) { rows.push(row); sent.set(c,row); }
+  }
+  p.worldTerrainAt = m.logBase + m.log.length;
+  if (m.log.length > 4 * m.cells.size + 4096) { m.logBase += m.log.length; m.log = []; } // laggards read it whole once
   return rows;
 }
 export function worldMapFor(g, slot) {
@@ -1480,7 +1519,10 @@ function worldPathView(g, slot) {
   if (m.pathVersion !== m.version) {
     const affected = new Set(), changed = [], W = g.w;
     view.navigationChangedFromVersion = view.navigationKnowledgeVersion ?? 0;
-    for (const [c, row] of m.cells) {
+    // the rows changed since the view last followed the memory, from its change log; the whole memory when the log was trimmed past it
+    const fromLog = m.pathAt >= m.logBase, rows = fromLog ? m.log.slice(m.pathAt - m.logBase).map(c => [c, m.cells.get(c)]) : m.cells;
+    m.pathAt = m.logBase + m.log.length;
+    for (const [c, row] of rows) {
       if (m.pathRows.get(c) === row) continue;
       const oldWall = (view.flags[c] & (MOVE | SIGHT)) === (MOVE | SIGHT), oldFlags = view.flags[c], oldHeight = view.height[c];
       view.chars[c] = row[1]; view.ground[c] = row[4]?.ground ?? row[1]; view.objects[c] = row[4]?.object ?? '.'; view.mineLayer[c] = row[1] === 'N' ? 1 : 0; view.flags[c] = TERRAIN[row[1] === 'N' ? physicalWorldCell(view, c) : row[1]] ?? 0; view.height[c] = row[2]; view.wear[c] = (row[3] & 3) / 4;
@@ -1559,6 +1601,9 @@ function setupSkirmishBases(g) {
 }
 
 const observedPaths = new WeakMap();
+// The terrain a player's side knows, as routes and movement read it: the team memory's view in World Conquest, the
+// remembered map otherwise. One choice, so a new mode cannot miss a place that makes it.
+const knownTerrainFor = (g, slot) => (g.mode?.kind === 'world' ? worldPathView(g, slot) : observedPathView(g, slot));
 function observedPathView(g, slot) {
   let recipients = observedPaths.get(g); if (!recipients) observedPaths.set(g, recipients = new Map());
   let state = recipients.get(slot); if (state?.initial !== g.initialTerrain) state = null;
@@ -1796,7 +1841,7 @@ function dangerView(g, known, u, state) {
 function supplyRoute(g, u, at, safe = false) {
   u.supplyRouteReason = null;
   if (!safe) return findPath(g, u, at);
-  const known = g.mode?.kind === 'world' ? worldPathView(g, u.owner) : observedPathView(g, u.owner);
+  const known = knownTerrainFor(g, u.owner);
   let owners = supplyRouteViews.get(g);
   if (!owners) supplyRouteViews.set(g, owners = new Map());
   const epoch = Math.floor(g.tick / 40), version = known.navigationKnowledgeVersion ?? known.obstructionVersion;
@@ -1819,7 +1864,7 @@ function supplyPathConnected(g,u,at,path) {
   if (!path.length) return false;
   if (dist(path.at(-1),at)<=3) return true;
   const def=UNITS[u.type], block=blockOf(def);
-  let view=g.navigationObserved ? g : g.mode?.kind==='world' ? worldPathView(g,u.owner) : observedPathView(g,u.owner);
+  let view=g.navigationObserved ? g : knownTerrainFor(g, u.owner);
   if (isGroundVehicle(def) && !view.vehicleFootprintKnown) view=vehicleNavigationView(view,def,block);
   return navigationLeg(view,cellOf(view,u.x,u.z),nearestFree(view,at.x,at.z,block),block).connected;
 }
@@ -1858,12 +1903,12 @@ function supplyHandoff(g, u, store, radius) {
 const SHORT_HOP = 16;
 function fullConvoyRoute(g,u,at,safe) {
   if (dist(u, at) <= SHORT_HOP) {
-    const def = UNITS[u.type], known = g.mode?.kind === 'world' ? worldPathView(g, u.owner) : observedPathView(g, u.owner);
+    const def = UNITS[u.type], known = knownTerrainFor(g, u.owner);
     if (walkable(known, u, at, blockOf(def), bodyRadius(def))) return [{ x: at.x, z: at.z }];
   }
   const route=supplyRoute(g,u,at,safe);
   if (!route.length || dist(route.at(-1),at)<=3) return route;
-  const known=g.mode?.kind==='world' ? worldPathView(g,u.owner) : observedPathView(g,u.owner);
+  const known=knownTerrainFor(g, u.owner);
   // Keep one navigation view across fine-route legs. Financing uses the entire
   // planned outward and return journey, including roads around remembered banks.
   let view=known;
@@ -1888,7 +1933,7 @@ function fullConvoyRoute(g,u,at,safe) {
 // remembered terrain and visible weapon threats, including every remaining leg.
 function supplyContinueRoute(g, u) {
   if (!u.path.length || (u.stuck ?? 0) > .5) return false;
-  const known = g.mode?.kind === 'world' ? worldPathView(g, u.owner) : observedPathView(g, u.owner);
+  const known = knownTerrainFor(g, u.owner);
   const def = UNITS[u.type], threats = [...g.players[u.owner].visible].map(id => g.units.get(id)).filter(t => t && t.hp > 0 && !allied(g, t.owner, u.owner) && UNITS[t.type].w?.range > 0 && !t.air);
   let from = u;
   for (const to of u.path) {
@@ -2291,7 +2336,9 @@ const stateOf = (g, c) => packState(g.wear[c], g.burnt[c], g.cellHp[c], maxHp(g,
 export const startState = (ch, c) => packState(startWear(ch, c), 0, 1, 1);
 // tell the clients when a cell's state crosses into another step
 // (a look-only change: it does not move terrainVersion, see logCell)
-function touch(g, c) { const s = stateOf(g, c); if (s !== g.cellState[c]) { g.cellState[c] = s; logCell(g, c, [c, g.chars[c]], true); } }
+// touch follows every change of a cell's wear or damage: the World journal takes the cell even when its state is the same,
+// since the remembered row carries the exact wear
+function touch(g, c) { g.cellJournal?.push(c); const s = stateOf(g, c); if (s !== g.cellState[c]) { g.cellState[c] = s; logCell(g, c, [c, g.chars[c]], true); } }
 // how fast a unit moves on one cell (1 = open dry ground)
 function groundMul(g, c, veh) {
   const f = g.flags[c], w = g.wear ? g.wear[c] : 0, wet = g.wx ? g.wx.wet * (g.height && g.height[c] < 0 ? 2 : 1) : 0;
@@ -2594,6 +2641,7 @@ function logCell(g, c, change, look = false) {
   g.watchPending?.add(index); // the spectators' shared terrain memory (server.js)
   if (!look) g.terrainVersion = (g.terrainVersion ?? 0) + 1;
   g.newCells.push(latest);
+  g.cellJournal?.push(c);
 }
 
 // water within CFG.shoal cells of land or surf gets SHOAL (a breadth-first pass out from the shore)
@@ -2944,7 +2992,7 @@ function heapPop(b) {
 // A* over the grid, 8-directional, no corner cutting. Returns smoothed world waypoints.
 export function findPath(g, from, to) {
   if (!g.navigationObserved && !g.worldKnown && g.players?.[from.owner]) {
-    const view = g.mode?.kind === 'world' ? worldPathView(g, from.owner) : observedPathView(g, from.owner), next = to;
+    const view = knownTerrainFor(g, from.owner), next = to;
     const path = findPath(view, from, next), block = blockOf(UNITS[from.type]);
     if (path.length && !walkable(view,from,path[0],block)) {
       // A squad stopped at a newly seen bank can sit a fraction of a cell too close for a parallel move.
@@ -4716,7 +4764,7 @@ function burn(g, list, dt) {
     const t = left - dt * (1 + 3 * rain);
     if (t > 0) { g.fires.set(c, t); continue; }
     g.fires.delete(c); g.burnt[c] = 1;
-    const section = g.structuralCells?.get(c); if (section && section.state !== 'failed') section.state = section.hp < section.maxHp ? 'damaged' : 'intact';
+    const section = g.structuralCells?.get(c); if (section && section.state !== 'failed') { section.state = section.hp < section.maxHp ? 'damaged' : 'intact'; g.cellJournal?.push(c); }
     if (ch === 'H' || ch === 'O') wreckCell(g, list, c, '.'); else touch(g, c);
   }
 }
@@ -5179,6 +5227,65 @@ function stepStrikes(g, list, dt) {
 }
 
 // After a winner the sim keeps running (the server's closing hold shows the last seconds) without win checks or story.
+// One tick of a ground vehicle along its route (from step's unit loop): the hull's own motion (vehicleStep), backing
+// or sliding out when walled in, the fuel limit, the swept check against walls and units, ghosting past a friend that
+// boxes it in, and taking the next leg. route: what traffic lets it follow now; before: where it stood this tick.
+function driveVehicle(g, u, def, route, speed, dt, back, traffic, before, trafficView) {
+  const reverse = back || traffic.yielding && traffic.goal && Math.cos(Math.atan2(traffic.goal.z - u.z, traffic.goal.x - u.x) - u.rot) < -0.5;
+  if (u.motionClearance && (u.motionClearance.path !== u.path || g.tick > u.motionClearance.until || dist(u, u.motionClearance.goal) < 0.3)) u.motionClearance = null;
+  let next = vehicleStep(u, def, u.motionClearance ? [u.motionClearance.goal] : route, u.motionClearance ? Math.min(speed, 1.2) : speed, dt, u.motionClearance ? u.motionClearance.reverse : reverse);
+  if (!u.motionClearance && route.length && u.stuck > 0.3 && !sweptVehicleClear(g, before, { ...before, rot: next.rot }, def, blockOf(def))) {
+    for (const direction of [-1, 1]) {
+      const goal = { x: before.x + Math.cos(before.rot) * 2 * direction, z: before.z + Math.sin(before.rot) * 2 * direction, rot: before.rot };
+      if (!sweptVehicleClear(g, before, goal, def, blockOf(def))) continue;
+      const bearing = Math.atan2(route[0].z - goal.z, route[0].x - goal.x) + (reverse ? Math.PI : 0);
+      if (!sweptVehicleClear(g, goal, { ...goal, rot: bearing }, def, blockOf(def))) continue;
+      u.motionClearance = { goal, reverse: direction < 0, path: u.path, until: g.tick + 80 };
+      next = vehicleStep(u, def, [goal], Math.min(speed, 1.2), dt, direction < 0); break;
+    }
+    // walled in lengthwise too (a hull shoved off-centre and sideways in a narrow street): slide over, up to
+    // 1.5 m at 1.2 m/s, to where the turn fits. Separation already shoves hulls sideways, so this adds no new move.
+    if (!u.motionClearance) for (const side of [0.5, -0.5, 1, -1, 1.5, -1.5]) {
+      const at = { x: before.x - Math.sin(before.rot) * side, z: before.z + Math.cos(before.rot) * side, rot: before.rot };
+      const bearing = Math.atan2(route[0].z - at.z, route[0].x - at.x) + (reverse ? Math.PI : 0);
+      if (!sweptVehicleClear(g, before, at, def, blockOf(def)) || !sweptVehicleClear(g, at, { ...at, rot: bearing }, def, blockOf(def))) continue;
+      const k = Math.min(1, 1.2 * dt / Math.abs(side));
+      next = { ...next, x: before.x + (at.x - before.x) * k, z: before.z + (at.z - before.z) * k, rot: before.rot, moveSpeed: 0 }; break;
+    }
+  }
+  const fuelLimit = speed * dt, proposed = dist(next, before);
+  if ((u.convoy || u.logistics) && proposed > fuelLimit) { const f = fuelLimit / (proposed || 1); next.x = before.x + (next.x-before.x)*f; next.z = before.z + (next.z-before.z)*f; next.moveSpeed *= f; }
+  // Never allow a hull to rotate or travel through a cell during this tick.
+  let clearMotion = sweptVehicleClear(g, before, next, def, blockOf(def));
+  if (clearMotion) {
+    const nearby = gridFor(g).candidates(u, bodyRadius(def) + 9, false, v => v.id !== u.id && v.hp > 0 && !v.air && !v.riding && v.garrison < 0 && !ghostPair(g, u, v));
+    const blocker = nearby.find(v => {
+      const min = bodyRadius(def) + bodyRadius(UNITS[v.type]);
+      const dx = next.x - before.x, dz = next.z - before.z, t = Math.max(0, Math.min(1, ((v.x - before.x) * dx + (v.z - before.z) * dz) / (dx * dx + dz * dz || 1)));
+      const closest = Math.hypot(before.x + dx * t - v.x, before.z + dz * t - v.z);
+      return !(closest >= min - 1e-6 || dist(before, v) < min && dist(next, v) > dist(before, v));
+    });
+    clearMotion = !blocker;
+    // boxed in by a friend for a while (a crowded gate or street): pass through friends for a moment
+    if (blocker && allied(g, blocker.owner, u.owner) && u.stuck > TRAFFIC.ghost) u.ghost = g.tick + Math.round(TRAFFIC.ghostTime / dt);
+  }
+  if (clearMotion) { u.x = next.x; u.z = next.z; u.rot = next.rot; u.moveSpeed = next.moveSpeed; }
+  else {
+    u.moveSpeed = 0;
+    const turned = { ...before, rot: next.rot };
+    if (sweptVehicleClear(g, before, turned, def, blockOf(def))) u.rot = next.rot;
+    u.trafficWait = (u.trafficWait ?? 0) + dt;
+  }
+  u.travelDir = next.travelDir;
+  // A bend is taken at speed (vehicleStep brakes to it): turn onto the next leg a little early, or just past the
+  // waypoint, where the hull has a clear straight line to the next one; otherwise on reaching the waypoint.
+  const nextLeg = route[1], near = route.length ? dist(u, route[0]) : Infinity, pace = Math.abs(u.moveSpeed);
+  const bend = nextLeg ? Math.abs(angleDelta(u.travelDir, Math.atan2(nextLeg.z - route[0].z, nextLeg.x - route[0].x))) : Math.PI;
+  const lead = bend < Math.PI / 2 ? pace / movementProfile(u.type, def).hullTurn * Math.tan(bend / 2) : 0;
+  const passed = near < 2 && Math.cos(Math.atan2(u.z - route[0]?.z, u.x - route[0]?.x) - u.travelDir) > 0;
+  const reached = near < Math.max(0.12, pace * dt * 1.5) || nextLeg && (near < lead || passed) && walkable(trafficView(), u, nextLeg, blockOf(def), bodyRadius(def));
+  if (reached && !traffic.yielding && !u.motionClearance) u.path.shift();
+}
 export function step(g) {
   for (const u of g.units.values()) if (u.structureId) syncBuildingSections(g, u);
   const dt = TICK;
@@ -5363,7 +5470,7 @@ export function step(g) {
     if (u.logistics?.fuel !== null && u.logistics?.fuel !== undefined) speed *= Math.min(1, (u.logistics.fuel + (u.logistics.forced ? u.logistics.emergency : 0)) / dt);
     rememberTrafficPosition(u, dt);
     let trafficTerrain;
-    const trafficView = () => trafficTerrain ??= g.mode?.kind === 'world' ? worldPathView(g, u.owner) : observedPathView(g, u.owner);
+    const trafficView = () => trafficTerrain ??= knownTerrainFor(g, u.owner);
     const traffic = def.naval || def.structure ? { goal: u.path[0], blocked: false } : trafficStep(g, u, u.path[0], {
       defs: UNITS, grid: gridFor(g), dt, visible: v => seenBy(g, u.owner, v.id), friend: v => allied(g, u.owner, v.owner),
       clear: (a, b) => walkable(trafficView(), a, b, blockOf(def), groundVehicle ? bodyRadius(def) : 0.9),
@@ -5379,62 +5486,8 @@ export function step(g) {
       }
     }
     const route = traffic.goal ? (traffic.yielding ? [traffic.goal] : u.path) : [];
-    if (groundVehicle) {
-      const reverse = back || traffic.yielding && traffic.goal && Math.cos(Math.atan2(traffic.goal.z - u.z, traffic.goal.x - u.x) - u.rot) < -0.5;
-      if (u.motionClearance && (u.motionClearance.path !== u.path || g.tick > u.motionClearance.until || dist(u, u.motionClearance.goal) < 0.3)) u.motionClearance = null;
-      let next = vehicleStep(u, def, u.motionClearance ? [u.motionClearance.goal] : route, u.motionClearance ? Math.min(speed, 1.2) : speed, dt, u.motionClearance ? u.motionClearance.reverse : reverse);
-      if (!u.motionClearance && route.length && u.stuck > 0.3 && !sweptVehicleClear(g, before, { ...before, rot: next.rot }, def, blockOf(def))) {
-        for (const direction of [-1, 1]) {
-          const goal = { x: before.x + Math.cos(before.rot) * 2 * direction, z: before.z + Math.sin(before.rot) * 2 * direction, rot: before.rot };
-          if (!sweptVehicleClear(g, before, goal, def, blockOf(def))) continue;
-          const bearing = Math.atan2(route[0].z - goal.z, route[0].x - goal.x) + (reverse ? Math.PI : 0);
-          if (!sweptVehicleClear(g, goal, { ...goal, rot: bearing }, def, blockOf(def))) continue;
-          u.motionClearance = { goal, reverse: direction < 0, path: u.path, until: g.tick + 80 };
-          next = vehicleStep(u, def, [goal], Math.min(speed, 1.2), dt, direction < 0); break;
-        }
-        // walled in lengthwise too (a hull shoved off-centre and sideways in a narrow street): slide over, up to
-        // 1.5 m at 1.2 m/s, to where the turn fits. Separation already shoves hulls sideways, so this adds no new move.
-        if (!u.motionClearance) for (const side of [0.5, -0.5, 1, -1, 1.5, -1.5]) {
-          const at = { x: before.x - Math.sin(before.rot) * side, z: before.z + Math.cos(before.rot) * side, rot: before.rot };
-          const bearing = Math.atan2(route[0].z - at.z, route[0].x - at.x) + (reverse ? Math.PI : 0);
-          if (!sweptVehicleClear(g, before, at, def, blockOf(def)) || !sweptVehicleClear(g, at, { ...at, rot: bearing }, def, blockOf(def))) continue;
-          const k = Math.min(1, 1.2 * dt / Math.abs(side));
-          next = { ...next, x: before.x + (at.x - before.x) * k, z: before.z + (at.z - before.z) * k, rot: before.rot, moveSpeed: 0 }; break;
-        }
-      }
-      const fuelLimit = speed * dt, proposed = dist(next, before);
-      if ((u.convoy || u.logistics) && proposed > fuelLimit) { const f = fuelLimit / (proposed || 1); next.x = before.x + (next.x-before.x)*f; next.z = before.z + (next.z-before.z)*f; next.moveSpeed *= f; }
-      // Never allow a hull to rotate or travel through a cell during this tick.
-      let clearMotion = sweptVehicleClear(g, before, next, def, blockOf(def));
-      if (clearMotion) {
-        const nearby = gridFor(g).candidates(u, bodyRadius(def) + 9, false, v => v.id !== u.id && v.hp > 0 && !v.air && !v.riding && v.garrison < 0 && !ghostPair(g, u, v));
-        const blocker = nearby.find(v => {
-          const min = bodyRadius(def) + bodyRadius(UNITS[v.type]);
-          const dx = next.x - before.x, dz = next.z - before.z, t = Math.max(0, Math.min(1, ((v.x - before.x) * dx + (v.z - before.z) * dz) / (dx * dx + dz * dz || 1)));
-          const closest = Math.hypot(before.x + dx * t - v.x, before.z + dz * t - v.z);
-          return !(closest >= min - 1e-6 || dist(before, v) < min && dist(next, v) > dist(before, v));
-        });
-        clearMotion = !blocker;
-        // boxed in by a friend for a while (a crowded gate or street): pass through friends for a moment
-        if (blocker && allied(g, blocker.owner, u.owner) && u.stuck > TRAFFIC.ghost) u.ghost = g.tick + Math.round(TRAFFIC.ghostTime / dt);
-      }
-      if (clearMotion) { u.x = next.x; u.z = next.z; u.rot = next.rot; u.moveSpeed = next.moveSpeed; }
-      else {
-        u.moveSpeed = 0;
-        const turned = { ...before, rot: next.rot };
-        if (sweptVehicleClear(g, before, turned, def, blockOf(def))) u.rot = next.rot;
-        u.trafficWait = (u.trafficWait ?? 0) + dt;
-      }
-      u.travelDir = next.travelDir;
-      // A bend is taken at speed (vehicleStep brakes to it): turn onto the next leg a little early, or just past the
-      // waypoint, where the hull has a clear straight line to the next one; otherwise on reaching the waypoint.
-      const nextLeg = route[1], near = route.length ? dist(u, route[0]) : Infinity, pace = Math.abs(u.moveSpeed);
-      const bend = nextLeg ? Math.abs(angleDelta(u.travelDir, Math.atan2(nextLeg.z - route[0].z, nextLeg.x - route[0].x))) : Math.PI;
-      const lead = bend < Math.PI / 2 ? pace / movementProfile(u.type, def).hullTurn * Math.tan(bend / 2) : 0;
-      const passed = near < 2 && Math.cos(Math.atan2(u.z - route[0]?.z, u.x - route[0]?.x) - u.travelDir) > 0;
-      const reached = near < Math.max(0.12, pace * dt * 1.5) || nextLeg && (near < lead || passed) && walkable(trafficView(), u, nextLeg, blockOf(def), bodyRadius(def));
-      if (reached && !traffic.yielding && !u.motionClearance) u.path.shift();
-    } else {
+    if (groundVehicle) driveVehicle(g, u, def, route, speed, dt, back, traffic, before, trafficView);
+    else {
       // Infantry responds on the command tick. Naval motion keeps its original class rules.
       if (def.infantry && !traffic.yielding) {
         // Crowded squads can pass beside a waypoint. Keep required terrain corners and the exact final spot.
