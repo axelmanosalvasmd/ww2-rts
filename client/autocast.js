@@ -1,7 +1,7 @@
 // Autocast, Warcraft 3 style: right-click an ability button and the selected units of that type use the ability by
 // themselves (the server decides when, in autocastTarget). This file remembers each player's choice per unit type, kept
 // apart for Classic (where abilities cost Munitions) and the other modes, so new units of that type start the same way.
-import { AUTO_FLAG } from '../shared/sim.js';
+import { AUTO_FLAG, UNIT_ROW } from '../shared/sim.js';
 
 const KEY = 'ww2-autocast';
 
@@ -27,7 +27,7 @@ export function createAutocast({ storage, send }) {
         const [id, type, owner] = row;
         if (owner !== me || fixed.has(id)) continue;
         fixed.add(id);
-        if (typeof want[type] === 'boolean' && !!(row[12] & AUTO_FLAG) !== want[type]) change[want[type] ? 'on' : 'off'].push(id);
+        if (typeof want[type] === 'boolean' && !!(row[UNIT_ROW.flags] & AUTO_FLAG) !== want[type]) change[want[type] ? 'on' : 'off'].push(id);
       }
       if (change.on.length) send({ t: 'autocast', ids: change.on, on: true });
       if (change.off.length) send({ t: 'autocast', ids: change.off, on: false });

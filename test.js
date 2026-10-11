@@ -8733,6 +8733,15 @@ console.log('all infantry model checks passed');
 // Shell holes, rubble and burnt ground are painted by the client, then read back. A filled cell square fails.
 // The map's pieces are rebuilt only in the parts a change reaches (32 by 32 cells, plus the map-wide houses, rubble and
 // bridges when one of those is involved), and come out exactly as a whole rebuild draws them (#58).
+await check("Unit snapshot rows hold each field where UNIT_ROW says", () => {
+  // client code reads rows by these names (alerts, autocast, availability); a field moved in unitRow must move here too
+  const g = fresh(), u = put(g, 0, 'rifle', 30, 40); u.hp = 41.2; u.cd = 2.5; u.built = 1;
+  for (const row of [snapshotFor(g, 0, []).units.find(r => r[0] === u.id), snapshotFor(g, 0, [], [], snapshotCache(g)).units.find(r => r[0] === u.id)]) {
+    const R = sim.UNIT_ROW;
+    assert.deepEqual([row[R.id], row[R.type], row[R.owner], row[R.x], row[R.z], row[R.hp], row[R.cd], row[R.built]], [u.id, 'rifle', 0, 30, 40, 42, 3, 1]);
+  }
+});
+
 await check("Path regions relabelled around a few changed cells match a whole-map flood", () => {
   // a small hilly maze (many narrow passages to cut and open): after each crater, wall run or single cell, the same
   // cells share a region as after a full flood

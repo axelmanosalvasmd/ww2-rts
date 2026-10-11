@@ -5,6 +5,11 @@ AI-vs-AI runs (see DESIGN.md for the balance log). Add new entries under **Unrel
 
 ## Unreleased
 
+- Snapshot unit rows have named fields (`UNIT_ROW` in `shared/sim.js`, issue #58, C4): the server's per-player row
+  filter, the alerts, autocast and the action availability read `row[UNIT_ROW.hp]` instead of `row[7]`, so a field
+  added to the row cannot silently shift what they read. New check: the cached and uncached snapshot rows hold each
+  field where `UNIT_ROW` says. No change in play.
+
 - The test suite no longer loads copies of `shared/sim.js` rebuilt from its text to reach private functions (issue #58,
   D5). The simulation exports the few it tests as `internals`, and the separation check, which used to splice an old
   copy of the separation loop into a copy of `step()`, now runs `separateCrowds` and the old loop side by side for

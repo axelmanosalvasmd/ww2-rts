@@ -5938,6 +5938,8 @@ export const CARGO_SHIFT = 23; // flags >> CARGO_SHIFT & 3: how many squads a ca
 const unitFlags = (g, u) => (u.operative ? OPERATIVE_FLAG : 0) | (u.riding ? RIDING_FLAG : 0) | (u.cargo?.length ? CARGO_FLAG | u.cargo.length << CARGO_SHIFT : 0) | (u.retreating ? 1 : 0) | (u.buff > 0 ? 2 : 0) | (u.ap ? 4 : 0) | (u.reinf > 0 || g.tick - (u.healAt ?? -1e9) < 12 ? 8 : 0) | (u.dig ? 16 : 0) | (u.garrison >= 0 ? 32 | g.house[u.garrison] << 20 : 0) | (u.amove ? 64 : 0) | (u.build ? 128 : 0) | (UNITS[u.type].camo && u.still >= 3 && g.tick - (u.shotAt ?? -1e9) >= 80 ? 256 : 0) | (u.air && !airborne(u) ? 512 : 0) | (u.entrench ? 1024 : 0) | (dusty(g, u) ? 32768 : 0) | (u.open ? GATE_OPEN_FLAG : 0);
 // after how far built: a ground vehicle's motion [speed, vx, vz, travel direction], or a digging squad's progress (0-1)
 const rowTail = (u) => (isGroundVehicle(UNITS[u.type]) ? [rounded(u.moveSpeed ?? 0), rounded(u.vx ?? 0), rounded(u.vz ?? 0), rounded(u.travelDir ?? u.rot)] : u.dig ? [Math.round(digProgress(u) * 100) / 100] : []);
+// Where each field sits in a unit's snapshot row (unitRow); readers name the field instead of counting.
+export const UNIT_ROW = Object.freeze({ id: 0, type: 1, owner: 2, x: 3, z: 4, rot: 5, aim: 6, hp: 7, supp: 8, target: 9, cover: 10, cd: 11, flags: 12, stars: 13, built: 14, tail: 15 });
 function unitRow(g, u) {
   const r = rounded;
   return [u.id, u.type, u.owner, r(u.x), r(u.z), r(u.rot), r(u.aim), Math.ceil(u.hp), Math.round(u.supp), u.targetId || 0, inTrench(g, u) ? 2 : inCover(g, u) ? 1 : UNITS[u.type].infantry && nearCover(g, u) ? 3 : 0,
@@ -5950,10 +5952,10 @@ function modeRow(g) {
     profile: g.mode.profile, nextProfile: g.mode.active ? undefined : g.mode.nextProfile, wave: g.mode.wave, left: g.mode.left, active: g.mode.active, boss: g.mode.boss, slot: g.mode.slot, goal: g.mode.goal, step: g.mode.step, steps: g.mode.steps };
 }
 function playerRow(row, slot, seen) {
-  const result = row.slice();
-  result[9] = row[9] && seen(row[9]) ? row[9] : 0;
-  result[11] = row[2] === slot ? row[11] : 0;
-  if (row[2] !== slot) result[12] = row[12] & (2047 | 32768 | 7 << 20 | RIDING_FLAG); // stances and autocast are the owner's business, dust is everyone's
+  const result = row.slice(), { target, owner, cd, flags } = UNIT_ROW;
+  result[target] = row[target] && seen(row[target]) ? row[target] : 0;
+  result[cd] = row[owner] === slot ? row[cd] : 0;
+  if (row[owner] !== slot) result[flags] = row[flags] & (2047 | 32768 | 7 << 20 | RIDING_FLAG); // stances and autocast are the owner's business, dust is everyone's
   return result;
 }
 
