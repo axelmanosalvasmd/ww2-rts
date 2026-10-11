@@ -5,6 +5,12 @@ AI-vs-AI runs (see DESIGN.md for the balance log). Add new entries under **Unrel
 
 ## Unreleased
 
+- Two flaky checks made deterministic (found while running the suite for issue #58, also flaky on master):
+  `test-fortress.js` seeded `Math.random` only after creating its AI game, so the AI built between 10 and 18 wall
+  cells and sometimes no gate (it now seeds first: 15 walls and 3 gate cells every run); and B06 in
+  `test-audit-combat.mjs` ran unseeded, so a unit could wander onto the cancelled footprint (it now runs under the
+  file's `fixedRandom`, like B07).
+
 - The HUD reads state and hands back intents (issue #58, C6): every click in `client/hud.js` goes out as
   `ctx.act(name, ...args)`, and `client/main.js` keeps what each intent does in one `hudActions` table; the HUD's
   context is otherwise only what it reads (the decoded match and this client's choices). Two context members it never
