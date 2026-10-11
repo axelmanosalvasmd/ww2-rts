@@ -1562,6 +1562,9 @@ the page. Adding text to the game means adding its Spanish to `client/es.js`.
   last pass, `m.seen`) and journaled cells in view; a memory behind the trimmed journal rereads its whole view.
   `worldTerrainFor` keeps each player's place in the memory's change log (`worldTerrainAt`; AI views keep it in the
   seat's AI memory). A new input to `seenWorldCell` must reach the journal, or memories go stale.
+- Runtime choice (2026-10-11, issue #58): Node stays. Bun 1.4 runs the server and its transport checks but is only 1 to
+  14% faster than Node 26 on the Vostro, plays seeds differently and cannot run the test suite. On a host with several
+  cores (a VPS, Railway), run with `WW2_SHARDS` about the core count: one process uses one core.
 - Game processes (2026-10-11, issue #58): `WW2_SHARDS=N` makes the started process a front that serves HTTP and the
   public lobby list and forwards each `/ws?room=code` upgrade to one of N forked game processes (`server/shards.js`,
   FNV-1a of the room code modulo N; the request line and headers are replayed and the sockets piped). Each game

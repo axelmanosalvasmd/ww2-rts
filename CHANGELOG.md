@@ -5,6 +5,14 @@ AI-vs-AI runs (see DESIGN.md for the balance log). Add new entries under **Unrel
 
 ## Unreleased
 
+- Runtime and hosting measured, nothing switched (issue #58, B6 and B7). Bun 1.4 runs the server: the public lobby
+  (compressed snapshots), snapshot backpressure and game-process checks pass under it. On the Vostro (i5-12400) it ran
+  the 6-AI Massive benchmarks 12 to 14% faster than Node 26 in Classic and 1 to 4% in Conquest (two rounds each); the
+  35% measured on the Mac against Node 24 was mostly Node's older engine there. Bun plays the same seed differently
+  (its math functions differ), and the test suite cannot run under it (Bun misreads `1 << out` in the tests' copies of
+  sim.js and has no `registerHooks`), so Node stays the runtime the game is tested on. For hosting, `WW2_SHARDS` is
+  what lets more cores help: one Node process uses one core however many a host offers.
+
 - The client's snapshot decoding is a module of its own (issue #58, C4): `client/world-state.js` rebuilds the unit rows,
   wrecks and nodes this player holds from the server's deltas and says when they disagree with what the server thinks
   the client holds; client/main.js uses it, and so does every room test's client, which asserted nothing before and
