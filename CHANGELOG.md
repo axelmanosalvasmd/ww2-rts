@@ -5,6 +5,17 @@ AI-vs-AI runs (see DESIGN.md for the balance log). Add new entries under **Unrel
 
 ## Unreleased
 
+- Scouting and shelling reshape the ground at a fraction of the cost (issue #58, A4). The relief mesh was rebuilt for
+  the whole map after every revealed or cratered cell; now it is kept in rows and an update rebuilds only the rows it
+  reaches (seven either side of every changed cell, since a crater line's lips follow the run up to six cells away)
+  and copies the rest. On a Huge World map a 20-cell reveal took 5.8 ms at the median (5.5 ms of it rebuilding the
+  mesh) and now takes 2.0 ms (1.6 ms); measured in Node with `relief.update`. The mesh is the same as a full build.
+  New check in test-terrain-relief.mjs: a 24 x 48 hilly map updated at the top, the bottom and the middle (cliffs, a
+  rubble cell, a line of craters and a crater that turns it) rebuilds fewer rows than the map has and matches a fresh
+  build after every update; with no margin around the changed rows it fails. Not covered by a test: the fan-detail
+  budget replay, which only matters once the map's detail budget runs out (no small fixture reaches that). Left for
+  later: every update still uploads the whole mesh to the GPU as a new geometry.
+
 - World Conquest's fog of war is soft. Ground never seen used to end in a staircase of black 2 m squares; now explored
   ground fades into it over about 8 m, following the distance to the nearest unseen cell, so the frontier reads as a
   rounded curve. The fade lies on the explored side: ground never seen is still fully dark and nothing new shows.

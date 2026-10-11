@@ -2640,6 +2640,11 @@ repaints the cells whose field changed with the rest (`refreshFields` in `client
 on a full paint. The 3D pieces (`client/structures.js`) are still rebuilt for the whole map, but only when a changed
 cell had or has a piece within two cells (`PIECE_CELLS`), its damage stage changed, or a landmark arrived.
 
+The relief mesh (`client/relief.js`) is assembled from rows of cells whose vertices are kept between rebuilds. An
+update rebuilds the rows within seven of every dirty cell and copies the others; the fan-detail budget, the one input
+all rows share, is replayed over every row's runs and a row whose fans change is rebuilt too, so the mesh always
+equals a full build. `stats.rowsRebuilt` and `stats.geometryMs` report the last rebuild.
+
 The corpse module owns its fallen geometry and instance buffers. The camera chooses near or far fallen detail,
 with the existing soldier distance thresholds and 4 m hysteresis. Frustum tests use transformed fallen bounds,
 including blast motion and sinking. Logical bodies still age when hidden. Pools grow to demand, preserve existing
