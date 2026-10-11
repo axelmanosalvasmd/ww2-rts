@@ -701,13 +701,19 @@ function applyCells(cells) {
   terrain.ground.paint(terrain.grid, terrain.state, terrain.groundGrid, terrain.objectGrid, cells);
  // repaints only the tiles around changed cells
   if (shaped.length) {
-    const xs = shaped.map(([cell]) => cell % terrain.w), ys = shaped.map(([cell]) => Math.floor(cell / terrain.w));
-    const box = [Math.min(...xs) * CELL, Math.min(...ys) * CELL, (Math.max(...xs) + 1) * CELL, (Math.max(...ys) + 1) * CELL];
-    relief.update(shaped); props?.refresh(box);
+    // One box per 16-cell tile with changes: teammates scouting far apart no longer refresh all the ground between them.
+    const tiles = new Map();
+    for (const [cell] of shaped) {
+      const x = cell % terrain.w, y = Math.floor(cell / terrain.w), key = (y >> 4) * 65536 + (x >> 4), t = tiles.get(key);
+      if (!t) tiles.set(key, [x, y, x, y]); else { t[0] = Math.min(t[0], x); t[1] = Math.min(t[1], y); t[2] = Math.max(t[2], x); t[3] = Math.max(t[3], y); }
+    }
+    const boxes = [...tiles.values()].map(([x0, y0, x1, y1]) => [x0 * CELL, y0 * CELL, (x1 + 1) * CELL, (y1 + 1) * CELL]);
+    const box = boxes.reduce(mergePropBox); // all of it, for props still being prepared
+    relief.update(shaped); props?.refresh(boxes);
     if (propPreparation?.props) propPreparation.dirtyBox = mergePropBox(propPreparation.dirtyBox, box);
     if (!water && shaped.some(([, ch]) => 'WF='.includes(ch))) { water = createWater(terrain.physicalGrid, lastStart.map, hAt, waterOptions(lastStart.map)); if (water) world.add(water.mesh); }
     else water?.changed(shaped); terrainDue.minimap = true; // the fog overlay follows the relief through onGeometry
-    refreshTerrain(...box);
+    for (const b of boxes) refreshTerrain(...b);
   }
   const rubbleCells = new Set(cells.map(entry => entry[0]));
   for (const [c, , lv] of cells) if (lv !== undefined) {

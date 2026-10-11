@@ -771,17 +771,19 @@ export function createRelief(map, grid = map.rows, options = {}) {
     }
     let vertices = 0, triangles = 0, cliffEdges = 0;
     stats.rowsRebuilt = 0;
-    for (const row of rows) { if (!row.data) { row.data = emitRow(row); stats.rowsRebuilt++; } vertices += row.data.vi; triangles += row.data.ti; cliffEdges += row.cliffEdges; }
+    for (const row of rows) { if (!row.data) { row.data = emitRow(row); row.fresh = true; stats.rowsRebuilt++; } vertices += row.data.vi; triangles += row.data.ti; cliffEdges += row.cliffEdges; }
     pos = new Float32Array(vertices * 3); normal = new Float32Array(vertices * 3); uv = new Float32Array(vertices * 2);
     paint = new Float32Array(vertices * 4); scar = new Float32Array(vertices); index = new Uint32Array(triangles); detail = new Uint8Array(vertices);
     vi = 0; ti = 0;
-    for (const { data: d } of rows) {
+    let v0 = Infinity, v1 = 0, t0 = Infinity, t1 = 0; // the span the rebuilt rows cover
+    for (const row of rows) {
+      const d = row.data;
+      if (row.fresh) { v0 = Math.min(v0, vi); t0 = Math.min(t0, ti); v1 = vi + d.vi; t1 = ti + d.ti; row.fresh = false; }
       pos.set(d.pos.subarray(0, d.vi * 3), vi * 3); normal.set(d.normal.subarray(0, d.vi * 3), vi * 3); uv.set(d.uv.subarray(0, d.vi * 2), vi * 2);
       paint.set(d.paint.subarray(0, d.vi * 4), vi * 4); scar.set(d.scar.subarray(0, d.vi), vi); detail.set(d.detail.subarray(0, d.vi), vi);
       for (let i = 0; i < d.ti; i++) index[ti + i] = d.index[i] + vi;
       vi += d.vi; ti += d.ti;
     }
-    const geo = new THREE.BufferGeometry();
     // Index only reshaped cliff patches. Ordinary ground keeps the inexpensive cell contact query.
     detailPicks = new Map();
     if (n <= 65536) for (let t = 0; t < ti; t += 3) {
@@ -798,12 +800,26 @@ export function createRelief(map, grid = map.rows, options = {}) {
         bucket.push(t);
       }
     }
+    stats.vertices = vi; stats.triangles = ti / 3; stats.cliffEdges = cliffEdges;
+    // Same totals as the mesh drawn now: rows past the rebuilt ones keep their place, so only the span from the first
+    // to the last rebuilt row is written and sent to the GPU, instead of a whole new mesh on every change (#58).
+    const old = mesh.geometry, at = old.attributes;
+    stats.inPlace = !!(old.index && at.position?.count === vi && old.index.count === ti && v1 > 0);
+    if (stats.inPlace) {
+      const put = (attribute, source, size) => {
+        attribute.array.set(source.subarray(v0 * size, v1 * size), v0 * size);
+        attribute.addUpdateRange(v0 * size, (v1 - v0) * size); attribute.needsUpdate = true;
+      };
+      put(at.position, pos, 3); put(at.normal, normal, 3); put(at.uv, uv, 2); put(at.reliefPaint, paint, 4); put(at.reliefScar, scar, 1);
+      old.index.array.set(index.subarray(t0, t1), t0); old.index.addUpdateRange(t0, t1 - t0); old.index.needsUpdate = true;
+      return;
+    }
+    const geo = new THREE.BufferGeometry();
     geo.setAttribute('position', new THREE.BufferAttribute(pos.subarray(0, vi * 3), 3)); geo.setAttribute('normal', new THREE.BufferAttribute(normal.subarray(0, vi * 3), 3)); geo.setAttribute('uv', new THREE.BufferAttribute(uv.subarray(0, vi * 2), 2)); geo.setAttribute('reliefPaint', new THREE.BufferAttribute(paint.subarray(0, vi * 4), 4)); geo.setAttribute('reliefScar', new THREE.BufferAttribute(scar.subarray(0, vi), 1)); geo.setIndex(new THREE.BufferAttribute(index.subarray(0, ti), 1));
     // Fixed bounds avoid another full vertex scan on every crater.
     geo.boundingBox = new THREE.Box3(new THREE.Vector3(0, -12, 0), new THREE.Vector3(w * CELL, 12, h * CELL));
     geo.boundingSphere = new THREE.Sphere(new THREE.Vector3(w * CELL / 2, 0, h * CELL / 2), Math.hypot(w * CELL / 2, h * CELL / 2, 12));
     const previous = mesh.geometry; mesh.geometry = geo; options.onGeometry?.(geo); previous.dispose();
-    stats.vertices = vi; stats.triangles = ti / 3; stats.cliffEdges = cliffEdges;
   }
 
   function update(cells) {

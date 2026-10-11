@@ -372,8 +372,10 @@ export function createProps({ map, grid, hAt, parent, prepared = candidates(map)
   // box [x0, z0, x1, z1] (world units): only the props near those cells are placed again (a prop looks up to two
   // cells away, its anchor included); the rest keep where they stood. Left out: all of them.
   const PAD = 3 * CELL;
+  // box: [x0, z0, x1, z1] in metres, or a list of them; none redoes every placement
   function* refreshBatches(box) {
     if (disposed) return;
+    const boxes = !box ? null : Array.isArray(box[0]) ? box : [box];
     const version = ++refreshVersion;
     const counts = new Map([...meshes.keys()].map(kind => [kind, 0]));
     let processed = 0;
@@ -382,7 +384,7 @@ export function createProps({ map, grid, hAt, parent, prepared = candidates(map)
         yield;
         if (disposed || version !== refreshVersion) return;
       }
-      if (!box || c.at === undefined || (c.x > box[0] - PAD && c.x < box[2] + PAD && c.z > box[1] - PAD && c.z < box[3] + PAD)) place(c);
+      if (!boxes || c.at === undefined || boxes.some(b => c.x > b[0] - PAD && c.x < b[2] + PAD && c.z > b[1] - PAD && c.z < b[3] + PAD)) place(c);
       if (!c.at) continue;
       const list = meshes.get(c.at), i = counts.get(c.at);
       for (const mesh of list) {

@@ -5,6 +5,18 @@ AI-vs-AI runs (see DESIGN.md for the balance log). Add new entries under **Unrel
 
 ## Unreleased
 
+- Less work per revealed snapshot on the client, and on the server for route planning (issue #58, A5, B3 and the relief
+  upload): the props and the overlay's height samples are refreshed per 16-cell tile of changed cells, not over one box
+  around all of them (teammates scouting far apart made that box most of the map; the result is the same, only the
+  unchanged ground in between is no longer redone); a relief update whose mesh keeps its vertex and triangle counts is
+  written into the mesh being drawn and only the rebuilt rows' span goes to the GPU, instead of a new 2.5 MB mesh (8
+  of 30 scouting updates on a Huge map); and the World route view follows its team memory's change log instead of
+  walking the whole memory on every change (a seeded six-AI World match ends in the same state). Checked and left: the
+  rare 40 ms AI planning turns in World Conquest come from `regionsFor`'s whole-map flood fill, redone when scouting
+  changes which cells block; an exact update would still refill the largest region, most of the map, so it stays.
+  No new check for the per-tile refresh (it only stops recomputing unchanged ground); the relief checks pass with the
+  in-place writes, comparing every update with a fresh build.
+
 - World Conquest's server time is about halved (issue #58, B4). Each team's terrain memory reread and compared every
   visible cell on every vision pass, and each snapshot walked a player's whole memory to find what it had not been
   sent. Now cells are journaled as they change (every `logCell`, every wear or damage `touch`, a fire burning out), a

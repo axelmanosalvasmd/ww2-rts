@@ -1519,7 +1519,10 @@ function worldPathView(g, slot) {
   if (m.pathVersion !== m.version) {
     const affected = new Set(), changed = [], W = g.w;
     view.navigationChangedFromVersion = view.navigationKnowledgeVersion ?? 0;
-    for (const [c, row] of m.cells) {
+    // the rows changed since the view last followed the memory, from its change log; the whole memory when the log was trimmed past it
+    const fromLog = m.pathAt >= m.logBase, rows = fromLog ? m.log.slice(m.pathAt - m.logBase).map(c => [c, m.cells.get(c)]) : m.cells;
+    m.pathAt = m.logBase + m.log.length;
+    for (const [c, row] of rows) {
       if (m.pathRows.get(c) === row) continue;
       const oldWall = (view.flags[c] & (MOVE | SIGHT)) === (MOVE | SIGHT), oldFlags = view.flags[c], oldHeight = view.height[c];
       view.chars[c] = row[1]; view.ground[c] = row[4]?.ground ?? row[1]; view.objects[c] = row[4]?.object ?? '.'; view.mineLayer[c] = row[1] === 'N' ? 1 : 0; view.flags[c] = TERRAIN[row[1] === 'N' ? physicalWorldCell(view, c) : row[1]] ?? 0; view.height[c] = row[2]; view.wear[c] = (row[3] & 3) / 4;
