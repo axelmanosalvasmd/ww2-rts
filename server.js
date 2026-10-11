@@ -1,10 +1,12 @@
-// One process: serves the client and runs game rooms over WebSocket.
+// Serves the client and runs game rooms over WebSocket: in one process, or with WW2_SHARDS=N in N game processes behind
+// this one (server/shards.js), each running this file with WW2_SHARD set.
 import http from 'node:http';
 import { readFile, readdir, writeFile, stat } from 'node:fs/promises';
 import { readFileSync, writeFileSync, existsSync } from 'node:fs';
 import { randomBytes, createHash, timingSafeEqual } from 'node:crypto';
 import { execFile } from 'node:child_process';
 import { join, normalize, extname } from 'node:path';
+import { fileURLToPath } from 'node:url';
 import { promisify } from 'node:util';
 import { gzip } from 'node:zlib';
 import { WebSocketServer } from 'ws';
@@ -21,10 +23,16 @@ import { allowDeny } from './shared/command-feedback.js';
 import { storyResult } from './shared/story.js';
 import { createTickMeter, recordTick, tickStats } from './tickmeter.js';
 import { createDiag, cleanClient } from './server/diag.js';
+import { startShards } from './server/shards.js';
+import { createRoomTick } from './server/room-tick.js';
 
 const PORT = +(process.env.PORT || 3000), HOST = process.env.HOST || '127.0.0.1';
 const diag = process.env.WW2_DIAG === '1' ? createDiag({ dir: join(import.meta.dirname, 'logs') }) : null;
 const MAX_ROOMS = Math.max(1, Math.min(256, Math.floor(Number(process.env.MAX_ROOMS) || 32)));
+// WW2_SHARDS=N: this process forwards every room to one of N game processes and runs none itself (server/shards.js)
+const SHARDS = Math.max(1, Math.min(64, Math.floor(Number(process.env.WW2_SHARDS) || 1)));
+const SHARD = process.env.WW2_SHARD !== undefined && typeof process.send === 'function'; // a game process
+const PRIMARY = SHARDS > 1 && !SHARD;
 export const clock = {
   now: () => Date.now(),
   setTimeout: (fn, ms) => setTimeout(fn, ms),
@@ -60,12 +68,21 @@ const RECORDS = join(ROOT, 'horde-records.json');
 export const recordFile = { read: () => readFileSync(RECORDS, 'utf8'), write: (json) => writeFileSync(RECORDS, json) };
 let records = null;
 const recordKey = (room) => `${room.mapName}|${room.players.length}|${room.army ?? 'standard'}`;
-const recordOf = (room) => { if (!records) { try { records = JSON.parse(recordFile.read()); } catch { records = {}; } } return records[recordKey(room)] ?? null; };
+const loadRecords = () => { if (!records) { try { records = JSON.parse(recordFile.read()); } catch { records = {}; } } return records; };
+const recordOf = (room) => loadRecords()[recordKey(room)] ?? null;
 // a finished run: its wave, the horde units killed and its length; saved when it beats the record. Returns the result's horde part.
+const beats = (run, best) => !best || run.wave > best.wave || (run.wave === best.wave && run.time > best.time);
+function saveRecord(key, run) {
+  if (!beats(run, loadRecords()[key])) return;
+  records[key] = run;
+  try { recordFile.write(JSON.stringify(records, null, 1)); } catch (e) { console.error('horde records not saved:', e.message); }
+}
 function hordeResult(room, g) {
   const run = { wave: g.mode.wave, kills: g.story?.slice(0, g.mode.slot).reduce((a, p) => a + p.kills, 0) ?? 0, time: Math.round(g.tick * TICK), names: room.players.map(p => p.name) };
-  const best = recordOf(room), record = !best || run.wave > best.wave || (run.wave === best.wave && run.time > best.time);
-  if (record) { records[recordKey(room)] = run; try { recordFile.write(JSON.stringify(records, null, 1)); } catch (e) { console.error('horde records not saved:', e.message); } }
+  if (SHARD) records = null; // the forwarding process owns the file: read what other game processes saved
+  const best = recordOf(room), record = beats(run, best);
+  if (record && SHARD) { records[recordKey(room)] = run; process.send({ t: 'record', key: recordKey(room), run }); }
+  else if (record) saveRecord(recordKey(room), run);
   return { ...run, record, best };
 }
 
@@ -107,7 +124,7 @@ async function saveMap(req, res, name) {
     ...(map.buildings?.length && { buildings: map.buildings.map(({ x, y, kind }) => ({ x, y, kind })) }),
     ...(map.triggers?.length && { triggers: map.triggers.map(({ at, say, blow }) => ({ at, ...(say !== undefined && { say }), ...(blow && { blow }) })) }) };
   await writeFile(join(MAPS, name + '.json'), JSON.stringify(clean, null, 1));
-  hordeList = null;
+  hordeList = null; shardSet?.send({ t: 'maps' }); // game processes read the Horde maps again
   json(200, { ok: true });
 }
 const STATIC = { '/client/': 'client', '/shared/': 'shared', '/vendor/': 'node_modules/three/build', '/vendor-jsm/': 'node_modules/three/examples/jsm' };
@@ -118,7 +135,7 @@ const zip = promisify(gzip), zipped = new Map(); // static file -> { tag, body }
 export const server = http.createServer(async (req, res) => {
   const url = new URL(req.url, 'http://x');
   if (url.pathname === '/api/rooms' && req.method === 'GET') {
-    const list = [...rooms.values()].filter(r => r.listed && r.players.some(p => !p.ai && connected(p))).map(r => ({
+    const list = PRIMARY ? await shardSet.rooms() : [...rooms.values()].filter(r => r.listed && r.players.some(p => !p.ai && connected(p))).map(r => ({
       code: r.code, title: r.title, mode: r.mode, map: r.mode === 'world' ? 'world' : r.mapName, state: r.state, ...(r.mode === 'world' && { worldSize: r.worldSize ?? 'huge' }),
       humans: r.players.filter(p => !p.ai && connected(p)).length, ai: r.players.filter(p => p.ai).length,
       occupied: r.players.length, capacity: seats(r), joinable: r.state === 'lobby' && r.players.length < seats(r),
@@ -247,8 +264,12 @@ export function watcherSnapshot(g, shots, cells, cache, extra) {
   return msg;
 }
 // one snapshot for all spectators, built and stringified once
+// A spectator this far behind is dropped: its client reconnects and starts again from a whole snapshot. Spectators
+// share one delta stream (room.watchNet), so one cannot skip snapshots the way a seat does (backedUp).
+const WATCH_BEHIND = 4 * 1024 * 1024;
 function sendWatchers(room, shots, cells, cache, extra) {
-  const watching = room.spectators.filter(connected), g = room.game;
+  for (const s of room.spectators) if (connected(s) && (s.ws.bufferedAmount ?? 0) > WATCH_BEHIND) s.ws.close(1013, 'too far behind');
+  const watching = room.spectators.filter(s => connected(s) && (s.ws.bufferedAmount ?? 0) <= WATCH_BEHIND), g = room.game;
   if (!watching.length) return;
   if (g.mode?.kind === 'world') {
     for (const s of watching) {
@@ -476,6 +497,15 @@ function autoPause(room, player) {
   pauseRoom(room, player, 'drop');
 }
 
+// The game as it stands to everyone watching it: each seat, the spectators and the operatives (a paused match, and the
+// last seconds of a decided one). A running tick sends its own, timed and skipping backed-up seats (server/room-tick.js).
+function sendFrame(room) {
+  const g = room.game, shots = g.shots, cells = g.newCells; g.shots = []; g.newCells = [];
+  const online = room.players.map(p => connected(p) || !!p.ai), ping = room.players.map(p => (p.ai ? -1 : p.rtt ?? null)), cache = snapshotCache(g);
+  room.players.forEach((_, i) => sendSeat(room, i, shots, cells, cache, { online, ping }));
+  sendWatchers(room, shots, cells, cache, { online, ping });
+  if (room.operatives?.length) sendOperatives(room, shots, cells, cache, { online, ping });
+}
 function pauseTick(room) {
   if (!room.pause) return false;
   if (room.pause.reason === 'drop' && (connected(room.pause.player) || room.pause.player.ai || clock.now() >= room.pause.until)) {
@@ -483,13 +513,7 @@ function pauseTick(room) {
   }
   if (clock.now() - room.pauseSentAt >= 1000) {
     room.pauseSentAt = clock.now(); broadcastPause(room);
-    const g = room.game;
-    const shots = g.shots, cells = g.newCells; g.shots = []; g.newCells = [];
-    const online = room.players.map(p => connected(p) || !!p.ai), ping = room.players.map(p => (p.ai ? -1 : p.rtt ?? null));
-    const cache = snapshotCache(g);
-    room.players.forEach((_, i) => sendSeat(room, i, shots, cells, cache, { online, ping }));
-    sendWatchers(room, shots, cells, cache, { online, ping });
-    if (room.operatives?.length) sendOperatives(room, shots, cells, cache, { online, ping });
+    sendFrame(room);
   }
   return true;
 }
@@ -551,7 +575,7 @@ function scheduleSeatCleanup(room, player) {
 }
 
 // compression cuts a late-game snapshot about threefold (11.6 KB to 3.7 KB); small messages go as they are
-export const wss = new WebSocketServer({ server, path: '/ws', maxPayload: 16 * 1024, perMessageDeflate: { threshold: 1024 } });
+export const wss = new WebSocketServer({ ...(PRIMARY ? { noServer: true } : { server, path: '/ws' }), maxPayload: 16 * 1024, perMessageDeflate: { threshold: 1024 } });
 wss.on('connection', (ws, req) => {
   const code = new URL(req.url, 'http://x').searchParams.get('room') || '';
   if (!/^[a-z0-9]{3,12}$/i.test(code)) return ws.close(1008, 'bad room');
@@ -722,12 +746,7 @@ function holdEnding(room) {
   g.held = (g.held ?? 0) + 1;
   if (g.held % 2 === 0) {
     step(g);
-    const shots = g.shots, cells = g.newCells; g.shots = []; g.newCells = [];
-    const online = room.players.map(p => connected(p) || !!p.ai), ping = room.players.map(p => (p.ai ? -1 : p.rtt ?? null));
-    const cache = snapshotCache(g);
-    room.players.forEach((_, i) => sendSeat(room, i, shots, cells, cache, { online, ping }));
-    sendWatchers(room, shots, cells, cache, { online, ping });
-    if (room.operatives?.length) sendOperatives(room, shots, cells, cache, { online, ping });
+    sendFrame(room);
   }
   if (g.held < HOLD_TICKS) return true;
   room.players.forEach((p, i) => (p.lastMatch = { outcome: g.winner === -1 ? 'draw' : g.winner === g.players[i].team ? 'victory' : 'defeat', team: g.players[i].team }));
@@ -737,52 +756,8 @@ function holdEnding(room) {
 
 // One running tick: step, AI and snapshots. Timing and interval control stay together so every room measures the
 // same work.
-function timedRoomTick(room) {
-  const g = room.game, meter = room.tickMeter ??= createTickMeter({ now: Date.now() });
-  room.snapEvery ??= 2;
-  const began = process.hrtime.bigint();
-  const stepAt = process.hrtime.bigint();
-  step(g);
-  const thinkAt = process.hrtime.bigint();
-  const sent = g.tick % room.snapEvery === 0 || g.winner !== null;
-  // The seats the server plays: the room's AIs and, in Horde, the horde itself (nobody's seat, but it gets the same view).
-  const seats = [...room.players.keys()].filter(i => room.players[i].ai);
-  if (g.mode?.kind === 'horde') seats.push(g.mode.slot);
-  // The AI schedule lives in shared/ai-schedule.js, so the balance and bench tools play the same AI as this room:
-  // seat AIs are human-like commanders (shared/ai-human.js), the Horde seat keeps the scripted planner.
-  room.aiViews ??= [];
-  const built = aiTick(g, seats.map(slot => ({ slot, level: room.players[slot]?.level })), room.aiViews, { sent }); // human snapshots reuse its cache
-  const snapshotAt = process.hrtime.bigint();
-  let snapshotBuild = 0, snapshotStringify = 0;
-  if (sent) {
-    const shots = g.shots, cells = g.newCells; g.shots = []; g.newCells = [];
-    const recipients = [];
-    room.players.forEach((p, i) => { if (p.ws?.readyState === 1 && !backedUp(p)) recipients.push(i); });
-    const watched = !!room.spectators?.some(s => s.ws?.readyState === 1), accompanied = !!room.operatives?.some(connected);
-    if (recipients.length || watched || accompanied) {
-      const online = room.players.map(p => !!p.ws || !!p.ai), ping = room.players.map(p => (p.ai ? -1 : p.rtt ?? null));
-      const cacheAt = process.hrtime.bigint(), cache = built ?? snapshotCache(g);
-      snapshotBuild += Number(process.hrtime.bigint() - cacheAt) / 1e6;
-      for (const i of recipients) {
-        const p = room.players[i], buildAt = process.hrtime.bigint(), msg = trimmed(room, p.net ??= { sent: new Map() }, { ...snapshotFor(g, i, shots, cells, cache), online, ping }, cache);
-        snapshotBuild += Number(process.hrtime.bigint() - buildAt) / 1e6;
-        const stringifyAt = process.hrtime.bigint(), json = JSON.stringify(msg);
-        snapshotStringify += Number(process.hrtime.bigint() - stringifyAt) / 1e6;
-        sendSnapshot(room, p, json);
-      }
-      if (watched) sendWatchers(room, shots, cells, cache, { online, ping });
-      if (room.operatives?.length) sendOperatives(room, shots, cells, cache, { online, ping });
-    }
-  }
-  const ended = process.hrtime.bigint(), now = Date.now();
-  room.snapEvery = recordTick(meter, { tick: Number(ended - began) / 1e6, step: Number(thinkAt - stepAt) / 1e6,
-    think: Number(snapshotAt - thinkAt) / 1e6, snapshot: Number(ended - snapshotAt) / 1e6, snapshotBuild, snapshotStringify, sent }, now);
-  if (process.env.WW2_TICKLOG === '1' && now >= meter.nextLog) {
-    meter.nextLog = now + 30_000;
-    const stats = tickStats(meter), costs = Object.entries(stats).map(([phase, v]) => `${phase} ${v.p50.toFixed(2)}/${v.p95.toFixed(2)} ms`).join(', ');
-    console.log(`[tick ${room.code}] p50/p95: ${costs}; snapshots every ${room.snapEvery} ticks`);
-  }
-}
+const timedRoomTick = createRoomTick({ step, aiTick, snapshotCache, snapshotFor, trimmed, sendSnapshot, sendWatchers, sendOperatives,
+  connected, backedUp, createTickMeter, recordTick, tickStats });
 
 // A socket still writing 256 KB of old snapshots skips new ones: piling more on only queued its pongs behind megabytes
 // (40 s pings in an overloaded match). ws.send's callback runs once a frame is written, so `inflight` counts the deflate
@@ -796,7 +771,7 @@ function sendSnapshot(room, p, json) {
     if (!ws.owed || ws.inflight >= 256 * 1024 || p.ws !== ws) return;
     ws.owed = false;
     const i = room.players.indexOf(p);
-    if (i >= 0 && room.state === 'play' && room.game) sendSeat(room, i, [], [], snapshotCache(room.game), { online: room.players.map(q => !!q.ws || !!q.ai), ping: room.players.map(q => (q.ai ? -1 : q.rtt ?? null)) });
+    if (i >= 0 && room.state === 'play' && room.game) sendSeat(room, i, [], [], snapshotCache(room.game), { online: room.players.map(q => connected(q) || !!q.ai), ping: room.players.map(q => (q.ai ? -1 : q.rtt ?? null)) });
   });
 }
 
@@ -817,11 +792,24 @@ export function tickRooms() {
 // speed). Poll often and run the ticks the clock says are due. More than 4 behind (a stall): drop the backlog.
 const TICK_NS = BigInt(Math.round(TICK * 1e9));
 let dueAt = process.hrtime.bigint();
-export const loop = setInterval(() => {
+export const loop = PRIMARY ? null : setInterval(() => {
   const now = process.hrtime.bigint();
   if (dueAt <= now) diag?.lateBy(Number(now - dueAt) / 1e6);
   for (let n = 0; dueAt <= now && n < 4; n++) { tickRooms(); dueAt += TICK_NS; }
   if (dueAt <= now) dueAt = now + TICK_NS;
 }, 10);
 
-server.listen(PORT, HOST, () => console.log(`ww2-rts on http://${HOST}:${PORT}`));
+// The forwarding process: game connections go to the room's game process; Horde records arrive from them.
+export const shardSet = PRIMARY ? startShards(fileURLToPath(import.meta.url), SHARDS, {
+  onMessage: (_, m) => { if (m?.t === 'record') { records = null; saveRecord(m.key, m.run); } }, // reread, then keep the better run
+}) : null;
+if (PRIMARY) server.on('upgrade', (req, socket, head) => shardSet.upgrade(req, socket, head));
+if (SHARD) {
+  process.on('message', m => { if (m?.t === 'maps') hordeList = null; });
+  process.on('disconnect', () => process.exit(0)); // the forwarding process is gone: so are its rooms' players
+}
+
+server.listen(PORT, HOST, () => {
+  if (SHARD) process.send({ t: 'ready', port: server.address().port });
+  else console.log(`ww2-rts on http://${HOST}:${server.address().port}${PRIMARY ? ` (rooms in ${SHARDS} game processes)` : ''}`);
+});

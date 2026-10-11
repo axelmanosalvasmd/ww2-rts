@@ -9,6 +9,9 @@ import { unpackRuns, UNITS, CELL } from '../shared/sim.js';
 const CLEAR = 0, DIM = 120, DARK = 185; // overlay alpha for seen, explored and never seen
 const SPEED = DARK / 0.25; // alpha per second: any change of look finishes within a quarter second
 const SHADE = 10; // the overlay's colour (near black); surfaces.js mixes toward the same shade
+// World Conquest: explored ground darkens over this many cells (8 m) toward ground never seen, so the frontier reads
+// as a soft curve instead of a staircase of 2 m cells. The fade lies on the explored side: unseen ground stays dark.
+const FRONTIER = 4;
 let versions = 0; // the minimap repaints when this moves; it never repeats across matches
 
 // w, h: the map in cells. key: the start message's fog ({ v: seen, e: explored }). off: no fog at all (map editor).
@@ -18,13 +21,31 @@ export function createFog(w, h, key, off = false, opaque = false) {
   const seen = new Uint8Array(n), explored = new Uint8Array(n), lit = new Uint8Array(n), litList = [];
   const want = new Uint8Array(n), alpha = new Float32Array(n), busy = new Uint8Array(n), active = [];
   const rowMin = new Int32Array(h).fill(w), rowMax = new Int32Array(h).fill(-1);
+  const edge = new Uint8Array(n), mark = new Uint32Array(n); // opaque maps: frontier darkness per cell; visit stamps
+  let stamp = 0;
   // without a mask (an older server) nothing is hidden on the ground
   let lifted = off || (!key && !opaque), uploaded = false;
   if (key) {
     unpackRuns(key.v, (start, count) => seen.fill(1, start, start + count));
     unpackRuns(key.e, (start, count) => explored.fill(1, start, start + count));
   }
-  const look = c => (lifted || seen[c] || lit[c] ? CLEAR : explored[c] ? DIM : dark);
+  // what the cell is: seen now, explored or never seen (the minimap and gameplay checks read this)
+  const base = c => (lifted || seen[c] || lit[c] ? CLEAR : explored[c] ? DIM : dark);
+  const look = c => (opaque && !lifted ? Math.max(base(c), edge[c]) : base(c));
+  const known = c => seen[c] || explored[c];
+  // full darkness next to the nearest never-seen cell, none FRONTIER cells in, smoothstepped between
+  const frontier = c => {
+    if (!known(c)) return 0;
+    const x = c % w, y = Math.floor(c / w);
+    let best = Infinity;
+    for (let j = Math.max(0, y - FRONTIER); j <= Math.min(h - 1, y + FRONTIER); j++)
+      for (let i = Math.max(0, x - FRONTIER); i <= Math.min(w - 1, x + FRONTIER); i++)
+        if (!known(j * w + i)) best = Math.min(best, (i - x) ** 2 + (j - y) ** 2);
+    if (best === Infinity) return 0;
+    const t = Math.min(1, (Math.sqrt(best) - 0.5) / FRONTIER);
+    return Math.round(255 * (1 - t * t * (3 - 2 * t)));
+  };
+  if (opaque) for (let c = 0; c < n; c++) edge[c] = frontier(c);
   // texture row 0 is the far (z = max) edge, like the ground overlay's plane
   for (let c = 0; c < n; c++) {
     const i = ((h - 1 - Math.floor(c / w)) * w + c % w) * 4;
@@ -32,7 +53,7 @@ export function createFog(w, h, key, off = false, opaque = false) {
     data[i + 3] = alpha[c] = want[c] = look(c);
   }
   const texture = new THREE.DataTexture(data, w, h);
-  texture.magFilter = texture.minFilter = opaque ? THREE.NearestFilter : THREE.LinearFilter;
+  texture.magFilter = texture.minFilter = THREE.LinearFilter;
   texture.needsUpdate = true;
   // the first upload sends the whole texture; row ranges only after it
   texture.onUpdate = () => { uploaded = true; };
@@ -46,10 +67,25 @@ export function createFog(w, h, key, off = false, opaque = false) {
   // a snapshot: the cells that flipped since the last one, and the ground under every unit it shows. That ground
   // counts as seen until the next snapshot: the mask follows the server's vision pass (five a second), so a unit can
   // step onto a cell before the mask catches up.
+  const grown = [];
   state.snapshot = (s) => {
     if (typeof s.fog === 'string') unpackRuns(s.fog, (start, count) => {
-      for (let c = start; c < start + count; c++) { seen[c] ^= 1; explored[c] |= seen[c]; touch(c); }
+      for (let c = start; c < start + count; c++) { seen[c] ^= 1; if (seen[c] && !explored[c]) grown.push(c); explored[c] |= seen[c]; touch(c); }
     });
+    // newly explored ground moves the frontier: redo the darkness of every cell within reach of it
+    if (opaque && grown.length) {
+      stamp++;
+      for (const c of grown) {
+        const x = c % w, y = Math.floor(c / w);
+        for (let j = Math.max(0, y - FRONTIER); j <= Math.min(h - 1, y + FRONTIER); j++)
+          for (let i = Math.max(0, x - FRONTIER); i <= Math.min(w - 1, x + FRONTIER); i++) {
+            const o = j * w + i;
+            if (mark[o] === stamp) continue;
+            mark[o] = stamp; edge[o] = frontier(o); touch(o);
+          }
+      }
+      grown.length = 0;
+    }
     const old = litList.splice(0);
     for (const c of old) lit[c] = 0;
     for (const [, type, , x, z] of s.units) {
@@ -93,13 +129,13 @@ export function createFog(w, h, key, off = false, opaque = false) {
   state.at = (x, z) => {
     const cx = Math.floor(x / CELL), cy = Math.floor(z / CELL);
     if (cx < 0 || cy < 0 || cx >= w || cy >= h) return null;
-    const t = want[cy * w + cx];
+    const t = base(cy * w + cx);
     return t === CLEAR ? 'seen' : t === DIM ? 'explored' : 'dark';
   };
   // the minimap's fog (an ImageData of w x h, rows in map order), from each cell's look
   state.minimap = (img) => {
     const d = img.data;
-    for (let c = 0; c < n; c++) { d[c * 4] = d[c * 4 + 1] = d[c * 4 + 2] = SHADE; d[c * 4 + 3] = want[c] === CLEAR ? 0 : want[c] === DIM ? 110 : opaque ? 255 : 175; }
+    for (let c = 0; c < n; c++) { d[c * 4] = d[c * 4 + 1] = d[c * 4 + 2] = SHADE; const t = base(c); d[c * 4 + 3] = t === CLEAR ? 0 : t === DIM ? 110 : opaque ? 255 : 175; }
   };
   state.dispose = () => texture.dispose();
   return state;

@@ -1,9 +1,9 @@
 // Map editor (/?edit). Reuses the game's renderer: every change rebuilds the world through startGame.
 import * as THREE from 'three';
-import { CELL, CFG, validateMap, findPath, TERRAIN, levelOf, levelChar, MAX_PLAYERS, createGame, spawnsFor, POINT_KINDS } from '/shared/sim.js';
+import { CELL, CFG, validateMap, findPath, TERRAIN, levelOf, levelChar, MAX_PLAYERS, createGame, spawnsFor, POINT_KINDS } from '../shared/sim.js';
 import { createScenarioEditor } from './scenario-editor.js';
-import { migrateScenario } from '/shared/scenarios.js';
-import { migrateWorldMap, MATERIALS } from '/shared/world-layers.js';
+import { migrateScenario } from '../shared/scenarios.js';
+import { migrateWorldMap, MATERIALS } from '../shared/world-layers.js';
 import { editableLayers, layerRows, savedLayers, paintLayer, removeLayerSelection, moveLayerSelection, pruneLayerStructures } from './layer-edit.js';
 import { createStructureEditor } from './structure-editor.js';
 import { t as tr } from './i18n.js';

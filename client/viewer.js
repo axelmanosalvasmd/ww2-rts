@@ -3,7 +3,7 @@
 // from fixed angles, or (?all=1) a lineup of every type one faction fields. A tool for checking models; the game never
 // loads it. tools/model-shots.sh screenshots it. URL options are listed in viewer.html.
 import * as THREE from 'three';
-import { UNITS, SUPPORT } from '/shared/sim.js';
+import { UNITS, SUPPORT } from '../shared/sim.js';
 import { buildModel, animate, setSurfaces, setBuildings } from './unit-models.js';
 import { loadModelTextures, modelTexturesOn } from './model-textures.js';
 import { createAviation } from './aircraft.js';

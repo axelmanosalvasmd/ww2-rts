@@ -41,7 +41,7 @@ test('B05 construction refuses to entomb a live ground occupant while an adjacen
   assert.ok(Math.hypot(builder.x - 81, builder.z - 31) < 0.5, 'the builder can leave the completed site');
 });
 
-test('B06 cancelled construction leaves no physical sections or later ghost rubble', () => {
+test('B06 cancelled construction leaves no physical sections or later ghost rubble', () => fixedRandom(() => {
   const g = fresh(), builder = put(g, 0, 'rifle', 31, 31);
   sim.step(g);
   assert.equal(sim.command(g, 0, { t: 'build', ids: [builder.id], kind: 'barracks', x: 35, z: 31 }), undefined);
@@ -57,7 +57,7 @@ test('B06 cancelled construction leaves no physical sections or later ghost rubb
   const cells = sim.terrainFor(g, 0, true).filter(row => site.cells.includes(row[0]));
   assert.ok(cells.length && cells.every(row => !row[4].section), 'visible terrain no longer advertises cancelled sections');
   assert.equal(sim.command(g, 0, { t: 'build', ids: [builder.id], kind: 'barracks', x: 35, z: 31 }), undefined, 'the cleared footprint can be reused');
-});
+}));
 
 test('B07 a manual aimed ability replaces construction and reaches its target', () => fixedRandom(() => {
   const g = fresh(), builder = put(g, 0, 'rifle', 31, 31);

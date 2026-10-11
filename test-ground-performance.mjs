@@ -159,6 +159,25 @@ export async function runGroundPerformanceTests({ modulePath = new URL('./client
       assert.equal(pending.size, 1, 'it joins the queued work instead');
       for (let n = 0; pending.size; n++) { assert.ok(n < 100, 'the texture repaint finishes'); const start = delayed.ctx.puts; pump(); assert.ok(delayed.ctx.puts - start <= 2, 'within each frame\'s tile count'); }
       assert.deepEqual(delayed.ctx.getImageData(0, 0, w * delayed.px, h * delayed.px).data, latestPixels, 'the queued texture repaint ends at the latest state, as a full paint');
+
+      // World Conquest: a scout reveals a hedge inside a field. Only that field's block is rechecked and repainted;
+      // rechecking every field fell back to recomputing the whole map, 70 to 90 ms a time on a Huge map (#58).
+      const { fieldCells } = await import(modulePath.href ?? modulePath);
+      const ww = 40, wh = 32, worldMap = { w: ww, h: wh, world: {}, rows: Array.from({ length: wh }, () => '.'.repeat(ww)), spawns: [], points: [] };
+      worldMap.heights = worldMap.rows.map(() => '0'.repeat(ww));
+      const field = fieldCells(worldMap).findIndex(Boolean), fx = field % ww, fy = Math.floor(field / ww);
+      assert.ok(field >= 0, 'the fixture world has a field');
+      const worldGrid = worldMap.rows.map(r => [...r]), worldState = new Uint8Array(ww * wh);
+      const worldGround = createGround(worldMap); await worldGround.loading; worldGround.paint(worldGrid, worldState);
+      const worldAttrs = worldGround.cells().prim;
+      worldGrid[fy][fx] = 'H'; worldMap.rows[fy] = worldMap.rows[fy].slice(0, fx) + 'H' + worldMap.rows[fy].slice(fx + 1);
+      worldGround.paint(worldGrid, worldState, undefined, undefined, [[field, 'H']]);
+      assert.equal(fieldCells(worldMap)[field], 0, 'the hedge ends the field');
+      assert.equal(worldGround.cells().prim, worldAttrs, 'a revealed cell that ends a field repaints its block, not the whole map');
+      const worldPixels = worldGround.ctx.getImageData(0, 0, ww * worldGround.px, wh * worldGround.px).data;
+      createGround({ ...worldMap, w: ww + 1, rows: worldMap.rows.map(r => r + '.') });
+      const worldReference = createGround(worldMap); worldReference.paint(worldGrid, worldState);
+      assert.deepEqual(worldPixels, worldReference.ctx.getImageData(0, 0, ww * worldReference.px, wh * worldReference.px).data, 'the field ends exactly as a full paint draws it');
     }
     if (capture) {
       await writeFile(capture, full);

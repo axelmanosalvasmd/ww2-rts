@@ -156,8 +156,9 @@ console.log('gun pit checks passed');
 {
   const { readFileSync } = await import('node:fs');
   const { think } = await import('./shared/ai.js');
-  const g = createGame(JSON.parse(readFileSync('maps/default.json', 'utf8')), ['a', 'b'], false, undefined, undefined, { mode: 'conquest', tech: true, weather: false });
+  // seeded before the game is made: createGame draws from Math.random too, and an unseeded start made the walls vary
   const random = Math.random; let seed = 20261008; Math.random = () => ((seed = Math.imul(seed, 1664525) + 1013904223 >>> 0) / 4294967296);
+  const g = createGame(JSON.parse(readFileSync('maps/default.json', 'utf8')), ['a', 'b'], false, undefined, undefined, { mode: 'conquest', tech: true, weather: false });
   const have = () => Object.fromEntries(['tower', 'pillbox', 'wall', 'gate'].map(t => [t, units(g, 0, t).filter(u => u.built >= 1).length]));
   for (let i = 0; i < 20 * 330 && g.winner === null; i++) {
     if (g.tick === 20 * 140) g.players[0].tier = 2;

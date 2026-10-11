@@ -14,8 +14,9 @@ import { supportedSections, validateStructures, STRUCTURE_LIMITS } from './struc
 import { DEBRIS_LIMITS, SECTION_MASS, wreckMass, debrisBody, stepDebris, settleDebris, debrisRow } from './debris-motion.js';
 import { navigationLeg } from './navigation.js';
 import { tierOf, techCost, techMul, TECH } from './tech.js';
-import { isGroundVehicle, movementProfile, bodyRadius, vehiclePositionClear, sweptVehicleClear, vehicleStep, vehicleNavigationView, vehicleDestinationClear, segmentCliffClear, angleDelta } from './vehicle-motion.js';
-import { trafficStep, rememberTrafficPosition, trafficWins, TRAFFIC } from './local-traffic.js';
+import { isGroundVehicle, movementProfile, bodyRadius, vehiclePositionClear, sweptVehicleClear, vehicleNavigationView, vehicleDestinationClear, segmentCliffClear } from './vehicle-motion.js';
+import { trafficStep, rememberTrafficPosition, trafficWins, startGhost, ghostPair as ghosts } from './local-traffic.js';
+import { createMovers } from './movement.js';
 import { initializeUnit, tickReserves, consumeDrivingFuel, consumeAmmo, canFire, shortageRate, recoveryRate } from './logistics.js';
 import { setupConvoys, stepConvoys, convoyDeath, commandConvoy, logisticsSnapshot, supportProvision } from './supply-convoys.js';
 
@@ -982,7 +983,7 @@ function fortify(g, p) {
   // the bunker sits between the HQ and the fortifications
   const b = spawnUnit(g, p.slot, 'bunker');
   const at = nearestFree(g, p.spawn.x + Math.cos(toward) * 8 * CELL, p.spawn.z + Math.sin(toward) * 8 * CELL);
-  Object.assign(b, cellCenter(g, at), { rot: toward, aim: toward });
+  placeUnit(g, b, { ...cellCenter(g, at), rot: toward, aim: toward });
   // flak emplacements on the compound's four corners inside the trenches, a lane a Kaiju fits through between them
   // and the HQ, the bunker and the barracks (laid out after this, see setupSkirmishBases)
   const size = UNITS.flakpos.size;
@@ -1023,11 +1024,10 @@ function placeBuilding(g, owner, type, c, finished) {
   const top = Math.max(...cells.map(k => level(g, k)));
   for (const k of cells) { if (level(g, k) < top) setLevel(g, k, top); setCell(g, k, 'K'); }
   const u = spawnUnit(g, owner, type);
-  Object.assign(u, footCenter(g, c, def.size), { cells, built: finished ? 1 : 0, hp: finished ? max : max * 0.25, queue: [], productionJobs: [], prog: 0, rally: null });
+  placeUnit(g, u, { ...footCenter(g, c, def.size), cells, built: finished ? 1 : 0, hp: finished ? max : max * 0.25, queue: [], productionJobs: [], prog: 0, rally: null });
   const footprints = g.buildingCells ??= new Map(), at = { id: u.id, owner, x: u.x, z: u.z };
   for (const k of cells) footprints.set(k, at); // Keep the footprint private after cancellation or destruction too.
   registerBuildingStructure(g, u);
-  updateGrid(g, u);
   return u;
 }
 // Types stay in queue for population and existing AI consumers. Paid identities travel alongside them.
@@ -1071,7 +1071,7 @@ function train(g, b, dt) {
 function produceUnit(g, b, owner, type) {
   const to = b.rally ?? g.players[owner].rally ?? { x: g.w * CELL / 2, z: g.h * CELL / 2 }, a = Math.atan2(to.z - b.z, to.x - b.x), r = UNITS[b.type].radius + 2;
   const u = spawnUnit(g, owner, type);
-  if (u.air) { Object.assign(u, { x: b.x, z: b.z }); updateGrid(g, u); return; }
+  if (u.air) { placeUnit(g, u, { x: b.x, z: b.z }); return; }
   stepOut(g, u, b, r, a);
   if (b.rally) { u.worldGoal = { ...b.rally }; u.path = findPath(g, u, b.rally); u.drift = 'rally'; }
   else if (isSkirmishBaseMode(g)) sendToRally(g, u);
@@ -1093,11 +1093,10 @@ function stepOut(g, u, at, r, a, origin = null) {
     if ((!labels || labels[spot] === home) && out.every(t => dist(t, cellCenter(g, spot)) > (UNITS[t.type].radius + def.radius) * 0.8)) c = spot;
   }
   if (c < 0) c = nearestFree(origin ? g : nav, at.x + Math.cos(a) * (r + def.radius), at.z + Math.sin(a) * (r + def.radius), block, origin);
-  Object.assign(u, cellCenter(g, c), { rot: a, aim: a, ghost: g.tick + Math.round(CFG.spawnGhost / TICK) });
-  updateGrid(g, u);
+  placeUnit(g, u, { ...cellCenter(g, c), rot: a, aim: a }); startGhost(g, u, CFG.spawnGhost, TICK);
 }
 // two friends (own or allied) that overlap because one just stepped out pass through each other instead of locking up
-const ghostPair = (g, a, b) => allied(g, a.owner, b.owner) && ((a.ghost ?? 0) > g.tick || (b.ghost ?? 0) > g.tick);
+const ghostPair = (g, a, b) => allied(g, a.owner, b.owner) && ghosts(g, a, b, true);
 function wreckBuilding(g, u) {
   const structure = g.structures?.get(u.structureId);
   if (structure) for (const section of structure.sections) failWorldSection(g, section, [...g.units.values()], { x: 0, z: 1 });
@@ -1167,6 +1166,9 @@ function setupWorld(g, map) {
   const error = validateWorldMap(map); if (error) throw new Error(error);
   g.mode = { kind: 'world', teams: new Set(g.players.map(p => p.team)).size, total: map.world.total };
   g.world = { size: map.world.size, total: map.world.total, seed: map.world.seed, regionMap: map.world.regionMap ? Int16Array.from(map.world.regionMap) : null, biomes: map.world.biomes ? Uint8Array.from(map.world.biomes) : null, regionCells: map.world.regionCells, memory: new Map(), regions: map.world.regions.map(r => ({ ...r, x: (r.x + 0.5) * CELL, z: (r.y + 0.5) * CELL, bounds: r.bounds.map(v => v * CELL), team: r.home === undefined ? -1 : g.players[r.home].team, progress: r.home === undefined ? 0 : 1, capper: -1 })) };
+  // every cell whose remembered World row may have changed, in order (worldTerrainMemory reads only these and newly
+  // visible cells); journalBase is the position of its first entry since the last trim
+  g.cellJournal = []; g.journalBase = 0;
   if (map.world.rails) setupRails(g, map.world.rails);
   // An array property keeps the hostile local actor out of lobby seats, results and competitive team loops.
   Object.defineProperty(g.players, '-1', { value: { slot: -1, name: 'Local defenders', team: -1, faction: 0, spawn: { x: 0, z: 0 }, visible: new Set(), mp: 0, mun: 0, fuel: 0 }, configurable: true });
@@ -1186,7 +1188,7 @@ function setupWorld(g, map) {
     const guard = WORLD_GUARDS[r.kind] ?? WORLD_GUARDS.rural;
     for (let n = 0; n < guard.length; n++) {
       const a = (n / guard.length) * 2 * Math.PI, u = spawnUnit(g, -1, guard[n], n), at = cellCenter(g, nearestFree(g, r.x + Math.cos(a) * 6, r.z + 3 + Math.sin(a) * 6));
-      Object.assign(u, at, { guardHome: at, autoRetreat: false, auto: false, holdPos: true }); updateGrid(g, u);
+      placeUnit(g, u, { ...at, guardHome: at, autoRetreat: false, auto: false, holdPos: true });
     }
   }
   fortifyGuards(g);
@@ -1290,7 +1292,7 @@ function endTrain(g, u) {
   [...u.cargo].forEach((id, i) => {
     const v = g.units.get(id); if (!v) return;
     const a = u.rot + Math.PI / 2 + (i / Math.max(1, n)) * 2 * Math.PI;
-    Object.assign(v, { x: u.x + Math.cos(a) * 5, z: u.z + Math.sin(a) * 5 });
+    placeUnit(g, v, { x: u.x + Math.cos(a) * 5, z: u.z + Math.sin(a) * 5 });
     leaveCarrier(g, v, u);
   });
   g.units.delete(u.id);
@@ -1307,7 +1309,7 @@ function stepWorld(g, list, dt) {
   }
   const grid = gridFor(g);
   for (const r of g.world.regions) {
-    const on = grid.candidates(r, CFG.pointRadius, true, u => u.hp > 0 && !u.retreating && !u.logistics?.forced && !u.riding && UNITS[u.type].infantry && dist(u,r) <= CFG.pointRadius);
+    const on = grid.inOrder(r, CFG.pointRadius, u => u.hp > 0 && !u.retreating && !u.logistics?.forced && !u.riding && UNITS[u.type].infantry && dist(u,r) <= CFG.pointRadius);
     const team = on.length ? g.players[on[0].owner].team : -1;
     r.contested = on.some(u => g.players[u.owner].team !== team);
     const blockers = production.get(r.id);
@@ -1386,21 +1388,57 @@ function sameValue(a, b) {
 }
 function worldTerrainMemory(g, team) {
   const f = teamFog(g, team), all = g.world.memory;
-  let m = all.get(team); if (!m) all.set(team, m = { cells: new Map(), regions: new Map(), wrecks: new Map(), key: null, version: 0 });
+  let m = all.get(team); if (!m) all.set(team, m = { cells: new Map(), regions: new Map(), wrecks: new Map(), key: null, version: 0, log: [], logBase: 0 });
+  m.log ??= []; m.logBase ??= 0; // memories from saves made before the change log
   const key = `${g.visionTick}:${g.terrainVersion ?? 0}:${g.reveal ? 1 : 0}`;
   if (m.key !== key) {
     m.key = key;
-    const cells = g.reveal ? g.chars.keys() : f.visibleCells;
-    for (const c of cells) {
+    const visit = c => {
       const row = seenWorldCell(g, c, team), old = m.cells.get(c);
-      if (!old || !sameValue(old, row)) { m.cells.set(c, row); m.version++; }
+      if (!old || !sameValue(old, row)) { m.cells.set(c, row); m.version++; m.log.push(c); }
+    };
+    const J = g.cellJournal, full = !J || g.reveal || !m.seen || m.journalAt < g.journalBase;
+    if (full) for (const c of g.reveal ? g.chars.keys() : f.visibleCells) visit(c);
+    else {
+      // A cell that stayed in view and is not in the journal reads the same as on the last pass: only cells newly in
+      // view and cells changed since (journaled) are read again. Rereading every visible cell every pass cost about a
+      // fifth of the World server's time (#58).
+      const stamp = m.stamp ??= new Uint32Array(g.w * g.h), mark = ++m.pass;
+      for (const c of f.visibleCells) if (!m.seen[c]) { stamp[c] = mark; visit(c); }
+      for (let i = m.journalAt - g.journalBase; i < J.length; i++) {
+        const c = J[i];
+        if (f.vis[c] && stamp[c] !== mark) { stamp[c] = mark; visit(c); }
+      }
+    }
+    if (J) {
+      (m.seen ??= new Uint8Array(g.w * g.h)).set(f.vis);
+      m.journalAt = g.journalBase + J.length; m.pass ??= 0;
+      trimJournal(g);
     }
   }
   return m;
 }
+// Drop the journal entries every team memory has read. A memory left far behind reads its whole view again instead.
+function trimJournal(g) {
+  const J = g.cellJournal;
+  if (J.length < 65536) return;
+  let at = g.journalBase + J.length;
+  for (const m of g.world.memory.values()) if (m.journalAt !== undefined) at = Math.min(at, m.journalAt);
+  if (J.length > 1 << 20) at = g.journalBase + J.length;
+  if (at > g.journalBase) { J.splice(0, at - g.journalBase); g.journalBase = at; }
+}
+// The rows this player has not been sent. Each player keeps its place in the memory's change log (worldTerrainAt), so a
+// snapshot reads only the rows changed since its last one instead of the whole memory (#58); a player whose place was
+// trimmed away, or a full read, walks the whole memory as before.
 function worldTerrainFor(g, slot, full) {
   const p = g.players[slot], m = worldTerrainMemory(g,p.team), sent = p.worldTerrainSent ??= new Map(), rows=[];
-  for (const [c,row] of m.cells) if (full || sent.get(c) !== row) { rows.push(row); sent.set(c,row); }
+  if (full || !(p.worldTerrainAt >= m.logBase)) { for (const [c,row] of m.cells) if (full || sent.get(c) !== row) { rows.push(row); sent.set(c,row); } }
+  else for (let i = p.worldTerrainAt - m.logBase; i < m.log.length; i++) {
+    const c = m.log[i], row = m.cells.get(c);
+    if (sent.get(c) !== row) { rows.push(row); sent.set(c,row); }
+  }
+  p.worldTerrainAt = m.logBase + m.log.length;
+  if (m.log.length > 4 * m.cells.size + 4096) { m.logBase += m.log.length; m.log = []; } // laggards read it whole once
   return rows;
 }
 export function worldMapFor(g, slot) {
@@ -1450,8 +1488,8 @@ function worldWrecksFor(g, slot) {
   for (const [id,row] of m.wrecks) if (!g.wrecks.some(w=>w.id===id) && teamSees(g,p.team,{x:row[3],z:row[4]})) m.wrecks.delete(id);
   return knownWreckRows(g, p.team, m.wrecks);
 }
-function rememberedWrecksFor(g, slot) {
-  if (g.mode?.kind === 'world') return worldWrecksFor(g, slot);
+const rememberedWrecksFor = (g, slot) => knowledgeOf(g).wrecks(g, slot);
+function observedWrecksFor(g, slot) {
   const p = g.players[slot], memory = p.wreckMemory ??= new Map();
   for (const wreck of g.wrecks) if (g.reveal || g.skipFog || teamSees(g, p.team, wreck)) memory.set(wreck.id, wreckRow(g, wreck));
   for (const [id, row] of memory) if (!g.wrecks.some(w => w.id === id) && (g.reveal || g.skipFog || teamSees(g, p.team, { x: row[3], z: row[4] }))) memory.delete(id);
@@ -1480,7 +1518,10 @@ function worldPathView(g, slot) {
   if (m.pathVersion !== m.version) {
     const affected = new Set(), changed = [], W = g.w;
     view.navigationChangedFromVersion = view.navigationKnowledgeVersion ?? 0;
-    for (const [c, row] of m.cells) {
+    // the rows changed since the view last followed the memory, from its change log; the whole memory when the log was trimmed past it
+    const fromLog = m.pathAt >= m.logBase, rows = fromLog ? m.log.slice(m.pathAt - m.logBase).map(c => [c, m.cells.get(c)]) : m.cells;
+    m.pathAt = m.logBase + m.log.length;
+    for (const [c, row] of rows) {
       if (m.pathRows.get(c) === row) continue;
       const oldWall = (view.flags[c] & (MOVE | SIGHT)) === (MOVE | SIGHT), oldFlags = view.flags[c], oldHeight = view.height[c];
       view.chars[c] = row[1]; view.ground[c] = row[4]?.ground ?? row[1]; view.objects[c] = row[4]?.object ?? '.'; view.mineLayer[c] = row[1] === 'N' ? 1 : 0; view.flags[c] = TERRAIN[row[1] === 'N' ? physicalWorldCell(view, c) : row[1]] ?? 0; view.height[c] = row[2]; view.wear[c] = (row[3] & 3) / 4;
@@ -1554,10 +1595,24 @@ function setupSkirmishBases(g) {
   }
   // Starting troops existed before fortifications were placed. Move any trapped squad out of the footprints.
   for (const u of g.units.values()) if (!UNITS[u.type].structure && !u.air && (flagsAt(g, u.x, u.z) & MOVE)) {
-    Object.assign(u, cellCenter(g, nearestFree(g, u.x, u.z, blockOf(UNITS[u.type])))); updateGrid(g, u);
+    placeUnit(g, u, cellCenter(g, nearestFree(g, u.x, u.z, blockOf(UNITS[u.type]))));
   }
 }
 
+// What a player's side knows of the battlefield, one adapter per kind of memory. World Conquest: one journaled terrain
+// memory per team, filled by what the team sees (worldTerrainMemory). Every other mode: each player's remembered map,
+// replayed from the cell log (observed*). Callers ask knowledgeOf(g) instead of branching on the mode, so a new mode
+// chooses its adapter here, once.
+//   terrain(g, slot, full): the remembered cells for the snapshot (full: all of them, not only what changed)
+//   pathView(g, slot): the terrain as routes and movement read it
+//   version(g, slot): moves whenever what the path view knows changes (an unreachable goal is worth trying again)
+//   wrecks(g, slot): the remembered wreck rows
+const KNOWLEDGE = {
+  world: { terrain: worldTerrainFor, pathView: worldPathView, version: (g, slot) => worldTerrainMemory(g, g.players[slot].team).version, wrecks: worldWrecksFor },
+  observed: { terrain: observedTerrainFor, pathView: observedPathView, version: (g, slot) => observedPathView(g, slot).navigationKnowledgeVersion, wrecks: observedWrecksFor },
+};
+const knowledgeOf = (g) => (g.mode?.kind === 'world' ? KNOWLEDGE.world : KNOWLEDGE.observed);
+const knownTerrainFor = (g, slot) => knowledgeOf(g).pathView(g, slot);
 const observedPaths = new WeakMap();
 function observedPathView(g, slot) {
   let recipients = observedPaths.get(g); if (!recipients) observedPaths.set(g, recipients = new Map());
@@ -1711,6 +1766,10 @@ function eyesFor(g, team) {
   };
 }
 
+// Puts a unit somewhere at once (a spawn spot, a garrison door, a station, a drop zone): sets the fields, x and z among
+// them, and keeps the spatial index current. Only spawnUnit and the movers (step's movement, separation, trains, planes,
+// the operative) update the index themselves; any other code that sets a position goes through here.
+function placeUnit(g, u, fields) { Object.assign(u, fields); updateGrid(g, u); return u; }
 function spawnUnit(g, owner, type, n = g.units.size) {
   const s = g.players[owner].spawn, a = n * 2.4;
   const c = nearestFree(g, s.x + Math.cos(a) * 4, s.z + Math.sin(a) * 4, blockOf(UNITS[type]), UNITS[type].naval ? null : s);
@@ -1796,7 +1855,7 @@ function dangerView(g, known, u, state) {
 function supplyRoute(g, u, at, safe = false) {
   u.supplyRouteReason = null;
   if (!safe) return findPath(g, u, at);
-  const known = g.mode?.kind === 'world' ? worldPathView(g, u.owner) : observedPathView(g, u.owner);
+  const known = knownTerrainFor(g, u.owner);
   let owners = supplyRouteViews.get(g);
   if (!owners) supplyRouteViews.set(g, owners = new Map());
   const epoch = Math.floor(g.tick / 40), version = known.navigationKnowledgeVersion ?? known.obstructionVersion;
@@ -1819,7 +1878,7 @@ function supplyPathConnected(g,u,at,path) {
   if (!path.length) return false;
   if (dist(path.at(-1),at)<=3) return true;
   const def=UNITS[u.type], block=blockOf(def);
-  let view=g.navigationObserved ? g : g.mode?.kind==='world' ? worldPathView(g,u.owner) : observedPathView(g,u.owner);
+  let view=g.navigationObserved ? g : knownTerrainFor(g, u.owner);
   if (isGroundVehicle(def) && !view.vehicleFootprintKnown) view=vehicleNavigationView(view,def,block);
   return navigationLeg(view,cellOf(view,u.x,u.z),nearestFree(view,at.x,at.z,block),block).connected;
 }
@@ -1858,12 +1917,12 @@ function supplyHandoff(g, u, store, radius) {
 const SHORT_HOP = 16;
 function fullConvoyRoute(g,u,at,safe) {
   if (dist(u, at) <= SHORT_HOP) {
-    const def = UNITS[u.type], known = g.mode?.kind === 'world' ? worldPathView(g, u.owner) : observedPathView(g, u.owner);
+    const def = UNITS[u.type], known = knownTerrainFor(g, u.owner);
     if (walkable(known, u, at, blockOf(def), bodyRadius(def))) return [{ x: at.x, z: at.z }];
   }
   const route=supplyRoute(g,u,at,safe);
   if (!route.length || dist(route.at(-1),at)<=3) return route;
-  const known=g.mode?.kind==='world' ? worldPathView(g,u.owner) : observedPathView(g,u.owner);
+  const known=knownTerrainFor(g, u.owner);
   // Keep one navigation view across fine-route legs. Financing uses the entire
   // planned outward and return journey, including roads around remembered banks.
   let view=known;
@@ -1888,7 +1947,7 @@ function fullConvoyRoute(g,u,at,safe) {
 // remembered terrain and visible weapon threats, including every remaining leg.
 function supplyContinueRoute(g, u) {
   if (!u.path.length || (u.stuck ?? 0) > .5) return false;
-  const known = g.mode?.kind === 'world' ? worldPathView(g, u.owner) : observedPathView(g, u.owner);
+  const known = knownTerrainFor(g, u.owner);
   const def = UNITS[u.type], threats = [...g.players[u.owner].visible].map(id => g.units.get(id)).filter(t => t && t.hp > 0 && !allied(g, t.owner, u.owner) && UNITS[t.type].w?.range > 0 && !t.air);
   let from = u;
   for (const to of u.path) {
@@ -2112,7 +2171,7 @@ function leadSquad(g, u, op) {
 // A new soldier is one of the led squad's men while it has two or more; otherwise he comes from the HQ for MP.
 function spawnOperative(g, op, from = null) {
   const u = spawnUnit(g, op.owner, 'rifle');
-  if (from) { from.hp -= UNITS[from.type].hpPer; u.x = from.x; u.z = from.z; updateGrid(g, u); }
+  if (from) { from.hp -= UNITS[from.type].hpPer; placeUnit(g, u, { x: from.x, z: from.z }); }
   Object.assign(u, { hp: UNITS.rifle.hpPer, operative: op.key, auto: false, autoRetreat: false, holdFire: true, holdPos: true,
     vx: 0, vz: 0, vy: 0, jy: 0, crouch: false, weapon: op.input?.weapon ?? 0, mags: OPERATIVE_WEAPONS.map(w => w.mag), reloadT: 0, nades: OPERATIVE.nades, nadeT: 0 });
   op.unitId = u.id; op.input = null;
@@ -2140,8 +2199,7 @@ function stepPlane(g, u, dt) {
   const def = UNITS[u.type], a = u.air, A = CFG.air, base = airBase(g, u);
   u.cooldown -= dt; u.retarget -= dt; u.targetId = 0;
   if (a.state === 'base' || a.state === 'rearm') {
-    Object.assign(u, base);
-    updateGrid(g, u);
+    placeUnit(g, u, base);
     if (a.state === 'rearm') { u.hp = Math.min(def.hpPer, u.hp + def.hpPer * dt / A.rearm); if ((a.timer -= dt) <= 0) Object.assign(a, { state: 'base', fuel: A.station, ammo: def.ammo }); }
     return;
   }
@@ -2183,7 +2241,7 @@ function antiAir(g, list, dt) {
     if (!aa?.dps || u.hp <= 0 || (aa.setup && u.still < 2) || (u.air && !airborne(u)) || (u.built !== undefined && u.built < 1)) continue;
     if (u.holdFire && (!u.air || u.air.mission?.kind !== 'attack')) continue;
     let best = null, bd = aa.range;
-    for (const t of gridFor(g).candidates(u, aa.range, true, t => t.air && airborne(t) && t.hp > 0 && !allied(g, t.owner, u.owner) && g.players[u.owner].visible.has(t.id) && (!u.holdFire || u.air.mission.id === t.id))) if (dist(u, t) <= bd) { bd = dist(u, t); best = t; }
+    for (const t of gridFor(g).inOrder(u, aa.range, t => t.air && airborne(t) && t.hp > 0 && !allied(g, t.owner, u.owner) && g.players[u.owner].visible.has(t.id) && (!u.holdFire || u.air.mission.id === t.id))) if (dist(u, t) <= bd) { bd = dist(u, t); best = t; }
     if (!best || !canFire(u) || u.logistics?.forced && !u.logistics.stranded) continue;
     let aaRate = 1 / shortageRate(u);
     if (u.logistics) { u.aaReserve = (u.aaReserve ?? 0) + dt * aaRate / Math.max(.1, UNITS[u.type].w.interval); if (u.aaReserve >= 1) { consumeAmmo(u, Math.floor(u.aaReserve)); u.aaReserve %= 1; } }
@@ -2214,19 +2272,26 @@ const coverQ = (g, c) => {
 // chars: the map's cells in row order, w: its width (the client draws each type from the same answer)
 // buildings: the map's list; an entry on any cell of a house gives the whole house that type by name
 export function houseKinds(chars, w, buildings = []) {
-  const kind = new Uint8Array(chars.length), seen = new Uint8Array(chars.length);
-  const named = new Map(buildings.map(b => [b.y * w + b.x, CFG.houses.findIndex(h => h.name === b.kind)]).filter(([, k]) => k >= 0));
-  for (let c0 = 0; c0 < kind.length; c0++) {
-    if (chars[c0] !== 'B' || seen[c0]) continue;
-    const q = [c0]; seen[c0] = 1;
-    for (let i = 0; i < q.length; i++) for (const n of [q[i] - 1, q[i] + 1, q[i] - w, q[i] + w]) {
-      if (n < 0 || n >= kind.length || seen[n] || chars[n] !== 'B' || (Math.abs(n - q[i]) === 1 && Math.floor(n / w) !== Math.floor(q[i] / w))) continue;
-      seen[n] = 1; q.push(n);
-    }
-    const k = q.reduce((a, c) => named.get(c) ?? a, CFG.houses.findLastIndex(h => q.length >= h.min));
-    for (const c of q) kind[c] = k;
-  }
+  const kind = new Uint8Array(chars.length);
+  houseKindsWhere(c => chars[c] === 'B', chars.length, w, buildings, null, (q, k) => { for (const c of q) kind[c] = k; });
   return kind;
+}
+// houseKinds over the cells where isB(c), for the connected blocks that hold one of seeds (ascending cells; null: every
+// cell): each(cells, kind) per block. The client redoes only the blocks a newly found house cell touches.
+export function houseKindsWhere(isB, n, w, buildings = [], seeds = null, each) {
+  const seen = new Uint8Array(n);
+  const named = new Map(buildings.map(b => [b.y * w + b.x, CFG.houses.findIndex(h => h.name === b.kind)]).filter(([, k]) => k >= 0));
+  const visit = (c0) => {
+    if (!isB(c0) || seen[c0]) return;
+    const q = [c0]; seen[c0] = 1;
+    for (let i = 0; i < q.length; i++) for (const n2 of [q[i] - 1, q[i] + 1, q[i] - w, q[i] + w]) {
+      if (n2 < 0 || n2 >= n || seen[n2] || !isB(n2) || (Math.abs(n2 - q[i]) === 1 && Math.floor(n2 / w) !== Math.floor(q[i] / w))) continue;
+      seen[n2] = 1; q.push(n2);
+    }
+    each(q, q.reduce((a, c) => named.get(c) ?? a, CFG.houses.findLastIndex(h => q.length >= h.min)));
+  };
+  if (seeds) for (const c of seeds) visit(c);
+  else for (let c = 0; c < n; c++) visit(c);
 }
 // a structure cell's full hit points
 export const physicalWorldCell = (g, c) => composeWorldCell(g.ground?.[c] ?? g.chars[c], g.objects?.[c] ?? '.');
@@ -2267,7 +2332,7 @@ export function coverBehind(g, t, from, units = true) {
     const dx = v.x - t.x, dz = v.z - t.z, d = Math.hypot(dx, dz);
     if (d > 0 && d < 4 && (dx * ca + dz * sa) / d > 0.7) best = Math.max(best, Math.min(1, (4 - d) / 1.5));
   };
-  if (units) for (const v of gridFor(g).candidates(t, 4, false, v => v !== t && !v.air && !UNITS[v.type].infantry && v.hp > 0, true)) hull(v);
+  if (units) for (const v of gridFor(g).heavy(t, 4, v => v !== t && !v.air && !UNITS[v.type].infantry && v.hp > 0)) hull(v);
   for (const v of g.wrecks ?? []) if (!v.motion) hull(v);
   return best;
 }
@@ -2291,7 +2356,9 @@ const stateOf = (g, c) => packState(g.wear[c], g.burnt[c], g.cellHp[c], maxHp(g,
 export const startState = (ch, c) => packState(startWear(ch, c), 0, 1, 1);
 // tell the clients when a cell's state crosses into another step
 // (a look-only change: it does not move terrainVersion, see logCell)
-function touch(g, c) { const s = stateOf(g, c); if (s !== g.cellState[c]) { g.cellState[c] = s; logCell(g, c, [c, g.chars[c]], true); } }
+// touch follows every change of a cell's wear or damage: the World journal takes the cell even when its state is the same,
+// since the remembered row carries the exact wear
+function touch(g, c) { g.cellJournal?.push(c); const s = stateOf(g, c); if (s !== g.cellState[c]) { g.cellState[c] = s; logCell(g, c, [c, g.chars[c]], true); } }
 // how fast a unit moves on one cell (1 = open dry ground)
 function groundMul(g, c, veh) {
   const f = g.flags[c], w = g.wear ? g.wear[c] : 0, wet = g.wx ? g.wx.wet * (g.height && g.height[c] < 0 ? 2 : 1) : 0;
@@ -2325,7 +2392,7 @@ function nearCover(g, u) {
   const c = Math.floor(u.z / CELL) * g.w + Math.floor(u.x / CELL);
   if (SOLID.has(g.chars[c + 1]) || SOLID.has(g.chars[c - 1]) || SOLID.has(g.chars[c + g.w]) || SOLID.has(g.chars[c - g.w])) return true;
   if (WALLS.has(g.chars[c + g.w + 1]) || WALLS.has(g.chars[c + g.w - 1]) || WALLS.has(g.chars[c - g.w + 1]) || WALLS.has(g.chars[c - g.w - 1])) return true; // a house corner
-  return gridFor(g).some(u, 3.5, v => v !== u && !v.air && !UNITS[v.type].infantry && dist(u, v) < 3.5, true);
+  return gridFor(g).hasHeavy(u, 3.5, v => v !== u && !v.air && !UNITS[v.type].infantry && dist(u, v) < 3.5);
 }
 export const vet = (u) => (UNITS[u.type].cost ? CFG.vetXp.filter(k => u.xp >= k * UNITS[u.type].cost).length : 0); // free units (the bunker) never rank up
 const cellCenter = (g, c) => ({ x: (c % g.w + 0.5) * CELL, z: (Math.floor(c / g.w) + 0.5) * CELL });
@@ -2350,8 +2417,7 @@ function coverSpot(g, u, from, now) {
 function exitBuilding(g, u) {
   if (u.garrison < 0) return;
   const c = nearestFree(g, u.x, u.z), p = cellCenter(g, c);
-  u.x = p.x; u.z = p.z; u.garrison = -1;
-  updateGrid(g, u);
+  placeUnit(g, u, { x: p.x, z: p.z, garrison: -1 });
 }
 // A squad gets out of its carrier c beside it. thrown: the carrier was wrecked under it, and it is hurt.
 function leaveCarrier(g, u, c, thrown = false) {
@@ -2359,8 +2425,7 @@ function leaveCarrier(g, u, c, thrown = false) {
   if (!u) return;
   u.riding = 0;
   const at = cellCenter(g, nearestFree(g, u.x, u.z, blockOf(UNITS[u.type]))), drowned = thrown && dist(u, at) > CFG.shoreReach;
-  Object.assign(u, at);
-  updateGrid(g, u);
+  placeUnit(g, u, at);
   if (drowned) { u.hp = 0; g.shots.push({ t: u.id, to: u.owner, x: u.x, z: u.z, k: 'hurt', kill: true }); return; }
   if (!thrown) return;
   u.hp -= UNITS[u.type].models * UNITS[u.type].hpPer * CFG.aid.evict;
@@ -2500,8 +2565,8 @@ function registerBridgeSection(g, c) {
 function occupiedVehicleCell(g, c, list) {
   const at = cellCenter(g, c);
   const radius = g.worldFootprintRadius ??= Math.max(...Object.values(UNITS).map(def => def.radius ?? 0));
-  return gridFor(g).some(at, radius + CELL, u => u.hp > 0 && !u.air && !u.riding && !UNITS[u.type].infantry && !UNITS[u.type].structure
-    && Math.abs(u.x - at.x) < UNITS[u.type].radius + CELL / 2 && Math.abs(u.z - at.z) < UNITS[u.type].radius + CELL / 2, true);
+  return gridFor(g).hasHeavy(at, radius + CELL, u => u.hp > 0 && !u.air && !u.riding && !UNITS[u.type].infantry && !UNITS[u.type].structure
+    && Math.abs(u.x - at.x) < UNITS[u.type].radius + CELL / 2 && Math.abs(u.z - at.z) < UNITS[u.type].radius + CELL / 2);
 }
 function failWorldSection(g, section, list, direction) {
   if (section.state === 'failed') return;
@@ -2594,6 +2659,7 @@ function logCell(g, c, change, look = false) {
   g.watchPending?.add(index); // the spectators' shared terrain memory (server.js)
   if (!look) g.terrainVersion = (g.terrainVersion ?? 0) + 1;
   g.newCells.push(latest);
+  g.cellJournal?.push(c);
 }
 
 // water within CFG.shoal cells of land or surf gets SHOAL (a breadth-first pass out from the shore)
@@ -2840,7 +2906,60 @@ function nearestFree(g, x, z, block = MOVE, origin = null) {
 
 const pathRegions = new WeakMap();
 const regionDx = [-1, 1, 0, 0, -1, 1, -1, 1], regionDy = [0, 0, -1, 1, -1, -1, 1, 1];
-function regionsFor(g, block) {
+// Can a unit step from free cell c to free cell n (direction k, offset as in regionsFor)? Flat maps use the four sides.
+function regionEdge(c, n, k, x, W, N, flags, heights, block) {
+  const dx = regionDx[k];
+  if (dx < 0 && x === 0 || dx > 0 && x === W - 1 || n < 0 || n >= N || flags[n] & block) return false;
+  if (!heights) return true;
+  const height = heights[c], nextHeight = heights[n];
+  if (Math.abs(nextHeight - height) > 1) return false;
+  if (k < 4) return true;
+  const a = c + dx, b = c + regionDy[k] * W;
+  if (flags[a] & block || flags[b] & block) return false;
+  const ah = heights[a], bh = heights[b];
+  return Math.abs(ah - height) <= 1 && Math.abs(bh - height) <= 1 || Math.abs(ah - nextHeight) <= 1 && Math.abs(bh - nextHeight) <= 1;
+}
+// A few cells changed (a crater, a wall knocked down): flood only the cells within two of them, and give each piece found
+// the label of the regions it reaches outside (joining them when it reaches several, or a new label when none). Edges
+// further out are unchanged, so this is exact unless one region is reached by two pieces: it may have split, and the
+// caller floods the whole map (false). Labels only ever mean "same region or not".
+function relabelNear(entry, changed, flags, heights, block, W, N) {
+  const { labels } = entry, piece = new Map(), directions = heights ? 8 : 4, offsets = [-1, 1, -W, W, -W - 1, -W + 1, W - 1, W + 1];
+  for (const d of changed) {
+    const x = d % W, y = (d - x) / W;
+    for (let dy = -2; dy <= 2; dy++) for (let dx = -2; dx <= 2; dx++) {
+      const nx = x + dx, ny = y + dy;
+      if (nx >= 0 && nx < W && ny >= 0 && ny * W < N) piece.set(ny * W + nx, 0);
+    }
+  }
+  const reach = [null], owner = new Map(); // reach[p]: the outside labels piece p touches; owner: label -> piece
+  for (const seed of piece.keys()) {
+    if (piece.get(seed) !== 0 || flags[seed] & block) continue;
+    const p = reach.length, touched = new Set(), queue = [seed];
+    reach.push(touched); piece.set(seed, p);
+    for (let head = 0; head < queue.length; head++) {
+      const c = queue[head], x = c % W;
+      for (let k = 0; k < directions; k++) {
+        const n = c + offsets[k];
+        if (!regionEdge(c, n, k, x, W, N, flags, heights, block)) continue;
+        const inside = piece.get(n);
+        if (inside === 0) { piece.set(n, p); queue.push(n); }
+        else if (inside === undefined && labels[n] > 0 && !touched.has(labels[n])) {
+          if (owner.has(labels[n])) return false; // two pieces reach this region: it may have split
+          owner.set(labels[n], p); touched.add(labels[n]);
+        }
+      }
+    }
+  }
+  // each piece's label: the first region it reaches (the others join it) or a new one
+  const label = reach.map(t => (t?.size ? t.values().next().value : ++entry.fresh)), join = new Map();
+  for (let p = 1; p < reach.length; p++) for (const l of reach[p]) if (l !== label[p]) join.set(l, label[p]);
+  if (join.size) for (let c = 0; c < N; c++) { const to = join.get(labels[c]); if (to !== undefined) labels[c] = to; }
+  for (const [c, p] of piece) labels[c] = p ? label[p] : -1;
+  return true;
+}
+// regionsFor: a label per cell, the same for cells a unit with this block mask can walk between (-1: blocked).
+export function regionsFor(g, block) {
   let data = pathRegions.get(g);
   const version = block === MOVE ? g.infantryRegionVersion ?? 0 : block & LAND ? g.navalRegionVersion ?? 0 : g.vehicleRegionVersion ?? 0, W = g.w, N = W * g.h;
   if (!data || data.w !== W || data.h !== g.h) {
@@ -2848,14 +2967,18 @@ function regionsFor(g, block) {
   }
   let entry = data.masks.get(block);
   if (entry?.version === version) return entry.labels;
-  if (!entry) { entry = { labels: new Int32Array(N), version: -1, blocked: new Uint8Array(N), heights: new Int8Array(N) }; data.masks.set(block, entry); }
+  if (!entry) { entry = { labels: new Int32Array(N), version: -1, blocked: new Uint8Array(N), heights: new Int8Array(N), fresh: N }; data.masks.set(block, entry); }
   const { labels } = entry, flags = g.flags, heights = g.height, queue = buffersFor(N).freeQueue;
   // Regions follow only which cells block and their heights. Most version moves change neither (an observed path view
   // moves its versions for any remembered cell: wear, cover, a crater's material), so look before flooding again.
+  // A few changed cells (up to 64) are relabelled where they are; a full flood of a Huge World map took up to 23 ms (#58).
   if (entry.version >= 0) {
-    let c = 0;
-    while (c < N && entry.blocked[c] === (flags[c] & block ? 1 : 0) && entry.heights[c] === (heights ? heights[c] : 0)) c++;
-    if (c === N) { entry.version = version; return labels; }
+    const changed = [];
+    for (let c = 0; c < N && changed.length <= 64; c++) if (entry.blocked[c] !== (flags[c] & block ? 1 : 0) || entry.heights[c] !== (heights ? heights[c] : 0)) changed.push(c);
+    if (changed.length <= 64) {
+      for (const c of changed) { entry.blocked[c] = flags[c] & block ? 1 : 0; entry.heights[c] = heights ? heights[c] : 0; }
+      if (!changed.length || relabelNear(entry, changed, flags, heights, block, W, N)) { entry.version = version; return labels; }
+    }
   }
   for (let c = 0; c < N; c++) { entry.blocked[c] = flags[c] & block ? 1 : 0; entry.heights[c] = heights ? heights[c] : 0; labels[c] = flags[c] & block ? -1 : 0; }
   const offsets = [-1, 1, -W, W, -W - 1, -W + 1, W - 1, W + 1], directions = heights ? 8 : 4;
@@ -2944,7 +3067,7 @@ function heapPop(b) {
 // A* over the grid, 8-directional, no corner cutting. Returns smoothed world waypoints.
 export function findPath(g, from, to) {
   if (!g.navigationObserved && !g.worldKnown && g.players?.[from.owner]) {
-    const view = g.mode?.kind === 'world' ? worldPathView(g, from.owner) : observedPathView(g, from.owner), next = to;
+    const view = knownTerrainFor(g, from.owner), next = to;
     const path = findPath(view, from, next), block = blockOf(UNITS[from.type]);
     if (path.length && !walkable(view,from,path[0],block)) {
       // A squad stopped at a newly seen bank can sit a fraction of a cell too close for a parallel move.
@@ -3098,7 +3221,7 @@ function performStepPath(g, u, to, kind, work) {
   if (kind === 'recovery') { if (route.length) u.path = route; return; }
   u.path = route;
   if (stats.failed === failures) return;
-  const version = g.mode?.kind === 'world' ? worldTerrainMemory(g, g.players[u.owner].team).version : observedPathView(g, u.owner).navigationKnowledgeVersion;
+  const version = knowledgeOf(g).version(g, u.owner);
   const count = previous?.key === key && previous.version === version ? previous.count + 1 : 1;
   if (count < (g.pathRetryLimit ?? 20)) { pathFailures.set(u, { key, version, count }); return; }
   u[kind === 'world' ? 'worldGoal' : kind] = kind === 'build' || kind === 'attackId' || kind === 'board' ? 0 : kind === 'enter' || kind === 'fireAt' ? -1 : null;
@@ -3432,8 +3555,7 @@ export function command(g, slot, cmd, auto = false) {
     if (!path) return 'railCut';
     origin.next[p.team] = g.tick + Math.round(CFG.rail.every / TICK);
     const train = spawnUnit(g, slot, 'train');
-    Object.assign(train, { x: origin.x, z: origin.z, autoRetreat: false, rail: { path, i: 0, wait: CFG.rail.load, to: to.region, bridges: new Set(path.filter(at => g.chars[at.c] === '=').map(at => at.c)) } });
-    updateGrid(g, train);
+    placeUnit(g, train, { x: origin.x, z: origin.z, autoRetreat: false, rail: { path, i: 0, wait: CFG.rail.load, to: to.region, bridges: new Set(path.filter(at => g.chars[at.c] === '=').map(at => at.c)) } });
     for (const u of units.filter(u => dist(u, origin) <= CFG.rail.reach).sort((a, b) => dist(a, origin) - dist(b, origin)).slice(0, CFG.rail.cars)) {
       exitBuilding(g, u);
       Object.assign(u, { traffic: null, trafficWait: 0, moveOutcome: 'interrupted', moveOutcomeTick: g.tick, worldGoal: null, orders: [], entrench: null, face: null, path: [], attackId: 0, targetId: 0, nade: null, dig: null, enter: -1, board: 0, amove: null, fireAt: -1, build: 0, retreating: false, riding: train.id });
@@ -3807,8 +3929,8 @@ function pickTarget(g, u) {
   const w = UNITS[u.type].w, cur = u.targetId, team = g.players[u.owner].team;
   let best = 0, bestScore = Infinity, curScore = Infinity;
   // salvo weapons count each target's neighbours: gather them once (range + 6 m) instead of a query per target
-  const pool = w.salvo ? gridFor(g).candidates(u, w.range + 6, false, o => !o.riding && !allied(g, o.owner, u.owner) && g.players[u.owner].visible.has(o.id)) : null;
-  for (const t of gridFor(g).candidates(u, rangeOf(g, u, w) + (g.naval ? HULL_MAX : 0), true, t => t.hp > 0 && !t.air && !allied(g, t.owner, u.owner) && g.players[u.owner].visible.has(t.id))) {
+  const pool = w.salvo ? gridFor(g).unordered(u, w.range + 6, o => !o.riding && !allied(g, o.owner, u.owner) && g.players[u.owner].visible.has(o.id)) : null;
+  for (const t of gridFor(g).inOrder(u, rangeOf(g, u, w) + (g.naval ? HULL_MAX : 0), t => t.hp > 0 && !t.air && !allied(g, t.owner, u.owner) && g.players[u.owner].visible.has(t.id))) {
     if (!canShoot(g, u, t)) continue;
     const def = UNITS[t.type], inf = def.infantry;
     const dug = t.garrison >= 0 ? 3 : inTrench(g, t) ? 2 : inCover(g, t) ? 1.5 : 1;
@@ -3867,7 +3989,7 @@ function spotNear(g, u, at, radius, held, from, beat, space = spaceFor(u)) {
 function threatFor(g, u, at) {
   const seen = g.players[u.owner].visible;
   let best = null, bd = 50;
-  for (const v of gridFor(g).candidates(at, 50, false, v => v.hp > 0 && !v.air && UNITS[v.type].w && !allied(g, v.owner, u.owner) && seen.has(v.id))) {
+  for (const v of gridFor(g).unordered(at, 50, v => v.hp > 0 && !v.air && UNITS[v.type].w && !allied(g, v.owner, u.owner) && seen.has(v.id))) {
     const d = dist(v, at); if (d < bd) { bd = d; best = v; }
   }
   if (best) return { x: best.x, z: best.z };
@@ -3992,7 +4114,7 @@ function react(g, u, def) {
 function keepSpacing(g, u) {
   if (u.react > 0 || u.targetId) return;
   u.react = 1;
-  const space = CFG.behavior.spacing, close = gridFor(g).candidates(u, space, false, v => v.id < u.id && v.owner === u.owner && v.hp > 0 && UNITS[v.type].infantry && v.garrison < 0 && !v.path.length && dist(u, v) < space - 0.25);
+  const space = CFG.behavior.spacing, close = gridFor(g).unordered(u, space, v => v.id < u.id && v.owner === u.owner && v.hp > 0 && UNITS[v.type].infantry && v.garrison < 0 && !v.path.length && dist(u, v) < space - 0.25);
   if (!close.length) return;
   const held = heldSpots(g, new Set([u.id]), u, CFG.behavior.coverSeek, u.owner), from = threatFor(g, u, u), now = coverRank(g, u, from);
   const spot = spotNear(g, u, u, CFG.behavior.coverSeek, held, from, Math.min(3, now + 1)) ?? (now < 3 ? null : spotNear(g, u, u, CFG.behavior.coverSeek, held, null, 4));
@@ -4113,7 +4235,7 @@ function flightContact(g, p, a, b, prior, startFraction, endFraction, visible = 
     if (hit && (!best || hit.fraction < best.fraction)) best = { ...hit, cell: c };
   }
   const center = { x: (a.x + b.x) / 2, z: (a.z + b.z) / 2 }, reach = Math.hypot(b.x - a.x, b.z - a.z) / 2 + 14 + (g.naval ? HULL_MAX : 0);
-  for (const t of gridFor(g).candidates(center, reach, false, t => t.hp > 0 && !t.air && !t.riding && t.id !== p.shooter && visible(t) && (p.blastSource || !allied(g, p.owner, t.owner)))) {
+  for (const t of gridFor(g).unordered(center, reach, t => t.hp > 0 && !t.air && !t.riding && t.id !== p.shooter && visible(t) && (p.blastSource || !allied(g, p.owner, t.owner)))) {
     const def = UNITS[t.type];
     // Constructed buildings collide through their individual structural cells.
     if (def.building && t.cells?.length) continue;
@@ -4131,7 +4253,7 @@ function stepGate(g, u, dt) {
   if ((u.gateT = (u.gateT ?? 0) - dt) > 0) return;
   u.gateT = 0.5;
   const c = u.cells[0], { shut } = UNITS[u.type].gate;
-  const near = (r, f) => gridFor(g).some(u, r, v => v.hp > 0 && !v.air && !v.riding && !UNITS[v.type].building && f(v));
+  const near = (r, f) => gridFor(g).has(u, r, v => v.hp > 0 && !v.air && !v.riding && !UNITS[v.type].building && f(v));
   const foe = near(u.open === false ? shut + 4 : shut, v => !allied(g, v.owner, u.owner));
   const open = !foe || (u.open !== false && near(3, v => dist(v, u) < CELL * 0.7 + (UNITS[v.type].radius ?? 1)));
   if (open === u.open) return;
@@ -4206,7 +4328,7 @@ function stepFlights(g, prior) {
       const at = flightAt(p, begin + (end - begin) * fraction), stop = begin + (end - begin) * fraction;
       // Suppression uses traveled space and one shared set per infantry volley.
       const center = { x: (a.x + at.x) / 2, z: (a.z + at.z) / 2 }, reach = Math.hypot(at.x - a.x, at.z - a.z) / 2 + p.near;
-      if (p.near && p.suppression) for (const t of gridFor(g).candidates(center, reach, false)) if (segmentDistance(a, at, t) <= p.near) flightSuppress(g, p, t);
+      if (p.near && p.suppression) for (const t of gridFor(g).unordered(center, reach)) if (segmentDistance(a, at, t) <= p.near) flightSuppress(g, p, t);
       p.last = stop;
       if (!contact) break;
       if (resolveFlight(g, p, contact, at, stop, velocityAt(p, stop))) break;
@@ -4229,7 +4351,7 @@ function sandboxSpawn(g, slot, cmd) {
   const horde = g.mode?.kind === 'horde', owner = !cmd.enemy ? slot : horde ? g.mode.slot : g.players.findIndex(p => !allied(g, p.slot, slot));
   if (owner < 0) return 'blocked';
   const u = spawnUnit(g, owner, cmd.unit);
-  if (!def.air) { Object.assign(u, cellCenter(g, nearestFree(g, cmd.x, cmd.z, blockOf(def)))); updateGrid(g, u); }
+  if (!def.air) placeUnit(g, u, cellCenter(g, nearestFree(g, cmd.x, cmd.z, blockOf(def))));
   if (horde && owner === g.mode.slot) {
     const b = g.units.get(g.mode.bunker);
     if (b && !def.air) command(g, owner, { t: 'amove', orders: [[u.id, b.x, b.z]] });
@@ -4280,7 +4402,7 @@ function updateVision(g) {
       // On a naval map it reaches a ship's half length further, since a ship is seen along its whole hull.
       const bx = Math.floor(u.x / 16), bz = Math.floor(u.z / 16), ck = bx + ',' + bz + ',' + reach;
       let near = nearCache.get(ck);
-      if (!near) nearCache.set(ck, near = [...gridFor(g).candidates({ x: (bx + 0.5) * 16, z: (bz + 0.5) * 16 }, reach + 8 + (g.naval ? HULL_MAX : 0), false, t => !t.air && g.players[t.owner].team !== p.team), ...airList]);
+      if (!near) nearCache.set(ck, near = [...gridFor(g).unordered({ x: (bx + 0.5) * 16, z: (bz + 0.5) * 16 }, reach + 8 + (g.naval ? HULL_MAX : 0), t => !t.air && g.players[t.owner].team !== p.team), ...airList]);
       for (const t of near) {
         if (g.players[t.owner].team === p.team) continue;
         const bound = t.air ? CFG.air.seeRange : reach + (UNITS[t.type].hull ?? 0);
@@ -4327,7 +4449,7 @@ function updateVision(g) {
   }
   if (g.mode?.kind === 'world') {
     const actor = g.players[-1]; actor.visible = new Set();
-    for (const guard of list) if (guard.owner < 0 && (!UNITS[guard.type].building || UNITS[guard.type].w || UNITS[guard.type].lookout) && !(guard.built < 1)) for (const enemy of gridFor(g).candidates(guard, visionOf(g, guard), true, u => u.owner >= 0 && u.hp > 0)) if (UNITS[guard.type].building || los(g, guard, enemy)) actor.visible.add(enemy.id);
+    for (const guard of list) if (guard.owner < 0 && (!UNITS[guard.type].building || UNITS[guard.type].w || UNITS[guard.type].lookout) && !(guard.built < 1)) for (const enemy of gridFor(g).inOrder(guard, visionOf(g, guard), u => u.owner >= 0 && u.hp > 0)) if (UNITS[guard.type].building || los(g, guard, enemy)) actor.visible.add(enemy.id);
   }
 }
 // the enemy buildings a player knows about: seen now, or remembered (Ghosts)
@@ -4716,7 +4838,7 @@ function burn(g, list, dt) {
     const t = left - dt * (1 + 3 * rain);
     if (t > 0) { g.fires.set(c, t); continue; }
     g.fires.delete(c); g.burnt[c] = 1;
-    const section = g.structuralCells?.get(c); if (section && section.state !== 'failed') section.state = section.hp < section.maxHp ? 'damaged' : 'intact';
+    const section = g.structuralCells?.get(c); if (section && section.state !== 'failed') { section.state = section.hp < section.maxHp ? 'damaged' : 'intact'; g.cellJournal?.push(c); }
     if (ch === 'H' || ch === 'O') wreckCell(g, list, c, '.'); else touch(g, c);
   }
 }
@@ -4783,7 +4905,7 @@ const SCENARIO_TOOLS = {
       if (![...g.units.values()].some(u => !u.air && dist(u,q) < Math.max(0.6, def.radius * 0.4))) position = q;
     }
     if (!position) return null;
-    const u = spawnUnit(g, side, type); Object.assign(u, position); updateGrid(g, u);
+    const u = placeUnit(g, spawnUnit(g, side, type), position);
     if (order.kind !== 'hold') command(g, side, { t: order.kind === 'attackMove' ? 'amove' : 'move', orders: [[u.id, (order.at[0] + 0.5) * CELL, (order.at[1] + 0.5) * CELL]] });
     else command(g, side, { t:'stop', ids:[u.id] });
     return u;
@@ -4829,7 +4951,7 @@ function healWounded(g, list, dt) {
   for (const m of medics) {
     const idle = !m.path.length && !m.amove && m.garrison < 0 && !(m.enter >= 0) && !m.board;
     let best = null, worst = 1, far = null, farWorst = A.hurt;
-    for (const u of gridFor(g).candidates(m, idle ? A.seek : A.medic, false)) {
+    for (const u of gridFor(g).unordered(m, idle ? A.seek : A.medic)) {
       const def = UNITS[u.type], frac = u.hp / (def.models * def.hpPer);
       if (u === m || u.operative || !def.infantry || u.hp <= 0 || u.riding || u.retreating || !allied(g, u.owner, m.owner)) continue;
       const d = dist(u, m);
@@ -5016,7 +5138,7 @@ function debrisEnvironment(g) {
         if (hit && (!best || hit.fraction < best.fraction)) best = { ...hit, material: worldMaterial(g, c) };
       }
       const center = { x: (a.x + b.x) / 2, z: (a.z + b.z) / 2 };
-      for (const u of gridFor(g).candidates(center, radius + 12, false, u => u.hp > 0 && !u.air && !u.riding && !UNITS[u.type].infantry && !UNITS[u.type].structure)) {
+      for (const u of gridFor(g).unordered(center, radius + 12, u => u.hp > 0 && !u.air && !u.riding && !UNITS[u.type].infantry && !UNITS[u.type].structure)) {
         const ground = levelAt(g, u.x, u.z) * CFG.levelHeight, hit = sweepBody(a, b, u, u, radius + bodyRadius(UNITS[u.type]), ground, ground + 2.5);
         if (hit && (!best || hit.fraction < best.fraction)) best = { ...hit, material: MATERIALS.steel };
       }
@@ -5066,7 +5188,6 @@ function stepWorldDebris(g, dt) {
 function separateCrowds(g, list) {
   const order = new Map(list.map((u, i) => [u.id, i])), maxRadius = Math.max(0, ...list.map(u => UNITS[u.type].radius));
   const sep = new SpatialGrid(g.units, 4); // fine 4 m cells: this query is tiny and runs for every unit
-  const nearby = []; // scoped to this separation pass, never shared with nested queries
   const nearCrossing = u => {
     const c = cellOf(g, u.x, u.z), x = c % g.w, y = Math.floor(c / g.w);
     for (let ny = Math.max(0, y - 1); ny <= Math.min(g.h - 1, y + 1); ny++)
@@ -5079,7 +5200,7 @@ function separateCrowds(g, list) {
     if (a.garrison >= 0 || a.air || a.riding || a.rail) continue;
     const grid = sep, size = grid.size;
     let x0 = Math.floor((a.x - radius) / size), x1 = Math.floor((a.x + radius) / size), z0 = Math.floor((a.z - radius) / size), z1 = Math.floor((a.z + radius) / size);
-    let candidates = grid.candidates(a, radius, true, b => order.get(b.id) > i, false, nearby);
+    let candidates = grid.inOrder(a, radius, b => order.get(b.id) > i);
     for (let k = 0; k < candidates.length; k++) {
       const b = candidates[k], j = order.get(b.id), min = (UNITS[a.type].radius + UNITS[b.type].radius) * 0.8;
       if (a.garrison >= 0 || b.garrison >= 0 || a.air || b.air || b.riding || b.rail) continue;
@@ -5113,7 +5234,7 @@ function separateCrowds(g, list) {
       const nx0 = Math.floor((a.x - radius) / size), nx1 = Math.floor((a.x + radius) / size), nz0 = Math.floor((a.z - radius) / size), nz1 = Math.floor((a.z + radius) / size);
       if (nx0 !== x0 || nx1 !== x1 || nz0 !== z0 || nz1 !== z1) {
         x0 = nx0; x1 = nx1; z0 = nz0; z1 = nz1;
-        candidates = grid.candidates(a, radius, true, next => order.get(next.id) > j, false, nearby); k = -1;
+        candidates = grid.inOrder(a, radius, next => order.get(next.id) > j); k = -1;
       }
     }
   }
@@ -5137,7 +5258,7 @@ function stepStrikes(g, list, dt) {
         sp.units.forEach((type, i) => {
           if (g.players[s.owner].out || popOf(g, s.owner) + popUse(type) > popCap(g, s.owner)) return;
           const a = s.dir + i * 2 * Math.PI / sp.units.length, u = spawnUnit(g, s.owner, type);
-          Object.assign(u, cellCenter(g, nearestFree(g, s.x + Math.cos(a) * sp.spread, s.z + Math.sin(a) * sp.spread))); updateGrid(g, u);
+          placeUnit(g, u, cellCenter(g, nearestFree(g, s.x + Math.cos(a) * sp.spread, s.z + Math.sin(a) * sp.spread)));
           g.shots.push({ k: 'chutes', x: u.x, z: u.z, pub: true });
         });
       } else if (s.kind === 'cover') {
@@ -5180,6 +5301,7 @@ function stepStrikes(g, list, dt) {
 }
 
 // After a winner the sim keeps running (the server's closing hold shows the last seconds) without win checks or story.
+const { driveVehicle, walkRoute } = createMovers({ walkable, allied, blockOf, UNITS, CFG, WIRE });
 export function step(g) {
   for (const u of g.units.values()) if (u.structureId) syncBuildingSections(g, u);
   const dt = TICK;
@@ -5234,7 +5356,7 @@ export function step(g) {
     if (u.riding) {
       const c = g.units.get(u.riding);
       if (!c || c.hp <= 0) leaveCarrier(g, u, c, true);
-      else { Object.assign(u, { x: c.x, z: c.z, rot: c.rot, supp: 0, targetId: 0, still: 0 }); u.cd -= dt; updateGrid(g, u); continue; }
+      else { placeUnit(g, u, { x: c.x, z: c.z, rot: c.rot, supp: 0, targetId: 0, still: 0 }); u.cd -= dt; continue; }
     }
     if (u.cargo.length) u.cargo = u.cargo.filter(id => g.units.get(id)?.riding === u.id);
     if (def.infantry) u.supp = Math.max(0, u.supp - (inTrench(g, u) ? CFG.trench.rally : 8) * dt);
@@ -5312,7 +5434,7 @@ export function step(g) {
     if (u.enter >= 0) {
       const at = cellCenter(g, u.enter);
       if (g.chars[u.enter] !== 'B') u.enter = -1;
-      else if (dist(u, at) <= CELL * 1.6) { u.garrisonEntry={x:u.x,z:u.z}; Object.assign(u, { garrison: u.enter, enter: -1, board: 0, x: at.x, z: at.z, path: [] }); updateGrid(g, u); }
+      else if (dist(u, at) <= CELL * 1.6) { u.garrisonEntry={x:u.x,z:u.z}; placeUnit(g, u, { garrison: u.enter, enter: -1, board: 0, x: at.x, z: at.z, path: [] }); }
       else if (!u.path.length && u.repath <= 0) requestStepPath(g, u, at, 'enter');
     }
 
@@ -5364,7 +5486,7 @@ export function step(g) {
     if (u.logistics?.fuel !== null && u.logistics?.fuel !== undefined) speed *= Math.min(1, (u.logistics.fuel + (u.logistics.forced ? u.logistics.emergency : 0)) / dt);
     rememberTrafficPosition(u, dt);
     let trafficTerrain;
-    const trafficView = () => trafficTerrain ??= g.mode?.kind === 'world' ? worldPathView(g, u.owner) : observedPathView(g, u.owner);
+    const trafficView = () => trafficTerrain ??= knownTerrainFor(g, u.owner);
     const traffic = def.naval || def.structure ? { goal: u.path[0], blocked: false } : trafficStep(g, u, u.path[0], {
       defs: UNITS, grid: gridFor(g), dt, visible: v => seenBy(g, u.owner, v.id), friend: v => allied(g, u.owner, v.owner),
       clear: (a, b) => walkable(trafficView(), a, b, blockOf(def), groundVehicle ? bodyRadius(def) : 0.9),
@@ -5380,76 +5502,8 @@ export function step(g) {
       }
     }
     const route = traffic.goal ? (traffic.yielding ? [traffic.goal] : u.path) : [];
-    if (groundVehicle) {
-      const reverse = back || traffic.yielding && traffic.goal && Math.cos(Math.atan2(traffic.goal.z - u.z, traffic.goal.x - u.x) - u.rot) < -0.5;
-      if (u.motionClearance && (u.motionClearance.path !== u.path || g.tick > u.motionClearance.until || dist(u, u.motionClearance.goal) < 0.3)) u.motionClearance = null;
-      let next = vehicleStep(u, def, u.motionClearance ? [u.motionClearance.goal] : route, u.motionClearance ? Math.min(speed, 1.2) : speed, dt, u.motionClearance ? u.motionClearance.reverse : reverse);
-      if (!u.motionClearance && route.length && u.stuck > 0.3 && !sweptVehicleClear(g, before, { ...before, rot: next.rot }, def, blockOf(def))) {
-        for (const direction of [-1, 1]) {
-          const goal = { x: before.x + Math.cos(before.rot) * 2 * direction, z: before.z + Math.sin(before.rot) * 2 * direction, rot: before.rot };
-          if (!sweptVehicleClear(g, before, goal, def, blockOf(def))) continue;
-          const bearing = Math.atan2(route[0].z - goal.z, route[0].x - goal.x) + (reverse ? Math.PI : 0);
-          if (!sweptVehicleClear(g, goal, { ...goal, rot: bearing }, def, blockOf(def))) continue;
-          u.motionClearance = { goal, reverse: direction < 0, path: u.path, until: g.tick + 80 };
-          next = vehicleStep(u, def, [goal], Math.min(speed, 1.2), dt, direction < 0); break;
-        }
-        // walled in lengthwise too (a hull shoved off-centre and sideways in a narrow street): slide over, up to
-        // 1.5 m at 1.2 m/s, to where the turn fits. Separation already shoves hulls sideways, so this adds no new move.
-        if (!u.motionClearance) for (const side of [0.5, -0.5, 1, -1, 1.5, -1.5]) {
-          const at = { x: before.x - Math.sin(before.rot) * side, z: before.z + Math.cos(before.rot) * side, rot: before.rot };
-          const bearing = Math.atan2(route[0].z - at.z, route[0].x - at.x) + (reverse ? Math.PI : 0);
-          if (!sweptVehicleClear(g, before, at, def, blockOf(def)) || !sweptVehicleClear(g, at, { ...at, rot: bearing }, def, blockOf(def))) continue;
-          const k = Math.min(1, 1.2 * dt / Math.abs(side));
-          next = { ...next, x: before.x + (at.x - before.x) * k, z: before.z + (at.z - before.z) * k, rot: before.rot, moveSpeed: 0 }; break;
-        }
-      }
-      const fuelLimit = speed * dt, proposed = dist(next, before);
-      if ((u.convoy || u.logistics) && proposed > fuelLimit) { const f = fuelLimit / (proposed || 1); next.x = before.x + (next.x-before.x)*f; next.z = before.z + (next.z-before.z)*f; next.moveSpeed *= f; }
-      // Never allow a hull to rotate or travel through a cell during this tick.
-      let clearMotion = sweptVehicleClear(g, before, next, def, blockOf(def));
-      if (clearMotion) {
-        const nearby = gridFor(g).candidates(u, bodyRadius(def) + 9, false, v => v.id !== u.id && v.hp > 0 && !v.air && !v.riding && v.garrison < 0 && !ghostPair(g, u, v));
-        const blocker = nearby.find(v => {
-          const min = bodyRadius(def) + bodyRadius(UNITS[v.type]);
-          const dx = next.x - before.x, dz = next.z - before.z, t = Math.max(0, Math.min(1, ((v.x - before.x) * dx + (v.z - before.z) * dz) / (dx * dx + dz * dz || 1)));
-          const closest = Math.hypot(before.x + dx * t - v.x, before.z + dz * t - v.z);
-          return !(closest >= min - 1e-6 || dist(before, v) < min && dist(next, v) > dist(before, v));
-        });
-        clearMotion = !blocker;
-        // boxed in by a friend for a while (a crowded gate or street): pass through friends for a moment
-        if (blocker && allied(g, blocker.owner, u.owner) && u.stuck > TRAFFIC.ghost) u.ghost = g.tick + Math.round(TRAFFIC.ghostTime / dt);
-      }
-      if (clearMotion) { u.x = next.x; u.z = next.z; u.rot = next.rot; u.moveSpeed = next.moveSpeed; }
-      else {
-        u.moveSpeed = 0;
-        const turned = { ...before, rot: next.rot };
-        if (sweptVehicleClear(g, before, turned, def, blockOf(def))) u.rot = next.rot;
-        u.trafficWait = (u.trafficWait ?? 0) + dt;
-      }
-      u.travelDir = next.travelDir;
-      // A bend is taken at speed (vehicleStep brakes to it): turn onto the next leg a little early, or just past the
-      // waypoint, where the hull has a clear straight line to the next one; otherwise on reaching the waypoint.
-      const nextLeg = route[1], near = route.length ? dist(u, route[0]) : Infinity, pace = Math.abs(u.moveSpeed);
-      const bend = nextLeg ? Math.abs(angleDelta(u.travelDir, Math.atan2(nextLeg.z - route[0].z, nextLeg.x - route[0].x))) : Math.PI;
-      const lead = bend < Math.PI / 2 ? pace / movementProfile(u.type, def).hullTurn * Math.tan(bend / 2) : 0;
-      const passed = near < 2 && Math.cos(Math.atan2(u.z - route[0]?.z, u.x - route[0]?.x) - u.travelDir) > 0;
-      const reached = near < Math.max(0.12, pace * dt * 1.5) || nextLeg && (near < lead || passed) && walkable(trafficView(), u, nextLeg, blockOf(def), bodyRadius(def));
-      if (reached && !traffic.yielding && !u.motionClearance) u.path.shift();
-    } else {
-      // Infantry responds on the command tick. Naval motion keeps its original class rules.
-      if (def.infantry && !traffic.yielding) {
-        // Crowded squads can pass beside a waypoint. Keep required terrain corners and the exact final spot.
-        while (route.length > 1 && dist(u, route[0]) < 1 && walkable(trafficView(), u, route[1], blockOf(def) | WIRE)) route.shift();
-      }
-      let budget = speed * dt * (back ? CFG.behavior.reverseSpeed : 1);
-      while (budget > 0 && route.length) {
-        const wp = route[0], d = dist(u, wp), advance = Math.min(d, budget), next = { x: u.x + (wp.x - u.x) / (d || 1) * advance, z: u.z + (wp.z - u.z) / (d || 1) * advance };
-        if (!walkable(g, u, next, blockOf(def))) { u.repath = 0.2; if (!traffic.yielding) u.path = []; break; }
-        if (!back) u.rot = Math.atan2(wp.z - u.z, wp.x - u.x);
-        u.x = next.x; u.z = next.z; budget -= advance;
-        if (d <= advance + 1e-9) { if (traffic.yielding) break; route.shift(); } else break;
-      }
-    }
+    if (groundVehicle) driveVehicle(g, u, def, route, speed, dt, back, traffic, before, trafficView);
+    else walkRoute(g, u, def, route, speed, dt, back, traffic, trafficView);
     u.vx = (u.x - before.x) / dt; u.vz = (u.z - before.z) / dt;
     const moved = dist(u, before);
     consumeDrivingFuel(u, Math.min(dt, moved / Math.max(speed, 0.001)));
@@ -5784,8 +5838,8 @@ function planOf(g, u) {
 // Changes wait in an outbox per memory until the snapshot (the call without `full`) takes them: observedPathView reads
 // the full memory first whenever a unit moves, and its replay used to swallow them (dug trenches never reached the client).
 const terrainOutbox = new WeakMap();
-export function terrainFor(g, slot, full = false) {
-  if (g.mode?.kind === 'world') return worldTerrainFor(g, slot, full);
+export const terrainFor = (g, slot, full = false) => knowledgeOf(g).terrain(g, slot, full);
+function observedTerrainFor(g, slot, full) {
   const p = g.players[slot], memory = p.terrainMemory ??= new Map();
   const pending = p.terrainPending ??= new Set(g.cellLog.keys());
   // What is still pending waits on a new cell, a found mine or a vision pass; until one comes there is nothing to redo.
@@ -5829,6 +5883,8 @@ export const CARGO_SHIFT = 23; // flags >> CARGO_SHIFT & 3: how many squads a ca
 const unitFlags = (g, u) => (u.operative ? OPERATIVE_FLAG : 0) | (u.riding ? RIDING_FLAG : 0) | (u.cargo?.length ? CARGO_FLAG | u.cargo.length << CARGO_SHIFT : 0) | (u.retreating ? 1 : 0) | (u.buff > 0 ? 2 : 0) | (u.ap ? 4 : 0) | (u.reinf > 0 || g.tick - (u.healAt ?? -1e9) < 12 ? 8 : 0) | (u.dig ? 16 : 0) | (u.garrison >= 0 ? 32 | g.house[u.garrison] << 20 : 0) | (u.amove ? 64 : 0) | (u.build ? 128 : 0) | (UNITS[u.type].camo && u.still >= 3 && g.tick - (u.shotAt ?? -1e9) >= 80 ? 256 : 0) | (u.air && !airborne(u) ? 512 : 0) | (u.entrench ? 1024 : 0) | (dusty(g, u) ? 32768 : 0) | (u.open ? GATE_OPEN_FLAG : 0);
 // after how far built: a ground vehicle's motion [speed, vx, vz, travel direction], or a digging squad's progress (0-1)
 const rowTail = (u) => (isGroundVehicle(UNITS[u.type]) ? [rounded(u.moveSpeed ?? 0), rounded(u.vx ?? 0), rounded(u.vz ?? 0), rounded(u.travelDir ?? u.rot)] : u.dig ? [Math.round(digProgress(u) * 100) / 100] : []);
+// Where each field sits in a unit's snapshot row (unitRow); readers name the field instead of counting.
+export const UNIT_ROW = Object.freeze({ id: 0, type: 1, owner: 2, x: 3, z: 4, rot: 5, aim: 6, hp: 7, supp: 8, target: 9, cover: 10, cd: 11, flags: 12, stars: 13, built: 14, tail: 15 });
 function unitRow(g, u) {
   const r = rounded;
   return [u.id, u.type, u.owner, r(u.x), r(u.z), r(u.rot), r(u.aim), Math.ceil(u.hp), Math.round(u.supp), u.targetId || 0, inTrench(g, u) ? 2 : inCover(g, u) ? 1 : UNITS[u.type].infantry && nearCover(g, u) ? 3 : 0,
@@ -5841,10 +5897,10 @@ function modeRow(g) {
     profile: g.mode.profile, nextProfile: g.mode.active ? undefined : g.mode.nextProfile, wave: g.mode.wave, left: g.mode.left, active: g.mode.active, boss: g.mode.boss, slot: g.mode.slot, goal: g.mode.goal, step: g.mode.step, steps: g.mode.steps };
 }
 function playerRow(row, slot, seen) {
-  const result = row.slice();
-  result[9] = row[9] && seen(row[9]) ? row[9] : 0;
-  result[11] = row[2] === slot ? row[11] : 0;
-  if (row[2] !== slot) result[12] = row[12] & (2047 | 32768 | 7 << 20 | RIDING_FLAG); // stances and autocast are the owner's business, dust is everyone's
+  const result = row.slice(), { target, owner, cd, flags } = UNIT_ROW;
+  result[target] = row[target] && seen(row[target]) ? row[target] : 0;
+  result[cd] = row[owner] === slot ? row[cd] : 0;
+  if (row[owner] !== slot) result[flags] = row[flags] & (2047 | 32768 | 7 << 20 | RIDING_FLAG); // stances and autocast are the owner's business, dust is everyone's
   return result;
 }
 
@@ -6032,3 +6088,7 @@ export function snapshotFor(g, slot, shots, cells = [], cache) {
       }),
   };
 }
+
+// Internals the test suite checks directly (test.js), so it calls the real module instead of loading a copy of this
+// file's text with extra exports. Not for game code: these may change shape with the simulation.
+export const internals = { updateVision, nearCover, behindCover, entryCell, aimPoint, flagsAt, dist, spawnUnit, placeBuilding, wreckBuilding, setCell, logCell, pickTarget, breathe, separateCrowds, shovedFromCover };

@@ -6,7 +6,7 @@
 // Geometry and materials are made once and shared; order lines reuse growable buffers, so a snapshot only rewrites
 // vertex data and never makes or frees GPU objects.
 import * as THREE from 'three';
-import { UNITS, CELL } from '/shared/sim.js';
+import { UNITS, CELL } from '../shared/sim.js';
 import { drawSymbol } from './symbols.js';
 import { Builder, Batch, overlayMat, makeOverlay } from './overlay.js';
 import { t as tr } from './i18n.js';

@@ -1,6 +1,6 @@
 import * as THREE from 'three';
-import { CFG } from '/shared/sim.js';
-import { territoryEdges } from '/shared/world-territories.js';
+import { CFG } from '../shared/sim.js';
+import { territoryEdges } from '../shared/world-territories.js';
 import { capturePoint, label } from './markers.js';
 
 // This layer receives only regions already discovered by the player's team.

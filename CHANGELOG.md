@@ -5,13 +5,240 @@ AI-vs-AI runs (see DESIGN.md for the balance log). Add new entries under **Unrel
 
 ## Unreleased
 
-- Nearby-unit queries do less allocation without changing unit order or gameplay. Candidate results are converted
-  in place, crowd separation reuses one result buffer per pass, and gate/occupancy checks stop at the first match.
-  Three interleaved baseline/current runs of each six-AI Massive benchmark (6,000 ticks) reduced the median mean
-  tick cost from 3.084 to 2.965 ms in Classic (3.85%) and 6.456 to 6.357 ms in Conquest (1.52%) on this Linux host,
-  Node 26.7.0. Every paired final-state hash and random-call count matched. These are headless CPU measurements,
-  not browser FPS or network measurements. A focused spatial-query check protects early exit, result reuse and
-  stale-record handling; existing ordering and dense-separation checks remain unchanged.
+- Nearby-unit queries skip one more copy, with play unchanged. Local commit cee6de3 (stop-at-first existence
+  checks, results converted in place, a reused result buffer in crowd separation) was merged with the upstream
+  spatial index of issue #58 (B5, C3). Upstream's `has` / `hasHeavy` already stop at the first match, so the local
+  `some` was dropped in their favour, and the reused buffer was dropped because upstream's ordered queries build
+  each result from merged bucket runs. What remains of the local change: `candidates` turns its records into units
+  in the array it already owns instead of mapping them into a second one. The local benchmark (Classic 3.084 to
+  2.965 ms, Conquest 6.456 to 6.357 ms mean tick, six-AI Massive, 6,000 ticks) was measured against the old index and
+  does not carry over; the merged gain was not measured. The local existence check was rewritten for `has` and
+  `hasHeavy` (early exit, deleted, moved and replaced records); its buffer assertions were deleted with the buffer.
+
+- The last of issue #58's leftovers, with play unchanged (seeded Classic, Conquest and six-AI World runs end in the
+  same state):
+  - Anything that puts a unit somewhere at once (spawn spots, garrison doors, rail and train stops, paradrops,
+    buildings, a bunker at setup) goes through `placeUnit`, which keeps the spatial index current; only `spawnUnit` and
+    the per-tick movers update the index themselves.
+  - `driveVehicle` and `walkRoute` moved to `shared/movement.js`. The simulation hands them its walkability test, who
+    is allied and its tables (`createMovers`), so the module does not import `shared/sim.js`.
+  - No test loads a rebuilt copy of a source file any more (six did): `test-world-discovery.js` reads
+    `client/ground.js`'s `internals`, and `test-engine-controls.js`, `test-terrain-relief.mjs`,
+    `test-engine-localization.mjs`, `test-audit-client.mjs` and the Camera check import the client modules directly.
+    The 17 client modules that imported `/shared/...` now import `../shared/...`, the same files in the browser.
+
+- A newly found or cleared house cell no longer lays out every house on the map again (issue #58, last A2 item). The
+  house layout is now kept as blocks (rectangles with their game type), and only the blocks of the footprint a flipped
+  cell touches are redone; churches, barns and terraces are then picked again in one quick pass. On a fully known Huge
+  World map a found house cell takes 6.1 ms instead of 15.5 ms. `houseKinds` in `shared/sim.js` now wraps
+  `houseKindsWhere`, which can classify only chosen blocks; the server's results are unchanged (seeded Classic,
+  Conquest and six-AI World runs end in the same state). The structure check gained a found house cell disappearing
+  again, and fails if the touched blocks are not replaced.
+
+- Two flaky checks made deterministic (found while running the suite for issue #58, also flaky on master):
+  `test-fortress.js` seeded `Math.random` only after creating its AI game, so the AI built between 10 and 18 wall
+  cells and sometimes no gate (it now seeds first: 15 walls and 3 gate cells every run); and B06 in
+  `test-audit-combat.mjs` ran unseeded, so a unit could wander onto the cancelled footprint (it now runs under the
+  file's `fixedRandom`, like B07).
+
+- The HUD reads state and hands back intents (issue #58, C6): every click in `client/hud.js` goes out as
+  `ctx.act(name, ...args)`, and `client/main.js` keeps what each intent does in one `hudActions` table; the HUD's
+  context is otherwise only what it reads (the decoded match and this client's choices). Two context members it never
+  used (`builders`, `canPlace`) are gone. Checked in Chrome: idle selection, hold position on and off, a formation
+  shape, a recruit card and the stop order all work, with no console errors. No change in play.
+
+- What a side knows of the battlefield goes through one seam (issue #58, C2): `knowledgeOf(g)` in `shared/sim.js`
+  returns World Conquest's adapter (one journaled terrain memory per team) or the observed-map adapter every other
+  mode uses, each with the same four answers: the snapshot's remembered terrain, the path view routes read, the
+  version that tells a failed route to try again, and the remembered wrecks. `terrainFor`, `knownTerrainFor`, the
+  route retry and the wreck memory no longer branch on the mode themselves. The Classic, Conquest and six-AI World
+  seeded runs end in exactly the same state. Vision itself (`updateVision`, `teamSees`) is shared by both and stays
+  where it is.
+
+- Unit movement reads as two counterparts and one ghost rule (issue #58, C5): infantry and boats follow their route in
+  `walkRoute`, beside `driveVehicle` for ground vehicles, both out of `step()`'s unit loop; and passing through friends
+  (a ghost) is started and checked only by `startGhost` and `ghostPair` in `shared/local-traffic.js`, which spawns,
+  separation, the swept check and traffic all call (it was set in three places with the same formula). The Classic,
+  Conquest and six-AI World seeded runs end in exactly the same state. Left for later: both movers still live in
+  `shared/sim.js`, which they need for terrain and unit lookups.
+
+- The spatial index's queries say what the caller needs (issue #58, C3): `inOrder` (first or best match wins, so the
+  units Map's order), `unordered`, `heavy` (vehicles and other non-infantry only), and `has` / `hasHeavy`, which stop
+  at the first match, replace `candidates(at, r, true|false, match, heavyOnly)` in the simulation, local traffic and
+  the AI. The Classic, Conquest and six-AI World seeded runs end in exactly the same state. The spatial query check
+  now also covers `inOrder`, `unordered` and `has`. Left as is: code that moves a unit still calls `updateGrid` itself.
+
+- Snapshot unit rows have named fields (`UNIT_ROW` in `shared/sim.js`, issue #58, C4): the server's per-player row
+  filter, the alerts, autocast and the action availability read `row[UNIT_ROW.hp]` instead of `row[7]`, so a field
+  added to the row cannot silently shift what they read. New check: the cached and uncached snapshot rows hold each
+  field where `UNIT_ROW` says. No change in play.
+
+- The test suite no longer loads copies of `shared/sim.js` rebuilt from its text to reach private functions (issue #58,
+  D5). The simulation exports the few it tests as `internals`, and the separation check, which used to splice an old
+  copy of the separation loop into a copy of `step()`, now runs `separateCrowds` and the old loop side by side for
+  twenty passes (rewritten, same positions compared). Left for later: `test-world-discovery.js` and
+  `test-engine-controls.js` still load copies of `client/ground.js` and `client/alerts.js`.
+
+- Craters and knocked-down walls no longer make the server flood the whole map to work out which ground connects
+  (issue #58, B3). When up to 64 cells changed, only the cells within two of them are flooded again and joined to the
+  regions they reach; the whole map is flooded only when a region may have split. In a seeded six-AI World match
+  (3,000 ticks) the time spent on regions drops from 2.7 s to 0.28 s; the match, the Classic benchmark and the Conquest
+  benchmark end in exactly the same state as before. New check: regions after random craters, wall runs and single
+  cells on a small hilly maze match a whole-map flood.
+
+- Scouting or fighting among hedges, walls and houses no longer redraws every 3D piece on the map (issue #58, A2). The
+  pieces are kept in 32 x 32 cell parts plus one part per house, and a change redoes only the parts within two cells of
+  it; the house layout is redone only when a house cell appears or goes, and rubble and bridges are redone only where
+  that changed their colours or stone decks. Huge World map, fully known, on the Mac: a 20-cell hedge and wall change
+  takes 1.1 to 1.4 ms instead of about 28 ms, a house cell falling 5.5 to 6.1 ms instead of 28 to 32 ms, and a newly
+  found house cell 15 to 17.5 ms. The client also stops copying every map row before each rebuild (only rows with
+  mines are rewritten). New check: pieces rebuilt part by part match a whole rebuild after hedge, wall, wire and house
+  changes, a terrace cell cleared and a house cell found.
+
+- Two steps toward clearer simulation modules (issue #58, C2 and C5), with the game unchanged (the Classic and Conquest
+  benchmarks and a seeded six-AI World match end in exactly the same state): the seven places that each chose between
+  World Conquest's team-memory terrain and the remembered map now ask one function, `knownTerrainFor`, so a new mode
+  cannot miss one; and a ground vehicle's tick of movement (its hull motion, backing or sliding out when walled in, the
+  fuel limit, the swept check, ghosting past a friend, taking the next leg) is `driveVehicle`, out of `step()`'s unit
+  loop. Left for later, as larger moves with less to gain now: one module owning everything a team has observed,
+  spatial queries named by intent, one module for all unit movement (local traffic still sets ghosting on its own),
+  and a HUD that reads decoded state and returns intents.
+
+- Runtime and hosting measured, nothing switched (issue #58, B6 and B7). Bun 1.4 runs the server: the public lobby
+  (compressed snapshots), snapshot backpressure and game-process checks pass under it. On the Vostro (i5-12400) it ran
+  the 6-AI Massive benchmarks 12 to 14% faster than Node 26 in Classic and 1 to 4% in Conquest (two rounds each); the
+  35% measured on the Mac against Node 24 was mostly Node's older engine there. Bun plays the same seed differently
+  (its math functions differ), and the test suite cannot run under it (Bun misreads `1 << out` in the tests' copies of
+  sim.js and has no `registerHooks`), so Node stays the runtime the game is tested on. For hosting, `WW2_SHARDS` is
+  what lets more cores help: one Node process uses one core however many a host offers.
+
+- The client's snapshot decoding is a module of its own (issue #58, C4): `client/world-state.js` rebuilds the unit rows,
+  wrecks and nodes this player holds from the server's deltas and says when they disagree with what the server thinks
+  the client holds; client/main.js uses it, and so does every room test's client, which asserted nothing before and
+  kept its own copy of the decoding without the full-resend and held handling. Every snapshot in the suite now has to
+  match what the server says the client holds (with the decoder ignoring gone ids, two checks fail). Left for later:
+  the HUD, alerts and availability still read snapshot rows by position (`v[7]`, `p[7]`).
+
+- The room tick is a module of its own (issue #58, C1 and D5): `server/room-tick.js` builds a room's running tick (step,
+  AI seats, snapshots, the timing that thins them) from the parts it is given; server.js gives it its own. The check of
+  the tick's delivery beat now runs that module with stand-ins instead of slicing server.js's text and evaluating it,
+  so renaming or moving code in server.js no longer breaks it. The two copies of "send every viewer the game as it
+  stands" (a paused match, the last seconds of a decided one) are one function, `sendFrame`. Left for later: a room
+  module owning seats, the lobby and message handling (server.js's message handler is still one long chain), and the
+  test.js checks that copy sim.js's text to reach private functions (`massiveInternals`, the separation splice).
+
+- Less work per revealed snapshot on the client, and on the server for route planning (issue #58, A5, B3 and the relief
+  upload): the props and the overlay's height samples are refreshed per 16-cell tile of changed cells, not over one box
+  around all of them (teammates scouting far apart made that box most of the map; the result is the same, only the
+  unchanged ground in between is no longer redone); a relief update whose mesh keeps its vertex and triangle counts is
+  written into the mesh being drawn and only the rebuilt rows' span goes to the GPU, instead of a new 2.5 MB mesh (8
+  of 30 scouting updates on a Huge map); and the World route view follows its team memory's change log instead of
+  walking the whole memory on every change (a seeded six-AI World match ends in the same state). Checked and left: the
+  rare 40 ms AI planning turns in World Conquest come from `regionsFor`'s whole-map flood fill, redone when scouting
+  changes which cells block; an exact update would still refill the largest region, most of the map, so it stays.
+  No new check for the per-tile refresh (it only stops recomputing unchanged ground); the relief checks pass with the
+  in-place writes, comparing every update with a fresh build.
+
+- World Conquest's server time is about halved (issue #58, B4). Each team's terrain memory reread and compared every
+  visible cell on every vision pass, and each snapshot walked a player's whole memory to find what it had not been
+  sent. Now cells are journaled as they change (every `logCell`, every wear or damage `touch`, a fire burning out), a
+  vision pass rereads only cells newly in view and journaled cells in view, and each player (AI seats included) keeps
+  its place in its team memory's change log, so a snapshot reads only rows changed since its last one. A seeded
+  six-AI World match of 6,000 ticks took 41 s on the Vostro against 83 s rereading everything, and ends with the same
+  memories and the same game state (also on the Mac, 2,400 and 6,000 ticks). Saved games carry the journal (trimmed
+  past 65,536 entries) and two bytes per cell per team. New check in test.js: two seeded World games, one journaled
+  and one rereading everything, march troops into unexplored ground and dig craters at their feet, and remember the
+  same rows (it fails when `logCell` stops journaling).
+
+- The server can run its rooms on every core (issue #58, B2): start it with `WW2_SHARDS=N` and the first process
+  serves the pages, the maps and the public lobby list while N game processes run the rooms, each room in the process
+  its code picks (server/shards.js), so a busy match no longer slows every other room down. On the Vostro (i5-12400)
+  with 20 Massive six-player Conquest matches 2.5 minutes in, one process fell to 0.5 game ticks a second (the matches
+  all but stopped) while four game processes kept all 20 at full speed (19.9 of 20). With 10 younger matches one
+  process still kept up, and splitting them gave no gain (a single room's tick time stays the same either way). Horde
+  records are written by the first process (game processes send theirs), a saved map tells the game processes to
+  reread their Horde map list, and a game process exits when the first one goes away. Without `WW2_SHARDS` the server
+  runs as before. New check: test-shards.js starts a sharded server over real sockets, puts two players of a room in
+  one process, lists rooms from both processes and runs a match.
+- Small server and client fixes (issue #58, D): a spectator more than 4 MB behind is dropped and reconnects to a whole
+  snapshot (spectators share one delta stream, so one cannot skip snapshots the way a seat does; a new room check
+  drops one 5 MB behind); "online" in snapshots now means a connected socket everywhere (two places counted a closing
+  socket as online); duplicate `ammo` and `logisticsEnabled` keys removed from client/availability.js. The check that
+  runs a slice of server.js's room tick now passes it `connected` too. Checked and left: the simulation's random
+  numbers come from `Math.random` throughout (13 places in sim.js and the AI, plus a per-game `rng(g)` for some), tools
+  seed it per process and live rooms are not seeded, so a per-game generator would change every seeded benchmark and
+  balance record without changing play.
+
+- World Conquest rivers no longer end in a beach at the edge of what has been seen. Ground not yet discovered is dry
+  ground to the client, so the water drew its shore, foam and shallows along the frontier wherever a river or lake ran
+  into the fog. Undiscovered cells within two cells of known water now count as water for the shore: the river carries
+  on under the fog (which hides it), and once the ground past it is discovered as dry land the shore is drawn there.
+  Seen in Chrome on a seeded Huge map before and after. New check in test-world.js: a river running into undiscovered
+  ground keeps its water at the frontier (it fails without the fix) and gets its shore once dry land is discovered.
+  Checked and left as designed: the foam the water draws around bridges ("hugging the bridge piers, plus a short wake
+  downstream") lines the whole deck of a wide rail bridge and reads as a pale band.
+
+- The server's spatial index allocates far less per tick (issue #58, B5), with the game unchanged: buckets are arrays
+  under one numeric key instead of maps of maps of sets, the per-tick rebuild keeps the index and redoes only units
+  that moved, appeared or left, and ordered queries merge buckets that are already in order instead of sorting their
+  results. In a CPU profile of the 6-AI Massive Conquest benchmark the index went from about 12% of the time (5.1% of
+  it the result sort) to 6.6%. The whole tick did not measurably speed up: on the Mac and on the Vostro (i5-12400,
+  Node 26) the differences between runs (5 to 15%) were larger than the change. The Classic and Conquest benchmarks
+  and a seeded six-AI World match end in exactly the same state as before (checked on both machines).
+
+- World Conquest AI seats cost the server less (issue #58, B4). Each AI plan scanned the whole map for bridges
+  whenever its view's terrain had changed (9.5% of the server's time in a six-AI Huge World match); the AI view now
+  keeps the set of bridge cells as terrain arrives, and the planner reads it in the map's order, as the scan did. AI
+  views in World Conquest also stop building a set of every cell changed all match, which only Classic's terrain
+  replay reads. A seeded six-AI World match (2,400 ticks) ends in the same state and ran in 17.1 s against 19.7 s;
+  the 6-AI Massive Classic and Conquest benchmarks end in the same state as before.
+  The team terrain memory found here (about 30% of the server's time in World Conquest) is the entry above.
+
+- Finding water no longer freezes the game (issue #58, A3). Every time scouting revealed more of a river or lake, the
+  water was redone for the whole map: its mask (four texels a cell) blurred whole, its flow scanned the whole map for
+  each body of water, and every corner of the map's water grid recomputed. On a Huge World map that took about 0.95 s
+  for the first water found and 0.9 s for each further stretch (measured in Node; the browser showed one 804 ms
+  stall). Now the mask is blurred only in 16-cell tiles near cells whose water, ford or bridge changed (whole-number
+  sums, so a tile gives exactly what a whole blur does), only those tiles go to the GPU, each body of water walks its
+  own cells, and grid corners without water are written straight away: 91 ms for the first water and 34 to 58 ms for
+  each further stretch. What is left is the whole-map water-level and shore passes.
+  New check in test-world.js: water found later (river, ford, bridge, a stream on a tile's edge reaching the map edge)
+  gives the same mask as a fresh build, and the blur reaches across the tile edge (it fails when the reach is cut).
+  Fixed a test the soft-fog change broke: test-world.js (run by CI after test.js, not by `node test.js`) looked for the
+  overlay's old alpha line; it now checks that the overlay goes through the shared mist with the pieces' clock.
+
+- Scouting and shelling reshape the ground at a fraction of the cost (issue #58, A4). The relief mesh was rebuilt for
+  the whole map after every revealed or cratered cell; now it is kept in rows and an update rebuilds only the rows it
+  reaches (seven either side of every changed cell, since a crater line's lips follow the run up to six cells away)
+  and copies the rest. On a Huge World map a 20-cell reveal took 5.8 ms at the median (5.5 ms of it rebuilding the
+  mesh) and now takes 2.0 ms (1.6 ms); measured in Node with `relief.update`. The mesh is the same as a full build.
+  New check in test-terrain-relief.mjs: a 24 x 48 hilly map updated at the top, the bottom and the middle (cliffs, a
+  rubble cell, a line of craters and a crater that turns it) rebuilds fewer rows than the map has and matches a fresh
+  build after every update; with no margin around the changed rows it fails. Not covered by a test: the fan-detail
+  budget replay, which only matters once the map's detail budget runs out (no small fixture reaches that). Left for
+  later: every update still uploads the whole mesh to the GPU as a new geometry.
+
+- World Conquest's fog of war is soft. Ground never seen used to end in a staircase of black 2 m squares; now explored
+  ground fades into it over about 8 m, following the distance to the nearest unseen cell, so the frontier reads as a
+  rounded curve. The fade lies on the explored side: ground never seen is still fully dark and nothing new shows.
+  A slow drifting mist moves through every partly fogged area (explored ground, the frontier's fade, the fog past the
+  map's edge) on the ground and on houses, trees and walls alike; clear and fully dark fog stay as they were. The
+  minimap and the fog's own answers to the game (seen, explored) are unchanged. New check in test.js: explored ground
+  darkens toward ground never seen, which stays fully dark, and scouting moves the fade (it fails on the old fog).
+
+- World Conquest scouting stutters less (issue #58, A1 and A2). Revealing a cell inside a candidate crop field used to
+  recompute the ground of the whole map: 20 times in 47 s of two squads scouting a Huge map, 73 to 90 ms each. Now
+  only the fields of the blocks holding the revealed cells are rechecked and repainted: over 40 s of the same scouting
+  the ground repaint took 0.7 ms at the median and 6.6 ms at worst (Chrome). The 3D pieces (houses, hedges, walls,
+  trenches, bridges) are no longer rebuilt for the whole map when the revealed cells are open ground, woods or water:
+  only when a changed cell had or has a piece within two cells, or a landmark arrived. That rebuild cost 18 ms at
+  the median, about twice a second while scouting; how much less often it runs now was not measured in a browser
+  (the test tab was hidden, which stops the frame loop that runs it).
+  New check in test-ground-performance.mjs: a revealed hedge that ends a field repaints its block, not the whole map,
+  and ends the field exactly as a full paint draws it (it fails on the previous painter). The piece rule has no Node
+  test: `applyCells` in client/main.js cannot load outside a browser (#58, C4).
+  Found and left for later: `relief.update` is now the largest cost per revealed snapshot (9.9 ms at the median,
+  32 ms at worst) because `rebuildGeometry` rebuilds the whole map's relief mesh after every change (#58, A4).
 
 - Merging the gap traffic work with the unit shapes: its new `queuedBehind` and `laneScan` are declared in
   `spawnUnit` too. The shape check in test.js caught the first (two unit shapes after a seeded match), a scan of four
@@ -150,6 +377,10 @@ AI-vs-AI runs (see DESIGN.md for the balance log). Add new entries under **Unrel
 - Fixed trenches and MG nests dug during a match showing only as a flat dirt strip, with no cut, walls or sandbags. The server dropped the change for any player who had a unit on the move at that moment (the movement code read the terrain first and used up the update), so the client never learned the cell became a trench. Reconnecting showed them. Older than the ping fix below.
 - Fixed pings climbing to 10 s and beyond late in big fights. The server tick grew with the battle (3 ms at 66 units to 70 ms at 268 in a 2v2 Annihilation), and once it overran, snapshots piled up 3 MB deep per socket with pongs stuck behind them. Now a player whose connection is 256 KB behind skips snapshots and gets one fresh snapshot when it catches up, so a slow server or connection costs smoothness, not a minute of lag.
 - The server does about 44% less work in large battles (CPU 119 s to 67 s over a 6000-tick Massive 2v2 Annihilation with the same result): remembered terrain no longer rechecks every pending crater for every player each tick, team sight checks no longer copy the whole unit list per cell, and vehicle traffic skips a sort it never needed. Path searches and crowd separation are the next biggest costs, left for later.
+
+### 2026-10-10: Repeated right-clicks keep moving (`7571f09`)
+
+- Fixed: double right-click no longer cancels a move by turning units in place. Repeated clicks keep their destination, Shift queueing and Ctrl attack-move; right-drag still sets facing and width. Updated the Formation tooltip in English and Spanish and added a deterministic mouse-handler regression. Existing formation and facing tests remain.
 
 ### 2026-10-09: Units and the game keep one shape (`bafba85`)
 

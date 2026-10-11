@@ -1502,6 +1502,12 @@ holds against its red and green, so bare ground keeps its color. Graphics Low sk
   `opaque_fragment`, in the shader's linear space. High draws into a linear render target and tone maps and converts
   in `client/light.js`'s last pass, Low converts in the material, so a constant placed after `colorspace_fragment`
   (the first version used 0.22) matches the ground on Low only and turns pieces pale on High.
+- World Conquest's soft frontier (2026-10-10): explored cells within 4 cells of a cell never seen get extra darkness,
+  full next to it and none 4.5 cells in (smoothstep on the distance), redone around newly explored cells only. The
+  texture is linearly filtered on every map. Never-seen cells stay at 255, so the fade adds no information. A
+  drifting mist (`fowMist` in `client/surfaces.js`, two layers of value noise in metres) moves the alpha of partly
+  fogged ground by up to 0.35 x a(1 - a): zero on clear and fully dark cells. The ground overlay, the 3D pieces and the
+  fog past the map edge share it. `fogOfWar.at` and the minimap read the unsoftened look.
 - Not hidden yet: terrain changes in fog still reach every client, as noted under Classic.
 
 ## Tech
@@ -1551,6 +1557,40 @@ is rewritten every frame. Terms: Manpower = Mano de obra (MO), Munitions = Munic
 the page. Adding text to the game means adding its Spanish to `client/es.js`.
 
 ### Runtime
+- World terrain memory (2026-10-11, issue #58): `g.cellJournal` lists every cell whose remembered row may have changed
+  (`logCell`, `touch`, a fire burning out). `worldTerrainMemory` rereads the cells newly in view (against the view at its
+  last pass, `m.seen`) and journaled cells in view; a memory behind the trimmed journal rereads its whole view.
+  `worldTerrainFor` keeps each player's place in the memory's change log (`worldTerrainAt`; AI views keep it in the
+  seat's AI memory). A new input to `seenWorldCell` must reach the journal, or memories go stale.
+- Runtime choice (2026-10-11, issue #58): Node stays. Bun 1.4 runs the server and its transport checks but is only 1 to
+  14% faster than Node 26 on the Vostro, plays seeds differently and cannot run the test suite. On a host with several
+  cores (a VPS, Railway), run with `WW2_SHARDS` about the core count: one process uses one core.
+- Game processes (2026-10-11, issue #58): `WW2_SHARDS=N` makes the started process a front that serves HTTP and the
+  public lobby list and forwards each `/ws?room=code` upgrade to one of N forked game processes (`server/shards.js`,
+  FNV-1a of the room code modulo N; the request line and headers are replayed and the sockets piped). Each game
+  process is `server.js` with `WW2_SHARD` set and keeps today's room code unchanged. Shared state has one owner: the
+  front merges the processes' `/api/rooms`, writes Horde records they send, and tells them when a map is saved.
+  `MAX_ROOMS` applies per game process. A game process that exits is started again after a second.
+- Unit placement and movement (2026-10-11, issue #58): code that sets a unit's position outside its tick of movement
+  calls `placeUnit(g, u, fields)`, which also updates the spatial index; the movers (`shared/movement.js` for routes,
+  plus trains, planes, the operative and separation in `shared/sim.js`) update it themselves.
+- Team knowledge (2026-10-11, issue #58): `knowledgeOf(g)` picks the adapter for what a side knows: `world`
+  (`worldTerrainFor`, `worldPathView`, the team memory's version, `worldWrecksFor`) or `observed` (`observedTerrainFor`,
+  `observedPathView`, its `navigationKnowledgeVersion`, `observedWrecksFor`). A new mode with its own memory adds an
+  adapter there rather than a branch in each caller.
+- Path regions (2026-10-11, issue #58): `regionsFor` labels which cells a block mask can walk between. After a version
+  bump it compares each cell's blocked bit and height with its last pass; up to 64 changed cells are relabelled by
+  `relabelNear` (flood the cells within two of them, join each piece to the outside regions it reaches, fresh labels
+  above N), and a region reached by two pieces (a possible split) or more changes floods the whole map. Labels only
+  mean same or different region; nothing may read their values.
+- Structure pieces (2026-10-11, issue #58): `client/structures.js` keeps its instances in parts, one per house
+  (by rectangle, kind and type) and one per 32 x 32 cells for everything else (hedges, walls, trenches, wire, traps,
+  mines, hospitals, rubble, bridges), and joins them into one InstancedMesh per kind. `buildStructures(..., { cells })`
+  redoes the parts within two cells of the changed cells. The map-wide inputs are compared rather than trusted: the
+  house footprint (a flip redoes the blocks of the connected footprint it touches, `relayBlocks`, then the quick
+  church, barn and terrace pass), each cell's house colours (rubble), the stone bridge
+  spans and the spoil tips; cells whose value changed are redone too. A builder that reads further than two cells away
+  must widen that margin, or parts go stale.
 - Plain JS ES modules, no build step. Deps: `ws` (server), `three` (client).
 - Server-authoritative: `shared/sim.js` runs at 20 Hz on the server and snapshots go out at 10 Hz (every 3 or 4
   ticks while a room falls behind, see round 3 above).
@@ -2308,7 +2348,7 @@ Formation settings live on the client and shape the slots it sends (the server k
 - Tighten and Spread (`[` and `]`) scale every gap from 1x to 2.5x and re-form the selection around its center, facing its last ordered facing, or up the screen.
 - March together (on by default) sends `together: true`: the server caps every unit of the order at the slowest one's speed (`u.pace`) until it arrives, attacks or retreats. Queued legs replay one unit at a time and do not keep the pace.
 - Snap to trenches (on by default): an infantry slot within 3 m of a trench cell no other slot took moves onto it.
-- A double right-click (two releases within 350 ms, 16 px) turns the selection in place toward the spot.
+- Repeated right-clicks keep issuing moves to the clicked destination, including Shift queueing and Ctrl attack-move. Facing is set by right-drag; double right-click no longer turns the selection in place or cancels its move.
 - Ctrl+number saves the formation settings with the group; recalling the group restores them. Facing is not saved.
 
 ## Behavior balance investigation (2026-10-01)
@@ -2627,6 +2667,17 @@ upload, so it does not guarantee a 6 ms frame. Pending dirty tiles merge across 
 captured cell attributes. One upload per paint frame regenerates mipmaps once. Initial painting, texture readiness
 and the editor stay synchronous. Replacing or disposing ground cancels pending work; owner tokens protect newer
 handles when a same-sized backing canvas is reused.
+
+World Conquest fields follow the ground discovered so far. A field block (10 by 8 cells) reads only its own cells
+and one biome sample inside it, so after a reveal `paint` rechecks only the blocks holding the changed cells and
+repaints the cells whose field changed with the rest (`refreshFields` in `client/ground.js`); a full recheck runs only
+on a full paint. The 3D pieces (`client/structures.js`) are still rebuilt for the whole map, but only when a changed
+cell had or has a piece within two cells (`PIECE_CELLS`), its damage stage changed, or a landmark arrived.
+
+The relief mesh (`client/relief.js`) is assembled from rows of cells whose vertices are kept between rebuilds. An
+update rebuilds the rows within seven of every dirty cell and copies the others; the fan-detail budget, the one input
+all rows share, is replayed over every row's runs and a row whose fans change is rebuilt too, so the mesh always
+equals a full build. `stats.rowsRebuilt` and `stats.geometryMs` report the last rebuild.
 
 The corpse module owns its fallen geometry and instance buffers. The camera chooses near or far fallen detail,
 with the existing soldier distance thresholds and 4 m hysteresis. Frustum tests use transformed fallen bounds,

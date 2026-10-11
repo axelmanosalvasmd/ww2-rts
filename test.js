@@ -30,6 +30,7 @@ import { createRelief, TRENCH_DEPTH } from './client/relief.js';
 import { createAutocast } from './client/autocast.js';
 import { normalizeFace, slotSize, facingSpots } from './shared/formation.js';
 import { createOrders } from './client/orders.js';
+import { createWorldState } from './client/world-state.js';
 await check('test-supply-convoys.mjs', () => import('./test-supply-convoys.mjs'));
 await check('test-logistics-client.mjs', () => import('./test-logistics-client.mjs'));
 await check('test-tutorial.js', () => import('./test-tutorial.js'));
@@ -3163,6 +3164,49 @@ await check("Formation facing retreat and replacement orders", async () => {
   assert.equal(u.face, null, 'an attack order drops the old facing');
 });
 
+await check("Repeated right-click movement", async () => {
+  const { default: vm } = await import('node:vm');
+  const source = readFileSync(new URL('./client/main.js', import.meta.url), 'utf8');
+  const between = (start, end) => source.slice(source.indexOf(start), source.indexOf(end, source.indexOf(start)));
+  const input = between('let mouse = ', 'function showFacing()') +
+    between("renderer.domElement.addEventListener('mousedown', (e) => {", '\n// the house under the cursor') +
+    between("addEventListener('mouseup', (e) => {", "\nrenderer.domElement.addEventListener('dblclick'");
+  // Include the old helper when testing an older client so its cancelled destination is observable.
+  const turn = source.includes('function faceToward(') ? between('function faceToward(', '// Tighten / Spread:') : '';
+  for (const modifiers of [{}, { shiftKey: true }, { ctrlKey: true }, { shiftKey: true, ctrlKey: true }]) {
+    const unit = { id: 1, owner: 0, type: 'tank', x: 10, z: 10 }, units = new Map([[1, unit]]), selected = new Set([1]);
+    const sent = [], listeners = {}, faced = new Map();
+    const groundAt = (x, z) => ({ x, z });
+    const orders = createOrders({ units, selected, me: 0, defs: UNITS, diggers: [], moveColor: 0x6fa8f0,
+      formation: (troops, ground) => troops.map(v => [v.id, ground.x, ground.z]), send: cmd => sent.push(cmd), feedback: () => {} });
+    let clock = 0;
+    const context = vm.createContext({ orders, units, selected, faced, groundAt, UNITS, EDIT: false, targeting: null, lastSnap: {},
+      innerWidth: 800, innerHeight: 600, formationPreview: { hide() {} }, performance: { now: () => clock },
+      renderer: { domElement: { addEventListener: (name, fn) => { listeners[name] = fn; } } },
+      addEventListener: (name, fn) => { listeners[name] = fn; }, rig: { intro: false }, pick: () => null, houseAt: () => null, worksAt: () => null,
+      myTroops: () => [unit], centroid: troops => ({ x: troops[0].x, z: troops[0].z }), sendCmd: cmd => sent.push(cmd), marker() {}, blip() {}, MOVE_COLOR: 0x6fa8f0,
+    });
+    vm.runInContext(input + turn, context);
+    const click = (x, z) => {
+      const event = { button: 2, clientX: x, clientY: z, ...modifiers };
+      listeners.mousedown(event); listeners.mouseup(event); clock += 100;
+    };
+    click(35, 25); click(36, 26); click(36, 26);
+    assert.equal(sent.length, 3, 'each nearby right-click sends an order');
+    for (const [i, cmd] of sent.entries()) {
+      assert.equal(cmd.t, modifiers.ctrlKey ? 'amove' : 'move', 'repeat clicks retain attack-move');
+      assert.equal(cmd.queue, !!modifiers.shiftKey, 'repeat clicks retain queueing');
+      assert.deepEqual(cmd.orders, [[1, i ? 36 : 35, i ? 26 : 25]], 'repeat clicks keep the clicked destination instead of stopping at the unit');
+      assert.ok(!Object.hasOwn(cmd, 'face'), 'a click does not become an in-place facing order');
+    }
+    // A drag still sets the requested facing and keeps release-time modifiers.
+    listeners.mousedown({ button: 2, clientX: 35, clientY: 25 });
+    listeners.mouseup({ button: 2, clientX: 55, clientY: 25, shiftKey: true, ctrlKey: true });
+    assert.deepEqual(sent[3], { t: 'amove', orders: [[1, 35, 25]], face: 0, queue: true });
+    assert.equal(faced.get(1), 0, 'right-drag still remembers facing');
+  }
+});
+
 // Formation facing client dispatch.
 await check("Formation facing client dispatch", async () => {
   const ground = { x: 35, z: 25 }, face = 0.8, reach = 22;
@@ -3215,12 +3259,8 @@ await check("Formation facing client dispatch", async () => {
   assert.ok(!Object.hasOwn(mixed.sent[0].commands[1], 'face'), 'the grouped rally ignores facing');
 });
 
-// A copy of shared/sim.js loaded from a data: URL (to reach its internals). Its relative imports (story.js, grid.js)
-// point at the real files, so the copy shares those modules with the normal import.
-const simCopy = (source) => import('data:text/javascript;base64,' + Buffer.from(source.replace(/from '\.\/([\w-]+\.js)'/g, (_, file) => `from '${new URL(`./shared/${file}`, import.meta.url)}'`)).toString('base64'));
-// Fixed Massive fixture for exact comparisons and repeatable subsystem timings.
-const massiveInternals = await simCopy(readFileSync('shared/sim.js', 'utf8')
-  + '\nexport { updateVision, nearCover, behindCover, aimPoint, flagsAt, dist, spawnUnit, placeBuilding, wreckBuilding, setCell, logCell, pickTarget, breathe };');
+// The simulation with the internals it exports for tests (sim.internals).
+const massiveInternals = { ...sim, ...sim.internals };
 // A trench dug in sight reaches the snapshot even when a moving unit's path view read the full terrain memory first.
 await check("A trench dug in sight reaches the snapshot even when a moving unit's path view read the full terrain memory fi", async () => {
   const S = massiveInternals, g = S.createGame(JSON.parse(readFileSync('maps/default.json', 'utf8')), ['A', 'B'], false, [0, 1]);
@@ -3450,8 +3490,8 @@ await check("test.js:3331", async () => {
 });
 
 // Reference before the cheap separation gates. Pair order and floating-point pushes are unchanged.
-const referenceSeparation = `
-  const list = [...g.units.values()];
+const referenceSeparation = (g) => {
+  const { flagsAt, shovedFromCover } = massiveInternals, levelAt = sim.levelAt, list = [...g.units.values()];
   for (let i = 0; i < list.length; i++) for (let j = i + 1; j < list.length; j++) {
     const a = list[i], b = list[j], min = (UNITS[a.type].radius + UNITS[b.type].radius) * 0.8;
     if (a.garrison >= 0 || b.garrison >= 0 || a.air || b.air) continue;
@@ -3462,17 +3502,13 @@ const referenceSeparation = `
     const push = (min - d) / 2 * (sa || sb ? 1 : 0.5), px = dx / d * push, pz = dz / d * push;
     // a squad holding its cover is not pushed off it, and does not push back at a friend walking past
     const ha = !sa && shovedFromCover(g, a, a.x - px, a.z - pz), hb = !sb && shovedFromCover(g, b, b.x + px, b.z + pz);
-    if (!sa && !ha && !(hb && a.path.length) && !(flagsAt(g, a.x - px, a.z - pz) & blockOf(UNITS[a.type])) && Math.abs(levelAt(g, a.x - px, a.z - pz) - levelAt(g, a.x, a.z)) <= 1) { a.x -= px; a.z -= pz; }
-    if (!sb && !hb && !(ha && b.path.length) && !(flagsAt(g, b.x + px, b.z + pz) & blockOf(UNITS[b.type])) && Math.abs(levelAt(g, b.x + px, b.z + pz) - levelAt(g, b.x, b.z)) <= 1) { b.x += px; b.z += pz; }
+    if (!sa && !ha && !(hb && a.path.length) && !(flagsAt(g, a.x - px, a.z - pz) & sim.blockOf(UNITS[a.type])) && Math.abs(levelAt(g, a.x - px, a.z - pz) - levelAt(g, a.x, a.z)) <= 1) { a.x -= px; a.z -= pz; }
+    if (!sb && !hb && !(ha && b.path.length) && !(flagsAt(g, b.x + px, b.z + pz) & sim.blockOf(UNITS[b.type])) && Math.abs(levelAt(g, b.x + px, b.z + pz) - levelAt(g, b.x, b.z)) <= 1) { b.x += px; b.z += pz; }
   }
-`;
+};
 
-// Twenty ticks of a seeded crowded infantry army preserve the old separation coordinates.
-await check("Twenty ticks of a seeded crowded infantry army preserve the old separation coordinates", async () => {
-  // step() calls separateCrowds right after making its unit list: the reference takes the place of both
-  const source = readFileSync('shared/sim.js', 'utf8'), start = source.indexOf('  const list = [...g.units.values()];\n  separateCrowds(g, list);'), end = source.indexOf('  // grenades:', start);
-  assert.ok(start > 0 && end > start, 'the separation call and the grenades comment are still in step()');
-  const old = await simCopy(source.slice(0, start) + referenceSeparation + source.slice(end));
+// Twenty passes of separation over a seeded crowded infantry army preserve the old separation coordinates.
+await check("Twenty ticks of a seeded crowded infantry army preserve the old separation coordinates", () => {
   const g = massiveFixture(); g.players.forEach(p => { p.team = 0; }); g.mode.teams = 1;
   let seed = 123456;
   const random = () => { seed = Math.imul(seed, 1664525) + 1013904223 | 0; return (seed >>> 0) / 4294967296; };
@@ -3487,14 +3523,11 @@ await check("Twenty ticks of a seeded crowded infantry army preserve the old sep
   }
   const ground = [...g.units.values()].filter(u => !UNITS[u.type].structure && !u.air && u.garrison < 0);
   ground[1].x = ground[0].x + 0.05; ground[1].z = ground[0].z; // compare the unchanged nonzero-distance infantry rule
-  const expected = structuredClone(g), savedRandom = Math.random;
-  try {
-    for (let tick = 0; tick < 20; tick++) {
-      seed = tick + 1; Math.random = random; step(g);
-      seed = tick + 1; Math.random = random; old.step(expected);
-      assert.deepEqual([...g.units.values()].map(u => [u.id, u.x, u.z]), [...expected.units.values()].map(u => [u.id, u.x, u.z]), `crowded positions exactly match after tick ${tick + 1}`);
-    }
-  } finally { Math.random = savedRandom; }
+  const expected = structuredClone(g);
+  for (let pass = 0; pass < 20; pass++) {
+    massiveInternals.separateCrowds(g, [...g.units.values()]); referenceSeparation(expected);
+    assert.deepEqual([...g.units.values()].map(u => [u.id, u.x, u.z]), [...expected.units.values()].map(u => [u.id, u.x, u.z]), `crowded positions exactly match after pass ${pass + 1}`);
+  }
 });
 
 // Units and the game keep the shape they were created with (spawnUnit and createGame declare every property), so V8
@@ -3538,7 +3571,7 @@ await check("Snapshot cover hints retain the old terrain, vehicle, structure and
 // cells a squad can garrison, and directional cover from walls and vehicles toward a shooter.
 await check("The cover preview (client/cover-preview.js) reads cover with the sim's own rules", async () => {
   const preview = await import('./client/cover-preview.js');
-  const real = await simCopy(readFileSync('shared/sim.js', 'utf8') + '\nexport { behindCover, entryCell };');
+  const real = massiveInternals;
   const rows = [...empty];
   rows[3] = '...#....H....R......'; rows[5] = '....BBB...TTT..+....'; rows[6] = '....BBB.....Y...X...';
   rows[7] = '....BB....F=....##..'; rows[15] = '...O.....Q..........'; rows[9] = '..H.H....WWW........'; rows[12] = '.........#.#........';
@@ -3653,6 +3686,52 @@ await check("The preview marks only ground this side has explored (the server's 
     cp.start();
     assert.equal(marks(), true, 'a rejoin keeps the ground explored before it');
   } finally { delete globalThis.document; delete globalThis.addEventListener; } // node has neither
+});
+
+// World Conquest's fog: explored ground fades into ground never seen over a few cells, rounded, instead of a staircase
+// of black 2 m squares. Ground never seen stays fully dark, and the fog's own answers (seen, explored) do not change.
+// World terrain memory rereads only cells newly in view and cells journaled as changed, and ends up remembering exactly
+// what rereading every visible cell on every vision pass remembers (#58). Two seeded games run the same script: troops
+// march into unexplored ground, a crater is dug at their feet every 50 ticks, and snapshots are built as the server does.
+await check("World terrain memory rereads only new and changed cells and remembers what a full reread does", async () => {
+  const { generateWorldMap } = await import('./shared/world-conquest.js');
+  const play = journal => {
+    let seed = 4242; const random = Math.random;
+    Math.random = () => { let t = seed += 0x6D2B79F5; t = Math.imul(t ^ t >>> 15, t | 1); t ^= t + Math.imul(t ^ t >>> 7, t | 61); return ((t ^ t >>> 14) >>> 0) / 4294967296; };
+    try {
+      const g = createGame(generateWorldMap({ size: 'huge', seed: 31, players: 2, teams: [0, 1] }), ['A', 'B'], true, [0, 1], [0, 1], { mode: 'world', worldSize: 'huge' });
+      if (!journal) g.cellJournal = null;
+      const mine = [...g.units.values()].filter(u => u.owner === 0 && !UNITS[u.type].building);
+      sim.command(g, 0, { t: 'move', orders: mine.map(u => [u.id, u.x + 140, u.z + 60]) });
+      for (let t = 1; t <= 400; t++) {
+        sim.step(g);
+        if (t % 50 === 0) { const u = mine.find(v => v.hp > 0); if (u) sim.mutateWorldCell(g, Math.floor(u.z / CELL) * g.w + Math.floor(u.x / CELL) + 2, { ground: '+' }); }
+        if (t % 2 === 0) { const cache = snapshotCache(g); snapshotFor(g, 0, [], [], cache); snapshotFor(g, 1, [], [], cache); }
+      }
+      return g;
+    } finally { Math.random = random; }
+  };
+  const quick = play(true), full = play(false), memory = g => [...g.world.memory].sort((a, b) => a[0] - b[0]).map(([team, m]) => [team, [...m.cells].sort((a, b) => a[0] - b[0])]);
+  assert.ok(quick.world.memory.get(0).pass > 50, 'the journaled game reads cells incrementally');
+  assert.ok(memory(quick)[0][1].some(([, row]) => row[1] === '+'), 'a dug crater is remembered');
+  assert.deepEqual(memory(quick), memory(full), 'both games remember the same rows');
+});
+
+await check("World Conquest's fog fades explored ground into ground never seen", async () => {
+  const { createFog } = await import('./client/fog.js'), W = 24, C = 12;
+  const disc = r => Uint8Array.from({ length: W * W }, (_, c) => +(Math.hypot(c % W - C, Math.floor(c / W) - C) <= r));
+  const seen = disc(6), fog = createFog(W, W, { v: sim.packRuns(seen), e: sim.packRuns(seen) }, false, true);
+  const alpha = (x, y) => fog.texture.image.data[((W - 1 - y) * W + x) * 4 + 3];
+  assert.equal(alpha(0, 0), 255, 'ground never seen stays fully dark');
+  assert.equal(alpha(C, C), 0, 'the middle of what is seen stays clear');
+  const row = Array.from({ length: 7 }, (_, i) => alpha(C + i, C));
+  assert.ok(row.every((a, i) => !i || a >= row[i - 1]) && row[6] > row[3] && row[6] < 255, `darkness grows toward the frontier: ${row}`);
+  assert.equal(fog.at((C + 6.5) * CELL, (C + 0.5) * CELL), 'seen', 'a cell in the fade is still seen');
+  const wider = disc(9);
+  fog.snapshot({ fog: sim.packRuns(wider, seen), units: [] });
+  fog.frame(1);
+  assert.ok(alpha(C + 6, C) < row[6], 'scouting further moves the fade outward');
+  assert.equal(alpha(C, 0), 255, 'ground still never seen stays fully dark');
 });
 
 // Unit row deltas: a fresh client gets every row, a row that stops changing is not resent, a unit that dies or goes
@@ -4476,17 +4555,16 @@ await check("Between delivered snapshots the planner must use its supplied earli
 
 // Exercise the real room tick's delivery ordering without opening a server port.
 await check("Exercise the real room tick's delivery ordering without opening a server port", async () => {
-  const source = readFileSync('server.js', 'utf8');
-  const body = source.slice(source.indexOf('function timedRoomTick(room)'), source.indexOf('export function tickRooms()'));
+  const { createRoomTick } = await import('./server/room-tick.js');
   for (const cadence of [2, 4]) {
     const decisions = [], deliveries = [];
     // The real schedule (shared/ai-schedule.js) with a recording AI in every seat.
     const recording = { thinkEvery, observe: g => ({ tick: g.tick }), think: (g, slot, opts) => { decisions.push([g.tick, slot, opts.view.tick]); } };
     const recordedTick = (g, seats, views, options) => aiTick(g, seats.map(seat => ({ ...seat, brain: planner(recording) })), views, { ...options, sim: { snapshotCache: () => ({}) } });
-    const tick = new Function('aiTick', 'step', 'snapshotCache', 'snapshotFor', 'createTickMeter', 'recordTick', 'tickStats', 'trimmed',
-      body + '\nreturn timedRoomTick;')(
-      recordedTick, g => { g.tick++; },
-      () => ({}), g => ({ tick: g.tick }), () => ({}), () => cadence, () => ({}), (room, net, msg) => msg);
+    // the server's own room tick (server/room-tick.js) with stand-ins for the game, the snapshots and the sockets
+    const tick = createRoomTick({ aiTick: recordedTick, step: g => { g.tick++; }, snapshotCache: () => ({}), snapshotFor: g => ({ tick: g.tick }),
+      createTickMeter: () => ({}), recordTick: () => cadence, tickStats: () => ({}), trimmed: (room, net, msg) => msg,
+      connected: p => p.ws?.readyState === 1, backedUp: () => false, sendSnapshot: (room, p, json) => p.ws.send(json), sendWatchers: () => {} });
     const game = { tick: 0, winner: null, shots: [], newCells: [] };
     const room = { game, snapEvery: cadence, aiViews: [{ tick: 0 }, { tick: 0 }, { tick: 0 }],
       players: [{ ws: { readyState: 1, send: raw => deliveries.push(JSON.parse(raw).tick) } }, { ai: true, level: 'easy' }, { ai: true, level: 'hard' }] };
@@ -4908,16 +4986,13 @@ async function serverHarness() {
       async close() { if (ws.readyState !== 3) ws.close(); await waitFor(() => client.closed, 'client closes'); await settleServer(); },
       wait(type, predicate = () => true, after = 0) { return waitFor(() => messages.slice(after).find(message => message.t === type && predicate(message)), `client receives ${type}`); },
     };
-    // snapshots carry changed unit rows, gone ids and the wrecks and nodes only when they change: rebuild them as client/main.js does
-    const rows = new Map(); let prev = null;
+    // snapshots carry changed unit rows, gone ids and the wrecks and nodes only when they change: the client's own
+    // decoder (client/world-state.js) rebuilds them, and must agree with what the server says the client holds
+    const held = createWorldState();
     ws.on('message', raw => {
       const m = JSON.parse(String(raw));
-      if (m.t === 'start') { rows.clear(); prev = null; }
-      if (m.t === 's') {
-        for (const id of m.gone ?? []) rows.delete(id);
-        for (const row of m.units) rows.set(row[0], row);
-        m.sent = m.units; m.units = [...rows.values()]; m.wrecks ??= prev?.wrecks; m.nodes ??= prev?.nodes; prev = m;
-      }
+      if (m.t === 'start') held.reset();
+      if (m.t === 's') assert.equal(held.apply(m), false, `the client's unit rows match what the server says it holds at tick ${m.tick}`);
       messages.push(m);
     });
     ws.on('close', () => { client.closed = true; });
@@ -5449,10 +5524,7 @@ await check("Rendered bounds cover posed sniper boots and the ends of rooftop ba
 // of a match selects (it used to be swallowed). A right-click is still dropped: its order was aimed at a moving view.
 await check("Camera", async () => {
   const THREE = await import('three');
-  const source = readFileSync(new URL('./client/camera.js', import.meta.url), 'utf8')
-    .replace("from 'three'", `from '${import.meta.resolve('three')}'`)
-    .replace("from '/shared/sim.js'", `from '${new URL('./shared/sim.js', import.meta.url)}'`);
-  const { rig, groundAt: pickGround } = await import('data:text/javascript;base64,' + Buffer.from(source).toString('base64'));
+  const { rig, groundAt: pickGround } = await import('./client/camera.js');
   // A narrow crest and trench need the relief's quarter-cell surface, not whole-cell corner planes.
   const pickMap = { w: 8, h: 6, rows: ['........', '........', '...TT...', '........', '........', '........'], heights: Array(6).fill('00111004') };
   const pickRelief = createRelief(pickMap), pickCamera = new THREE.PerspectiveCamera(45, 1, 0.01, 100);
@@ -5886,6 +5958,20 @@ await check("Room lifecycle checks use one fake clock for captured timers and th
       await ana.send({ t: 'end' }); assert.equal(room.state, 'lobby', 'the spectating host can end the match');
       await ana.close();
       assert.ok(room.emptySince != null && !room.spectators.length, 'a spectator who disconnects is gone, and the room starts its grace period');
+    });
+    // A spectator whose connection falls megabytes behind is dropped (its client reconnects and starts from a whole
+    // snapshot): spectators share one delta stream, so it cannot skip snapshots the way a seat does (#58).
+    await check(async code => {
+      const [ana] = await humans(code, ['Ana']), room = h.rooms.get(code);
+      await ana.send({ t: 'spectate' }); await ana.send({ t: 'addAi' }); await ana.send({ t: 'addAi' });
+      await start(code, ana);
+      await h.tick(2);
+      const watcher = room.spectators[0].ws;
+      watcher.bufferedAmount = 5 * 1024 * 1024;
+      const tick = room.game.tick;
+      await h.tick(2);
+      assert.notEqual(watcher.readyState, 1, 'a spectator five megabytes behind is dropped');
+      assert.equal(room.game.tick, tick + 2, 'the match runs on without it');
     });
     console.log(`Room lifecycle: ${caseId} scenarios passed`);
   }
@@ -6559,24 +6645,20 @@ await check("Spatial existence queries stop at the first live match", async () =
   const a = { id: 1, owner: 0, x: -16, z: 0 }, b = { id: 2, owner: 0, x: -15, z: 0 };
   const units = new Map([[a.id, a], [b.id, b]]), grid = new SpatialGrid(units);
   let visits = 0;
-  assert.equal(grid.some(a, 2, u => { visits++; return u === a; }), true);
+  assert.equal(grid.has(a, 2, u => { visits++; return u === a; }), true);
   assert.equal(visits, 1, 'existence queries do not inspect later candidates');
   units.delete(a.id);
-  assert.equal(grid.some(a, 2, u => u === a), false, 'deleted records cannot match');
-  assert.equal(grid.some(a, 2, u => u === b), true);
+  assert.equal(grid.has(a, 2, u => u === a), false, 'deleted records cannot match');
+  assert.equal(grid.has(a, 2, u => u === b), true);
   b.x = 80; grid.update(b);
-  assert.equal(grid.some(a, 2), false, 'moving out of the queried buckets removes the match');
-  assert.equal(grid.some(b, 0), true, 'zero radius includes the current bucket');
-  const output = [a, a];
-  assert.equal(grid.candidates(b, 0, true, undefined, false, output), output, 'callers can reuse a result buffer');
-  assert.deepEqual(output, [b], 'reused results discard previous entries');
-  assert.deepEqual(grid.candidates(a, 0, false, undefined, false, output), [], 'empty queries clear a reused buffer');
-  assert.equal(grid.some(b, 0, () => true, true), grid.candidates(b, 0, false, undefined, true).length > 0, 'heavy-only existence uses the same buckets');
+  assert.equal(grid.has(a, 2), false, 'moving out of the queried buckets removes the match');
+  assert.equal(grid.has(b, 0), true, 'zero radius includes the current bucket');
+  assert.equal(grid.hasHeavy(b, 0), grid.heavy(b, 0).length > 0, 'heavy-only existence uses the same buckets');
   const replacement = { ...b };
   units.set(b.id, replacement);
-  assert.equal(grid.some(b, 0), false, 'replaced records cannot match before their update');
+  assert.equal(grid.has(b, 0), false, 'replaced records cannot match before their update');
   grid.update(replacement);
-  assert.equal(grid.some(b, 0, u => u === replacement), true, 'replacement updates are visible');
+  assert.equal(grid.has(b, 0, u => u === replacement), true, 'replacement updates are visible');
 });
 
 // Spatial queries keep the brute-force order, including borders, duplicate positions and exact ties.
@@ -6594,6 +6676,10 @@ await check("Spatial queries keep the brute-force order, including borders, dupl
     const match = u => u.owner === i % 3;
     const expected = brute(at, r).filter(match).sort((a, b) => Math.hypot(a.x - at.x, a.z - at.z) - Math.hypot(b.x - at.x, b.z - at.z))[0] ?? null;
     assert.equal(grid.nearest(at, r, match), expected, 'nearest query keeps the first exact tie');
+    const near = u => Math.hypot(u.x - at.x, u.z - at.z) <= r && match(u);
+    assert.deepEqual(grid.inOrder(at, r, near), brute(at, r).filter(match), 'inOrder keeps Map order');
+    assert.deepEqual(new Set(grid.unordered(at, r, near)), new Set(brute(at, r).filter(match)), 'unordered finds the same units');
+    assert.equal(grid.has(at, r, near), brute(at, r).some(match), 'has answers whether there is one');
   }
   const moved = units.get(1000); moved.x = 112; moved.z = -32; grid.update(moved);
   units.delete(999);
@@ -7185,12 +7271,12 @@ await check("Horde", async () => {
   const front = { id: 1, type: 'tank', owner: 2, hp: 1, x: 3, z: 0, vx: 0, vz: 0, trafficWait: 20, stuck: 20, garrison: -1, path: [{ x: 10, z: 0 }] };
   const back = { id: 2, type: 'tank', owner: 2, hp: 1, x: 0, z: 0, garrison: -1, path: [{ x: 10, z: 0 }] };
   const jam = { tick: 0, units: new Map([[1, front], [2, back]]) }, through = [];
-  const ctx = { defs: UNITS, dt: 0.05, grid: { candidates: (u, r, _, keep) => [front].filter(keep) }, clear: () => false, coverRank: () => 3, visible: () => true };
+  const ctx = { defs: UNITS, dt: 0.05, grid: { unordered: (u, r, keep) => [front].filter(keep), heavy: (u, r, keep) => [front].filter(keep) }, clear: () => false, coverRank: () => 3, visible: () => true };
   for (; jam.tick < 100; jam.tick++) if (!trafficStep(jam, back, back.path[0], ctx).blocked) through.push(jam.tick);
   assert.ok(through.length && through[0] <= 80 && back.ghost > through[0], 'a tank gridlocked behind a friend ghosts through it after 3 s, not never');
   for (const ally of [true, false]) {
     const f2 = { ...front, owner: 1, trafficWait: 20 }, b2 = { ...back, owner: 2, ghost: 0, trafficWait: 0, traffic: null }, jam2 = { tick: 0, units: new Map([[1, f2], [2, b2]]) };
-    const ctx2 = { ...ctx, grid: { candidates: (u, r, _, keep) => [f2].filter(keep) }, friend: () => ally };
+    const ctx2 = { ...ctx, grid: { unordered: (u, r, keep) => [f2].filter(keep), heavy: (u, r, keep) => [f2].filter(keep) }, friend: () => ally };
     let passed = false;
     for (; jam2.tick < 100; jam2.tick++) passed ||= !trafficStep(jam2, b2, b2.path[0], ctx2).blocked;
     assert.equal(passed, ally, ally ? 'an allied tank in the way is ghosted through like your own' : 'an enemy tank in the way never is');
@@ -8666,6 +8752,93 @@ await check("Infantry rigs must keep complete morph targets, one body per LOD, a
 console.log('all infantry model checks passed');
 
 // Shell holes, rubble and burnt ground are painted by the client, then read back. A filled cell square fails.
+// The map's pieces are rebuilt only in the parts a change reaches (32 by 32 cells, plus the map-wide houses, rubble and
+// bridges when one of those is involved), and come out exactly as a whole rebuild draws them (#58).
+await check("Unit snapshot rows hold each field where UNIT_ROW says", () => {
+  // client code reads rows by these names (alerts, autocast, availability); a field moved in unitRow must move here too
+  const g = fresh(), u = put(g, 0, 'rifle', 30, 40); u.hp = 41.2; u.cd = 2.5; u.built = 1;
+  for (const row of [snapshotFor(g, 0, []).units.find(r => r[0] === u.id), snapshotFor(g, 0, [], [], snapshotCache(g)).units.find(r => r[0] === u.id)]) {
+    const R = sim.UNIT_ROW;
+    assert.deepEqual([row[R.id], row[R.type], row[R.owner], row[R.x], row[R.z], row[R.hp], row[R.cd], row[R.built]], [u.id, 'rifle', 0, 30, 40, 42, 3, 1]);
+  }
+});
+
+await check("Path regions relabelled around a few changed cells match a whole-map flood", () => {
+  // a small hilly maze (many narrow passages to cut and open): after each crater, wall run or single cell, the same
+  // cells share a region as after a full flood
+  let seed = 5; const rnd = () => (seed = (seed * 1103515245 + 12345) >>> 0) / 4294967296;
+  const W = 48, H = 48, g = { w: W, h: H, flags: new Uint16Array(W * H), height: new Int8Array(W * H), infantryRegionVersion: 0, vehicleRegionVersion: 0 };
+  for (let c = 0; c < W * H; c++) { if (rnd() < 0.38) g.flags[c] = sim.MOVE; g.height[c] = Math.floor(rnd() * 3); }
+  const samePartition = (a, b) => {
+    const there = new Map(), back = new Map();
+    for (let c = 0; c < a.length; c++) {
+      if ((a[c] < 0) !== (b[c] < 0)) return false;
+      if (a[c] < 0) continue;
+      if (there.has(a[c]) ? there.get(a[c]) !== b[c] : back.has(b[c])) return false;
+      there.set(a[c], b[c]); back.set(b[c], a[c]);
+    }
+    return true;
+  };
+  for (const block of [sim.MOVE, sim.MOVE | sim.VBLOCK]) {
+    sim.regionsFor(g, block);
+    for (let t = 0; t < 300; t++) {
+      const kind = rnd(), x = 1 + Math.floor(rnd() * (W - 2)), y = 1 + Math.floor(rnd() * (H - 2));
+      if (kind < 0.3) for (let dy = -1; dy <= 1; dy++) for (let dx = -1; dx <= 1; dx++) g.height[(y + dy) * W + x + dx] += rnd() < 0.5 ? -2 : 2;
+      else if (kind < 0.6) { const len = 1 + Math.floor(rnd() * 12), across = rnd() < 0.5; for (let i = 0; i < len; i++) g.flags[across ? y * W + Math.min(W - 1, x + i) : Math.min(H - 1, y + i) * W + x] ^= sim.MOVE; }
+      else g.flags[y * W + x] ^= sim.MOVE;
+      g.infantryRegionVersion++; g.vehicleRegionVersion++;
+      assert.ok(samePartition(sim.regionsFor(g, block), sim.regionsFor({ ...g }, block)), `regions after change ${t} (mask ${block})`);
+    }
+  }
+});
+
+await check("Structure pieces rebuilt in the parts a change reaches match a whole rebuild", async () => {
+  // the pieces' materials paint canvas textures: a canvas that draws nothing but hands back pixel arrays
+  const pixels = (x, y, w = 1, h = 1) => ({ width: w, height: h, data: new Uint8ClampedArray(Math.max(1, w * h) * 4) });
+  const pen = new Proxy({}, { get: (_, k) => (k === 'getImageData' || k === 'createImageData' ? pixels : k === 'measureText' ? () => ({ width: 1 }) : () => pen), set: () => true });
+  const saved = globalThis.document;
+  globalThis.document ??= { createElement: () => ({ width: 0, height: 0, getContext: () => pen, toDataURL: () => '' }), createElementNS: () => ({ addEventListener() {}, removeEventListener() {}, setAttribute() {} }) };
+  try {
+  const { buildStructures } = await import('./client/structures.js'), THREE = await import('three');
+  const W = 80, H = 70, grid = Array.from({ length: H }, () => Array(W).fill('.')), orig = grid.map(row => row.join(''));
+  for (let x = 4; x < 70; x++) grid[10][x] = 'H';
+  for (let x = 20; x < 60; x++) grid[40][x] = '#';
+  for (let x = 48; x < 56; x++) grid[20][x] = 'T';
+  for (let y = 50; y < 60; y++) grid[y][70] = 'X';
+  for (let y = 60; y < 63; y++) for (let x = 60; x < 63; x++) grid[y][x] = 'B';
+  for (let y = 30; y < 33; y++) for (let x = 5; x < 13; x++) grid[y][x] = 'B'; // a terrace far from it, reused as kept
+  for (let x = 26; x < 38; x++) grid[66][x] = 'B'; // a row of houses across a part's edge (x 32)
+  const housesOrig = orig.map((row, y) => row.split('').map((ch, x) => grid[y][x] === 'B' ? 'B' : ch).join(''));
+  for (let x = 34; x < 37; x++) grid[66][x] = 'R'; // its far end already in ruins
+  const meshes = group => Object.fromEntries(group.children.map(m => [m.name, [...m.instanceMatrix.array.subarray(0, m.count * 16)].map(v => +v.toFixed(5))]));
+  const incremental = new THREE.Group(), fresh = new THREE.Group();
+  buildStructures(incremental, grid, housesOrig, () => 0);
+  const step = (cells, what) => {
+    buildStructures(incremental, grid, housesOrig, () => 0, undefined, undefined, undefined, { cells });
+    const got = meshes(incremental);
+    buildStructures(fresh, grid, housesOrig, () => 0);
+    assert.deepEqual(got, meshes(fresh), `pieces after ${what}`);
+    buildStructures(incremental, grid, housesOrig, () => 0); // the fresh build took the module's state: start again
+  };
+  // hedges and walls across a part's edge (x 31 to 33), a wall cell knocked out, wire cut
+  for (const x of [31, 32, 33]) grid[5][x] = 'H';
+  grid[40][32] = '.'; grid[55][70] = '.';
+  step([5 * W + 31, 5 * W + 32, 5 * W + 33, 40 * W + 32, 55 * W + 70], 'hedges, a wall and wire');
+  // a house cell falls to rubble
+  grid[61][61] = 'R';
+  step([61 * W + 61], 'a house falling');
+  // a terrace cell is cleared down to bare ground: the houses beside it lose a party wall
+  grid[31][8] = '.';
+  step([31 * W + 8], 'a terrace cell cleared');
+  // a house cell found at the row's near end: the row is laid out again and the far end's rubble takes the new colours
+  grid[66][25] = 'B';
+  step([66 * W + 25], 'a house cell found');
+  // and gone again (it was never on the map file's footprint): the row goes back to its first layout
+  grid[66][25] = '.';
+  step([66 * W + 25], 'a found house cell gone');
+  } finally { if (saved === undefined) delete globalThis.document; }
+});
+
 await check("Shell holes, rubble and burnt ground are painted by the client, then read back", async () => {
   class ImageData {
     constructor(w, h) { this.width = w; this.height = h; this.data = new Uint8ClampedArray(w * h * 4); }
@@ -8867,6 +9040,8 @@ await stopServerHarness(); // the last server check is done
 // The public lobby checks own a fresh server with a deliberately small room cap.
 // The public lobby checks own a fresh server with a deliberately small room cap.
 await runFiles(['test-public-lobby.js'], { cwd: import.meta.dirname, timeoutMs: 30000 });
+// Rooms in several game processes (WW2_SHARDS): a sharded server of its own, over real sockets.
+await runFiles(['test-shards.js'], { cwd: import.meta.dirname, timeoutMs: 60000 });
 await childFiles;
 // Performance checks exercise the same painting, rendering and path interfaces used by the game. They run alone,
 // after everything else, so other test processes cannot eat their time budgets (a sharded run does this itself).

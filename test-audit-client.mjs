@@ -136,10 +136,7 @@ class Element {
 }
 const boxes = Object.fromEntries(['alerts', 'minimap', 'top', 'hud'].map(id => [id, new Element()]));
 Object.assign(globalThis, { document: { documentElement: { lang: 'en' }, head: new Element(), querySelector() { return null; }, getElementById: id => boxes[id] ?? null, createElement: () => new Element() }, performance: { now: () => 0 }, addEventListener() {}, innerWidth: 1200, innerHeight: 800 });
-async function browserModule(path) {
-  const code = readFileSync(new URL(path, root), 'utf8').replace(/from '([^']+)'/g, (_, dependency) => `from '${dependency === 'three' ? import.meta.resolve('three') : dependency.startsWith('/shared/') ? new URL('.' + dependency, root) : new URL(dependency, new URL(path, root))}'`);
-  return import('data:text/javascript;base64,' + Buffer.from(code).toString('base64'));
-}
+const browserModule = (path) => import(new URL(path, root));
 const missionMap = () => ({ name: 'mission', w: 24, h: 24, rows: Array(24).fill('.'.repeat(24)), spawns: [{ x: 2, y: 2 }, { x: 21, y: 21 }], points: [{ x: 12, y: 12 }] });
 const scenario = (map, actions, objectives = []) => {
   map.scenario = { version: 1, areas: [], groups: [], objectives, triggers: [{ id: 'opening', scope: 'match', recipients: 'side', side: 0, condition: { kind: 'time', seconds: 0 }, actions, repeat: { mode: 'once' } }] };

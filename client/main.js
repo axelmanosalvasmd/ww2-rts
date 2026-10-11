@@ -1,6 +1,6 @@
 import * as THREE from 'three';
 import { createOperativeView } from './operative-view.js';
-import { worldLayers, composeWorldCell } from '/shared/world-layers.js';
+import { worldLayers, composeWorldCell } from '../shared/world-layers.js';
 import { createRubbleDecals } from './rubble-decals.js';
 import { createCraterDecals } from './crater-decals.js';
 import { createHud } from './hud.js';
@@ -14,10 +14,10 @@ import { createSelection, selectionDragged } from './selection.js';
 import { selectionPoints } from './selection-view.js';
 import { createOrders } from './orders.js';
 import { createFormationPreview } from './formation-preview.js';
-import { facingSpots, slotSize, SHAPES } from '/shared/formation.js';
+import { facingSpots, slotSize, SHAPES } from '../shared/formation.js';
 import { availability, denySentence, placementState, rememberPlacementTerrain } from './availability.js';
 import { createFeedback } from './feedback.js';
-import { UNITS, UNIT_TYPES, CELL, CFG, SUPPORT, SUPPORT_TYPES, GATE_OPEN_FLAG, BUILDABLE, builderTypes, isSkirmishBaseMode, productionAccess, levelOf, levelChar, startState, canBuild, winVp, supCost, popCap, abCost, priceOf, FORTS, lineFort, placementCheck, ENTRENCH, entrenchPlan, segmentCost, RIDING_FLAG, OPERATIVE_FLAG, CARGO_FLAG, CARGO_SHIFT, TERRAIN, TRENCH } from '/shared/sim.js';
+import { UNITS, UNIT_TYPES, CELL, CFG, SUPPORT, SUPPORT_TYPES, GATE_OPEN_FLAG, BUILDABLE, builderTypes, isSkirmishBaseMode, productionAccess, levelOf, levelChar, startState, canBuild, winVp, supCost, popCap, abCost, priceOf, FORTS, lineFort, placementCheck, ENTRENCH, entrenchPlan, segmentCost, RIDING_FLAG, OPERATIVE_FLAG, CARGO_FLAG, CARGO_SHIFT, TERRAIN, TRENCH } from '../shared/sim.js';
 import { alerts } from './alerts.js';
 import { setupLight, renderFrame } from './light.js';
 import { createAtmosphere } from './atmosphere.js';
@@ -25,9 +25,10 @@ import { createApron } from './apron.js';
 import { createWeatherView } from './weather-view.js';
 import { createGround } from './ground.js';
 import { setWind } from './wind.js';
-import { surface, setFogMap } from './surfaces.js';
+import { surface, setFogMap, setFogTime, fogMistShader } from './surfaces.js';
 import { createFog } from './fog.js';
-import { buildStructures as buildPieces, sandbagRing, hqCamp, buildingModel } from './structures.js';
+import { createWorldState } from './world-state.js';
+import { buildStructures as buildPieces, sandbagRing, hqCamp, buildingModel, PIECE_CELLS } from './structures.js';
 import { createRelief } from './relief.js';
 import { gfx } from './gfx.js';
 import { rig, groundAt as marchGround } from './camera.js';
@@ -54,7 +55,7 @@ import { createConnection } from './connection.js';
 import { roomAddress, roomToken, matchStorage } from './room-session.js';
 import { createCoverPreview } from './cover-preview.js';
 import { createMapView } from './map-view.js';
-import { territoryEdges } from '/shared/world-territories.js';
+import { territoryEdges } from '../shared/world-territories.js';
 import { createWorldRegions } from './world-regions.js';
 import { createRailways } from './railways.js';
 import { createAutocast } from './autocast.js';
@@ -478,7 +479,7 @@ let lastStart = null;
 function startGame(m, restored = null) {
   propPreparation?.props?.dispose();
   propPreparation = null;
-  terrainDue.pieces = terrainDue.minimap = terrainDue.props = false; terrainDue.wait = 0;
+  terrainDue.pieces = terrainDue.minimap = terrainDue.props = false; terrainDue.wait = 0; terrainDue.pieceCells = new Set();
   lobbyView.hide(); // frees the backdrop's renderer before the match builds its world
   clearFacing(); formationPreview.group.removeFromParent();
   pings.reset(); autocast.reset(); alerts.startMatch(m.matchId);
@@ -502,7 +503,7 @@ function startGame(m, restored = null) {
     for (const id of restored.selected || []) if (Number.isSafeInteger(id)) selected.add(id);
     for (const [n, ids] of Object.entries(restored.groups || {})) if (/^[1-9]$/.test(n) && Array.isArray(ids)) groups[n] = ids.filter(Number.isSafeInteger);
   }
-  fx.length = 0; lastSnap = null; unitRows.clear(); hulks.clear(); projectiles.reset(); debris.reset(); effects.reset(); for (const m of strikeMarks.values()) m.dispose(); strikeMarks.clear(); aviation.reset(); epilogue.reset(); snapshotAt = 0; snapshotGap = 100;
+  fx.length = 0; lastSnap = null; worldState.reset(); hulks.clear(); projectiles.reset(); debris.reset(); effects.reset(); for (const m of strikeMarks.values()) m.dispose(); strikeMarks.clear(); aviation.reset(); epilogue.reset(); snapshotAt = 0; snapshotGap = 100;
   document.body.classList.toggle('observing', watching);
   objectives.reset(); endgame.reset();
   MW = map.w * CELL; MH = map.h * CELL;
@@ -532,7 +533,7 @@ function startGame(m, restored = null) {
   setTerrain(hAt, MW, MH); // rings, order lines and zones follow this ground on the GPU (client/overlay.js)
 
   buildStructures();
-  water?.dispose(); water = createWater(terrain.physicalGrid, map, hAt); if (water) world.add(water.mesh);
+  water?.dispose(); water = createWater(terrain.physicalGrid, map, hAt, waterOptions(map)); if (water) world.add(water.mesh);
 
   if (map.world) { railways = createRailways({ parent: world, hAt, w: map.w, center: id => lastSnap?.world?.regions?.find(r => r.id === id) }); railways.cells(m.cells); }
   props?.dispose(); props = EDIT ? null : createProps({ map, grid: terrain.physicalGrid, hAt, parent: world, skip: c => !!railways?.has(c) });
@@ -557,6 +558,7 @@ function startGame(m, restored = null) {
   fogOfWar = createFog(map.w, map.h, m.fog, EDIT, !!map.world);
   setFogMap(EDIT ? null : fogOfWar.texture, MW, MH); // walls, roofs and props darken in the fog too
   const fog = fogMesh = new THREE.Mesh(ground.geometry, new THREE.MeshBasicMaterial({ map: fogOfWar.texture, transparent: true, depthWrite: false, polygonOffset: true, polygonOffsetFactor: -2, polygonOffsetUnits: -6 }));
+  fog.material.onBeforeCompile = fogMistShader;
   fog.renderOrder = 1; fog.visible = !EDIT;
   world.add(fog);
   // zoomed out, the paper war map (client/map-view.js, a prototype)
@@ -596,7 +598,8 @@ let terrain = null;
 let props = null;
 let rubbleDecals = null, craterDecals = null; // craterDecals: World Conquest's lasting crater marks
 // big battles change cells every snapshot: the 3D pieces and the minimap's terrain are redone at most every 0.25 s
-const terrainDue = { pieces: false, minimap: false, props: false, wait: 0 };
+// pieceCells: the cells whose pieces changed since the last rebuild (client/structures.js redoes the parts they reach)
+const terrainDue = { pieces: false, minimap: false, props: false, wait: 0, pieceCells: new Set() };
 let propPreparation = null;
 const mergePropBox = (a, b) => !a ? b : !b ? a : [Math.min(a[0], b[0]), Math.min(a[1], b[1]), Math.max(a[2], b[2]), Math.max(a[3], b[3])];
 function terrainFrame(dt) {
@@ -627,13 +630,14 @@ function terrainFrame(dt) {
     } while (performance.now() < until);
   }
   if ((terrainDue.wait -= dt) > 0 || !(terrainDue.pieces || terrainDue.minimap || terrainDue.props)) return;
-  if (terrainDue.pieces && terrain) buildStructures();
+  if (terrainDue.pieces && terrain) buildStructures({ cells: terrainDue.pieceCells });
+  terrainDue.pieceCells = new Set();
   if (terrainDue.minimap) { mmImage = null; mapView?.refresh(); }
   terrainDue.pieces = terrainDue.minimap = false; terrainDue.wait = 0.25;
 }
 // all 3D terrain pieces (client/structures.js), rebuilt from the grid whenever a cell changes
-function buildStructures() {
-  buildPieces(terrain.group, terrain.physicalGrid, lastStart.map.rows.map((row, y) => [...row].map((ch, x) => ch === 'N' ? composeWorldCell(terrain.groundGrid[y][x], terrain.objectGrid[y][x]) : ch).join('')), hAt, terrain.state, lastStart.map.buildings, terrain.mineGrid);
+function buildStructures(change = null) {
+  buildPieces(terrain.group, terrain.physicalGrid, lastStart.map.rows.map((row, y) => (row.includes('N') ? [...row].map((ch, x) => ch === 'N' ? composeWorldCell(terrain.groundGrid[y][x], terrain.objectGrid[y][x]) : ch).join('') : row)), hAt, terrain.state, lastStart.map.buildings, terrain.mineGrid, change);
   if (!rubbleDecals) { rubbleDecals = createRubbleDecals({ parent: world, hAt, w: terrain.w, grid: terrain.objectGrid, materialAt: c => terrain.materials.get(c) }); rubbleDecals.update(terrain.objectGrid.flatMap((row, y) => row.flatMap((ch, x) => ch === 'R' ? [y * terrain.w + x] : []))); }
   if (!craterDecals && lastStart.map.world) { craterDecals = createCraterDecals({ parent: world, hAt, w: terrain.w, grid: terrain.grid }); craterDecals.update(terrain.grid.flatMap((row, y) => row.flatMap((ch, x) => ch === '+' ? [y * terrain.w + x] : []))); }
 }
@@ -651,6 +655,18 @@ function rememberLook(map, cell, data) {
   }
 }
 
+// a cell client/structures.js draws a piece on, judged from the current grids (the map file's houses count too)
+function hasPiece(x, y) {
+  return PIECE_CELLS.has(terrain.physicalGrid[y]?.[x]) || terrain.mineGrid[y]?.[x] === 1 || lastStart.map.rows[y]?.[x] === 'B';
+}
+function nearPiece(x, y) {
+  for (let dy = -2; dy <= 2; dy++) for (let dx = -2; dx <= 2; dx++) if (hasPiece(x + dx, y + dy)) return true;
+  return false;
+}
+
+// World Conquest: water runs on under ground this player has not discovered (client/water.js)
+const waterOptions = map => (map.world ? { unknown: c => !map.discovered?.[c] } : {});
+
 // bombs and shells lower the ground: patch the map's height rows
 function setLevel(map, cell, lv) {
   map.heights ??= map.rows.map(r => '0'.repeat(r.length));
@@ -665,14 +681,16 @@ function applyCells(cells) {
   groundVersion++;
   // Ground wear and scorching only change the paint. The relief, the 3D pieces, the scenery and the water are redone
   // only for cells whose type, height or damage stage changed: traffic wears many cells in a big battle.
-  const shaped = [];
+  const shaped = [], landmarks = lastStart.map.buildings?.length ?? 0, pieceCells = [];
   let pieces = false;
   for (const entry of cells) {
     const [cell, ch, lv, st = 0, data] = entry, x = cell % terrain.w, y = Math.floor(cell / terrain.w), heights = lastStart.map.heights;
     const physical = ch === 'N' ? composeWorldCell(data?.ground ?? terrain.groundGrid[y][x], data?.object ?? terrain.objectGrid[y][x]) : ch;
     const moved = terrain.grid[y][x] !== ch || terrain.physicalGrid[y][x] !== physical || (lv !== undefined && levelOf(heights?.[y]?.[x] ?? '0') !== lv);
     if (moved) shaped.push(entry);
-    pieces ||= moved || ((terrain.state[cell] ^ st) >> 3 & 3) > 0; // damage stage; the shelling bits only repaint
+    const staged = ((terrain.state[cell] ^ st) >> 3 & 3) > 0;
+    pieces ||= (moved && hasPiece(x, y)) || staged; // a piece stood here, or its damage stage changed
+    if (moved || staged) pieceCells.push(cell);
     terrain.grid[y][x] = ch; terrain.state[cell] = st;
     if (data) { terrain.groundGrid[y][x] = data.ground; terrain.objectGrid[y][x] = data.object; terrain.materials.set(cell, data.material); if (data.section) terrain.structuralSections.set(cell, data.section); } terrain.mineGrid[Math.floor(cell / terrain.w)][cell % terrain.w] = ch === 'N' ? 1 : 0; terrain.physicalGrid[Math.floor(cell / terrain.w)][cell % terrain.w] = ch === 'N' ? composeWorldCell(terrain.groundGrid[Math.floor(cell / terrain.w)][cell % terrain.w], terrain.objectGrid[Math.floor(cell / terrain.w)][cell % terrain.w]) : ch;
     if (lastStart.map.world) {
@@ -682,16 +700,25 @@ function applyCells(cells) {
     }
     if (lv !== undefined) setLevel(lastStart.map, cell, lv);
   }
+  // Scouting reveals mostly open ground, woods and water, which have no 3D pieces: the whole-map rebuild (about 20 ms
+  // on a Huge World map) runs only when a changed cell has a piece within two cells, or a landmark arrived.
+  pieces ||= (lastStart.map.buildings?.length ?? 0) !== landmarks || shaped.some(([cell]) => nearPiece(cell % terrain.w, Math.floor(cell / terrain.w)));
   terrain.ground.paint(terrain.grid, terrain.state, terrain.groundGrid, terrain.objectGrid, cells);
  // repaints only the tiles around changed cells
   if (shaped.length) {
-    const xs = shaped.map(([cell]) => cell % terrain.w), ys = shaped.map(([cell]) => Math.floor(cell / terrain.w));
-    const box = [Math.min(...xs) * CELL, Math.min(...ys) * CELL, (Math.max(...xs) + 1) * CELL, (Math.max(...ys) + 1) * CELL];
-    relief.update(shaped); props?.refresh(box);
+    // One box per 16-cell tile with changes: teammates scouting far apart no longer refresh all the ground between them.
+    const tiles = new Map();
+    for (const [cell] of shaped) {
+      const x = cell % terrain.w, y = Math.floor(cell / terrain.w), key = (y >> 4) * 65536 + (x >> 4), t = tiles.get(key);
+      if (!t) tiles.set(key, [x, y, x, y]); else { t[0] = Math.min(t[0], x); t[1] = Math.min(t[1], y); t[2] = Math.max(t[2], x); t[3] = Math.max(t[3], y); }
+    }
+    const boxes = [...tiles.values()].map(([x0, y0, x1, y1]) => [x0 * CELL, y0 * CELL, (x1 + 1) * CELL, (y1 + 1) * CELL]);
+    const box = boxes.reduce(mergePropBox); // all of it, for props still being prepared
+    relief.update(shaped); props?.refresh(boxes);
     if (propPreparation?.props) propPreparation.dirtyBox = mergePropBox(propPreparation.dirtyBox, box);
-    if (!water && shaped.some(([, ch]) => 'WF='.includes(ch))) { water = createWater(terrain.physicalGrid, lastStart.map, hAt); if (water) world.add(water.mesh); }
+    if (!water && shaped.some(([, ch]) => 'WF='.includes(ch))) { water = createWater(terrain.physicalGrid, lastStart.map, hAt, waterOptions(lastStart.map)); if (water) world.add(water.mesh); }
     else water?.changed(shaped); terrainDue.minimap = true; // the fog overlay follows the relief through onGeometry
-    refreshTerrain(...box);
+    for (const b of boxes) refreshTerrain(...b);
   }
   const rubbleCells = new Set(cells.map(entry => entry[0]));
   for (const [c, , lv] of cells) if (lv !== undefined) {
@@ -702,7 +729,10 @@ function applyCells(cells) {
     }
   }
   rubbleDecals?.update(rubbleCells); craterDecals?.update(rubbleCells);
-  if (pieces) terrainDue.pieces = true; // rebuilt at most 4 times a second (frame loop)
+  if (pieces) {
+    terrainDue.pieces = true; // rebuilt at most 4 times a second (frame loop), only the parts these cells reach
+    for (const c of pieceCells) terrainDue.pieceCells.add(c);
+  }
   coverPreview.dirty(); // cover marks follow new cells and shot-up walls
 }
 
@@ -882,26 +912,15 @@ const airShot = (sh) => AIR_SHOTS.has(sh.k) && !(sh.k === 'flak' && (sh.t !== un
 
 // The server sends only the unit rows that changed and the ids gone (dead or under fog), and the wrecks and resource
 // nodes only when they change; the full lists are put back together here, so everything after reads whole snapshots.
-const unitRows = new Map();
+const worldState = createWorldState(); // the unit rows, wrecks and nodes this player holds (client/world-state.js)
 let resyncAt = -Infinity;
 function applySnapshot(s) {
-  // a full resend replaces everything held; so does a snapshot without held, from a server older than the deltas that
-  // sends every row each time and never a gone list (a server left running across an update)
-  if (s.all || !s.held) unitRows.clear();
-  for (const id of s.gone ?? []) unitRows.delete(id);
-  for (const row of s.units) unitRows.set(row[0], row);
-  // held: what the server thinks this client now holds. A mismatch means a stale unit is drawn (dead, or fogged) or a
-  // live one is missing; ask for a full resend instead of waiting for a reload (at most once a second)
-  if (s.held) {
-    let xor = 0;
-    for (const id of unitRows.keys()) xor ^= id;
-    if ((unitRows.size !== s.held[0] || xor !== s.held[1]) && performance.now() - resyncAt > 1000) {
-      console.warn(`unit rows out of sync at tick ${s.tick}: holding ${unitRows.size}, the server sent ${s.held[0]}; asking for a full resend`);
-      resyncAt = performance.now(); sendCmd({ t: 'resync' });
-    }
+  // A mismatch with what the server says this client holds means a stale unit is drawn (dead, or fogged) or a live one
+  // is missing; ask for a full resend instead of waiting for a reload (at most once a second)
+  if (worldState.apply(s) && performance.now() - resyncAt > 1000) {
+    console.warn(`unit rows out of sync at tick ${s.tick}: holding ${worldState.size}, the server sent ${s.held[0]}; asking for a full resend`);
+    resyncAt = performance.now(); sendCmd({ t: 'resync' });
   }
-  s.units = [...unitRows.values()];
-  s.wrecks ??= lastSnap?.wrecks; s.nodes ??= lastSnap?.nodes;
   fogOfWar?.snapshot(s); // before the freeze: each fog change builds on the last one
   if (window.__freeze) return; // debug: hold the scene still (e.g. to inspect models)
   const arrived = performance.now();
@@ -1127,22 +1146,29 @@ function placementView() {
   if (placementCache?.snapshot !== lastSnap) placementCache = { snapshot: lastSnap, ...placementState(lastSnap, lastStart.map, terrain.grid, teams, terrain) };
   return placementCache;
 }
-const hud = createHud({
-  get me() { return me; }, get teams() { return teams; }, get names() { return names; }, get PRIORITY() { return PRIORITY; }, get host() { return !!lobbyState?.amHost; }, get watching() { return watching; },
-  units, selected, look, facOf, color: (slot) => css(look(slot).color), classic: () => classicMode(), naval: () => lastStart?.map?.naval === true, send: sendCmd, blip,
-  logistics: () => logisticsData, logisticsOverlay: () => logisticsOverlay, logisticsSelection: () => logisticsSelection,
+// What the HUD hands back when the player clicks: an intent by name (client/hud.js calls ctx.act(name, ...args)).
+const hudActions = {
+  send: sendCmd, blip,
   toggleLogisticsOverlay: () => { logisticsOverlay = !logisticsOverlay; if (lastSnap) updateHud(lastSnap); },
   toggleLogisticsSelection: () => { logisticsSelection = !logisticsSelection; if (lastSnap) updateHud(lastSnap); },
   retreat: () => retreat(), takeCover: (q) => takeCover(q), stance: (k) => toggleStance(k), entrench: (k) => startEntrench(k), stop: () => { sendCmd({ t: 'stop', ids: [...selected] }); blip(330); }, amove: () => selected.size && setAim('amove'), area: () => startArea(), rally: () => startRally(),
-  transferGroup: (n) => transferGroup(n), dig: (k) => startDig(k), form: () => fm, setForm: (p) => setFormation(p), reform: (d) => reform(d), unload: () => unload(), mountUp: () => mountUp(), rail: () => startRail(), worldMatch: () => lastSnap?.mode?.kind === 'world', build: (k) => startBuild(k), ability: (t) => useAbility(t), support: (k) => aimSupport(k), fType: () => fKeyType(),
+  transferGroup: (n) => transferGroup(n), dig: (k) => startDig(k), setForm: (p) => setFormation(p), reform: (d) => reform(d), unload: () => unload(), mountUp: () => mountUp(), rail: () => startRail(), build: (k) => startBuild(k), ability: (t) => useAbility(t), support: (k) => aimSupport(k),
   autocast: (t) => { const on = autocast.toggle(t, [...selected].map(id => units.get(id)).filter(v => v?.type === t && v.owner === me), classicMode()); if (on !== null) blip(); },
-  builders: () => builders(), owns: (t) => owns(t), canPlace: (k) => canPlace(k), explain: (reason) => feedback.show(reason),
+  explain: (reason) => feedback.show(reason),
   // add: Shift/Ctrl adds the unit to the selection, or takes it out if it is already in
   select: (id, add = false) => { if (!add) selected.clear(); else if (selected.has(id)) { selected.delete(id); updateHud(lastSnap); return; } selected.add(id); updateHud(lastSnap); },
   selectMany: (ids) => { selected.clear(); for (const id of ids) selected.add(id); updateHud(lastSnap); },
   selectType: (type, e) => { selection.type(type, e); if (lastSnap) updateHud(lastSnap); },
-  idleCount: () => selection.idle().length,
   findIdle: (all) => { selection.findIdle(all); if (lastSnap) updateHud(lastSnap); },
+};
+// What the HUD reads: the decoded match state and this client's choices.
+const hud = createHud({
+  get me() { return me; }, get teams() { return teams; }, get names() { return names; }, get PRIORITY() { return PRIORITY; }, get host() { return !!lobbyState?.amHost; }, get watching() { return watching; },
+  units, selected, look, facOf, color: (slot) => css(look(slot).color), classic: () => classicMode(), naval: () => lastStart?.map?.naval === true,
+  logistics: () => logisticsData, logisticsOverlay: () => logisticsOverlay, logisticsSelection: () => logisticsSelection,
+  form: () => fm, worldMatch: () => lastSnap?.mode?.kind === 'world', fType: () => fKeyType(),
+  owns: (t) => owns(t), idleCount: () => selection.idle().length,
+  act: (name, ...args) => hudActions[name](...args),
 });
 // portraits on the recruit cards and the selection list: the same model builders as makeUnit, rendered lazily by
 // client/portraits.js (the shadow a plane casts on the battlefield stays out of it)
@@ -1414,14 +1440,6 @@ function faceOrder(troops, at, face, reach = 0) {
   for (const v of troops) faced.set(v.id, face);
   return { t: 'move', orders: formation(troops, at, face, reach), face };
 }
-// double right-click: turn to face the spot without moving
-function faceToward(g) {
-  const troops = myTroops();
-  if (!troops.length || !g) return;
-  const c = centroid(troops), face = Math.atan2(g.z - c.z, g.x - c.x);
-  for (const v of troops) faced.set(v.id, face);
-  sendCmd({ t: 'move', orders: troops.map(v => [v.id, v.x, v.z]), face }); marker(g.x, g.z, MOVE_COLOR); blip(600);
-}
 // Tighten / Spread: change the spacing and re-form the selection where it stands, facing as last ordered (or up the screen)
 function reform(step) {
   fm.spread = Math.round(Math.min(2.5, Math.max(1, fm.spread + step)) * 4) / 4;
@@ -1449,7 +1467,7 @@ const formationPreview = createFormationPreview({ THREE, hAt });
 // ---------- camera + input ----------
 
 const cam = { x: 80, z: 80, yaw: 0, dist: 85 }, PITCH = 0.95, keys = new Set();
-let mouse = { x: innerWidth / 2, y: innerHeight / 2, inside: false }, drag = null, facingGesture = null, lastRight = null;
+let mouse = { x: innerWidth / 2, y: innerHeight / 2, inside: false }, drag = null, facingGesture = null;
 function clearFacing() { facingGesture = null; formationPreview.hide(); }
 function beginFacing(cursor, e, attack = false) {
   clearFacing();
@@ -1701,12 +1719,9 @@ addEventListener('mouseup', (e) => {
   if (e.button === 1) rig.stopDrag();
   if (!EDIT && facingGesture?.button === e.button) {
     updateFacing(e.clientX, e.clientY);
-    const f = facingGesture, facing = Number.isFinite(f.face), now = performance.now();
+    const f = facingGesture, facing = Number.isFinite(f.face);
     clearFacing();
     if (f.attack) cancelAim();
-    const twice = !facing && !f.attack && lastRight && now - lastRight.t < 350 && Math.hypot(e.clientX - lastRight.x, e.clientY - lastRight.y) < 16;
-    lastRight = facing || twice ? null : { t: now, x: e.clientX, y: e.clientY };
-    if (twice) { faceToward(f.cursor.ground); return; }
     if (facing) for (const v of myTroops()) faced.set(v.id, f.face);
     orders.dispatch(f.cursor, facing ? { shiftKey: f.event.shiftKey || !!e.shiftKey, ctrlKey: f.event.ctrlKey || !!e.ctrlKey } : f.event,
       facing ? { face: f.face, reach: f.reach, attack: f.attack || f.event.ctrlKey || !!e.ctrlKey } : f.attack ? { attack: true } : {});
@@ -1944,6 +1959,7 @@ renderer.setAnimationLoop(() => {
   objectives.frame(sdt); projectiles.frame(); debris.frame(); effects.update(sdt); atmos.update(sdt);
   aviation.update(sdt);
   fogOfWar?.frame(dt, !lastStart?.map.world && epilogue.active()); // the match is decided: the fog lifts
+  setFogTime(performance.now() / 1000); // the mist in the fog drifts
   alerts.frame();
   pings.frame();
   endgame.frame();

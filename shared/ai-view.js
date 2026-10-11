@@ -71,7 +71,8 @@ function remember(view, slot, memory) {
   view.sightings = [...memory.seen.values()].map(sighting => ({ ...sighting }));
 }
 
-function updateTerrain(memory, changes, length) {
+// bridges: when given, the set of cells that are bridges in the terrain, kept up to date here
+function updateTerrain(memory, changes, length, bridges = null) {
   const old = memory.terrain;
   let chars = old.chars, flags = old.flags, height = old.height;
   // The delivered ownership bit distinguishes friendly mines from discovered enemy or authored mines.
@@ -84,6 +85,7 @@ function updateTerrain(memory, changes, length) {
       if (chars === old.chars) chars = [...chars];
       if (flags === old.flags) flags = [...flags];
       chars[c] = ch; flags[c] = nextFlags;
+      if (bridges) { if (ch === '=') bridges.add(c); else bridges.delete(c); }
     }
     if (level !== undefined && (!height || height[c] !== level)) {
       if (height === old.height) height = height ? [...height] : Array(length).fill(0);
@@ -116,22 +118,28 @@ export function viewFor(g, slot, memory = {}, cache) {
     });
     // A human handover keeps the cells that seat already discovered.
     memory.mapChars = memory.terrain.chars; memory.mapHeight = memory.terrain.height;
+    // the map's bridges, so the planner need not scan the whole map for them (client maps are static; World grows)
+    memory.bridgeCells = new Set();
+    memory.mapChars.forEach((ch, c) => { if (ch === '=') memory.bridgeCells.add(c); });
     memory.terrainCells = new Map([...(seat.terrainMemory ?? [])].map(([c, row]) => [c, [...row]]));
   }
   // snapshotFor consumes terrain updates. Keep those writes in AI memory, away from the live player.
   const players = [...g.players];
   if (g.players[-1]) players[-1] = g.players[-1];
-  players[slot] = { ...seat, terrainMemory: memory.terrainCells, terrainPending: new Set(g.cellLog.keys()),
-    ...(world && { worldTerrainSent: memory.worldTerrainSent ??= new Map() }) };
+  // World terrain comes from the team's memory (worldTerrainFor); the replay of every logged cell is Classic's only
+  players[slot] = { ...seat, terrainMemory: memory.terrainCells, ...(!world && { terrainPending: new Set(g.cellLog.keys()) }),
+    ...(world && { worldTerrainSent: memory.worldTerrainSent ??= new Map(), worldTerrainAt: memory.worldTerrainAt }) };
   const projection = { ...g, players, omitFogMask: true }; // omit browser masks without revealing terrain or effects
   const seed = first ? terrainFor(projection, slot, true) : [];
   const snap = snapshotFor(projection, slot, [], [], cache);
-  updateTerrain(memory, first ? [...seed, ...snap.cells] : snap.cells, g.w * g.h);
+  if (world) memory.worldTerrainAt = players[slot].worldTerrainAt; // the seat's place in the team memory's change log
+  updateTerrain(memory, first ? [...seed, ...snap.cells] : snap.cells, g.w * g.h, world ? memory.bridgeCells : null);
   if (world) { memory.mapChars = memory.terrain.chars; memory.mapHeight = memory.terrain.height; }
   const view = {
     w: g.w, h: g.h, tick: snap.tick, winner: snap.winner, end: copy(snap.end), winVp: g.winVp,
     chars: memory.terrain.chars, flags: memory.terrain.flags, height: memory.terrain.height,
     mapChars: memory.mapChars, mapHeight: memory.mapHeight, // the map as the file every client downloads shows it
+    bridgeCells: memory.bridgeCells, // the cells of mapChars that are bridges
     units: new Map(snap.units.map(row => { const u = decodeUnit(row); return [u.id, u]; })),
     players: g.players.map((p, i) => ({ slot: i, name: p.name, team: p.team, faction: p.faction, spawn: !world || p.team === seat.team ? { ...p.spawn } : null, out: snap.out[i], vp: snap.vp[i] })),
     world: copy(snap.world),

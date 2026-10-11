@@ -490,7 +490,12 @@ export function createRelief(map, grid = map.rows, options = {}) {
     return water.wl[c] + WATER_LIFT;
   }
 
-  function rebuildGeometry() {
+  // The mesh is assembled from rows of cells, each row's vertices kept between rebuilds: an update rebuilds only the
+  // rows it reaches (touched, a set of row numbers) and copies the rest. A whole-map rebuild after every scouted cell
+  // cost 5 to 30 ms on a Huge World map (#58). The fan-detail budget is the one input shared by all rows: it is
+  // replayed over every row's runs, and a row whose fans change is rebuilt too, so the result matches a full rebuild.
+  let rows = null;
+  function rebuildGeometry(touched = null) {
     const cornerShifts = new Map();
     function cornerShift(x, z) {
       x = clamp(x, 0, w); z = clamp(z, 0, h);
@@ -551,9 +556,10 @@ export function createRelief(map, grid = map.rows, options = {}) {
       return rocks;
     }
     // Merge flat row runs. Extra edge vertices on their neighbours are collinear, so no seams open.
-    const runs = [], walls = [];
+    function planRow(z) {
+    const runs = [], walls = [], fillers = [];
     let vertices = 0, triangles = 0;
-    for (let z = 0; z < h; z++) for (let x = 0; x < w; x++) {
+    for (let x = 0; x < w; x++) {
       const c = z * w + x;
       if (flat[c] === 1) {
         let end = x + 1;
@@ -566,7 +572,7 @@ export function createRelief(map, grid = map.rows, options = {}) {
       }
     }
     let cliffEdges = 0;
-    for (let z = 0; z < h; z++) for (let x = 0; x < w; x++) {
+    for (let x = 0; x < w; x++) {
       const c = z * w + x;
       for (let axis = 0; axis < 2; axis++) {
         if ((axis === 0 && x + 1 >= w) || (axis === 1 && z + 1 >= h)) continue;
@@ -589,8 +595,7 @@ export function createRelief(map, grid = map.rows, options = {}) {
     // A diagonal run steps cell by cell. Each notch (one low cell with high ground on three sides) fills
     // with a rock pile and each tooth (one high cell) is wrapped in a rock column, which smooths the run's
     // outline seen from the low ground.
-    const fillers = [];
-    if (n <= 65536) for (let z = 1; z < h; z++) for (let x = 1; x < w; x++) {
+    if (n <= 65536 && z >= 1) for (let x = 1; x < w; x++) {
       const quad = [levels[(z - 1) * w + x - 1], levels[(z - 1) * w + x], levels[z * w + x - 1], levels[z * w + x]];
       const bottom = Math.min(...quad), high = quad.filter(v => v >= bottom + 2);
       const notch = high.length === 3, top = Math.min(...high);
@@ -610,15 +615,19 @@ export function createRelief(map, grid = map.rows, options = {}) {
         bottom * CFG.levelHeight, top * CFG.levelHeight, rocks]);
       for (const rock of rocks) { vertices += rock.model.length; triangles += rock.model.length / 3; }
     }
-    let extra = Math.max(0, Math.min(150000, Math.floor(n * 5)) - triangles);
-    if (!low) for (const run of runs) {
-      const [c, , xs, zs] = run, cost = xs * zs * 2;
-      if (flat[c] || torn[c] || (xs < 4 && zs < 4) || Number.isFinite(water.wl[c]) || cost > extra) continue;
-      run[4] = true; vertices += xs * zs; triangles += cost; extra -= cost;
+    return { runs, walls, fillers, vertices, triangles, cliffEdges, data: null };
     }
-    const pos = new Float32Array(vertices * 3), normal = new Float32Array(vertices * 3), uv = new Float32Array(vertices * 2), paint = new Float32Array(vertices * 4), scar = new Float32Array(vertices), index = new Uint32Array(triangles * 3);
-    const detail = new Uint8Array(vertices);
-    let vi = 0, ti = 0;
+    if (!rows || !touched) rows = Array.from({ length: h }, (_, z) => planRow(z));
+    else for (const z of touched) rows[z] = planRow(z);
+    // Fan detail goes to the first rough runs, in map order, while the budget lasts.
+    let extra = Math.max(0, Math.min(150000, Math.floor(n * 5)) - rows.reduce((sum, row) => sum + row.triangles, 0));
+    for (const row of rows) for (const run of row.runs) {
+      const [c, , xs, zs] = run, cost = xs * zs * 2;
+      const fan = !low && !(flat[c] || torn[c] || (xs < 4 && zs < 4) || Number.isFinite(water.wl[c]) || cost > extra);
+      if (fan) extra -= cost;
+      if (run[4] !== fan) { run[4] = fan; row.data = null; }
+    }
+    let pos, normal, uv, paint, scar, index, detail, vi = 0, ti = 0;
     function vertex(x, z, height, nxv, nyv, nzv, rock = 0, lip = 0, foot = 0, damp = 0, dug = 0) {
       const k = vi++;
       pos[k * 3] = x; pos[k * 3 + 1] = height; pos[k * 3 + 2] = z;
@@ -660,6 +669,11 @@ export function createRelief(map, grid = map.rows, options = {}) {
       return vertex((x + u) * CELL + sx, (z + v) * CELL + sz, heights[node], normals[node * 3], normals[node * 3 + 1], normals[node * 3 + 2], 0, lip, foot, water.wet[c] ? 1 : 0, scarHere);
     }
     const tri = (a, b, c) => { index[ti++] = a; index[ti++] = b; index[ti++] = c; };
+    function emitRow({ runs, walls, fillers, vertices, triangles }) {
+    for (const run of runs) if (run[4]) { vertices += run[2] * run[3]; triangles += run[2] * run[3] * 2; }
+    pos = new Float32Array(vertices * 3); normal = new Float32Array(vertices * 3); uv = new Float32Array(vertices * 2);
+    paint = new Float32Array(vertices * 4); scar = new Float32Array(vertices); index = new Uint32Array(triangles * 3);
+    detail = new Uint8Array(vertices); vi = 0; ti = 0;
     for (const [c, width, xs, zs, fan] of runs) {
       const start = vi;
       if (flat[c] === 1) {
@@ -753,7 +767,23 @@ export function createRelief(map, grid = map.rows, options = {}) {
       }
     }
     for (const [cx, cz, ox, oz, footY, topY, rocks] of fillers) for (const rock of rocks) placeRock(rock, cx, cz, footY, topY, ox, oz, 0);
-    const geo = new THREE.BufferGeometry();
+    return { pos, normal, uv, paint, scar, index, detail, vi, ti };
+    }
+    let vertices = 0, triangles = 0, cliffEdges = 0;
+    stats.rowsRebuilt = 0;
+    for (const row of rows) { if (!row.data) { row.data = emitRow(row); row.fresh = true; stats.rowsRebuilt++; } vertices += row.data.vi; triangles += row.data.ti; cliffEdges += row.cliffEdges; }
+    pos = new Float32Array(vertices * 3); normal = new Float32Array(vertices * 3); uv = new Float32Array(vertices * 2);
+    paint = new Float32Array(vertices * 4); scar = new Float32Array(vertices); index = new Uint32Array(triangles); detail = new Uint8Array(vertices);
+    vi = 0; ti = 0;
+    let v0 = Infinity, v1 = 0, t0 = Infinity, t1 = 0; // the span the rebuilt rows cover
+    for (const row of rows) {
+      const d = row.data;
+      if (row.fresh) { v0 = Math.min(v0, vi); t0 = Math.min(t0, ti); v1 = vi + d.vi; t1 = ti + d.ti; row.fresh = false; }
+      pos.set(d.pos.subarray(0, d.vi * 3), vi * 3); normal.set(d.normal.subarray(0, d.vi * 3), vi * 3); uv.set(d.uv.subarray(0, d.vi * 2), vi * 2);
+      paint.set(d.paint.subarray(0, d.vi * 4), vi * 4); scar.set(d.scar.subarray(0, d.vi), vi); detail.set(d.detail.subarray(0, d.vi), vi);
+      for (let i = 0; i < d.ti; i++) index[ti + i] = d.index[i] + vi;
+      vi += d.vi; ti += d.ti;
+    }
     // Index only reshaped cliff patches. Ordinary ground keeps the inexpensive cell contact query.
     detailPicks = new Map();
     if (n <= 65536) for (let t = 0; t < ti; t += 3) {
@@ -770,12 +800,26 @@ export function createRelief(map, grid = map.rows, options = {}) {
         bucket.push(t);
       }
     }
+    stats.vertices = vi; stats.triangles = ti / 3; stats.cliffEdges = cliffEdges;
+    // Same totals as the mesh drawn now: rows past the rebuilt ones keep their place, so only the span from the first
+    // to the last rebuilt row is written and sent to the GPU, instead of a whole new mesh on every change (#58).
+    const old = mesh.geometry, at = old.attributes;
+    stats.inPlace = !!(old.index && at.position?.count === vi && old.index.count === ti && v1 > 0);
+    if (stats.inPlace) {
+      const put = (attribute, source, size) => {
+        attribute.array.set(source.subarray(v0 * size, v1 * size), v0 * size);
+        attribute.addUpdateRange(v0 * size, (v1 - v0) * size); attribute.needsUpdate = true;
+      };
+      put(at.position, pos, 3); put(at.normal, normal, 3); put(at.uv, uv, 2); put(at.reliefPaint, paint, 4); put(at.reliefScar, scar, 1);
+      old.index.array.set(index.subarray(t0, t1), t0); old.index.addUpdateRange(t0, t1 - t0); old.index.needsUpdate = true;
+      return;
+    }
+    const geo = new THREE.BufferGeometry();
     geo.setAttribute('position', new THREE.BufferAttribute(pos.subarray(0, vi * 3), 3)); geo.setAttribute('normal', new THREE.BufferAttribute(normal.subarray(0, vi * 3), 3)); geo.setAttribute('uv', new THREE.BufferAttribute(uv.subarray(0, vi * 2), 2)); geo.setAttribute('reliefPaint', new THREE.BufferAttribute(paint.subarray(0, vi * 4), 4)); geo.setAttribute('reliefScar', new THREE.BufferAttribute(scar.subarray(0, vi), 1)); geo.setIndex(new THREE.BufferAttribute(index.subarray(0, ti), 1));
     // Fixed bounds avoid another full vertex scan on every crater.
     geo.boundingBox = new THREE.Box3(new THREE.Vector3(0, -12, 0), new THREE.Vector3(w * CELL, 12, h * CELL));
     geo.boundingSphere = new THREE.Sphere(new THREE.Vector3(w * CELL / 2, 0, h * CELL / 2), Math.hypot(w * CELL / 2, h * CELL / 2, 12));
     const previous = mesh.geometry; mesh.geometry = geo; options.onGeometry?.(geo); previous.dispose();
-    stats.vertices = vi; stats.triangles = ti / 3; stats.cliffEdges = cliffEdges;
   }
 
   function update(cells) {
@@ -800,7 +844,11 @@ export function createRelief(map, grid = map.rows, options = {}) {
     for (const c of dirty) controlCell(c);
     for (const c of dirty) tangentCell(c);
     for (const c of dirty) buildCell(c);
-    rebuildGeometry(); stats.cellsUpdated = dirty.size; stats.updateMs = performance.now() - t0;
+    // Crater lips read the scar shape up to six cells away (scarRun, touch), so a change moves vertices that far.
+    const touched = new Set();
+    for (const c of dirty) { const z = Math.floor(c / w); for (let j = Math.max(0, z - 7); j <= Math.min(h - 1, z + 7); j++) touched.add(j); }
+    const tg = performance.now(); rebuildGeometry(touched); stats.geometryMs = performance.now() - tg;
+    stats.cellsUpdated = dirty.size; stats.updateMs = performance.now() - t0;
   }
 
   const pickA = new THREE.Vector3(), pickB = new THREE.Vector3(), pickC = new THREE.Vector3();

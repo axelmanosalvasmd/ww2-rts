@@ -1,10 +1,10 @@
 import { worldLayers, composeWorldCell } from '../shared/world-layers.js';
 import { tierOf, techCost, TIER_NAMES } from '../shared/tech.js';
-import { UNITS, FORTS, CFG, TERRAIN, CELL, RIDING_FLAG, railYard, priceOf, supCost, popCap, popUse, dropPop, abCost, levelOf, teamSees, buildKinds, builderTypes, isSkirmishBaseMode, productionAccess, productionBuildings } from '../shared/sim.js';
+import { UNITS, FORTS, CFG, TERRAIN, CELL, RIDING_FLAG, UNIT_ROW, railYard, priceOf, supCost, popCap, popUse, dropPop, abCost, levelOf, teamSees, buildKinds, builderTypes, isSkirmishBaseMode, productionAccess, productionBuildings } from '../shared/sim.js';
 
 // Server denials deliberately contain no target details.
 export const DENY_SENTENCES = Object.freeze({
-  mp: 'Not enough manpower', mun: 'Not enough munitions', fuel: 'Not enough fuel', ammo: 'Not enough carried ammunition', ammo: 'Not enough carried ammunition',
+  mp: 'Not enough manpower', mun: 'Not enough munitions', fuel: 'Not enough fuel', ammo: 'Not enough carried ammunition',
   pop: 'The army is at its limit', cooldown: 'That order is still on cooldown',
   unseen: 'That target is not visible', notVisible: 'That spot is not visible',
   blocked: 'That spot is blocked or uneven', needs: 'The required unit or building is missing',
@@ -25,9 +25,10 @@ export const denySentence = (code, cmd) =>
 export const cooldownSeconds = (cd) => Math.max(0, Math.ceil(cd));
 const yes = () => ({ ok: true, reason: '' });
 const no = (reason) => ({ ok: false, reason });
+const { id: ID, type: TYPE, owner: OWNER, x: X, z: Z, hp: HP, cd: CD, flags: FLAGS, built: BUILT } = UNIT_ROW;
 export const snapshotUnits = (s) => (s?.units ?? []).map((v) => ({
-  id: v[0], type: v[1], owner: v[2], x: v[3], z: v[4], hp: v[7], cd: v[11], flags: v[12], riding: !!(v[12] & RIDING_FLAG), built: v[14] ?? 1,
-  queue: (s.queues ?? []).find((q) => q[0] === v[0])?.slice(4) ?? [],
+  id: v[ID], type: v[TYPE], owner: v[OWNER], x: v[X], z: v[Z], hp: v[HP], cd: v[CD], flags: v[FLAGS], riding: !!(v[FLAGS] & RIDING_FLAG), built: v[BUILT] ?? 1,
+  queue: (s.queues ?? []).find((q) => q[0] === v[ID])?.slice(4) ?? [],
 }));
 // Global cards prefer a selected compatible facility, otherwise the server chooses one.
 export function recruitAction(s, slot, unit, ids = [], teams = []) {
@@ -185,7 +186,7 @@ export function rememberPlacementTerrain(map, cells = []) {
 
 export function placementState(s, map, grid, teams, layers) {
   const chars = grid.flat(), w = map.w, h = map.h, us = snapshotUnits(s), authored = worldLayers(map), ground = layers?.groundGrid?.flat() ?? authored.ground, objects = layers?.objectGrid?.flat() ?? authored.objects;
-  const g = { w, h, chars, ground, objects, mode: s.mode, logisticsEnabled: s.logistics?.enabled === true, logisticsEnabled: s.logistics?.enabled === true, world: s.world ? { regions: s.world.regions, railYard: rememberPlacementTerrain(map).railYard } : undefined, naval: map.naval === true, flags: chars.map((ch, c) => TERRAIN[ch === 'N' ? composeWorldCell(ground[c], objects[c]) : ch] ?? 0),
+  const g = { w, h, chars, ground, objects, mode: s.mode, logisticsEnabled: s.logistics?.enabled === true, world: s.world ? { regions: s.world.regions, railYard: rememberPlacementTerrain(map).railYard } : undefined, naval: map.naval === true, flags: chars.map((ch, c) => TERRAIN[ch === 'N' ? composeWorldCell(ground[c], objects[c]) : ch] ?? 0),
     height: Array.from({ length: w * h }, (_, c) => levelOf(map.heights?.[Math.floor(c / w)]?.[c % w] ?? '0')),
     smokes: (s.smokes ?? []).map(([x, z, r]) => ({ x, z, r })),
     units: new Map(us.map((v) => [v.id, v])), players: teams.map((team) => ({ team })),

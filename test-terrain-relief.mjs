@@ -1,14 +1,10 @@
 import assert from 'node:assert/strict';
-import { readFileSync } from 'node:fs';
 import * as THREE from 'three';
 import { CELL, CFG, levelOf } from './shared/sim.js';
 import { generateWorldMap } from './shared/world-conquest.js';
 import { createRelief, TRENCH_DEPTH } from './client/relief.js';
 import { WATER_LIFT } from './client/water-levels.js';
-const cameraSource = readFileSync(new URL('./client/camera.js', import.meta.url), 'utf8')
-  .replace("from 'three'", `from '${import.meta.resolve('three')}'`)
-  .replace("from '/shared/sim.js'", `from '${new URL('./shared/sim.js', import.meta.url)}'`);
-const { groundAt } = await import('data:text/javascript;base64,' + Buffer.from(cameraSource).toString('base64'));
+import { groundAt } from './client/camera.js';
 
 const L = CFG.levelHeight, EPS = 1e-6;
 const close = (actual, expected, label, tolerance = EPS) => {
@@ -335,6 +331,30 @@ for (const low of [true, false]) {
       console.error(`FAIL ${label}: ${error.message}`);
     } finally { relief.dispose(); }
   }
+
+  // A taller hilly map: an update rebuilds only the rows it reaches and copies the rest, and still matches a fresh
+  // build after changes at the top, the bottom and the middle, cliffs and a crater included (#58).
+  const tallMap = makeMap(24, 48, (x, z) => Math.round(1.5 + 1.5 * Math.sin(x * 0.7) + 2 * Math.sin(z * 0.31)));
+  const tallGrid = tallMap.rows.map(row => [...row]), tall = createRelief(tallMap, tallGrid, { low });
+  try {
+    // a line of eight craters is a bombing run: its lips sway up to six cells from the craters (scarRun)
+    const run = Array.from({ length: 8 }, (_, i) => [4 + i, 20 + (i >> 2), -1, '+']);
+    // then one more crater five rows off turns the run, so lips beside the old craters move too
+    for (const cells of [[[5, 3, -1, '+']], [[10, 44, 6]], run, [[9, 26, -1, '+']], [[14, 34, 0, 'R']], [[3, 4, 4]]]) {
+      for (const [x, z, value, ch] of cells) {
+        tallMap.heights[z] = tallMap.heights[z].slice(0, x) + levelChar(value) + tallMap.heights[z].slice(x + 1);
+        if (ch) tallGrid[z][x] = ch;
+      }
+      tall.update(cells.map(([x, z]) => z * tallMap.w + x));
+      const [x, z] = cells[0];
+      assert.ok(tall.stats.rowsRebuilt < tallMap.h, `${quality}: an update at row ${z} rebuilt ${tall.stats.rowsRebuilt} of ${tallMap.h} rows`);
+      const fresh = createRelief(tallMap, tallGrid, { low });
+      try { checkSameRelief(tall, fresh, tallMap, `${quality} tall update ${x},${z}`); } finally { fresh.dispose(); }
+    }
+  } catch (error) {
+    failures.push(error);
+    console.error(`FAIL ${quality} tall updates: ${error.message}`);
+  } finally { tall.dispose(); }
 
   const updateMap = makeMap(13, 11, x => Math.max(0, Math.min(3, x - 3)));
   const grid = updateMap.rows.map(row => [...row]), incremental = createRelief(updateMap, grid, { low });

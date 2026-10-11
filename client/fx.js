@@ -21,12 +21,12 @@
 // Fog of war: effects at a shooter (flash, tracer, launch, thrown grenade) only play when the shooter is in this
 // snapshot's visible set. Impacts only play for shots the server already sent us, so they show what the game shows.
 import * as THREE from 'three';
-import { UNITS, CELL } from '/shared/sim.js';
+import { UNITS, CELL } from '../shared/sim.js';
 import { gfx } from './gfx.js';
 import { audio } from './audio.js';
 import { wind } from './wind.js';
 import { vehicleDamageAnchor } from './unit-models.js';
-import { SECTION_MASS, DEBRIS_LIMITS } from '/shared/debris-motion.js';
+import { SECTION_MASS, DEBRIS_LIMITS } from '../shared/debris-motion.js';
 
 const TAU = Math.PI * 2, rand = Math.random, rr = (a, b) => a + (b - a) * rand();
 const lin = (hex, k = 1) => { const c = new THREE.Color(hex); return [c.r * k, c.g * k, c.b * k]; };

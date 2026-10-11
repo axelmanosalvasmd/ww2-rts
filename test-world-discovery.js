@@ -1,5 +1,4 @@
 import assert from 'node:assert/strict';
-import { readFileSync } from 'node:fs';
 
 // Candidate generation has no canvas dependency. Its ground module imports image loading in browsers.
 const originalImage = globalThis.Image;
@@ -23,14 +22,7 @@ assert.ok(batch.value.every(c => map.discovered[c.cy * map.w + c.cx]), 'undiscov
 console.log('PASS: bounded discovery scenery preparation and deterministic results');
 
 // Exercise the real attribute builder without invoking canvas painting or GPU uploads.
-const groundSource = readFileSync(new URL('./client/ground.js', import.meta.url), 'utf8')
-  .replace("from 'three'", `from '${import.meta.resolve('three')}'`)
-  .replace("from '../shared/sim.js'", `from '${new URL('./shared/sim.js', import.meta.url)}'`)
-  .replace("from './gfx.js'", `from '${new URL('./client/gfx.js', import.meta.url)}'`);
-globalThis.Image = class { set src(value) { this.onerror?.(); } };
-const ground = await import('data:text/javascript;base64,' + Buffer.from(groundSource + '\nexport { cellAttrs, buildNoise };').toString('base64'));
-if (originalImage === undefined) delete globalThis.Image;
-else globalThis.Image = originalImage;
+const { internals: ground } = await import('./client/ground.js'); // already loaded by props.js above
 ground.buildNoise();
 const w = 128, rows = Array(w).fill('.'.repeat(w)), state = new Uint8Array(w * w);
 let reads = 0;

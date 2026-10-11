@@ -1,6 +1,6 @@
 // Web worker: plays N AI free-for-all matches (one AI per spawn) on a map and reports how often each spawn wins.
-import { CELL } from '/shared/sim.js';
-import { playMatch } from '/shared/ai-schedule.js';
+import { CELL } from '../shared/sim.js';
+import { playMatch } from '../shared/ai-schedule.js';
 
 onmessage = ({ data: { map, n } }) => {
   const k = map.spawns.length, wins = Array(k).fill(0);
