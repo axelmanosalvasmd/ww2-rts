@@ -1310,7 +1310,7 @@ function stepWorld(g, list, dt) {
   }
   const grid = gridFor(g);
   for (const r of g.world.regions) {
-    const on = grid.candidates(r, CFG.pointRadius, true, u => u.hp > 0 && !u.retreating && !u.logistics?.forced && !u.riding && UNITS[u.type].infantry && dist(u,r) <= CFG.pointRadius);
+    const on = grid.inOrder(r, CFG.pointRadius, u => u.hp > 0 && !u.retreating && !u.logistics?.forced && !u.riding && UNITS[u.type].infantry && dist(u,r) <= CFG.pointRadius);
     const team = on.length ? g.players[on[0].owner].team : -1;
     r.contested = on.some(u => g.players[u.owner].team !== team);
     const blockers = production.get(r.id);
@@ -2228,7 +2228,7 @@ function antiAir(g, list, dt) {
     if (!aa?.dps || u.hp <= 0 || (aa.setup && u.still < 2) || (u.air && !airborne(u)) || (u.built !== undefined && u.built < 1)) continue;
     if (u.holdFire && (!u.air || u.air.mission?.kind !== 'attack')) continue;
     let best = null, bd = aa.range;
-    for (const t of gridFor(g).candidates(u, aa.range, true, t => t.air && airborne(t) && t.hp > 0 && !allied(g, t.owner, u.owner) && g.players[u.owner].visible.has(t.id) && (!u.holdFire || u.air.mission.id === t.id))) if (dist(u, t) <= bd) { bd = dist(u, t); best = t; }
+    for (const t of gridFor(g).inOrder(u, aa.range, t => t.air && airborne(t) && t.hp > 0 && !allied(g, t.owner, u.owner) && g.players[u.owner].visible.has(t.id) && (!u.holdFire || u.air.mission.id === t.id))) if (dist(u, t) <= bd) { bd = dist(u, t); best = t; }
     if (!best || !canFire(u) || u.logistics?.forced && !u.logistics.stranded) continue;
     let aaRate = 1 / shortageRate(u);
     if (u.logistics) { u.aaReserve = (u.aaReserve ?? 0) + dt * aaRate / Math.max(.1, UNITS[u.type].w.interval); if (u.aaReserve >= 1) { consumeAmmo(u, Math.floor(u.aaReserve)); u.aaReserve %= 1; } }
@@ -2312,7 +2312,7 @@ export function coverBehind(g, t, from, units = true) {
     const dx = v.x - t.x, dz = v.z - t.z, d = Math.hypot(dx, dz);
     if (d > 0 && d < 4 && (dx * ca + dz * sa) / d > 0.7) best = Math.max(best, Math.min(1, (4 - d) / 1.5));
   };
-  if (units) for (const v of gridFor(g).candidates(t, 4, false, v => v !== t && !v.air && !UNITS[v.type].infantry && v.hp > 0, true)) hull(v);
+  if (units) for (const v of gridFor(g).heavy(t, 4, v => v !== t && !v.air && !UNITS[v.type].infantry && v.hp > 0)) hull(v);
   for (const v of g.wrecks ?? []) if (!v.motion) hull(v);
   return best;
 }
@@ -2372,7 +2372,7 @@ function nearCover(g, u) {
   const c = Math.floor(u.z / CELL) * g.w + Math.floor(u.x / CELL);
   if (SOLID.has(g.chars[c + 1]) || SOLID.has(g.chars[c - 1]) || SOLID.has(g.chars[c + g.w]) || SOLID.has(g.chars[c - g.w])) return true;
   if (WALLS.has(g.chars[c + g.w + 1]) || WALLS.has(g.chars[c + g.w - 1]) || WALLS.has(g.chars[c - g.w + 1]) || WALLS.has(g.chars[c - g.w - 1])) return true; // a house corner
-  return gridFor(g).candidates(u, 3.5, false, v => v !== u && !v.air && !UNITS[v.type].infantry, true).some(v => dist(u, v) < 3.5);
+  return gridFor(g).hasHeavy(u, 3.5, v => v !== u && !v.air && !UNITS[v.type].infantry && dist(u, v) < 3.5);
 }
 export const vet = (u) => (UNITS[u.type].cost ? CFG.vetXp.filter(k => u.xp >= k * UNITS[u.type].cost).length : 0); // free units (the bunker) never rank up
 const cellCenter = (g, c) => ({ x: (c % g.w + 0.5) * CELL, z: (Math.floor(c / g.w) + 0.5) * CELL });
@@ -2547,7 +2547,7 @@ function registerBridgeSection(g, c) {
 function occupiedVehicleCell(g, c, list) {
   const at = cellCenter(g, c);
   const radius = g.worldFootprintRadius ??= Math.max(...Object.values(UNITS).map(def => def.radius ?? 0));
-  return gridFor(g).candidates(at, radius + CELL, false, undefined, true).some(u => u.hp > 0 && !u.air && !u.riding && !UNITS[u.type].infantry && !UNITS[u.type].structure
+  return gridFor(g).hasHeavy(at, radius + CELL, u => u.hp > 0 && !u.air && !u.riding && !UNITS[u.type].infantry && !UNITS[u.type].structure
     && Math.abs(u.x - at.x) < UNITS[u.type].radius + CELL / 2 && Math.abs(u.z - at.z) < UNITS[u.type].radius + CELL / 2);
 }
 function failWorldSection(g, section, list, direction) {
@@ -3912,8 +3912,8 @@ function pickTarget(g, u) {
   const w = UNITS[u.type].w, cur = u.targetId, team = g.players[u.owner].team;
   let best = 0, bestScore = Infinity, curScore = Infinity;
   // salvo weapons count each target's neighbours: gather them once (range + 6 m) instead of a query per target
-  const pool = w.salvo ? gridFor(g).candidates(u, w.range + 6, false, o => !o.riding && !allied(g, o.owner, u.owner) && g.players[u.owner].visible.has(o.id)) : null;
-  for (const t of gridFor(g).candidates(u, rangeOf(g, u, w) + (g.naval ? HULL_MAX : 0), true, t => t.hp > 0 && !t.air && !allied(g, t.owner, u.owner) && g.players[u.owner].visible.has(t.id))) {
+  const pool = w.salvo ? gridFor(g).unordered(u, w.range + 6, o => !o.riding && !allied(g, o.owner, u.owner) && g.players[u.owner].visible.has(o.id)) : null;
+  for (const t of gridFor(g).inOrder(u, rangeOf(g, u, w) + (g.naval ? HULL_MAX : 0), t => t.hp > 0 && !t.air && !allied(g, t.owner, u.owner) && g.players[u.owner].visible.has(t.id))) {
     if (!canShoot(g, u, t)) continue;
     const def = UNITS[t.type], inf = def.infantry;
     const dug = t.garrison >= 0 ? 3 : inTrench(g, t) ? 2 : inCover(g, t) ? 1.5 : 1;
@@ -3972,7 +3972,7 @@ function spotNear(g, u, at, radius, held, from, beat, space = spaceFor(u)) {
 function threatFor(g, u, at) {
   const seen = g.players[u.owner].visible;
   let best = null, bd = 50;
-  for (const v of gridFor(g).candidates(at, 50, false, v => v.hp > 0 && !v.air && UNITS[v.type].w && !allied(g, v.owner, u.owner) && seen.has(v.id))) {
+  for (const v of gridFor(g).unordered(at, 50, v => v.hp > 0 && !v.air && UNITS[v.type].w && !allied(g, v.owner, u.owner) && seen.has(v.id))) {
     const d = dist(v, at); if (d < bd) { bd = d; best = v; }
   }
   if (best) return { x: best.x, z: best.z };
@@ -4097,7 +4097,7 @@ function react(g, u, def) {
 function keepSpacing(g, u) {
   if (u.react > 0 || u.targetId) return;
   u.react = 1;
-  const space = CFG.behavior.spacing, close = gridFor(g).candidates(u, space, false, v => v.id < u.id && v.owner === u.owner && v.hp > 0 && UNITS[v.type].infantry && v.garrison < 0 && !v.path.length && dist(u, v) < space - 0.25);
+  const space = CFG.behavior.spacing, close = gridFor(g).unordered(u, space, v => v.id < u.id && v.owner === u.owner && v.hp > 0 && UNITS[v.type].infantry && v.garrison < 0 && !v.path.length && dist(u, v) < space - 0.25);
   if (!close.length) return;
   const held = heldSpots(g, new Set([u.id]), u, CFG.behavior.coverSeek, u.owner), from = threatFor(g, u, u), now = coverRank(g, u, from);
   const spot = spotNear(g, u, u, CFG.behavior.coverSeek, held, from, Math.min(3, now + 1)) ?? (now < 3 ? null : spotNear(g, u, u, CFG.behavior.coverSeek, held, null, 4));
@@ -4218,7 +4218,7 @@ function flightContact(g, p, a, b, prior, startFraction, endFraction, visible = 
     if (hit && (!best || hit.fraction < best.fraction)) best = { ...hit, cell: c };
   }
   const center = { x: (a.x + b.x) / 2, z: (a.z + b.z) / 2 }, reach = Math.hypot(b.x - a.x, b.z - a.z) / 2 + 14 + (g.naval ? HULL_MAX : 0);
-  for (const t of gridFor(g).candidates(center, reach, false, t => t.hp > 0 && !t.air && !t.riding && t.id !== p.shooter && visible(t) && (p.blastSource || !allied(g, p.owner, t.owner)))) {
+  for (const t of gridFor(g).unordered(center, reach, t => t.hp > 0 && !t.air && !t.riding && t.id !== p.shooter && visible(t) && (p.blastSource || !allied(g, p.owner, t.owner)))) {
     const def = UNITS[t.type];
     // Constructed buildings collide through their individual structural cells.
     if (def.building && t.cells?.length) continue;
@@ -4236,7 +4236,7 @@ function stepGate(g, u, dt) {
   if ((u.gateT = (u.gateT ?? 0) - dt) > 0) return;
   u.gateT = 0.5;
   const c = u.cells[0], { shut } = UNITS[u.type].gate;
-  const near = (r, f) => gridFor(g).candidates(u, r, false, v => v.hp > 0 && !v.air && !v.riding && !UNITS[v.type].building && f(v)).length > 0;
+  const near = (r, f) => gridFor(g).has(u, r, v => v.hp > 0 && !v.air && !v.riding && !UNITS[v.type].building && f(v));
   const foe = near(u.open === false ? shut + 4 : shut, v => !allied(g, v.owner, u.owner));
   const open = !foe || (u.open !== false && near(3, v => dist(v, u) < CELL * 0.7 + (UNITS[v.type].radius ?? 1)));
   if (open === u.open) return;
@@ -4311,7 +4311,7 @@ function stepFlights(g, prior) {
       const at = flightAt(p, begin + (end - begin) * fraction), stop = begin + (end - begin) * fraction;
       // Suppression uses traveled space and one shared set per infantry volley.
       const center = { x: (a.x + at.x) / 2, z: (a.z + at.z) / 2 }, reach = Math.hypot(at.x - a.x, at.z - a.z) / 2 + p.near;
-      if (p.near && p.suppression) for (const t of gridFor(g).candidates(center, reach, false)) if (segmentDistance(a, at, t) <= p.near) flightSuppress(g, p, t);
+      if (p.near && p.suppression) for (const t of gridFor(g).unordered(center, reach)) if (segmentDistance(a, at, t) <= p.near) flightSuppress(g, p, t);
       p.last = stop;
       if (!contact) break;
       if (resolveFlight(g, p, contact, at, stop, velocityAt(p, stop))) break;
@@ -4385,7 +4385,7 @@ function updateVision(g) {
       // On a naval map it reaches a ship's half length further, since a ship is seen along its whole hull.
       const bx = Math.floor(u.x / 16), bz = Math.floor(u.z / 16), ck = bx + ',' + bz + ',' + reach;
       let near = nearCache.get(ck);
-      if (!near) nearCache.set(ck, near = [...gridFor(g).candidates({ x: (bx + 0.5) * 16, z: (bz + 0.5) * 16 }, reach + 8 + (g.naval ? HULL_MAX : 0), false, t => !t.air && g.players[t.owner].team !== p.team), ...airList]);
+      if (!near) nearCache.set(ck, near = [...gridFor(g).unordered({ x: (bx + 0.5) * 16, z: (bz + 0.5) * 16 }, reach + 8 + (g.naval ? HULL_MAX : 0), t => !t.air && g.players[t.owner].team !== p.team), ...airList]);
       for (const t of near) {
         if (g.players[t.owner].team === p.team) continue;
         const bound = t.air ? CFG.air.seeRange : reach + (UNITS[t.type].hull ?? 0);
@@ -4432,7 +4432,7 @@ function updateVision(g) {
   }
   if (g.mode?.kind === 'world') {
     const actor = g.players[-1]; actor.visible = new Set();
-    for (const guard of list) if (guard.owner < 0 && (!UNITS[guard.type].building || UNITS[guard.type].w || UNITS[guard.type].lookout) && !(guard.built < 1)) for (const enemy of gridFor(g).candidates(guard, visionOf(g, guard), true, u => u.owner >= 0 && u.hp > 0)) if (UNITS[guard.type].building || los(g, guard, enemy)) actor.visible.add(enemy.id);
+    for (const guard of list) if (guard.owner < 0 && (!UNITS[guard.type].building || UNITS[guard.type].w || UNITS[guard.type].lookout) && !(guard.built < 1)) for (const enemy of gridFor(g).inOrder(guard, visionOf(g, guard), u => u.owner >= 0 && u.hp > 0)) if (UNITS[guard.type].building || los(g, guard, enemy)) actor.visible.add(enemy.id);
   }
 }
 // the enemy buildings a player knows about: seen now, or remembered (Ghosts)
@@ -4934,7 +4934,7 @@ function healWounded(g, list, dt) {
   for (const m of medics) {
     const idle = !m.path.length && !m.amove && m.garrison < 0 && !(m.enter >= 0) && !m.board;
     let best = null, worst = 1, far = null, farWorst = A.hurt;
-    for (const u of gridFor(g).candidates(m, idle ? A.seek : A.medic, false)) {
+    for (const u of gridFor(g).unordered(m, idle ? A.seek : A.medic)) {
       const def = UNITS[u.type], frac = u.hp / (def.models * def.hpPer);
       if (u === m || u.operative || !def.infantry || u.hp <= 0 || u.riding || u.retreating || !allied(g, u.owner, m.owner)) continue;
       const d = dist(u, m);
@@ -5121,7 +5121,7 @@ function debrisEnvironment(g) {
         if (hit && (!best || hit.fraction < best.fraction)) best = { ...hit, material: worldMaterial(g, c) };
       }
       const center = { x: (a.x + b.x) / 2, z: (a.z + b.z) / 2 };
-      for (const u of gridFor(g).candidates(center, radius + 12, false, u => u.hp > 0 && !u.air && !u.riding && !UNITS[u.type].infantry && !UNITS[u.type].structure)) {
+      for (const u of gridFor(g).unordered(center, radius + 12, u => u.hp > 0 && !u.air && !u.riding && !UNITS[u.type].infantry && !UNITS[u.type].structure)) {
         const ground = levelAt(g, u.x, u.z) * CFG.levelHeight, hit = sweepBody(a, b, u, u, radius + bodyRadius(UNITS[u.type]), ground, ground + 2.5);
         if (hit && (!best || hit.fraction < best.fraction)) best = { ...hit, material: MATERIALS.steel };
       }
@@ -5183,7 +5183,7 @@ function separateCrowds(g, list) {
     if (a.garrison >= 0 || a.air || a.riding || a.rail) continue;
     const grid = sep, size = grid.size;
     let x0 = Math.floor((a.x - radius) / size), x1 = Math.floor((a.x + radius) / size), z0 = Math.floor((a.z - radius) / size), z1 = Math.floor((a.z + radius) / size);
-    let candidates = grid.candidates(a, radius, true, b => order.get(b.id) > i);
+    let candidates = grid.inOrder(a, radius, b => order.get(b.id) > i);
     for (let k = 0; k < candidates.length; k++) {
       const b = candidates[k], j = order.get(b.id), min = (UNITS[a.type].radius + UNITS[b.type].radius) * 0.8;
       if (a.garrison >= 0 || b.garrison >= 0 || a.air || b.air || b.riding || b.rail) continue;
@@ -5217,7 +5217,7 @@ function separateCrowds(g, list) {
       const nx0 = Math.floor((a.x - radius) / size), nx1 = Math.floor((a.x + radius) / size), nz0 = Math.floor((a.z - radius) / size), nz1 = Math.floor((a.z + radius) / size);
       if (nx0 !== x0 || nx1 !== x1 || nz0 !== z0 || nz1 !== z1) {
         x0 = nx0; x1 = nx1; z0 = nz0; z1 = nz1;
-        candidates = grid.candidates(a, radius, true, next => order.get(next.id) > j); k = -1;
+        candidates = grid.inOrder(a, radius, next => order.get(next.id) > j); k = -1;
       }
     }
   }
@@ -5315,7 +5315,7 @@ function driveVehicle(g, u, def, route, speed, dt, back, traffic, before, traffi
   // Never allow a hull to rotate or travel through a cell during this tick.
   let clearMotion = sweptVehicleClear(g, before, next, def, blockOf(def));
   if (clearMotion) {
-    const nearby = gridFor(g).candidates(u, bodyRadius(def) + 9, false, v => v.id !== u.id && v.hp > 0 && !v.air && !v.riding && v.garrison < 0 && !ghostPair(g, u, v));
+    const nearby = gridFor(g).unordered(u, bodyRadius(def) + 9, v => v.id !== u.id && v.hp > 0 && !v.air && !v.riding && v.garrison < 0 && !ghostPair(g, u, v));
     const blocker = nearby.find(v => {
       const min = bodyRadius(def) + bodyRadius(UNITS[v.type]);
       const dx = next.x - before.x, dz = next.z - before.z, t = Math.max(0, Math.min(1, ((v.x - before.x) * dx + (v.z - before.z) * dz) / (dx * dx + dz * dz || 1)));

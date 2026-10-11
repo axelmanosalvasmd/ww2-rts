@@ -5,6 +5,12 @@ AI-vs-AI runs (see DESIGN.md for the balance log). Add new entries under **Unrel
 
 ## Unreleased
 
+- The spatial index's queries say what the caller needs (issue #58, C3): `inOrder` (first or best match wins, so the
+  units Map's order), `unordered`, `heavy` (vehicles and other non-infantry only), and `has` / `hasHeavy`, which stop
+  at the first match, replace `candidates(at, r, true|false, match, heavyOnly)` in the simulation, local traffic and
+  the AI. The Classic, Conquest and six-AI World seeded runs end in exactly the same state. The spatial query check
+  now also covers `inOrder`, `unordered` and `has`. Left as is: code that moves a unit still calls `updateGrid` itself.
+
 - Snapshot unit rows have named fields (`UNIT_ROW` in `shared/sim.js`, issue #58, C4): the server's per-player row
   filter, the alerts, autocast and the action availability read `row[UNIT_ROW.hp]` instead of `row[7]`, so a field
   added to the row cannot silently shift what they read. New check: the cached and uncached snapshot rows hold each

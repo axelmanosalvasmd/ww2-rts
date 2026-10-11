@@ -71,7 +71,7 @@ function laneHolder(g, u, def, context, friend) {
   // Its nose already in it (or past its start): drive on through. Further than the hold point: carry on for now.
   const { entry, exit } = lane, before = (entry.x - u.x) * own.x + (entry.z - u.z) * own.z;
   if (before < bodyRadius(def) + 0.5 || length(u, entry) > 2 * bodyRadius(def) + LANE.hold) return null;
-  const oncoming = context.grid.candidates(u, LANE.ahead, false, v => v.id !== u.id && v.hp > 0 && !v.air && !v.riding && v.path?.length
+  const oncoming = context.grid.unordered(u, LANE.ahead, v => v.id !== u.id && v.hp > 0 && !v.air && !v.riding && v.path?.length
     && friend(v) && context.visible(v) && (v.x - u.x) * own.x + (v.z - u.z) * own.z > 0 && (h => h && h.x * own.x + h.z * own.z < -0.3)(heading(v)));
   if (!oncoming.length) return null;
   const sx = exit.x - entry.x, sz = exit.z - entry.z, squared = sx * sx + sz * sz;
@@ -92,7 +92,8 @@ export function trafficStep(g, u, goal, context) {
   if (!goal || protectedUnit(u)) { u.traffic = null; u.trafficWait = 0; return { goal, blocked: false }; }
   const def = defs[u.type], d = length(u, goal), dx = (goal.x - u.x) / (d || 1), dz = (goal.z - u.z) / (d || 1);
   const holder = context.open && !def.infantry && !u.traffic && u.path?.length && laneHolder(g, u, def, context, friend);
-  const radius = bodyRadius(def) + 7, nearby = grid.candidates(u, radius, false, v => !(def.infantry && defs[v.type].infantry) && v.id !== u.id && v.id !== u.board && v.hp > 0 && !v.air && !v.riding && v.garrison < 0 && !(((v.ghost ?? 0) > g.tick || (u.ghost ?? 0) > g.tick) && friend(v)) && visible(v), def.infantry); // a squad steers around vehicles only
+  const radius = bodyRadius(def) + 7, match = v => !(def.infantry && defs[v.type].infantry) && v.id !== u.id && v.id !== u.board && v.hp > 0 && !v.air && !v.riding && v.garrison < 0 && !(((v.ghost ?? 0) > g.tick || (u.ghost ?? 0) > g.tick) && friend(v)) && visible(v);
+  const nearby = def.infantry ? grid.heavy(u, radius, match) : grid.unordered(u, radius, match); // a squad steers around vehicles only
   const velocity = Math.min(def.speed, d / dt), vx = dx * velocity, vz = dz * velocity;
   let conflict = null, time = Infinity, follow = false, own;
   for (const v of nearby) {

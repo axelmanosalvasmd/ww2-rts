@@ -52,6 +52,27 @@ export class SpatialGrid {
     return [...(this.owners.get(owner) ?? [])].filter(record => this.units.get(record.unit.id) === record.unit)
       .sort(byOrder).map(record => record.unit);
   }
+  // Queries, named by what the caller needs. Each returns the units within the square of the given radius around at
+  // (wider than the circle: callers check the distance they mean) that pass match.
+  // inOrder: in the units Map's order, for choices where the first or best match wins (targets, capture, collisions),
+  // so the outcome never depends on where units sit in the index.
+  inOrder(at, radius, match) { return this.candidates(at, radius, true, match); }
+  // unordered: no fixed order, a little cheaper, for sums and for effects on every unit found.
+  unordered(at, radius, match) { return this.candidates(at, radius, false, match); }
+  // heavy: only heavy units (setHeavy: in the game, everything but infantry), no fixed order.
+  heavy(at, radius, match) { return this.candidates(at, radius, false, match, true); }
+  // has, hasHeavy: is there one? They stop at the first.
+  has(at, radius, match = () => true) { return this.first(at, radius, match, this.buckets); }
+  hasHeavy(at, radius, match = () => true) { return this.first(at, radius, match, this.heavyBuckets); }
+  first(at, radius, match, buckets) {
+    const size = this.size, units = this.units;
+    for (let z = Math.floor((at.z - radius) / size); z <= Math.floor((at.z + radius) / size); z++)
+      for (let x = Math.floor((at.x - radius) / size); x <= Math.floor((at.x + radius) / size); x++) {
+        const bucket = buckets.get(keyOf(x, z));
+        if (bucket) for (const record of bucket) if (units.get(record.unit.id) === record.unit && match(record.unit)) return true;
+      }
+    return false;
+  }
   candidates(at, radius, ordered = true, match = () => true, heavyOnly = false) {
     const size = this.size, buckets = heavyOnly ? this.heavyBuckets : this.buckets, units = this.units;
     let result = null, runs = null, sorted = true;

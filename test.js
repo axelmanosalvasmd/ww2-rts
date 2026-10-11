@@ -6659,6 +6659,10 @@ await check("Spatial queries keep the brute-force order, including borders, dupl
     const match = u => u.owner === i % 3;
     const expected = brute(at, r).filter(match).sort((a, b) => Math.hypot(a.x - at.x, a.z - at.z) - Math.hypot(b.x - at.x, b.z - at.z))[0] ?? null;
     assert.equal(grid.nearest(at, r, match), expected, 'nearest query keeps the first exact tie');
+    const near = u => Math.hypot(u.x - at.x, u.z - at.z) <= r && match(u);
+    assert.deepEqual(grid.inOrder(at, r, near), brute(at, r).filter(match), 'inOrder keeps Map order');
+    assert.deepEqual(new Set(grid.unordered(at, r, near)), new Set(brute(at, r).filter(match)), 'unordered finds the same units');
+    assert.equal(grid.has(at, r, near), brute(at, r).some(match), 'has answers whether there is one');
   }
   const moved = units.get(1000); moved.x = 112; moved.z = -32; grid.update(moved);
   units.delete(999);
@@ -7250,12 +7254,12 @@ await check("Horde", async () => {
   const front = { id: 1, type: 'tank', owner: 2, hp: 1, x: 3, z: 0, vx: 0, vz: 0, trafficWait: 20, stuck: 20, garrison: -1, path: [{ x: 10, z: 0 }] };
   const back = { id: 2, type: 'tank', owner: 2, hp: 1, x: 0, z: 0, garrison: -1, path: [{ x: 10, z: 0 }] };
   const jam = { tick: 0, units: new Map([[1, front], [2, back]]) }, through = [];
-  const ctx = { defs: UNITS, dt: 0.05, grid: { candidates: (u, r, _, keep) => [front].filter(keep) }, clear: () => false, coverRank: () => 3, visible: () => true };
+  const ctx = { defs: UNITS, dt: 0.05, grid: { unordered: (u, r, keep) => [front].filter(keep), heavy: (u, r, keep) => [front].filter(keep) }, clear: () => false, coverRank: () => 3, visible: () => true };
   for (; jam.tick < 100; jam.tick++) if (!trafficStep(jam, back, back.path[0], ctx).blocked) through.push(jam.tick);
   assert.ok(through.length && through[0] <= 80 && back.ghost > through[0], 'a tank gridlocked behind a friend ghosts through it after 3 s, not never');
   for (const ally of [true, false]) {
     const f2 = { ...front, owner: 1, trafficWait: 20 }, b2 = { ...back, owner: 2, ghost: 0, trafficWait: 0, traffic: null }, jam2 = { tick: 0, units: new Map([[1, f2], [2, b2]]) };
-    const ctx2 = { ...ctx, grid: { candidates: (u, r, _, keep) => [f2].filter(keep) }, friend: () => ally };
+    const ctx2 = { ...ctx, grid: { unordered: (u, r, keep) => [f2].filter(keep), heavy: (u, r, keep) => [f2].filter(keep) }, friend: () => ally };
     let passed = false;
     for (; jam2.tick < 100; jam2.tick++) passed ||= !trafficStep(jam2, b2, b2.path[0], ctx2).blocked;
     assert.equal(passed, ally, ally ? 'an allied tank in the way is ghosted through like your own' : 'an enemy tank in the way never is');
