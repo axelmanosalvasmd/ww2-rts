@@ -1557,6 +1557,12 @@ is rewritten every frame. Terms: Manpower = Mano de obra (MO), Munitions = Munic
 the page. Adding text to the game means adding its Spanish to `client/es.js`.
 
 ### Runtime
+- Game processes (2026-10-11, issue #58): `WW2_SHARDS=N` makes the started process a front that serves HTTP and the
+  public lobby list and forwards each `/ws?room=code` upgrade to one of N forked game processes (`server/shards.js`,
+  FNV-1a of the room code modulo N; the request line and headers are replayed and the sockets piped). Each game
+  process is `server.js` with `WW2_SHARD` set and keeps today's room code unchanged. Shared state has one owner: the
+  front merges the processes' `/api/rooms`, writes Horde records they send, and tells them when a map is saved.
+  `MAX_ROOMS` applies per game process. A game process that exits is started again after a second.
 - Plain JS ES modules, no build step. Deps: `ws` (server), `three` (client).
 - Server-authoritative: `shared/sim.js` runs at 20 Hz on the server and snapshots go out at 10 Hz (every 3 or 4
   ticks while a room falls behind, see round 3 above).

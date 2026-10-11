@@ -4545,10 +4545,10 @@ await check("Exercise the real room tick's delivery ordering without opening a s
     // The real schedule (shared/ai-schedule.js) with a recording AI in every seat.
     const recording = { thinkEvery, observe: g => ({ tick: g.tick }), think: (g, slot, opts) => { decisions.push([g.tick, slot, opts.view.tick]); } };
     const recordedTick = (g, seats, views, options) => aiTick(g, seats.map(seat => ({ ...seat, brain: planner(recording) })), views, { ...options, sim: { snapshotCache: () => ({}) } });
-    const tick = new Function('aiTick', 'step', 'snapshotCache', 'snapshotFor', 'createTickMeter', 'recordTick', 'tickStats', 'trimmed',
+    const tick = new Function('aiTick', 'step', 'snapshotCache', 'snapshotFor', 'createTickMeter', 'recordTick', 'tickStats', 'trimmed', 'connected',
       body + '\nreturn timedRoomTick;')(
       recordedTick, g => { g.tick++; },
-      () => ({}), g => ({ tick: g.tick }), () => ({}), () => cadence, () => ({}), (room, net, msg) => msg);
+      () => ({}), g => ({ tick: g.tick }), () => ({}), () => cadence, () => ({}), (room, net, msg) => msg, p => p.ws?.readyState === 1);
     const game = { tick: 0, winner: null, shots: [], newCells: [] };
     const room = { game, snapEvery: cadence, aiViews: [{ tick: 0 }, { tick: 0 }, { tick: 0 }],
       players: [{ ws: { readyState: 1, send: raw => deliveries.push(JSON.parse(raw).tick) } }, { ai: true, level: 'easy' }, { ai: true, level: 'hard' }] };
@@ -5948,6 +5948,20 @@ await check("Room lifecycle checks use one fake clock for captured timers and th
       await ana.send({ t: 'end' }); assert.equal(room.state, 'lobby', 'the spectating host can end the match');
       await ana.close();
       assert.ok(room.emptySince != null && !room.spectators.length, 'a spectator who disconnects is gone, and the room starts its grace period');
+    });
+    // A spectator whose connection falls megabytes behind is dropped (its client reconnects and starts from a whole
+    // snapshot): spectators share one delta stream, so it cannot skip snapshots the way a seat does (#58).
+    await check(async code => {
+      const [ana] = await humans(code, ['Ana']), room = h.rooms.get(code);
+      await ana.send({ t: 'spectate' }); await ana.send({ t: 'addAi' }); await ana.send({ t: 'addAi' });
+      await start(code, ana);
+      await h.tick(2);
+      const watcher = room.spectators[0].ws;
+      watcher.bufferedAmount = 5 * 1024 * 1024;
+      const tick = room.game.tick;
+      await h.tick(2);
+      assert.notEqual(watcher.readyState, 1, 'a spectator five megabytes behind is dropped');
+      assert.equal(room.game.tick, tick + 2, 'the match runs on without it');
     });
     console.log(`Room lifecycle: ${caseId} scenarios passed`);
   }
@@ -8905,6 +8919,8 @@ await stopServerHarness(); // the last server check is done
 // The public lobby checks own a fresh server with a deliberately small room cap.
 // The public lobby checks own a fresh server with a deliberately small room cap.
 await runFiles(['test-public-lobby.js'], { cwd: import.meta.dirname, timeoutMs: 30000 });
+// Rooms in several game processes (WW2_SHARDS): a sharded server of its own, over real sockets.
+await runFiles(['test-shards.js'], { cwd: import.meta.dirname, timeoutMs: 60000 });
 await childFiles;
 // Performance checks exercise the same painting, rendering and path interfaces used by the game. They run alone,
 // after everything else, so other test processes cannot eat their time budgets (a sharded run does this itself).

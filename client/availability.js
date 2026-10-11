@@ -4,7 +4,7 @@ import { UNITS, FORTS, CFG, TERRAIN, CELL, RIDING_FLAG, railYard, priceOf, supCo
 
 // Server denials deliberately contain no target details.
 export const DENY_SENTENCES = Object.freeze({
-  mp: 'Not enough manpower', mun: 'Not enough munitions', fuel: 'Not enough fuel', ammo: 'Not enough carried ammunition', ammo: 'Not enough carried ammunition',
+  mp: 'Not enough manpower', mun: 'Not enough munitions', fuel: 'Not enough fuel', ammo: 'Not enough carried ammunition',
   pop: 'The army is at its limit', cooldown: 'That order is still on cooldown',
   unseen: 'That target is not visible', notVisible: 'That spot is not visible',
   blocked: 'That spot is blocked or uneven', needs: 'The required unit or building is missing',
@@ -185,7 +185,7 @@ export function rememberPlacementTerrain(map, cells = []) {
 
 export function placementState(s, map, grid, teams, layers) {
   const chars = grid.flat(), w = map.w, h = map.h, us = snapshotUnits(s), authored = worldLayers(map), ground = layers?.groundGrid?.flat() ?? authored.ground, objects = layers?.objectGrid?.flat() ?? authored.objects;
-  const g = { w, h, chars, ground, objects, mode: s.mode, logisticsEnabled: s.logistics?.enabled === true, logisticsEnabled: s.logistics?.enabled === true, world: s.world ? { regions: s.world.regions, railYard: rememberPlacementTerrain(map).railYard } : undefined, naval: map.naval === true, flags: chars.map((ch, c) => TERRAIN[ch === 'N' ? composeWorldCell(ground[c], objects[c]) : ch] ?? 0),
+  const g = { w, h, chars, ground, objects, mode: s.mode, logisticsEnabled: s.logistics?.enabled === true, world: s.world ? { regions: s.world.regions, railYard: rememberPlacementTerrain(map).railYard } : undefined, naval: map.naval === true, flags: chars.map((ch, c) => TERRAIN[ch === 'N' ? composeWorldCell(ground[c], objects[c]) : ch] ?? 0),
     height: Array.from({ length: w * h }, (_, c) => levelOf(map.heights?.[Math.floor(c / w)]?.[c % w] ?? '0')),
     smokes: (s.smokes ?? []).map(([x, z, r]) => ({ x, z, r })),
     units: new Map(us.map((v) => [v.id, v])), players: teams.map((team) => ({ team })),

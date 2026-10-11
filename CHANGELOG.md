@@ -5,6 +5,25 @@ AI-vs-AI runs (see DESIGN.md for the balance log). Add new entries under **Unrel
 
 ## Unreleased
 
+- The server can run its rooms on every core (issue #58, B2): start it with `WW2_SHARDS=N` and the first process
+  serves the pages, the maps and the public lobby list while N game processes run the rooms, each room in the process
+  its code picks (server/shards.js), so a busy match no longer slows every other room down. On the Vostro (i5-12400)
+  with 20 Massive six-player Conquest matches 2.5 minutes in, one process fell to 0.5 game ticks a second (the matches
+  all but stopped) while four game processes kept all 20 at full speed (19.9 of 20). With 10 younger matches one
+  process still kept up, and splitting them gave no gain (a single room's tick time stays the same either way). Horde
+  records are written by the first process (game processes send theirs), a saved map tells the game processes to
+  reread their Horde map list, and a game process exits when the first one goes away. Without `WW2_SHARDS` the server
+  runs as before. New check: test-shards.js starts a sharded server over real sockets, puts two players of a room in
+  one process, lists rooms from both processes and runs a match.
+- Small server and client fixes (issue #58, D): a spectator more than 4 MB behind is dropped and reconnects to a whole
+  snapshot (spectators share one delta stream, so one cannot skip snapshots the way a seat does; a new room check
+  drops one 5 MB behind); "online" in snapshots now means a connected socket everywhere (two places counted a closing
+  socket as online); duplicate `ammo` and `logisticsEnabled` keys removed from client/availability.js. The check that
+  runs a slice of server.js's room tick now passes it `connected` too. Checked and left: the simulation's random
+  numbers come from `Math.random` throughout (13 places in sim.js and the AI, plus a per-game `rng(g)` for some), tools
+  seed it per process and live rooms are not seeded, so a per-game generator would change every seeded benchmark and
+  balance record without changing play.
+
 - World Conquest rivers no longer end in a beach at the edge of what has been seen. Ground not yet discovered is dry
   ground to the client, so the water drew its shore, foam and shallows along the frontier wherever a river or lake ran
   into the fog. Undiscovered cells within two cells of known water now count as water for the shore: the river carries
