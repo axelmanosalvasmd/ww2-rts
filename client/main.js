@@ -1146,22 +1146,29 @@ function placementView() {
   if (placementCache?.snapshot !== lastSnap) placementCache = { snapshot: lastSnap, ...placementState(lastSnap, lastStart.map, terrain.grid, teams, terrain) };
   return placementCache;
 }
-const hud = createHud({
-  get me() { return me; }, get teams() { return teams; }, get names() { return names; }, get PRIORITY() { return PRIORITY; }, get host() { return !!lobbyState?.amHost; }, get watching() { return watching; },
-  units, selected, look, facOf, color: (slot) => css(look(slot).color), classic: () => classicMode(), naval: () => lastStart?.map?.naval === true, send: sendCmd, blip,
-  logistics: () => logisticsData, logisticsOverlay: () => logisticsOverlay, logisticsSelection: () => logisticsSelection,
+// What the HUD hands back when the player clicks: an intent by name (client/hud.js calls ctx.act(name, ...args)).
+const hudActions = {
+  send: sendCmd, blip,
   toggleLogisticsOverlay: () => { logisticsOverlay = !logisticsOverlay; if (lastSnap) updateHud(lastSnap); },
   toggleLogisticsSelection: () => { logisticsSelection = !logisticsSelection; if (lastSnap) updateHud(lastSnap); },
   retreat: () => retreat(), takeCover: (q) => takeCover(q), stance: (k) => toggleStance(k), entrench: (k) => startEntrench(k), stop: () => { sendCmd({ t: 'stop', ids: [...selected] }); blip(330); }, amove: () => selected.size && setAim('amove'), area: () => startArea(), rally: () => startRally(),
-  transferGroup: (n) => transferGroup(n), dig: (k) => startDig(k), form: () => fm, setForm: (p) => setFormation(p), reform: (d) => reform(d), unload: () => unload(), mountUp: () => mountUp(), rail: () => startRail(), worldMatch: () => lastSnap?.mode?.kind === 'world', build: (k) => startBuild(k), ability: (t) => useAbility(t), support: (k) => aimSupport(k), fType: () => fKeyType(),
+  transferGroup: (n) => transferGroup(n), dig: (k) => startDig(k), setForm: (p) => setFormation(p), reform: (d) => reform(d), unload: () => unload(), mountUp: () => mountUp(), rail: () => startRail(), build: (k) => startBuild(k), ability: (t) => useAbility(t), support: (k) => aimSupport(k),
   autocast: (t) => { const on = autocast.toggle(t, [...selected].map(id => units.get(id)).filter(v => v?.type === t && v.owner === me), classicMode()); if (on !== null) blip(); },
-  builders: () => builders(), owns: (t) => owns(t), canPlace: (k) => canPlace(k), explain: (reason) => feedback.show(reason),
+  explain: (reason) => feedback.show(reason),
   // add: Shift/Ctrl adds the unit to the selection, or takes it out if it is already in
   select: (id, add = false) => { if (!add) selected.clear(); else if (selected.has(id)) { selected.delete(id); updateHud(lastSnap); return; } selected.add(id); updateHud(lastSnap); },
   selectMany: (ids) => { selected.clear(); for (const id of ids) selected.add(id); updateHud(lastSnap); },
   selectType: (type, e) => { selection.type(type, e); if (lastSnap) updateHud(lastSnap); },
-  idleCount: () => selection.idle().length,
   findIdle: (all) => { selection.findIdle(all); if (lastSnap) updateHud(lastSnap); },
+};
+// What the HUD reads: the decoded match state and this client's choices.
+const hud = createHud({
+  get me() { return me; }, get teams() { return teams; }, get names() { return names; }, get PRIORITY() { return PRIORITY; }, get host() { return !!lobbyState?.amHost; }, get watching() { return watching; },
+  units, selected, look, facOf, color: (slot) => css(look(slot).color), classic: () => classicMode(), naval: () => lastStart?.map?.naval === true,
+  logistics: () => logisticsData, logisticsOverlay: () => logisticsOverlay, logisticsSelection: () => logisticsSelection,
+  form: () => fm, worldMatch: () => lastSnap?.mode?.kind === 'world', fType: () => fKeyType(),
+  owns: (t) => owns(t), idleCount: () => selection.idle().length,
+  act: (name, ...args) => hudActions[name](...args),
 });
 // portraits on the recruit cards and the selection list: the same model builders as makeUnit, rendered lazily by
 // client/portraits.js (the shadow a plane casts on the battlefield stays out of it)

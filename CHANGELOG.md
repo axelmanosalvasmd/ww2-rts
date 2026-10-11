@@ -5,6 +5,12 @@ AI-vs-AI runs (see DESIGN.md for the balance log). Add new entries under **Unrel
 
 ## Unreleased
 
+- The HUD reads state and hands back intents (issue #58, C6): every click in `client/hud.js` goes out as
+  `ctx.act(name, ...args)`, and `client/main.js` keeps what each intent does in one `hudActions` table; the HUD's
+  context is otherwise only what it reads (the decoded match and this client's choices). Two context members it never
+  used (`builders`, `canPlace`) are gone. Checked in Chrome: idle selection, hold position on and off, a formation
+  shape, a recruit card and the stop order all work, with no console errors. No change in play.
+
 - What a side knows of the battlefield goes through one seam (issue #58, C2): `knowledgeOf(g)` in `shared/sim.js`
   returns World Conquest's adapter (one journaled terrain memory per team) or the observed-map adapter every other
   mode uses, each with the same four answers: the snapshot's remembered terrain, the path view routes read, the
