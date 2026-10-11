@@ -46,6 +46,21 @@ for (const [label, rows, extents] of [
   water.dispose(); fresh.dispose();
 }
 
+// World Conquest: a river running into ground not yet discovered carries on under the fog instead of ending in a beach
+// at the edge of what was seen; once the ground past it is discovered as dry land, the shore is drawn there.
+{
+  const W = 32, rows = Array.from({ length: W }, (_, y) => Array.from({ length: W }, (_, x) => (y === 16 && x < 12 ? 'W' : '.')).join(''));
+  const map = { w: W, h: W, rows }, grid = rows.map(row => [...row]), known = new Uint8Array(W * W);
+  for (let c = 0; c < W * W; c++) known[c] = c % W < 12 ? 1 : 0; // explored: the first 12 columns
+  const coverage = (water, x, y) => { const sh = { uniforms: {}, vertexShader: '#include <common>', fragmentShader: '#include <common>' }; water.mesh.material.onBeforeCompile(sh); return sh.uniforms.uMask.value.image.data[(((y * 4 + 2) * W * 4) + x * 4 + 2) * 4]; };
+  const water = createWater(grid, map, () => 0, { unknown: c => !known[c] }), beach = createWater(grid, map, () => 0);
+  assert.ok(coverage(water, 12, 16) > 200 && coverage(beach, 12, 16) < 100, `the river runs on into undiscovered ground: ${coverage(water, 12, 16)} against ${coverage(beach, 12, 16)} with a shore`);
+  for (let c = 0; c < W * W; c++) known[c] = 1; // the next columns turn out to be dry land
+  water.changed([[16 * W + 12, '.']]); water.tick(0);
+  assert.ok(coverage(water, 13, 16) < 100, 'discovered dry land gets its shore');
+  water.dispose(); beach.dispose();
+}
+
 // Removing a wet edge cell removes its continuation on the next water tick.
 {
   const map = { w: 4, h: 4, rows: ['.W..', '.W..', '....', '....'] }, grid = map.rows.map(row => [...row]);

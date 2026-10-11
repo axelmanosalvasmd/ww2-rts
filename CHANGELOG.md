@@ -5,6 +5,15 @@ AI-vs-AI runs (see DESIGN.md for the balance log). Add new entries under **Unrel
 
 ## Unreleased
 
+- World Conquest rivers no longer end in a beach at the edge of what has been seen. Ground not yet discovered is dry
+  ground to the client, so the water drew its shore, foam and shallows along the frontier wherever a river or lake ran
+  into the fog. Undiscovered cells within two cells of known water now count as water for the shore: the river carries
+  on under the fog (which hides it), and once the ground past it is discovered as dry land the shore is drawn there.
+  Seen in Chrome on a seeded Huge map before and after. New check in test-world.js: a river running into undiscovered
+  ground keeps its water at the frontier (it fails without the fix) and gets its shore once dry land is discovered.
+  Checked and left as designed: the foam the water draws around bridges ("hugging the bridge piers, plus a short wake
+  downstream") lines the whole deck of a wide rail bridge and reads as a pale band.
+
 - The server's spatial index allocates far less per tick (issue #58, B5), with the game unchanged: buckets are arrays
   under one numeric key instead of maps of maps of sets, the per-tick rebuild keeps the index and redoes only units
   that moved, appeared or left, and ordered queries merge buckets that are already in order instead of sorting their

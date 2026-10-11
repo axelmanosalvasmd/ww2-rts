@@ -177,7 +177,9 @@ totalEmissiveRadiance += uSky * (0.015 + 0.25 * wFres * wFres * wFres) * (1.0 - 
 `;
 
 // grid: the live terrain grid (rows of chars, updated in place by the caller); map: { w, h, heights }
-export function createWater(grid, map, groundHeight) {
+// unknown(c): true for a cell this player has not discovered (World Conquest). Water reaching such a cell runs on
+// under the fog instead of ending in a shore at the edge of what was seen.
+export function createWater(grid, map, groundHeight, { unknown = null } = {}) {
   const w = map.w, h = map.h, n = w * h;
   const wetAt = (c) => WET.has(grid[Math.floor(c / w)][c % w]);
   let any = false;
@@ -223,7 +225,8 @@ export function createWater(grid, map, groundHeight) {
   mesh.renderOrder = -1; // first of the see-through pass: fog of war, smoke and effects draw over it
   mesh.receiveShadow = true;
 
-  let wet = new Uint8Array(n), bridges = new Uint8Array(n), fords = new Uint8Array(n), raised = new Uint8Array(n), dirty = false, regeo = false;
+  let wet = new Uint8Array(n), bridges = new Uint8Array(n), fords = new Uint8Array(n), open = new Uint8Array(n), raised = new Uint8Array(n), dirty = false, regeo = false;
+  const OPEN = 2; // cells of undiscovered ground beyond known water that still count as water for the shore
   const near = (arr, c) => {
     const x = c % w, y = (c - x) / w;
     for (let dy = -1; dy <= 1; dy++) for (let dx = -1; dx <= 1; dx++) {
@@ -425,16 +428,27 @@ export function createWater(grid, map, groundHeight) {
       nextWet[c] = WET.has(ch) ? 1 : 0; nextBridges[c] = ch === '=' ? 1 : 0; nextFords[c] = ch === 'F' ? 1 : 0;
       if (nextWet[c] !== wet[c]) wetChanged = true;
       if (nextBridges[c] !== bridges[c]) bridgesChanged = true;
-      if (nextWet[c] !== wet[c] || nextBridges[c] !== bridges[c] || nextFords[c] !== fords[c]) changed.push(c);
     }
+    // The shore follows open water: known water and the undiscovered cells next to it. Undiscovered ground is dark,
+    // so a shore drawn at the edge of discovery would show only a beach that is not there.
+    const nextOpen = Uint8Array.from(nextWet);
+    if (unknown) for (let c = 0; c < n; c++) {
+      if (!nextWet[c]) continue;
+      const x = c % w, y = (c - x) / w;
+      for (let dy = -OPEN; dy <= OPEN; dy++) for (let dx = -OPEN; dx <= OPEN; dx++) {
+        const nx = x + dx, ny = y + dy, k = ny * w + nx;
+        if (nx >= 0 && ny >= 0 && nx < w && ny < h && !nextWet[k] && unknown(k)) nextOpen[k] = 1;
+      }
+    }
+    for (let c = 0; c < n; c++) if (nextWet[c] !== wet[c] || nextBridges[c] !== bridges[c] || nextFords[c] !== fords[c] || nextOpen[c] !== open[c]) changed.push(c);
     const relevel = regeo;
     regeo = false;
     if (!changed.length && !relevel) return;
-    wet = nextWet; bridges = nextBridges; fords = nextFords;
+    wet = nextWet; bridges = nextBridges; fords = nextFords; open = nextOpen;
     if (changed.length) {
       const tiles = tilesNear(changed);
-      channel(0, (c) => wet[c], 2, tiles); // R: coverage, edge at about 0.3 (a third of a cell into the bank)
-      channel(1, (c) => wet[c], 4, tiles); // G: how far from the bank, read as depth
+      channel(0, (c) => open[c], 2, tiles); // R: coverage, edge at about 0.3 (a third of a cell into the bank)
+      channel(1, (c) => open[c], 4, tiles); // G: how far from the bank, read as depth
       channel(2, (c) => fords[c], 2, tiles); // B: fords
       channel(3, (c) => bridges[c], 2, tiles); // A: bridges
       upload(tiles);
@@ -448,7 +462,7 @@ export function createWater(grid, map, groundHeight) {
     // cells: [[cell, char, level?], ...] already written into grid; a bridge or bank change rebuilds on the next tick
     changed(cells) {
       for (const [c, ch, lv] of cells || []) {
-        if (WET.has(ch) || wet[c]) dirty = true;
+        if (WET.has(ch) || wet[c] || open[c]) dirty = true;
         // a dent on or beside a span that lies on the ground moves that ground
         if (lv !== undefined && near(raised, c)) dirty = regeo = true;
       }

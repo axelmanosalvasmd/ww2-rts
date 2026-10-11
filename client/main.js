@@ -532,7 +532,7 @@ function startGame(m, restored = null) {
   setTerrain(hAt, MW, MH); // rings, order lines and zones follow this ground on the GPU (client/overlay.js)
 
   buildStructures();
-  water?.dispose(); water = createWater(terrain.physicalGrid, map, hAt); if (water) world.add(water.mesh);
+  water?.dispose(); water = createWater(terrain.physicalGrid, map, hAt, waterOptions(map)); if (water) world.add(water.mesh);
 
   if (map.world) { railways = createRailways({ parent: world, hAt, w: map.w, center: id => lastSnap?.world?.regions?.find(r => r.id === id) }); railways.cells(m.cells); }
   props?.dispose(); props = EDIT ? null : createProps({ map, grid: terrain.physicalGrid, hAt, parent: world, skip: c => !!railways?.has(c) });
@@ -661,6 +661,9 @@ function nearPiece(x, y) {
   return false;
 }
 
+// World Conquest: water runs on under ground this player has not discovered (client/water.js)
+const waterOptions = map => (map.world ? { unknown: c => !map.discovered?.[c] } : {});
+
 // bombs and shells lower the ground: patch the map's height rows
 function setLevel(map, cell, lv) {
   map.heights ??= map.rows.map(r => '0'.repeat(r.length));
@@ -702,7 +705,7 @@ function applyCells(cells) {
     const box = [Math.min(...xs) * CELL, Math.min(...ys) * CELL, (Math.max(...xs) + 1) * CELL, (Math.max(...ys) + 1) * CELL];
     relief.update(shaped); props?.refresh(box);
     if (propPreparation?.props) propPreparation.dirtyBox = mergePropBox(propPreparation.dirtyBox, box);
-    if (!water && shaped.some(([, ch]) => 'WF='.includes(ch))) { water = createWater(terrain.physicalGrid, lastStart.map, hAt); if (water) world.add(water.mesh); }
+    if (!water && shaped.some(([, ch]) => 'WF='.includes(ch))) { water = createWater(terrain.physicalGrid, lastStart.map, hAt, waterOptions(lastStart.map)); if (water) world.add(water.mesh); }
     else water?.changed(shaped); terrainDue.minimap = true; // the fog overlay follows the relief through onGeometry
     refreshTerrain(...box);
   }
