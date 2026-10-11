@@ -5,6 +5,20 @@ AI-vs-AI runs (see DESIGN.md for the balance log). Add new entries under **Unrel
 
 ## Unreleased
 
+- World Conquest scouting stutters less (issue #58, A1 and A2). Revealing a cell inside a candidate crop field used to
+  recompute the ground of the whole map: 20 times in 47 s of two squads scouting a Huge map, 73 to 90 ms each. Now
+  only the fields of the blocks holding the revealed cells are rechecked and repainted: over 40 s of the same scouting
+  the ground repaint took 0.7 ms at the median and 6.6 ms at worst (Chrome). The 3D pieces (houses, hedges, walls,
+  trenches, bridges) are no longer rebuilt for the whole map when the revealed cells are open ground, woods or water:
+  only when a changed cell had or has a piece within two cells, or a landmark arrived. That rebuild cost 18 ms at
+  the median, about twice a second while scouting; how much less often it runs now was not measured in a browser
+  (the test tab was hidden, which stops the frame loop that runs it).
+  New check in test-ground-performance.mjs: a revealed hedge that ends a field repaints its block, not the whole map,
+  and ends the field exactly as a full paint draws it (it fails on the previous painter). The piece rule has no Node
+  test: `applyCells` in client/main.js cannot load outside a browser (#58, C4).
+  Found and left for later: `relief.update` is now the largest cost per revealed snapshot (9.9 ms at the median,
+  32 ms at worst) because `rebuildGeometry` rebuilds the whole map's relief mesh after every change (#58, A4).
+
 - Merging the gap traffic work with the unit shapes: its new `queuedBehind` and `laneScan` are declared in
   `spawnUnit` too. The shape check in test.js caught the first (two unit shapes after a seeded match), a scan of four
   modes the second.

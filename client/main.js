@@ -27,7 +27,7 @@ import { createGround } from './ground.js';
 import { setWind } from './wind.js';
 import { surface, setFogMap } from './surfaces.js';
 import { createFog } from './fog.js';
-import { buildStructures as buildPieces, sandbagRing, hqCamp, buildingModel } from './structures.js';
+import { buildStructures as buildPieces, sandbagRing, hqCamp, buildingModel, PIECE_CELLS } from './structures.js';
 import { createRelief } from './relief.js';
 import { gfx } from './gfx.js';
 import { rig, groundAt as marchGround } from './camera.js';
@@ -651,6 +651,15 @@ function rememberLook(map, cell, data) {
   }
 }
 
+// a cell client/structures.js draws a piece on, judged from the current grids (the map file's houses count too)
+function hasPiece(x, y) {
+  return PIECE_CELLS.has(terrain.physicalGrid[y]?.[x]) || terrain.mineGrid[y]?.[x] === 1 || lastStart.map.rows[y]?.[x] === 'B';
+}
+function nearPiece(x, y) {
+  for (let dy = -2; dy <= 2; dy++) for (let dx = -2; dx <= 2; dx++) if (hasPiece(x + dx, y + dy)) return true;
+  return false;
+}
+
 // bombs and shells lower the ground: patch the map's height rows
 function setLevel(map, cell, lv) {
   map.heights ??= map.rows.map(r => '0'.repeat(r.length));
@@ -665,14 +674,14 @@ function applyCells(cells) {
   groundVersion++;
   // Ground wear and scorching only change the paint. The relief, the 3D pieces, the scenery and the water are redone
   // only for cells whose type, height or damage stage changed: traffic wears many cells in a big battle.
-  const shaped = [];
+  const shaped = [], landmarks = lastStart.map.buildings?.length ?? 0;
   let pieces = false;
   for (const entry of cells) {
     const [cell, ch, lv, st = 0, data] = entry, x = cell % terrain.w, y = Math.floor(cell / terrain.w), heights = lastStart.map.heights;
     const physical = ch === 'N' ? composeWorldCell(data?.ground ?? terrain.groundGrid[y][x], data?.object ?? terrain.objectGrid[y][x]) : ch;
     const moved = terrain.grid[y][x] !== ch || terrain.physicalGrid[y][x] !== physical || (lv !== undefined && levelOf(heights?.[y]?.[x] ?? '0') !== lv);
     if (moved) shaped.push(entry);
-    pieces ||= moved || ((terrain.state[cell] ^ st) >> 3 & 3) > 0; // damage stage; the shelling bits only repaint
+    pieces ||= (moved && hasPiece(x, y)) || ((terrain.state[cell] ^ st) >> 3 & 3) > 0; // a piece stood here, or its damage stage changed
     terrain.grid[y][x] = ch; terrain.state[cell] = st;
     if (data) { terrain.groundGrid[y][x] = data.ground; terrain.objectGrid[y][x] = data.object; terrain.materials.set(cell, data.material); if (data.section) terrain.structuralSections.set(cell, data.section); } terrain.mineGrid[Math.floor(cell / terrain.w)][cell % terrain.w] = ch === 'N' ? 1 : 0; terrain.physicalGrid[Math.floor(cell / terrain.w)][cell % terrain.w] = ch === 'N' ? composeWorldCell(terrain.groundGrid[Math.floor(cell / terrain.w)][cell % terrain.w], terrain.objectGrid[Math.floor(cell / terrain.w)][cell % terrain.w]) : ch;
     if (lastStart.map.world) {
@@ -682,6 +691,9 @@ function applyCells(cells) {
     }
     if (lv !== undefined) setLevel(lastStart.map, cell, lv);
   }
+  // Scouting reveals mostly open ground, woods and water, which have no 3D pieces: the whole-map rebuild (about 20 ms
+  // on a Huge World map) runs only when a changed cell has a piece within two cells, or a landmark arrived.
+  pieces ||= (lastStart.map.buildings?.length ?? 0) !== landmarks || shaped.some(([cell]) => nearPiece(cell % terrain.w, Math.floor(cell / terrain.w)));
   terrain.ground.paint(terrain.grid, terrain.state, terrain.groundGrid, terrain.objectGrid, cells);
  // repaints only the tiles around changed cells
   if (shaped.length) {

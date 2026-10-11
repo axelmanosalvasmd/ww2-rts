@@ -2628,6 +2628,12 @@ captured cell attributes. One upload per paint frame regenerates mipmaps once. I
 and the editor stay synchronous. Replacing or disposing ground cancels pending work; owner tokens protect newer
 handles when a same-sized backing canvas is reused.
 
+World Conquest fields follow the ground discovered so far. A field block (10 by 8 cells) reads only its own cells
+and one biome sample inside it, so after a reveal `paint` rechecks only the blocks holding the changed cells and
+repaints the cells whose field changed with the rest (`refreshFields` in `client/ground.js`); a full recheck runs only
+on a full paint. The 3D pieces (`client/structures.js`) are still rebuilt for the whole map, but only when a changed
+cell had or has a piece within two cells (`PIECE_CELLS`), its damage stage changed, or a landmark arrived.
+
 The corpse module owns its fallen geometry and instance buffers. The camera chooses near or far fallen detail,
 with the existing soldier distance thresholds and 4 m hysteresis. Frustum tests use transformed fallen bounds,
 including blast motion and sinking. Logical bodies still age when hidden. Pools grow to demand, preserve existing

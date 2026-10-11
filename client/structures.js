@@ -896,6 +896,9 @@ function bridges(C) {
 }
 
 // ---------- the map's pieces ----------
+// every cell type a builder below draws on (mines also come from the mine grid); builders also read the neighbors'
+// types and heights, so a cell change can move pieces up to two cells away
+export const PIECE_CELLS = new Set([...'BRH#TXYNA=']);
 let state = null;
 function rebuild() {
   const { group, grid, orig, hAt, cells, buildings, mineGrid } = state, h = grid.length, w = grid[0]?.length ?? 0;
