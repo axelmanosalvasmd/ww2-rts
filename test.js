@@ -3163,6 +3163,49 @@ await check("Formation facing retreat and replacement orders", async () => {
   assert.equal(u.face, null, 'an attack order drops the old facing');
 });
 
+await check("Repeated right-click movement", async () => {
+  const { default: vm } = await import('node:vm');
+  const source = readFileSync(new URL('./client/main.js', import.meta.url), 'utf8');
+  const between = (start, end) => source.slice(source.indexOf(start), source.indexOf(end, source.indexOf(start)));
+  const input = between('let mouse = ', 'function showFacing()') +
+    between("renderer.domElement.addEventListener('mousedown', (e) => {", '\n// the house under the cursor') +
+    between("addEventListener('mouseup', (e) => {", "\nrenderer.domElement.addEventListener('dblclick'");
+  // Include the old helper when testing an older client so its cancelled destination is observable.
+  const turn = source.includes('function faceToward(') ? between('function faceToward(', '// Tighten / Spread:') : '';
+  for (const modifiers of [{}, { shiftKey: true }, { ctrlKey: true }, { shiftKey: true, ctrlKey: true }]) {
+    const unit = { id: 1, owner: 0, type: 'tank', x: 10, z: 10 }, units = new Map([[1, unit]]), selected = new Set([1]);
+    const sent = [], listeners = {}, faced = new Map();
+    const groundAt = (x, z) => ({ x, z });
+    const orders = createOrders({ units, selected, me: 0, defs: UNITS, diggers: [], moveColor: 0x6fa8f0,
+      formation: (troops, ground) => troops.map(v => [v.id, ground.x, ground.z]), send: cmd => sent.push(cmd), feedback: () => {} });
+    let clock = 0;
+    const context = vm.createContext({ orders, units, selected, faced, groundAt, UNITS, EDIT: false, targeting: null, lastSnap: {},
+      innerWidth: 800, innerHeight: 600, formationPreview: { hide() {} }, performance: { now: () => clock },
+      renderer: { domElement: { addEventListener: (name, fn) => { listeners[name] = fn; } } },
+      addEventListener: (name, fn) => { listeners[name] = fn; }, rig: { intro: false }, pick: () => null, houseAt: () => null, worksAt: () => null,
+      myTroops: () => [unit], centroid: troops => ({ x: troops[0].x, z: troops[0].z }), sendCmd: cmd => sent.push(cmd), marker() {}, blip() {}, MOVE_COLOR: 0x6fa8f0,
+    });
+    vm.runInContext(input + turn, context);
+    const click = (x, z) => {
+      const event = { button: 2, clientX: x, clientY: z, ...modifiers };
+      listeners.mousedown(event); listeners.mouseup(event); clock += 100;
+    };
+    click(35, 25); click(36, 26); click(36, 26);
+    assert.equal(sent.length, 3, 'each nearby right-click sends an order');
+    for (const [i, cmd] of sent.entries()) {
+      assert.equal(cmd.t, modifiers.ctrlKey ? 'amove' : 'move', 'repeat clicks retain attack-move');
+      assert.equal(cmd.queue, !!modifiers.shiftKey, 'repeat clicks retain queueing');
+      assert.deepEqual(cmd.orders, [[1, i ? 36 : 35, i ? 26 : 25]], 'repeat clicks keep the clicked destination instead of stopping at the unit');
+      assert.ok(!Object.hasOwn(cmd, 'face'), 'a click does not become an in-place facing order');
+    }
+    // A drag still sets the requested facing and keeps release-time modifiers.
+    listeners.mousedown({ button: 2, clientX: 35, clientY: 25 });
+    listeners.mouseup({ button: 2, clientX: 55, clientY: 25, shiftKey: true, ctrlKey: true });
+    assert.deepEqual(sent[3], { t: 'amove', orders: [[1, 35, 25]], face: 0, queue: true });
+    assert.equal(faced.get(1), 0, 'right-drag still remembers facing');
+  }
+});
+
 // Formation facing client dispatch.
 await check("Formation facing client dispatch", async () => {
   const ground = { x: 35, z: 25 }, face = 0.8, reach = 22;

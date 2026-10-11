@@ -143,6 +143,10 @@ AI-vs-AI runs (see DESIGN.md for the balance log). Add new entries under **Unrel
 - Fixed pings climbing to 10 s and beyond late in big fights. The server tick grew with the battle (3 ms at 66 units to 70 ms at 268 in a 2v2 Annihilation), and once it overran, snapshots piled up 3 MB deep per socket with pongs stuck behind them. Now a player whose connection is 256 KB behind skips snapshots and gets one fresh snapshot when it catches up, so a slow server or connection costs smoothness, not a minute of lag.
 - The server does about 44% less work in large battles (CPU 119 s to 67 s over a 6000-tick Massive 2v2 Annihilation with the same result): remembered terrain no longer rechecks every pending crater for every player each tick, team sight checks no longer copy the whole unit list per cell, and vehicle traffic skips a sort it never needed. Path searches and crowd separation are the next biggest costs, left for later.
 
+### 2026-10-10: Repeated right-clicks keep moving (`7571f09`)
+
+- Fixed: double right-click no longer cancels a move by turning units in place. Repeated clicks keep their destination, Shift queueing and Ctrl attack-move; right-drag still sets facing and width. Updated the Formation tooltip in English and Spanish and added a deterministic mouse-handler regression. Existing formation and facing tests remain.
+
 ### 2026-10-09: Units and the game keep one shape (`bafba85`)
 
 - The server simulates a third faster (no game change: both 6-AI Massive benchmarks end in exactly the same state).

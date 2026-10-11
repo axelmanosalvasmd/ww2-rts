@@ -1414,14 +1414,6 @@ function faceOrder(troops, at, face, reach = 0) {
   for (const v of troops) faced.set(v.id, face);
   return { t: 'move', orders: formation(troops, at, face, reach), face };
 }
-// double right-click: turn to face the spot without moving
-function faceToward(g) {
-  const troops = myTroops();
-  if (!troops.length || !g) return;
-  const c = centroid(troops), face = Math.atan2(g.z - c.z, g.x - c.x);
-  for (const v of troops) faced.set(v.id, face);
-  sendCmd({ t: 'move', orders: troops.map(v => [v.id, v.x, v.z]), face }); marker(g.x, g.z, MOVE_COLOR); blip(600);
-}
 // Tighten / Spread: change the spacing and re-form the selection where it stands, facing as last ordered (or up the screen)
 function reform(step) {
   fm.spread = Math.round(Math.min(2.5, Math.max(1, fm.spread + step)) * 4) / 4;
@@ -1449,7 +1441,7 @@ const formationPreview = createFormationPreview({ THREE, hAt });
 // ---------- camera + input ----------
 
 const cam = { x: 80, z: 80, yaw: 0, dist: 85 }, PITCH = 0.95, keys = new Set();
-let mouse = { x: innerWidth / 2, y: innerHeight / 2, inside: false }, drag = null, facingGesture = null, lastRight = null;
+let mouse = { x: innerWidth / 2, y: innerHeight / 2, inside: false }, drag = null, facingGesture = null;
 function clearFacing() { facingGesture = null; formationPreview.hide(); }
 function beginFacing(cursor, e, attack = false) {
   clearFacing();
@@ -1701,12 +1693,9 @@ addEventListener('mouseup', (e) => {
   if (e.button === 1) rig.stopDrag();
   if (!EDIT && facingGesture?.button === e.button) {
     updateFacing(e.clientX, e.clientY);
-    const f = facingGesture, facing = Number.isFinite(f.face), now = performance.now();
+    const f = facingGesture, facing = Number.isFinite(f.face);
     clearFacing();
     if (f.attack) cancelAim();
-    const twice = !facing && !f.attack && lastRight && now - lastRight.t < 350 && Math.hypot(e.clientX - lastRight.x, e.clientY - lastRight.y) < 16;
-    lastRight = facing || twice ? null : { t: now, x: e.clientX, y: e.clientY };
-    if (twice) { faceToward(f.cursor.ground); return; }
     if (facing) for (const v of myTroops()) faced.set(v.id, f.face);
     orders.dispatch(f.cursor, facing ? { shiftKey: f.event.shiftKey || !!e.shiftKey, ctrlKey: f.event.ctrlKey || !!e.ctrlKey } : f.event,
       facing ? { face: f.face, reach: f.reach, attack: f.attack || f.event.ctrlKey || !!e.ctrlKey } : f.attack ? { attack: true } : {});
