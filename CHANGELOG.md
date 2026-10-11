@@ -5,6 +5,66 @@ AI-vs-AI runs (see DESIGN.md for the balance log). Add new entries under **Unrel
 
 ## Unreleased
 
+- Two flaky checks made deterministic (found while running the suite for issue #58, also flaky on master):
+  `test-fortress.js` seeded `Math.random` only after creating its AI game, so the AI built between 10 and 18 wall
+  cells and sometimes no gate (it now seeds first: 15 walls and 3 gate cells every run); and B06 in
+  `test-audit-combat.mjs` ran unseeded, so a unit could wander onto the cancelled footprint (it now runs under the
+  file's `fixedRandom`, like B07).
+
+- The HUD reads state and hands back intents (issue #58, C6): every click in `client/hud.js` goes out as
+  `ctx.act(name, ...args)`, and `client/main.js` keeps what each intent does in one `hudActions` table; the HUD's
+  context is otherwise only what it reads (the decoded match and this client's choices). Two context members it never
+  used (`builders`, `canPlace`) are gone. Checked in Chrome: idle selection, hold position on and off, a formation
+  shape, a recruit card and the stop order all work, with no console errors. No change in play.
+
+- What a side knows of the battlefield goes through one seam (issue #58, C2): `knowledgeOf(g)` in `shared/sim.js`
+  returns World Conquest's adapter (one journaled terrain memory per team) or the observed-map adapter every other
+  mode uses, each with the same four answers: the snapshot's remembered terrain, the path view routes read, the
+  version that tells a failed route to try again, and the remembered wrecks. `terrainFor`, `knownTerrainFor`, the
+  route retry and the wreck memory no longer branch on the mode themselves. The Classic, Conquest and six-AI World
+  seeded runs end in exactly the same state. Vision itself (`updateVision`, `teamSees`) is shared by both and stays
+  where it is.
+
+- Unit movement reads as two counterparts and one ghost rule (issue #58, C5): infantry and boats follow their route in
+  `walkRoute`, beside `driveVehicle` for ground vehicles, both out of `step()`'s unit loop; and passing through friends
+  (a ghost) is started and checked only by `startGhost` and `ghostPair` in `shared/local-traffic.js`, which spawns,
+  separation, the swept check and traffic all call (it was set in three places with the same formula). The Classic,
+  Conquest and six-AI World seeded runs end in exactly the same state. Left for later: both movers still live in
+  `shared/sim.js`, which they need for terrain and unit lookups.
+
+- The spatial index's queries say what the caller needs (issue #58, C3): `inOrder` (first or best match wins, so the
+  units Map's order), `unordered`, `heavy` (vehicles and other non-infantry only), and `has` / `hasHeavy`, which stop
+  at the first match, replace `candidates(at, r, true|false, match, heavyOnly)` in the simulation, local traffic and
+  the AI. The Classic, Conquest and six-AI World seeded runs end in exactly the same state. The spatial query check
+  now also covers `inOrder`, `unordered` and `has`. Left as is: code that moves a unit still calls `updateGrid` itself.
+
+- Snapshot unit rows have named fields (`UNIT_ROW` in `shared/sim.js`, issue #58, C4): the server's per-player row
+  filter, the alerts, autocast and the action availability read `row[UNIT_ROW.hp]` instead of `row[7]`, so a field
+  added to the row cannot silently shift what they read. New check: the cached and uncached snapshot rows hold each
+  field where `UNIT_ROW` says. No change in play.
+
+- The test suite no longer loads copies of `shared/sim.js` rebuilt from its text to reach private functions (issue #58,
+  D5). The simulation exports the few it tests as `internals`, and the separation check, which used to splice an old
+  copy of the separation loop into a copy of `step()`, now runs `separateCrowds` and the old loop side by side for
+  twenty passes (rewritten, same positions compared). Left for later: `test-world-discovery.js` and
+  `test-engine-controls.js` still load copies of `client/ground.js` and `client/alerts.js`.
+
+- Craters and knocked-down walls no longer make the server flood the whole map to work out which ground connects
+  (issue #58, B3). When up to 64 cells changed, only the cells within two of them are flooded again and joined to the
+  regions they reach; the whole map is flooded only when a region may have split. In a seeded six-AI World match
+  (3,000 ticks) the time spent on regions drops from 2.7 s to 0.28 s; the match, the Classic benchmark and the Conquest
+  benchmark end in exactly the same state as before. New check: regions after random craters, wall runs and single
+  cells on a small hilly maze match a whole-map flood.
+
+- Scouting or fighting among hedges, walls and houses no longer redraws every 3D piece on the map (issue #58, A2). The
+  pieces are kept in 32 x 32 cell parts plus one part per house, and a change redoes only the parts within two cells of
+  it; the house layout is redone only when a house cell appears or goes, and rubble and bridges are redone only where
+  that changed their colours or stone decks. Huge World map, fully known, on the Mac: a 20-cell hedge and wall change
+  takes 1.1 to 1.4 ms instead of about 28 ms, a house cell falling 5.5 to 6.1 ms instead of 28 to 32 ms, and a newly
+  found house cell 15 to 17.5 ms. The client also stops copying every map row before each rebuild (only rows with
+  mines are rewritten). New check: pieces rebuilt part by part match a whole rebuild after hedge, wall, wire and house
+  changes, a terrace cell cleared and a house cell found.
+
 - Two steps toward clearer simulation modules (issue #58, C2 and C5), with the game unchanged (the Classic and Conquest
   benchmarks and a seeded six-AI World match end in exactly the same state): the seven places that each chose between
   World Conquest's team-memory terrain and the remembered map now ask one function, `knownTerrainFor`, so a new mode

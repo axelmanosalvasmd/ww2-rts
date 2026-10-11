@@ -479,7 +479,7 @@ let lastStart = null;
 function startGame(m, restored = null) {
   propPreparation?.props?.dispose();
   propPreparation = null;
-  terrainDue.pieces = terrainDue.minimap = terrainDue.props = false; terrainDue.wait = 0;
+  terrainDue.pieces = terrainDue.minimap = terrainDue.props = false; terrainDue.wait = 0; terrainDue.pieceCells = new Set();
   lobbyView.hide(); // frees the backdrop's renderer before the match builds its world
   clearFacing(); formationPreview.group.removeFromParent();
   pings.reset(); autocast.reset(); alerts.startMatch(m.matchId);
@@ -598,7 +598,8 @@ let terrain = null;
 let props = null;
 let rubbleDecals = null, craterDecals = null; // craterDecals: World Conquest's lasting crater marks
 // big battles change cells every snapshot: the 3D pieces and the minimap's terrain are redone at most every 0.25 s
-const terrainDue = { pieces: false, minimap: false, props: false, wait: 0 };
+// pieceCells: the cells whose pieces changed since the last rebuild (client/structures.js redoes the parts they reach)
+const terrainDue = { pieces: false, minimap: false, props: false, wait: 0, pieceCells: new Set() };
 let propPreparation = null;
 const mergePropBox = (a, b) => !a ? b : !b ? a : [Math.min(a[0], b[0]), Math.min(a[1], b[1]), Math.max(a[2], b[2]), Math.max(a[3], b[3])];
 function terrainFrame(dt) {
@@ -629,13 +630,14 @@ function terrainFrame(dt) {
     } while (performance.now() < until);
   }
   if ((terrainDue.wait -= dt) > 0 || !(terrainDue.pieces || terrainDue.minimap || terrainDue.props)) return;
-  if (terrainDue.pieces && terrain) buildStructures();
+  if (terrainDue.pieces && terrain) buildStructures({ cells: terrainDue.pieceCells });
+  terrainDue.pieceCells = new Set();
   if (terrainDue.minimap) { mmImage = null; mapView?.refresh(); }
   terrainDue.pieces = terrainDue.minimap = false; terrainDue.wait = 0.25;
 }
 // all 3D terrain pieces (client/structures.js), rebuilt from the grid whenever a cell changes
-function buildStructures() {
-  buildPieces(terrain.group, terrain.physicalGrid, lastStart.map.rows.map((row, y) => [...row].map((ch, x) => ch === 'N' ? composeWorldCell(terrain.groundGrid[y][x], terrain.objectGrid[y][x]) : ch).join('')), hAt, terrain.state, lastStart.map.buildings, terrain.mineGrid);
+function buildStructures(change = null) {
+  buildPieces(terrain.group, terrain.physicalGrid, lastStart.map.rows.map((row, y) => (row.includes('N') ? [...row].map((ch, x) => ch === 'N' ? composeWorldCell(terrain.groundGrid[y][x], terrain.objectGrid[y][x]) : ch).join('') : row)), hAt, terrain.state, lastStart.map.buildings, terrain.mineGrid, change);
   if (!rubbleDecals) { rubbleDecals = createRubbleDecals({ parent: world, hAt, w: terrain.w, grid: terrain.objectGrid, materialAt: c => terrain.materials.get(c) }); rubbleDecals.update(terrain.objectGrid.flatMap((row, y) => row.flatMap((ch, x) => ch === 'R' ? [y * terrain.w + x] : []))); }
   if (!craterDecals && lastStart.map.world) { craterDecals = createCraterDecals({ parent: world, hAt, w: terrain.w, grid: terrain.grid }); craterDecals.update(terrain.grid.flatMap((row, y) => row.flatMap((ch, x) => ch === '+' ? [y * terrain.w + x] : []))); }
 }
@@ -679,14 +681,16 @@ function applyCells(cells) {
   groundVersion++;
   // Ground wear and scorching only change the paint. The relief, the 3D pieces, the scenery and the water are redone
   // only for cells whose type, height or damage stage changed: traffic wears many cells in a big battle.
-  const shaped = [], landmarks = lastStart.map.buildings?.length ?? 0;
+  const shaped = [], landmarks = lastStart.map.buildings?.length ?? 0, pieceCells = [];
   let pieces = false;
   for (const entry of cells) {
     const [cell, ch, lv, st = 0, data] = entry, x = cell % terrain.w, y = Math.floor(cell / terrain.w), heights = lastStart.map.heights;
     const physical = ch === 'N' ? composeWorldCell(data?.ground ?? terrain.groundGrid[y][x], data?.object ?? terrain.objectGrid[y][x]) : ch;
     const moved = terrain.grid[y][x] !== ch || terrain.physicalGrid[y][x] !== physical || (lv !== undefined && levelOf(heights?.[y]?.[x] ?? '0') !== lv);
     if (moved) shaped.push(entry);
-    pieces ||= (moved && hasPiece(x, y)) || ((terrain.state[cell] ^ st) >> 3 & 3) > 0; // a piece stood here, or its damage stage changed
+    const staged = ((terrain.state[cell] ^ st) >> 3 & 3) > 0;
+    pieces ||= (moved && hasPiece(x, y)) || staged; // a piece stood here, or its damage stage changed
+    if (moved || staged) pieceCells.push(cell);
     terrain.grid[y][x] = ch; terrain.state[cell] = st;
     if (data) { terrain.groundGrid[y][x] = data.ground; terrain.objectGrid[y][x] = data.object; terrain.materials.set(cell, data.material); if (data.section) terrain.structuralSections.set(cell, data.section); } terrain.mineGrid[Math.floor(cell / terrain.w)][cell % terrain.w] = ch === 'N' ? 1 : 0; terrain.physicalGrid[Math.floor(cell / terrain.w)][cell % terrain.w] = ch === 'N' ? composeWorldCell(terrain.groundGrid[Math.floor(cell / terrain.w)][cell % terrain.w], terrain.objectGrid[Math.floor(cell / terrain.w)][cell % terrain.w]) : ch;
     if (lastStart.map.world) {
@@ -725,7 +729,10 @@ function applyCells(cells) {
     }
   }
   rubbleDecals?.update(rubbleCells); craterDecals?.update(rubbleCells);
-  if (pieces) terrainDue.pieces = true; // rebuilt at most 4 times a second (frame loop)
+  if (pieces) {
+    terrainDue.pieces = true; // rebuilt at most 4 times a second (frame loop), only the parts these cells reach
+    for (const c of pieceCells) terrainDue.pieceCells.add(c);
+  }
   coverPreview.dirty(); // cover marks follow new cells and shot-up walls
 }
 
@@ -1139,22 +1146,29 @@ function placementView() {
   if (placementCache?.snapshot !== lastSnap) placementCache = { snapshot: lastSnap, ...placementState(lastSnap, lastStart.map, terrain.grid, teams, terrain) };
   return placementCache;
 }
-const hud = createHud({
-  get me() { return me; }, get teams() { return teams; }, get names() { return names; }, get PRIORITY() { return PRIORITY; }, get host() { return !!lobbyState?.amHost; }, get watching() { return watching; },
-  units, selected, look, facOf, color: (slot) => css(look(slot).color), classic: () => classicMode(), naval: () => lastStart?.map?.naval === true, send: sendCmd, blip,
-  logistics: () => logisticsData, logisticsOverlay: () => logisticsOverlay, logisticsSelection: () => logisticsSelection,
+// What the HUD hands back when the player clicks: an intent by name (client/hud.js calls ctx.act(name, ...args)).
+const hudActions = {
+  send: sendCmd, blip,
   toggleLogisticsOverlay: () => { logisticsOverlay = !logisticsOverlay; if (lastSnap) updateHud(lastSnap); },
   toggleLogisticsSelection: () => { logisticsSelection = !logisticsSelection; if (lastSnap) updateHud(lastSnap); },
   retreat: () => retreat(), takeCover: (q) => takeCover(q), stance: (k) => toggleStance(k), entrench: (k) => startEntrench(k), stop: () => { sendCmd({ t: 'stop', ids: [...selected] }); blip(330); }, amove: () => selected.size && setAim('amove'), area: () => startArea(), rally: () => startRally(),
-  transferGroup: (n) => transferGroup(n), dig: (k) => startDig(k), form: () => fm, setForm: (p) => setFormation(p), reform: (d) => reform(d), unload: () => unload(), mountUp: () => mountUp(), rail: () => startRail(), worldMatch: () => lastSnap?.mode?.kind === 'world', build: (k) => startBuild(k), ability: (t) => useAbility(t), support: (k) => aimSupport(k), fType: () => fKeyType(),
+  transferGroup: (n) => transferGroup(n), dig: (k) => startDig(k), setForm: (p) => setFormation(p), reform: (d) => reform(d), unload: () => unload(), mountUp: () => mountUp(), rail: () => startRail(), build: (k) => startBuild(k), ability: (t) => useAbility(t), support: (k) => aimSupport(k),
   autocast: (t) => { const on = autocast.toggle(t, [...selected].map(id => units.get(id)).filter(v => v?.type === t && v.owner === me), classicMode()); if (on !== null) blip(); },
-  builders: () => builders(), owns: (t) => owns(t), canPlace: (k) => canPlace(k), explain: (reason) => feedback.show(reason),
+  explain: (reason) => feedback.show(reason),
   // add: Shift/Ctrl adds the unit to the selection, or takes it out if it is already in
   select: (id, add = false) => { if (!add) selected.clear(); else if (selected.has(id)) { selected.delete(id); updateHud(lastSnap); return; } selected.add(id); updateHud(lastSnap); },
   selectMany: (ids) => { selected.clear(); for (const id of ids) selected.add(id); updateHud(lastSnap); },
   selectType: (type, e) => { selection.type(type, e); if (lastSnap) updateHud(lastSnap); },
-  idleCount: () => selection.idle().length,
   findIdle: (all) => { selection.findIdle(all); if (lastSnap) updateHud(lastSnap); },
+};
+// What the HUD reads: the decoded match state and this client's choices.
+const hud = createHud({
+  get me() { return me; }, get teams() { return teams; }, get names() { return names; }, get PRIORITY() { return PRIORITY; }, get host() { return !!lobbyState?.amHost; }, get watching() { return watching; },
+  units, selected, look, facOf, color: (slot) => css(look(slot).color), classic: () => classicMode(), naval: () => lastStart?.map?.naval === true,
+  logistics: () => logisticsData, logisticsOverlay: () => logisticsOverlay, logisticsSelection: () => logisticsSelection,
+  form: () => fm, worldMatch: () => lastSnap?.mode?.kind === 'world', fType: () => fKeyType(),
+  owns: (t) => owns(t), idleCount: () => selection.idle().length,
+  act: (name, ...args) => hudActions[name](...args),
 });
 // portraits on the recruit cards and the selection list: the same model builders as makeUnit, rendered lazily by
 // client/portraits.js (the shadow a plane casts on the battlefield stays out of it)

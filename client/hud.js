@@ -83,14 +83,16 @@ export { icon };
 
 // ctx: state getters (me, teams, names, units, selected, PRIORITY) and helpers/actions from main.js:
 // look, facOf, color, classic, send, blip, retreat, stop, amove, rally, dig, build, ability, support, fType, builders, owns, canPlace, select
+// ctx: what the HUD reads (the decoded match: units, selected, me, teams, ...; this client's choices: form, logistics
+// overlay, ...) and act(name, ...args), through which every click goes back as an intent (main.js: hudActions).
 export function createHud(ctx) {
   const logisticsControls = document.createElement('span');
   logisticsControls.style.display = 'flex';
   logisticsControls.innerHTML = '<button data-logistics-overlay aria-label="Logistics overlay" title="Show supply territory, known supply stores and selected truck routes">' + icon('supplycache') + '</button>' +
     '<button data-logistics-selection aria-label="Logistics selection" title="Select supply trucks with a drag box">' + icon('truck') + '</button>';
   $('util').append(logisticsControls);
-  logisticsControls.querySelector('[data-logistics-overlay]').onclick = () => ctx.toggleLogisticsOverlay();
-  logisticsControls.querySelector('[data-logistics-selection]').onclick = () => ctx.toggleLogisticsSelection();
+  logisticsControls.querySelector('[data-logistics-overlay]').onclick = () => ctx.act('toggleLogisticsOverlay');
+  logisticsControls.querySelector('[data-logistics-selection]').onclick = () => ctx.act('toggleLogisticsSelection');
   // UI scale (menu slider): zooms the whole HUD. It applies on release, so the slider does not grow under the cursor
   // mid-drag; the resize event lets the boxes placed from screen positions (alerts, stats) place themselves again
   const scale = $('uiScale'), scaleLabel = () => setText($('uiScaleVal'), `${scale.value}%`);
@@ -108,13 +110,13 @@ export function createHud(ctx) {
   let snapshot = null;
   const tooltips = installTooltips($('hud'));
   const check = (action) => availability(snapshot, CFG, { ...action, slot: ctx.me, teams: ctx.teams, naval: ctx.naval(), watching: ctx.watching, ids: [...ctx.selected] });
-  const attempt = (action, run) => { const result = check(action); if (result.ok) run(); else ctx.explain(result.reason); };
+  const attempt = (action, run) => { const result = check(action); if (result.ok) run(); else ctx.act('explain', result.reason); };
   // A card purchase, by click or by letter: the same command and refusal either way. `many` (Shift+letter) sends the
   // command up to five times, as often as the limits allow; the server takes each one like a separate click.
   const buy = (action, many = false) => attempt(action, () => {
     const n = many ? Math.max(1, buyCount(snapshot, CFG, { ...action, slot: ctx.me, teams: ctx.teams, naval: ctx.naval() }, 5)) : 1;
-    for (let i = 0; i < n; i++) ctx.send(action);
-    ctx.blip('recruit');
+    for (let i = 0; i < n; i++) ctx.act('send', action);
+    ctx.act('blip', 'recruit');
   });
   const name = (t, slot = ctx.me) => ctx.look(slot).names[t] ?? UNITS[t].name;
   const pc = (i) => `var(--p${i}, ${ctx.color(i)})`;
@@ -142,7 +144,7 @@ export function createHud(ctx) {
     const el = $('support');
     el.innerHTML = SUPPORT_TYPES.map((k) => orderBtn(`data-k="${k}"`, k, SUPPORT_KEYS[k],
       `${SUPPORT[k].name}${SUPPORT_KEYS[k] ? ` (${SUPPORT_KEYS[k]})` : ''}: ${SUPPORT_TIP[k] ?? 'Off-map support'}. ${SUPPORT[k].point ? 'Click the spot to call it in' : 'Aim: click the center, move to turn, click to call it in'}`)).join('');
-    el.querySelectorAll('button').forEach((b) => (b.onclick = () => ctx.support(b.dataset.k)));
+    el.querySelectorAll('button').forEach((b) => (b.onclick = () => ctx.act('support', b.dataset.k)));
   }
   function drawEcon(s, pop, cap) {
     setText($('mp'), String(s.mp));
@@ -178,7 +180,7 @@ export function createHud(ctx) {
       }).join('');
       // the stylesheet sizes each team block from the team count (and the clock block, if any)
       el.style.setProperty('--n', tids.length); el.style.setProperty('--lead', !lead ? '0px' : kind === 'assault' || kind === 'horde' ? '216px' : '150px');
-      el.querySelector('.sc-next')?.addEventListener('click', () => ctx.send({ t: 'nextwave' }));
+      el.querySelector('.sc-next')?.addEventListener('click', () => ctx.act('send', { t: 'nextwave' }));
       score = { lead: el.querySelector('.sc-lead'), teams: [...el.querySelectorAll('.sc-team')].map((b, k) => ({
         t: tids[k], mem: members(tids[k]), role: b.querySelector('.sc-role'), bar: b.querySelector('.bar'), fill: b.querySelector('.bar > div'),
         u0: b.querySelector('.u0'), num: b.querySelector('.sc-val .num'), u: b.querySelector('.sc-val .u'),
@@ -298,9 +300,9 @@ export function createHud(ctx) {
         `<div class="list">${grouped.map(([t, us]) => `<div class="srow" data-type="${t}" style="cursor:pointer" title="${esc(unitTip(t, us[0].owner))}. Click to keep this type; Shift+click removes it">` +
         `${portrait(t, us[0].owner)}<span class="nm"></span><span class="ct"></span><span class="tg"><span class="hp"></span><span class="status" style="display:contents"></span></span>` +
         `${UNITS[t].building ? '<span class="q"></span>' : ''}</div>`).join('')}</div>`;
-      el.querySelector('[data-idle]').onclick = (e) => { ctx.findIdle(e.shiftKey); e.currentTarget.blur(); };
+      el.querySelector('[data-idle]').onclick = (e) => { ctx.act('findIdle', e.shiftKey); e.currentTarget.blur(); };
       selRows = [...el.querySelectorAll('.srow')].map((r) => {
-        r.onclick = (e) => ctx.selectType(r.dataset.type, e);
+        r.onclick = (e) => ctx.act('selectType', r.dataset.type, e);
         return { type: r.dataset.type, nm: r.querySelector('.nm'), ct: r.querySelector('.ct'), hp: r.querySelector('.hp'), tags: r.querySelector('.status'), q: r.querySelector('.q') };
       });
     }
@@ -363,8 +365,8 @@ export function createHud(ctx) {
         el.innerHTML = '<div class="hd">Orders</div><div class="grid">' +
           orderBtn('data-truck-stop', 'stop', label('stop'), 'Stop selected units') +
           orderBtn('data-truck-resume', 'truck', '', 'Resume deliveries') + '</div>';
-        el.querySelector('[data-truck-stop]').onclick = () => ctx.stop();
-        el.querySelector('[data-truck-resume]').onclick = () => ctx.send({ t: 'logisticsResume', ids: selUnits().filter(v => v.type === 'truck' && v.owner === ctx.me).map(v => v.id) });
+        el.querySelector('[data-truck-stop]').onclick = () => ctx.act('stop');
+        el.querySelector('[data-truck-resume]').onclick = () => ctx.act('send', { t: 'logisticsResume', ids: selUnits().filter(v => v.type === 'truck' && v.owner === ctx.me).map(v => v.id) });
         setText(el.querySelector('[data-truck-resume] .val'), 'Resume deliveries');
       }
       return;
@@ -391,23 +393,23 @@ export function createHud(ctx) {
         (dig ? menuBtn('build', 'Build: defenses, sandbags, wire, traps, mines, bridges and more') + menuBtn('trench', 'Trench patterns: lines, zigzags, rings and strongpoints the builder squads dig together') : '') +
         types.map((t) => { const ab = UNITS[t].ab; return orderBtn(`data-a="${t}"`, ab.id === 'smoke' ? 'smokeab' : ab.id, '', `${ab.name}: ${name(t)}${AIMED.has(ab.id) ? ', click where' : ''}. ${ab.cd}s cooldown. Right-click: autocast on/off`, t); }).join('') +
         '</div><div class="control-transfer"><label>Control group <select data-group-destination aria-label="Destination control group">' + Array.from({ length: 9 }, (_, i) => `<option value="${i + 1}">${i + 1}</option>`).join('') + '</select></label><button data-group-transfer title="Alt+1 to Alt+9 moves selected units and removes them from other groups">Move to group</button></div>' + (menu ? `<div class="hd sub">${MENUS[menu][2]}</div><div class="grid">${menuHTML(menu)}</div>` : '');
-      el.querySelector('[data-group-transfer]')?.addEventListener('click', () => ctx.transferGroup(el.querySelector('[data-group-destination]').value));
+      el.querySelector('[data-group-transfer]')?.addEventListener('click', () => ctx.act('transferGroup', el.querySelector('[data-group-destination]').value));
       el.querySelectorAll('button[data-a]').forEach((b) => {
         const a = b.dataset.a;
         b.onclick = (e) => {
-          if (a === 'retreat') ctx.retreat(); else if (a === 'amove') ctx.amove(); else if (a === 'stop') ctx.stop(); else if (a === 'area') ctx.area();
-          else if (a === 'unload') ctx.unload(); else if (a === 'mountup') ctx.mountUp(); else if (a === 'rail') ctx.rail(); else if (a === 'cover') ctx.takeCover(e.shiftKey); else if (a.startsWith('st:')) ctx.stance(a.slice(3)); else if (a.startsWith('ent:')) ctx.entrench(a.slice(4));
-          else if (a.startsWith('fort:')) ctx.dig(a.slice(5)); else if (a.startsWith('bld:')) ctx.build(a.slice(4)); else ctx.ability(a);
+          if (a === 'retreat') ctx.act('retreat'); else if (a === 'amove') ctx.act('amove'); else if (a === 'stop') ctx.act('stop'); else if (a === 'area') ctx.act('area');
+          else if (a === 'unload') ctx.act('unload'); else if (a === 'mountup') ctx.act('mountUp'); else if (a === 'rail') ctx.act('rail'); else if (a === 'cover') ctx.act('takeCover', e.shiftKey); else if (a.startsWith('st:')) ctx.act('stance', a.slice(3)); else if (a.startsWith('ent:')) ctx.act('entrench', a.slice(4));
+          else if (a.startsWith('fort:')) ctx.act('dig', a.slice(5)); else if (a.startsWith('bld:')) ctx.act('build', a.slice(4)); else ctx.act('ability', a);
         };
-        if (UNITS[a]) b.oncontextmenu = (e) => { e.preventDefault(); ctx.autocast(a); };
+        if (UNITS[a]) b.oncontextmenu = (e) => { e.preventDefault(); ctx.act('autocast', a); };
       });
       el.querySelectorAll('button[data-m]').forEach((b) => (b.onclick = () => { menu = menu === b.dataset.m ? null : b.dataset.m; drawOrders(s, sel); }));
       el.querySelectorAll('button[data-tab]').forEach((b) => (b.onclick = () => { buildTab = b.dataset.tab; drawOrders(s, sel); }));
       el.querySelectorAll('button[data-f]').forEach((b) => (b.onclick = () => {
         const f = b.dataset.f;
-        if (f.startsWith('shape:')) ctx.setForm({ shape: f.slice(6) });
-        else if (f === 'tighten' || f === 'spread') ctx.reform(f === 'spread' ? 0.25 : -0.25);
-        else ctx.setForm({ [f]: !ctx.form()[f] });
+        if (f.startsWith('shape:')) ctx.act('setForm', { shape: f.slice(6) });
+        else if (f === 'tighten' || f === 'spread') ctx.act('reform', f === 'spread' ? 0.25 : -0.25);
+        else ctx.act('setForm', { [f]: !ctx.form()[f] });
         drawOrders(s, sel);
       }));
     }
@@ -533,7 +535,7 @@ export function createHud(ctx) {
       b.dataset.rally = ''; b.title = `Rally (${label('rally')}): choose where new recruits gather`;
       b.innerHTML = `Rally <kbd>${label('rally')}</kbd>`;
       Object.assign(b.style, { position: 'absolute', right: '8px', bottom: 'calc(100% + 6px)', padding: '4px 8px', font: '13px var(--type)', background: 'var(--strip)' });
-      b.onclick = () => ctx.rally(); card.append(b);
+      b.onclick = () => ctx.act('rally'); card.append(b);
     }
     let info = card.querySelector('[data-facility]');
     if (!info) { info = document.createElement('div'); info.dataset.facility = ''; Object.assign(info.style, {position:'absolute',left:'8px',bottom:'calc(100% + 6px)',background:'var(--strip)',padding:'4px 8px'}); card.append(info); }
@@ -542,7 +544,7 @@ export function createHud(ctx) {
     if (info.dataset.key !== key) {
       info.dataset.key = key;
       info.innerHTML = bld ? `<span data-facility-text></span>` + (bld.built < 1 && bld.owner === ctx.me ? ' <button data-cancel-site>Cancel (75% back)</button>' : '') : '';
-      info.querySelector('[data-cancel-site]')?.addEventListener('click', () => ctx.send({t:'cancel',id:bld.id}));
+      info.querySelector('[data-cancel-site]')?.addEventListener('click', () => ctx.act('send', {t:'cancel',id:bld.id}));
       // selecting one of my finished production buildings opens recruit mode on the group it makes most of
       const makes = bld && bld.built >= 1 && bld.owner === ctx.me ? UNITS[bld.type].makes ?? [] : [];
       const counts = [...card.querySelectorAll('.grp')].map((g) => [...g.querySelectorAll('[data-unit]')].filter((b) => makes.includes(b.dataset.unit)).length);
@@ -573,7 +575,7 @@ export function createHud(ctx) {
       }).join('');
       el.querySelectorAll('[data-job]').forEach((b) => {
         const action = { t: 'cancelProduction', id: bld.id, job: +b.dataset.job };
-        b.onclick = () => attempt(action, () => { b.disabled = true; ctx.send(action); });
+        b.onclick = () => attempt(action, () => { b.disabled = true; ctx.act('send', action); });
       });
     }
     el.firstChild.style.setProperty('--p', `${Math.round((bld.prog ?? 0) * 100)}%`);
@@ -603,13 +605,13 @@ export function createHud(ctx) {
         `<span class="sub" data-note></span></button>`).join('') + '</div></div>';
       else if (recovery) card.innerHTML = `<button class="uc wide" data-recover><span class="nm">Restore ${missingHQ ? 'HQ' : 'Engineer'}</span><span class="cost">${recoveryCost} MP</span><span class="sub">Deploys in friendly territory</span></button>`;
       else card.innerHTML = '';
-      card.querySelector('[data-recover]')?.addEventListener('click', () => ctx.send({ t: 'recover' }));
+      card.querySelector('[data-recover]')?.addEventListener('click', () => ctx.act('send', { t: 'recover' }));
       const id = bld?.id;
       card.querySelectorAll('[data-train]').forEach((b) => { b._buy = (many) => buy({ t: 'buy', unit: b.dataset.train, from: id }, many); b.onclick = () => b._buy(false); });
       // a selected production building answers to the card letters without recruit mode
       lettered(); card.classList.toggle('lettered', !!card.querySelector('[data-train]'));
-      card.querySelectorAll('[data-cancel]').forEach((b) => (b.onclick = () => { ctx.send({ t: 'cancel', id }); ctx.selected.clear(); ctx.blip(300); }));
-      card.querySelectorAll('[data-build]').forEach((b) => (b.onclick = () => ctx.build(b.dataset.build)));
+      card.querySelectorAll('[data-cancel]').forEach((b) => (b.onclick = () => { ctx.act('send', { t: 'cancel', id }); ctx.selected.clear(); ctx.act('blip', 300); }));
+      card.querySelectorAll('[data-build]').forEach((b) => (b.onclick = () => ctx.act('build', b.dataset.build)));
     }
     if (recovery) { const button = card.querySelector('[data-recover]'); if (button) button.disabled = s.mp < recoveryCost; }
     if (bld && bld.built < 1) setText(card.querySelector('[data-built]'), `${Math.round(bld.built * 100)}%`);
@@ -646,8 +648,8 @@ export function createHud(ctx) {
       airKey = key;
       el.innerHTML = air.map(([id]) => `<button data-plane="${id}"><span class="nm">${esc(name(ctx.units.get(id).type))}</span><span class="st"></span></button>`).join('');
       el.querySelectorAll('[data-plane]').forEach((b) => {
-        b.onclick = (e) => ctx.select(+b.dataset.plane, e.shiftKey || e.ctrlKey);
-        b.ondblclick = () => ctx.selectMany(air.map(([id]) => id));
+        b.onclick = (e) => ctx.act('select', +b.dataset.plane, e.shiftKey || e.ctrlKey);
+        b.ondblclick = () => ctx.act('selectMany', air.map(([id]) => id));
       });
     }
     air.forEach(([id, st, fuel, , timer], k) => {
@@ -692,8 +694,8 @@ export function createHud(ctx) {
   function drawTech(s, sel) {
     const card = $('buy'), t = s.tech;
     if (t && techSeen) {
-      if (t.tier > techSeen.tier) ctx.explain(`${TIER_NAMES[t.tier]} ready`);
-      for (const k of Object.keys(TECH.lines)) if (t.armory[k] > techSeen.armory[k]) ctx.explain(`${TECH.lines[k]} ${t.armory[k]} researched`);
+      if (t.tier > techSeen.tier) ctx.act('explain', `${TIER_NAMES[t.tier]} ready`);
+      for (const k of Object.keys(TECH.lines)) if (t.armory[k] > techSeen.armory[k]) ctx.act('explain', `${TECH.lines[k]} ${t.armory[k]} researched`);
     }
     techSeen = t && { tier: t.tier, armory: { ...t.armory } };
     const bld = t && sel.length === 1 && ['hq', 'armory'].includes(sel[0].type) && sel[0].owner === ctx.me && sel[0].built >= 1 ? sel[0] : null;
@@ -705,7 +707,7 @@ export function createHud(ctx) {
       panel = document.createElement('div'); panel.dataset.tech = '';
       Object.assign(panel.style, { position: 'absolute', left: '8px', bottom: 'calc(100% + 40px)', display: 'flex', gap: '6px', alignItems: 'center', background: 'var(--strip)', padding: '4px 8px', font: '13px var(--type)' });
       panel.innerHTML = `<b data-tier></b>` + kinds.map(k => `<button data-research="${k}"></button>`).join('');
-      panel.querySelectorAll('[data-research]').forEach(b => { b.onclick = (e) => { const action = { t: 'tech', kind: b.dataset.research }; attempt(action, () => { ctx.send(action); ctx.blip('recruit'); }); e.currentTarget.blur(); }; });
+      panel.querySelectorAll('[data-research]').forEach(b => { b.onclick = (e) => { const action = { t: 'tech', kind: b.dataset.research }; attempt(action, () => { ctx.act('send', action); ctx.act('blip', 'recruit'); }); e.currentTarget.blur(); }; });
       card.append(panel);
     }
     card.classList.remove('hidden');
@@ -751,7 +753,7 @@ export function createHud(ctx) {
       detail.innerHTML = `<div class="hd">Logistics</div><div class="logistics-reserves">${entries.map(({ v, lines }) =>
         `<div><b>${esc(tr(name(v.type, v.owner)))} #${v.id}</b>${lines.map(() => '<span data-logistics-value></span>').join('')}</div>`).join('')}</div>` +
         (trucks ? '<div class="ci-h">Right-click an allied unit or Supply Cache to deliver carried cargo</div><button data-logistics-resume>Resume deliveries</button>' : '');
-      detail.querySelector('[data-logistics-resume]')?.addEventListener('click', () => ctx.send({ t: 'logisticsResume', ids: selUnits().filter(v => v.type === 'truck' && v.owner === ctx.me).map(v => v.id) }));
+      detail.querySelector('[data-logistics-resume]')?.addEventListener('click', () => ctx.act('send', { t: 'logisticsResume', ids: selUnits().filter(v => v.type === 'truck' && v.owner === ctx.me).map(v => v.id) }));
     }
     const values = detail.querySelectorAll('[data-logistics-value]');
     entries.flatMap(entry => entry.lines).forEach((line, i) => setText(values[i], line));

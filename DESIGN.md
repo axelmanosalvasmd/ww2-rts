@@ -1571,6 +1571,22 @@ the page. Adding text to the game means adding its Spanish to `client/es.js`.
   process is `server.js` with `WW2_SHARD` set and keeps today's room code unchanged. Shared state has one owner: the
   front merges the processes' `/api/rooms`, writes Horde records they send, and tells them when a map is saved.
   `MAX_ROOMS` applies per game process. A game process that exits is started again after a second.
+- Team knowledge (2026-10-11, issue #58): `knowledgeOf(g)` picks the adapter for what a side knows: `world`
+  (`worldTerrainFor`, `worldPathView`, the team memory's version, `worldWrecksFor`) or `observed` (`observedTerrainFor`,
+  `observedPathView`, its `navigationKnowledgeVersion`, `observedWrecksFor`). A new mode with its own memory adds an
+  adapter there rather than a branch in each caller.
+- Path regions (2026-10-11, issue #58): `regionsFor` labels which cells a block mask can walk between. After a version
+  bump it compares each cell's blocked bit and height with its last pass; up to 64 changed cells are relabelled by
+  `relabelNear` (flood the cells within two of them, join each piece to the outside regions it reaches, fresh labels
+  above N), and a region reached by two pieces (a possible split) or more changes floods the whole map. Labels only
+  mean same or different region; nothing may read their values.
+- Structure pieces (2026-10-11, issue #58): `client/structures.js` keeps its instances in parts, one per house
+  (by rectangle, kind and type) and one per 32 x 32 cells for everything else (hedges, walls, trenches, wire, traps,
+  mines, hospitals, rubble, bridges), and joins them into one InstancedMesh per kind. `buildStructures(..., { cells })`
+  redoes the parts within two cells of the changed cells. The map-wide inputs are compared rather than trusted: the
+  house footprint (a flip redoes the layout and `houseKinds`), each cell's house colours (rubble), the stone bridge
+  spans and the spoil tips; cells whose value changed are redone too. A builder that reads further than two cells away
+  must widen that margin, or parts go stale.
 - Plain JS ES modules, no build step. Deps: `ws` (server), `three` (client).
 - Server-authoritative: `shared/sim.js` runs at 20 Hz on the server and snapshots go out at 10 Hz (every 3 or 4
   ticks while a room falls behind, see round 3 above).

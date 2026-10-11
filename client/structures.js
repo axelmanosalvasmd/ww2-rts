@@ -257,7 +257,8 @@ const KINDS = {
 };
 
 // ---------- instance batches ----------
-const batch = new Map(), TMP = new THREE.Matrix4();
+let batch = new Map();
+const TMP = new THREE.Matrix4();
 // one piece: world position, size (x across, y up, z along the yaw), yaw, linear color (number = grey), tilts
 function put(kind, x, y, z, sx, sy, sz, ry = 0, color = 1, rx = 0, rz = 0) {
   let b = batch.get(kind);
@@ -266,18 +267,28 @@ function put(kind, x, y, z, sx, sy, sz, ry = 0, color = 1, rx = 0, rz = 0) {
   for (let i = 0; i < 16; i++) b.m.push(e[i]);
   if (typeof color === 'number') b.c.push(color, color, color); else b.c.push(color[0], color[1], color[2]);
 }
-function flush(group, low) {
-  for (const [kind, b] of batch) {
-    const def = KINDS[kind], n = b.c.length / 3, im = new THREE.InstancedMesh(def.geo, def.mat(), n);
-    im.instanceMatrix.array.set(b.m);
-    im.instanceColor = new THREE.InstancedBufferAttribute(new Float32Array(b.c), 3);
+// parts: kind -> the {m, c} batches to draw as that kind's one InstancedMesh
+function flush(group, low, parts) {
+  for (const [kind, list] of parts) {
+    const def = KINDS[kind], n = list.reduce((sum, b) => sum + b.c.length / 3, 0);
+    if (!n) continue;
+    const im = new THREE.InstancedMesh(def.geo, def.mat(), n), colors = new Float32Array(n * 3);
+    let at = 0;
+    for (const b of list) { im.instanceMatrix.array.set(b.m, at * 16); colors.set(b.c, at * 3); at += b.c.length / 3; }
+    im.instanceColor = new THREE.InstancedBufferAttribute(colors, 3);
     im.castShadow = def.shadow !== false && !(low && def.lowShadow === false);
     im.receiveShadow = true;
     if (!def.pick) im.raycast = () => {};
     im.name = kind;
     group.add(im);
   }
-  batch.clear();
+}
+// one batch from many, in order
+function join(list) {
+  const m = new Float32Array(list.reduce((n, b) => n + b.m.length, 0)), c = new Float32Array(m.length / 16 * 3);
+  let at = 0;
+  for (const b of list) { m.set(b.m, at * 16); c.set(b.c, at * 3); at += b.c.length / 3; }
+  return { m, c };
 }
 function clearGroup(group) {
   for (const o of [...group.children]) { group.remove(o); o.dispose?.(); } // instance buffers only; geometry and materials are shared
@@ -313,15 +324,17 @@ function rectangles(x0, y0, x1, y1, ok) {
   return out;
 }
 
-function houses(C) {
-  const { w, h, at, orig } = C;
-  const isFoot = (x, y) => orig[y]?.[x] === 'B' || at(x, y) === 'B';
+// a house cell, standing or fallen, on the map's footprint (C.foot): walls facing it are party walls, without windows
+const isHouse = (C, x, y) => x >= 0 && y >= 0 && x < C.w && y < C.h && C.foot[y * C.w + x] === 1 && (C.at(x, y) === 'B' || C.at(x, y) === 'R');
+const isFoot = (C, x, y) => C.orig[y]?.[x] === 'B' || C.at(x, y) === 'B';
+
+// The house layout: the footprint's rectangles, what each is, and the pieces each one is drawn as (one house each).
+function layout(C) {
+  const { w, h } = C;
   C.foot = new Uint8Array(w * h);
-  for (let y = 0; y < h; y++) for (let x = 0; x < w; x++) if (isFoot(x, y)) C.foot[y * w + x] = 1;
-  // a house cell, standing or fallen: walls facing it are party walls, without windows
-  C.isHouse = (x, y) => x >= 0 && y >= 0 && x < w && y < h && C.foot[y * w + x] === 1 && (at(x, y) === 'B' || at(x, y) === 'R');
+  for (let y = 0; y < h; y++) for (let x = 0; x < w; x++) if (isFoot(C, x, y)) C.foot[y * w + x] = 1;
   // rectangles over the map's footprint, so a house keeps its shape (and its look) while it is shot to pieces
-  const rects = rectangles(0, 0, w, h, isFoot);
+  const rects = rectangles(0, 0, w, h, (x, y) => C.foot[y * w + x] === 1), out = [];
   const dims = (r) => { const a = r.x1 - r.x0, b = r.y1 - r.y0; return [Math.min(a, b), Math.max(a, b)]; };
   const area = (r) => (r.x1 - r.x0) * (r.y1 - r.y0);
   // what each block is in the game (0 timber shed, 1 brick house, 2 stone building): the look follows it
@@ -356,10 +369,11 @@ function houses(C) {
     }
     let o = 0;
     for (const k of parts) {
-      piece(C, alongX ? { x0: r.x0 + o, x1: r.x0 + o + k, y0: r.y0, y1: r.y1, kind: r.kind, type: r.type } : { x0: r.x0, x1: r.x1, y0: r.y0 + o, y1: r.y0 + o + k, kind: r.kind, type: r.type });
+      out.push(alongX ? { x0: r.x0 + o, x1: r.x0 + o + k, y0: r.y0, y1: r.y1, kind: r.kind, type: r.type } : { x0: r.x0, x1: r.x1, y0: r.y0 + o, y1: r.y0 + o + k, kind: r.kind, type: r.type });
       o += k;
     }
   }
+  return out;
 }
 
 // the rectangle's frame: s runs across the ridge, a along it; at(s, a) gives world x, z
@@ -399,7 +413,7 @@ function bays(C, r, F) {
   const out = [];
   for (let y = r.y0; y < r.y1; y++) for (let x = r.x0; x < r.x1; x++) for (const [dx, dy] of DIR4) {
     const nx = x + dx, ny = y + dy;
-    if ((nx >= r.x0 && nx < r.x1 && ny >= r.y0 && ny < r.y1) || C.isHouse(nx, ny)) continue;
+    if ((nx >= r.x0 && nx < r.x1 && ny >= r.y0 && ny < r.y1) || isHouse(C, nx, ny)) continue;
     out.push({ x, y, dx, dy, long: F.alongX ? dy !== 0 : dx !== 0, px: (x + 0.5 + dx * 0.5) * CELL, pz: (y + 0.5 + dy * 0.5) * CELL });
   }
   return out;
@@ -419,15 +433,20 @@ function tower(F, sp, end) {
   return { aT, T };
 }
 
+// One house. Its pieces depend on its rectangle, kind and type and on the cells and heights a cell or two around it, so
+// they are kept (C.houses, by rectangle) and reused while no changed cell (C.changed) comes within two cells of it.
 function piece(C, r) {
   const cells = [];
   for (let y = r.y0; y < r.y1; y++) for (let x = r.x0; x < r.x1; x++) cells.push([x, y]);
   const sp = spec(r);
   for (const [x, y] of cells) C.tint.set(y * C.w + x, { color: sp.brick ? BRICK_DUST : sp.tint, wall: sp.tint, wood: sp.wood, stone: sp.stone, brick: sp.brick });
+  const key = `${r.x0},${r.y0},${r.x1},${r.y1},${r.kind},${r.type}`, kept = C.houses?.get(key);
+  const near = c => { const x = c % C.w, y = (c - x) / C.w; return x >= r.x0 - 2 && x < r.x1 + 2 && y >= r.y0 - 2 && y < r.y1 + 2; };
+  if (kept && !C.changed.some(near)) { C.housesNext.set(key, kept); return; }
   const standing = cells.filter(([x, y]) => C.at(x, y) === 'B');
-  if (!standing.length) return; // all rubble: rubble() draws it
-  if (standing.length < cells.length) ruin(C, r, sp, standing);
+  if (!standing.length) { /* all rubble: rubble() draws it */ } else if (standing.length < cells.length) ruin(C, r, sp, standing);
   else house(C, r, sp);
+  C.housesNext.set(key, take());
 }
 
 const wallKind = (sp) => (sp.wood ? 'wood' : sp.stone ? 'stone' : sp.brick ? 'brick' : 'wall');
@@ -442,7 +461,7 @@ function quoins(C, r, F, H) {
     let party = false;
     for (const [ox, oz] of [[-1, -1], [0, -1], [-1, 0], [0, 0]]) {
       const x = gx + ox, y = gz + oz;
-      if (!(x >= r.x0 && x < r.x1 && y >= r.y0 && y < r.y1) && C.isHouse(x, y)) party = true;
+      if (!(x >= r.x0 && x < r.x1 && y >= r.y0 && y < r.y1) && isHouse(C, x, y)) party = true;
     }
     if (party) continue;
     for (let k = 0, y = base + 0.55; y < base + H - 0.3; k++, y += 0.44) {
@@ -644,8 +663,8 @@ function ruin(C, r, sp, standing) {
 
 // ---------- rubble ----------
 function rubble(C) {
-  const { w, h, at, hAt, low } = C;
-  for (let y = 0; y < h; y++) for (let x = 0; x < w; x++) {
+  const { w, at, hAt, low } = C;
+  for (let y = C.y0; y < C.y1; y++) for (let x = C.x0; x < C.x1; x++) {
     if (at(x, y) !== 'R') continue;
     const cx = (x + 0.5) * CELL, cz = (y + 0.5) * CELL, g = hAt(cx, cz), house = C.tint.get(y * w + x);
     if (C.spoil.has(y * w + x)) {
@@ -693,7 +712,7 @@ function rubble(C) {
 // ---------- hedgerows: bocage earth banks topped with shrubs (still tall enough to block sight) ----------
 function hedges(C) {
   const { w, h, at, hAt, low } = C;
-  for (let y = 0; y < h; y++) for (let x = 0; x < w; x++) {
+  for (let y = C.y0; y < C.y1; y++) for (let x = C.x0; x < C.x1; x++) {
     if (at(x, y) !== 'H') continue;
     const cx = (x + 0.5) * CELL, cz = (y + 0.5) * CELL, g = hAt(cx, cz), r1 = rnd(x, y, 80), hb = 0.85 + 0.25 * r1;
     // a shot-up hedge loses its shrubs first, then the bank slumps
@@ -719,7 +738,7 @@ const WT = 0.55, WH = 1.0, SINK = 0.3;
 function placePiece(...piece) { put(...piece); } // the module's put, for stoneWall, which wraps it under the same name
 function walls(C) {
   const { w, h, at, orig } = C, isWall = (x, y) => at(x, y) === '#';
-  for (let y = 0; y < h; y++) for (let x = 0; x < w; x++) {
+  for (let y = C.y0; y < C.y1; y++) for (let x = C.x0; x < C.x1; x++) {
     if (!isWall(x, y)) continue;
     const conn = DIR4.filter(([dx, dy]) => isWall(x + dx, y + dy));
     const diag = DIAG.filter(([dx, dy]) => isWall(x + dx, y + dy) && !isWall(x + dx, y) && !isWall(x, y + dy));
@@ -776,7 +795,7 @@ function bagWall(C, x, y, conn, diag) {
 // ---------- trenches: timber revetments, posts, duckboards, spoil parapets; MG nests get an inner ring of bags ----------
 function trenches(C) {
   const { w, h, at, hAt, low } = C;
-  for (let y = 0; y < h; y++) for (let x = 0; x < w; x++) {
+  for (let y = C.y0; y < C.y1; y++) for (let x = C.x0; x < C.x1; x++) {
     if (at(x, y) !== 'T') continue;
     // g is the carved floor (client/relief.js), top the ground at the lip; the revetments line the walls between them
     const cx = (x + 0.5) * CELL, cz = (y + 0.5) * CELL, g = hAt(cx, cz), top = g + TRENCH_DEPTH, wall = (g + top) / 2, conn = DIR4.map(([dx, dy]) => at(x + dx, y + dy) === 'T');
@@ -813,7 +832,7 @@ function trenches(C) {
 // ---------- barbed wire: posts and sagging strands from post to post ----------
 function wire(C) {
   const { w, h, at, hAt } = C, isWire = (x, y) => at(x, y) === 'X';
-  for (let y = 0; y < h; y++) for (let x = 0; x < w; x++) {
+  for (let y = C.y0; y < C.y1; y++) for (let x = C.x0; x < C.x1; x++) {
     if (!isWire(x, y)) continue;
     const cx = (x + 0.5) * CELL, cz = (y + 0.5) * CELL, g = hAt(cx, cz), tilt = (k) => (rnd(x, y, k) - 0.5) * 0.14;
     for (const [dx, dy] of [[1, 0], [0, 1], [1, 1], [1, -1]]) {
@@ -833,7 +852,7 @@ function wire(C) {
 // ---------- tank traps: two steel hedgehogs per cell ----------
 function traps(C) {
   const { w, h, at, hAt } = C;
-  for (let y = 0; y < h; y++) for (let x = 0; x < w; x++) {
+  for (let y = C.y0; y < C.y1; y++) for (let x = C.x0; x < C.x1; x++) {
     if (at(x, y) !== 'Y') continue;
     const cx = (x + 0.5) * CELL, cz = (y + 0.5) * CELL, flip = rnd(x, y, 140) < 0.5 ? 1 : -1;
     for (const s of [-1, 1]) {
@@ -846,7 +865,7 @@ function traps(C) {
 // ---------- mines: a dark disc half sunk in the turf (the server only tells you about your own side's) ----------
 function mines(C) {
   const { w, h, at, hAt, mineGrid } = C;
-  for (let y = 0; y < h; y++) for (let x = 0; x < w; x++) {
+  for (let y = C.y0; y < C.y1; y++) for (let x = C.x0; x < C.x1; x++) {
     if (!(mineGrid ? mineGrid[y]?.[x] : at(x, y) === 'N')) continue;
     const cx = (x + 0.5) * CELL, cz = (y + 0.5) * CELL;
     put('dark', cx, hAt(cx, cz) + 0.06, cz, 0.7, 0.14, 0.7, rnd(x, y, 150) * 6.28, 0.7);
@@ -856,7 +875,7 @@ function mines(C) {
 // ---------- Field Hospital: a white ridge tent with a red cross on a board over the ridge ----------
 function hospitals(C) {
   const { w, h, at, hAt } = C, canvas = [1.25, 1.22, 1.12], red = [0.9, 0.12, 0.1];
-  for (let y = 0; y < h; y++) for (let x = 0; x < w; x++) {
+  for (let y = C.y0; y < C.y1; y++) for (let x = C.x0; x < C.x1; x++) {
     if (at(x, y) !== 'A') continue;
     const cx = (x + 0.5) * CELL, cz = (y + 0.5) * CELL, g = hAt(cx, cz);
     put('wall', cx, g + 0.45, cz, 1.9, 0.9, 1.9, 0, canvas);
@@ -868,19 +887,22 @@ function hospitals(C) {
 }
 
 // ---------- bridges: plank deck, edge beams, railings and stone cutwaters on the water sides ----------
-function bridges(C) {
-  const { w, h, at, hAt } = C;
-  // stone bridges (map.buildings): the whole span the entry sits on gets a stone deck
-  const stone = new Set(), q = (C.buildings ?? []).filter(b => b.kind === 'stone bridge' && at(b.x, b.y) === '=').map(b => [b.x, b.y]);
+// stone bridges (map.buildings): the whole span the entry sits on gets a stone deck
+function stoneDecks(C) {
+  const { w, at } = C, stone = new Set(), q = (C.buildings ?? []).filter(b => b.kind === 'stone bridge' && at(b.x, b.y) === '=').map(b => [b.x, b.y]);
   for (const [x, y] of q) stone.add(y * w + x);
   for (const [x, y] of q) for (const [dx, dy] of DIR4) {
     const k = (y + dy) * w + x + dx;
     if (!stone.has(k) && at(x + dx, y + dy) === '=') { stone.add(k); q.push([x + dx, y + dy]); }
   }
-  for (let y = 0; y < h; y++) for (let x = 0; x < w; x++) {
+  return stone;
+}
+function bridges(C) {
+  const { w, at, hAt } = C;
+  for (let y = C.y0; y < C.y1; y++) for (let x = C.x0; x < C.x1; x++) {
     if (at(x, y) !== '=') continue;
     const cx = (x + 0.5) * CELL, cz = (y + 0.5) * CELL, g = hAt(cx, cz), top = g + 0.22;
-    put(stone.has(y * w + x) ? 'stone' : 'wood', cx, top - 0.15, cz, CELL, 0.3, CELL, 0, 1);
+    put(C.stone.has(y * w + x) ? 'stone' : 'wood', cx, top - 0.15, cz, CELL, 0.3, CELL, 0, 1);
     for (const [dx, dy] of DIR4) {
       const nb = at(x + dx, y + dy);
       if (nb !== 'W' && nb !== 'F') continue;
@@ -900,21 +922,78 @@ function bridges(C) {
 // types and heights, so a cell change can move pieces up to two cells away
 export const PIECE_CELLS = new Set([...'BRH#TXYNA=']);
 let state = null;
-function rebuild() {
+// Pieces are kept in parts: one per house, and for everything else one per PIECES x PIECES cells (each of those reads
+// only its own cells and their neighbours). A change redoes the parts it reaches and joins them into the same one mesh
+// per kind; a whole-map rebuild after every scouted hedge, wall or house cost 18 to 30 ms on a Huge World map (#58).
+// What spans the map is kept apart and compared: the house layout (rubble takes its colours), the stone bridge spans
+// and the mine spoil tips, so a change to them redoes only the cells whose looks it changed.
+const PIECES = 32;
+const take = () => { const out = batch; batch = new Map(); return out; };
+const sameTint = (a, b) => a === b || (a && b && a.color === b.color && a.wall === b.wall && a.wood === b.wood && a.stone === b.stone && a.brick === b.brick);
+
+function rebuild(change = null) {
   const { group, grid, orig, hAt, cells, buildings, mineGrid } = state, h = grid.length, w = grid[0]?.length ?? 0;
-  clearGroup(group);
   // stage: 0 whole, 1 damaged, 2 nearly gone (bits 3-4 of the cell state the server sends)
   const C = { grid, orig, hAt, w, h, buildings, mineGrid, low: gfx.low, at: (x, y) => grid[y]?.[x], tint: new Map(), stage: (x, y) => (cells ? cells[y * w + x] >> 3 & 3 : 0),
-    spoil: new Set((buildings ?? []).filter(b => b.kind === 'spoil').map(b => b.y * w + b.x)) }; // World mine tips (client/main.js)
-  houses(C); rubble(C); hedges(C); walls(C); trenches(C); wire(C); traps(C); mines(C); hospitals(C); bridges(C);
-  flush(group, C.low);
+    spoil: new Set((buildings ?? []).filter(b => b.kind === 'spoil').map(b => b.y * w + b.x)), // World mine tips (client/main.js)
+    x0: 0, y0: 0, x1: w, y1: h };
+  C.stone = stoneDecks(C);
+  const cw = Math.ceil(w / PIECES), old = state.parts, landmarks = buildings?.length ?? 0;
+  const whole = !change || !old || old.w !== w || old.h !== h || old.low !== C.low;
+  const parts = state.parts = whole ? { w, h, low: C.low, chunks: new Map() } : old;
+  const changed = whole ? [] : [...change.cells], extra = [];
+  batch.clear();
+  // houses: the layout is redone when the footprint or the landmarks changed, each house when a change comes near it
+  const relaid = whole || old.landmarks !== landmarks || changed.some(c => old.foot[c] !== (isFoot(C, c % w, Math.floor(c / w)) ? 1 : 0));
+  const nearHouse = !relaid && changed.some(c => {
+    const x = c % w, y = Math.floor(c / w);
+    for (let dy = -2; dy <= 2; dy++) for (let dx = -2; dx <= 2; dx++) if (old.foot[(y + dy) * w + x + dx] === 1 && x + dx >= 0 && x + dx < w) return true;
+    return false;
+  });
+  if (relaid) parts.rects = layout(C);
+  else C.foot = parts.foot;
+  if (relaid || nearHouse) {
+    C.houses = whole ? new Map() : parts.houses; C.changed = changed; C.housesNext = new Map();
+    for (const r of parts.rects) piece(C, r);
+    if (!whole) for (const c of new Set([...parts.tint.keys(), ...C.tint.keys()])) if (!sameTint(parts.tint.get(c), C.tint.get(c))) extra.push(c);
+    parts.houses = C.housesNext; parts.tint = C.tint;
+    // every house joined into one batch per kind, so a change elsewhere copies a few arrays rather than thousands
+    const joined = new Map();
+    for (const house of parts.houses.values()) for (const [kind, b] of house) { let list = joined.get(kind); if (!list) joined.set(kind, list = []); list.push(b); }
+    parts.housesJoined = new Map([...joined].map(([kind, list]) => [kind, join(list)]));
+  } else C.tint = parts.tint;
+  parts.foot = C.foot; parts.landmarks = landmarks;
+  // a bridge span turned to stone or back, a spoil tip added: those cells' pieces change
+  if (!whole) for (const [now, before] of [[C.stone, parts.stone], [C.spoil, parts.spoil]]) {
+    for (const c of now) if (!before.has(c)) extra.push(c);
+    for (const c of before) if (!now.has(c)) extra.push(c);
+  }
+  parts.stone = C.stone; parts.spoil = C.spoil;
+  const redo = new Set();
+  if (whole) for (let k = 0; k < cw * Math.ceil(h / PIECES); k++) redo.add(k);
+  else for (const c of [...changed, ...extra]) {
+    const x = c % w, y = Math.floor(c / w);
+    for (let ky = Math.max(0, y - 2) / PIECES | 0; ky <= (Math.min(h - 1, y + 2) / PIECES | 0); ky++)
+      for (let kx = Math.max(0, x - 2) / PIECES | 0; kx <= (Math.min(w - 1, x + 2) / PIECES | 0); kx++) redo.add(ky * cw + kx);
+  }
+  for (const k of redo) {
+    C.x0 = (k % cw) * PIECES; C.y0 = Math.floor(k / cw) * PIECES; C.x1 = Math.min(w, C.x0 + PIECES); C.y1 = Math.min(h, C.y0 + PIECES);
+    hedges(C); walls(C); trenches(C); wire(C); traps(C); mines(C); hospitals(C); rubble(C); bridges(C);
+    parts.chunks.set(k, take());
+  }
+  const byKind = new Map();
+  for (const part of [parts.housesJoined, ...[...parts.chunks.keys()].sort((a, b) => a - b).map(k => parts.chunks.get(k))])
+    for (const [kind, b] of part) { let list = byKind.get(kind); if (!list) byKind.set(kind, list = []); list.push(b); }
+  clearGroup(group);
+  flush(group, C.low, byKind);
 }
 // group: emptied and refilled; grid: current rows (arrays of chars); orig: the map file's rows; hAt(x, z): ground height;
-// cells: the per-cell state bytes, if any; buildings: the map's named buildings (map.buildings)
-export function buildStructures(group, grid, orig, hAt, cells, buildings, mineGrid) {
-  if (state && state.group !== group) clearGroup(state.group);
-  state = { group, grid, orig, hAt, cells, buildings, mineGrid };
-  rebuild();
+// cells: the per-cell state bytes, if any; buildings: the map's named buildings (map.buildings). change: what changed
+// since the last call, { cells: [cell indices] }; without it everything is built again.
+export function buildStructures(group, grid, orig, hAt, cells, buildings, mineGrid, change = null) {
+  if (state && state.group !== group) { clearGroup(state.group); change = null; }
+  state = { group, grid, orig, hAt, cells, buildings, mineGrid, parts: change ? state?.parts : null };
+  rebuild(change);
 }
 gfx.onChange(() => { if (state?.group.parent) rebuild(); });
 

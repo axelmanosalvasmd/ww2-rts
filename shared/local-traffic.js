@@ -1,6 +1,12 @@
 // Steering uses the existing spatial index. It leaves the ordered route intact.
 import { bodyRadius } from './vehicle-motion.js';
 export const TRAFFIC = Object.freeze({ horizon: 0.7, wait: 0.35, alternate: 1.1, replan: 3, age: 2, maxYield: 5, ghost: 3, ghostTime: 2 });
+// Ghosts. A unit that has just stepped out, or has been boxed in by friends for a while, passes through friends (own or
+// allied) for a few seconds instead of locking up with them. These two are the only places the rule lives: the
+// simulation's spawns, separation and swept checks and this file's traffic all use them.
+export function startGhost(g, u, seconds, dt) { u.ghost = g.tick + Math.round(seconds / dt); }
+// friends: the two are own or allied units
+export const ghostPair = (g, a, b, friends) => ((a.ghost ?? 0) > g.tick || (b.ghost ?? 0) > g.tick) && friends;
 const length = (a, b) => Math.hypot(a.x - b.x, a.z - b.z);
 const priority = (g, u) => (u.retreating ? 30 : u.drift ? 0 : u.path?.length ? 10 : 20) + Math.min(25, Math.floor((u.trafficWait ?? 0) / TRAFFIC.age) * 5);
 export function trafficWins(g, a, b) {
@@ -71,7 +77,7 @@ function laneHolder(g, u, def, context, friend) {
   // Its nose already in it (or past its start): drive on through. Further than the hold point: carry on for now.
   const { entry, exit } = lane, before = (entry.x - u.x) * own.x + (entry.z - u.z) * own.z;
   if (before < bodyRadius(def) + 0.5 || length(u, entry) > 2 * bodyRadius(def) + LANE.hold) return null;
-  const oncoming = context.grid.candidates(u, LANE.ahead, false, v => v.id !== u.id && v.hp > 0 && !v.air && !v.riding && v.path?.length
+  const oncoming = context.grid.unordered(u, LANE.ahead, v => v.id !== u.id && v.hp > 0 && !v.air && !v.riding && v.path?.length
     && friend(v) && context.visible(v) && (v.x - u.x) * own.x + (v.z - u.z) * own.z > 0 && (h => h && h.x * own.x + h.z * own.z < -0.3)(heading(v)));
   if (!oncoming.length) return null;
   const sx = exit.x - entry.x, sz = exit.z - entry.z, squared = sx * sx + sz * sz;
@@ -92,7 +98,8 @@ export function trafficStep(g, u, goal, context) {
   if (!goal || protectedUnit(u)) { u.traffic = null; u.trafficWait = 0; return { goal, blocked: false }; }
   const def = defs[u.type], d = length(u, goal), dx = (goal.x - u.x) / (d || 1), dz = (goal.z - u.z) / (d || 1);
   const holder = context.open && !def.infantry && !u.traffic && u.path?.length && laneHolder(g, u, def, context, friend);
-  const radius = bodyRadius(def) + 7, nearby = grid.candidates(u, radius, false, v => !(def.infantry && defs[v.type].infantry) && v.id !== u.id && v.id !== u.board && v.hp > 0 && !v.air && !v.riding && v.garrison < 0 && !(((v.ghost ?? 0) > g.tick || (u.ghost ?? 0) > g.tick) && friend(v)) && visible(v), def.infantry); // a squad steers around vehicles only
+  const radius = bodyRadius(def) + 7, match = v => !(def.infantry && defs[v.type].infantry) && v.id !== u.id && v.id !== u.board && v.hp > 0 && !v.air && !v.riding && v.garrison < 0 && !ghostPair(g, v, u, friend(v)) && visible(v);
+  const nearby = def.infantry ? grid.heavy(u, radius, match) : grid.unordered(u, radius, match); // a squad steers around vehicles only
   const velocity = Math.min(def.speed, d / dt), vx = dx * velocity, vz = dz * velocity;
   let conflict = null, time = Infinity, follow = false, own;
   for (const v of nearby) {
@@ -121,7 +128,7 @@ export function trafficStep(g, u, goal, context) {
   if (giveWay) follow = false;
   // Gridlocked by a friend, own or allied (waiting, yielding, waiting again): pass through friends for a moment (a ghost, see stepOut).
   if (conflict && !follow && friend(conflict) && u.trafficWait >= TRAFFIC.ghost) {
-    u.ghost = g.tick + Math.round(TRAFFIC.ghostTime / dt); u.traffic = null; u.trafficWait = 0; u.trafficEntered = !!u.path?.length;
+    startGhost(g, u, TRAFFIC.ghostTime, dt); u.traffic = null; u.trafficWait = 0; u.trafficEntered = !!u.path?.length;
     return { goal: u.path?.[0] ?? goal, blocked: false };
   }
   if (u.traffic) {

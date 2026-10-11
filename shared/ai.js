@@ -508,12 +508,12 @@ function plan(observation, slot, opts, mem, send) {
       if (near.length <= most) continue;
       const at = { x: near.reduce((a, o) => a + o.x, 0) / near.length, z: near.reduce((a, o) => a + o.z, 0) / near.length };
       if (!L.best) return at;
-      if (grid.radius(at, 10).some(u => allied(view, u.owner, slot) && !u.air && d(u, at) < 10)) continue;
+      if (grid.has(at, 10, u => allied(view, u.owner, slot) && !u.air && d(u, at) < 10)) continue;
       best = at; most = near.length;
     }
     return best;
   };
-  const clearOfFriends = at => !grid.radius(at, 10).some(u => allied(view, u.owner, slot) && !u.air && d(u, at) < 10);
+  const clearOfFriends = at => !grid.has(at, 10, u => allied(view, u.owner, slot) && !u.air && d(u, at) < 10);
   // One support call per look. A siren (fighter cover) can be that call. A unit just spotted is not a target yet.
   const call = (kind, at, dir) => {
     if (spentSupport || !at) return;

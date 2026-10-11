@@ -3,7 +3,7 @@
 // allied units, shots that touch your side, public points and strikes), so nothing under fog leaks.
 // Routine alerts sit above the minimap for ~6 s. Prominent unit losses stay above them on the right.
 // Each has a minimap ping and sound. Space prioritizes a visible loss; clicking a notice visits its spot.
-import { UNITS, SUPPORT } from '/shared/sim.js';
+import { UNITS, SUPPORT, UNIT_ROW } from '/shared/sim.js';
 import { audio } from './audio.js';
 import { insideKnownRegion } from '/shared/world-territories.js';
 import { t as tr } from './i18n.js';
@@ -191,7 +191,7 @@ function snapshot(s, prev) {
   const hits = [];
   for (const [id, u] of after) {
     const p = before.get(id), [, type, owner, x, z, , , hp] = u, def = UNITS[type];
-    if (!p || !def || p[2] !== owner || hp >= p[7]) continue;
+    if (!p || !def || p[UNIT_ROW.owner] !== owner || hp >= p[UNIT_ROW.hp]) continue;
     if (owner !== me && !(friend(owner) && (type === 'hq' || type === 'bunker'))) continue;
     const by = shotsAt.get(id) ?? [];
     if (by.length && by.every(q => q.fo != null && friend(q.fo))) continue; // your own side's fire
@@ -264,7 +264,7 @@ function snapshot(s, prev) {
   for (const [kind, x, z, , , owner] of s.strikes ?? []) {
     if (seen.has(`${kind},${x},${z}`) || NOT_AIR.has(kind) || friend(owner)) continue;
     const sp = SUPPORT[kind], reach = (sp?.len ? sp.len / 2 : sp?.radius ?? 20) + AIR_MARGIN, at = { x, z };
-    const mine = s.units.some(u => friend(u[2]) && near({ x: u[3], z: u[4] }, at, reach))
+    const mine = s.units.some(u => friend(u[UNIT_ROW.owner]) && near({ x: u[UNIT_ROW.x], z: u[UNIT_ROW.z] }, at, reach))
       || s.points.some(([o], i) => friend(o) && hooks.pointPos(i) && near(hooks.pointPos(i), at, reach))
       || (hooks.home() && near(hooks.home(), at, reach));
     if (mine) push('air', `Enemy ${sp?.name ?? kind} incoming`, x, z);
@@ -280,7 +280,7 @@ function snapshot(s, prev) {
     if (!p) {
       const i = heads.indexOf(type);
       if (i >= 0 && !UNITS[type].structure) { heads.splice(i, 1); push('ready', `${hooks.unitName(type, me)} ready`, x, z); }
-    } else if (UNITS[type].building && (p[14] ?? 1) < 1 && (u[14] ?? 1) >= 1) push('ready', `${hooks.unitName(type, me)} finished`, x, z);
+    } else if (UNITS[type].building && (p[UNIT_ROW.built] ?? 1) < 1 && (u[UNIT_ROW.built] ?? 1) >= 1) push('ready', `${hooks.unitName(type, me)} finished`, x, z);
   }
 }
 
