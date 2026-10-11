@@ -1,6 +1,6 @@
 import * as THREE from 'three';
 import { lang } from './i18n.js';
-import { UNITS } from '/shared/sim.js';
+import { UNITS } from '../shared/sim.js';
 import { gfx } from './gfx.js';
 
 const now = () => performance.now() / 1000;

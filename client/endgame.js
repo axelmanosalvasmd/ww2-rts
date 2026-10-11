@@ -1,5 +1,5 @@
 // Match state uses public scores and the receiving player's snapshot only.
-import { CFG, TICK, winVp } from '/shared/sim.js';
+import { CFG, TICK, winVp } from '../shared/sim.js';
 import { audio } from './audio.js';
 import { t as tr } from './i18n.js';
 

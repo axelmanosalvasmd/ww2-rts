@@ -1,4 +1,4 @@
-import { mapMood } from '/shared/weather.js';
+import { mapMood } from '../shared/weather.js';
 
 // The light of every map, in one table. client/light.js applies a row (sun, sky fill, haze, exposure) and
 // client/atmosphere.js adds the weather and cloud shade that go with it. Adding a look, such as golden hour for a

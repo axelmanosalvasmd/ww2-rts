@@ -855,3 +855,6 @@ export function createGround(map, renderer, { frames = null, budgetMs = 8, tiles
     isRoad: (x, y) => x >= 0 && y >= 0 && x < S.w && y < S.h && S.attrs?.prim[y * S.w + x] === ROAD, loading,
     cells: () => S.attrs, version: () => S.version ?? 0, dispose: () => { if (S.owner === owner) { cancelPaint(S); S.attrs = null; } } };
 }
+
+// for the tests (test-world-discovery.js), which check the attribute builder without painting or uploading anything
+export const internals = { cellAttrs, buildNoise };

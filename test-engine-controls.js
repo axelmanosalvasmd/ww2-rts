@@ -1,7 +1,6 @@
 import { memoryConnect, sendsReadBy } from './test-socket.js';
 // Queue acceptance uses normal room commands and recipient-filtered WebSocket payloads.
 import assert from 'node:assert/strict';
-import { readFileSync } from 'node:fs';
 import { createGame, command, step, snapshotFor, snapshotCache, priceOf, popOf, popUse, UNITS } from './shared/sim.js';
 import { storyResult } from './shared/story.js';
 import { viewFor } from './shared/ai-view.js';
@@ -140,8 +139,7 @@ const jobsOf = (s, id) => s.productionJobs.find(row => row[0] === id)?.[1] ?? []
   Object.assign(globalThis, { document: { getElementById: id => ({ alerts: box, minimap: mm, top })[id] ?? null, createElement: () => new Element() }, performance: { now: () => clockMs }, addEventListener() {}, innerWidth: 1200, innerHeight: 800 });
   const { audio } = await import('./client/audio.js'), savedAlert = audio.alert; audio.alert = () => sounds++;
   try {
-    const source = readFileSync(new URL('./client/alerts.js', import.meta.url), 'utf8').replace(/from '([^']+)'/g, (_, path) => `from '${path.startsWith('/shared/') ? new URL('.' + path, import.meta.url) : new URL('./client/' + path.slice(2), import.meta.url)}'`);
-    const { alerts } = await import('data:text/javascript;base64,' + Buffer.from(source).toString('base64'));
+    const { alerts } = await import('./client/alerts.js');
     alerts.init({ me: () => 0, friend: slot => slot === 0, jump: (x, z) => jumps.push([x, z]), pointPos: () => ({ x: 90, z: 100 }), onScreen: () => false, home: () => ({ x: 0, z: 50 }), unitName: type => UNITS[type].name });
     alerts.startMatch('adapter-a'); alerts.push('pointLost', 20, 30, 'Point lost');
     assert.equal(sounds, 1); clockMs = 9000; alerts.frame(); assert.deepEqual(alerts.lines, []);

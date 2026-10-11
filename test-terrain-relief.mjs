@@ -1,14 +1,10 @@
 import assert from 'node:assert/strict';
-import { readFileSync } from 'node:fs';
 import * as THREE from 'three';
 import { CELL, CFG, levelOf } from './shared/sim.js';
 import { generateWorldMap } from './shared/world-conquest.js';
 import { createRelief, TRENCH_DEPTH } from './client/relief.js';
 import { WATER_LIFT } from './client/water-levels.js';
-const cameraSource = readFileSync(new URL('./client/camera.js', import.meta.url), 'utf8')
-  .replace("from 'three'", `from '${import.meta.resolve('three')}'`)
-  .replace("from '/shared/sim.js'", `from '${new URL('./shared/sim.js', import.meta.url)}'`);
-const { groundAt } = await import('data:text/javascript;base64,' + Buffer.from(cameraSource).toString('base64'));
+import { groundAt } from './client/camera.js';
 
 const L = CFG.levelHeight, EPS = 1e-6;
 const close = (actual, expected, label, tolerance = EPS) => {

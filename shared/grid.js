@@ -136,4 +136,5 @@ export function rebuildGrid(g) {
   return grid;
 }
 export function gridFor(g) { return indexes.get(g) ?? rebuildGrid(g); }
+// after a unit moved within a tick: the simulation calls it from placeUnit, spawnUnit and its movers (shared/sim.js)
 export function updateGrid(g, u) { indexes.get(g)?.update(u); }

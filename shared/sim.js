@@ -14,8 +14,9 @@ import { supportedSections, validateStructures, STRUCTURE_LIMITS } from './struc
 import { DEBRIS_LIMITS, SECTION_MASS, wreckMass, debrisBody, stepDebris, settleDebris, debrisRow } from './debris-motion.js';
 import { navigationLeg } from './navigation.js';
 import { tierOf, techCost, techMul, TECH } from './tech.js';
-import { isGroundVehicle, movementProfile, bodyRadius, vehiclePositionClear, sweptVehicleClear, vehicleStep, vehicleNavigationView, vehicleDestinationClear, segmentCliffClear, angleDelta } from './vehicle-motion.js';
-import { trafficStep, rememberTrafficPosition, trafficWins, TRAFFIC, startGhost, ghostPair as ghosts } from './local-traffic.js';
+import { isGroundVehicle, movementProfile, bodyRadius, vehiclePositionClear, sweptVehicleClear, vehicleNavigationView, vehicleDestinationClear, segmentCliffClear } from './vehicle-motion.js';
+import { trafficStep, rememberTrafficPosition, trafficWins, startGhost, ghostPair as ghosts } from './local-traffic.js';
+import { createMovers } from './movement.js';
 import { initializeUnit, tickReserves, consumeDrivingFuel, consumeAmmo, canFire, shortageRate, recoveryRate } from './logistics.js';
 import { setupConvoys, stepConvoys, convoyDeath, commandConvoy, logisticsSnapshot, supportProvision } from './supply-convoys.js';
 
@@ -982,7 +983,7 @@ function fortify(g, p) {
   // the bunker sits between the HQ and the fortifications
   const b = spawnUnit(g, p.slot, 'bunker');
   const at = nearestFree(g, p.spawn.x + Math.cos(toward) * 8 * CELL, p.spawn.z + Math.sin(toward) * 8 * CELL);
-  Object.assign(b, cellCenter(g, at), { rot: toward, aim: toward });
+  placeUnit(g, b, { ...cellCenter(g, at), rot: toward, aim: toward });
   // flak emplacements on the compound's four corners inside the trenches, a lane a Kaiju fits through between them
   // and the HQ, the bunker and the barracks (laid out after this, see setupSkirmishBases)
   const size = UNITS.flakpos.size;
@@ -1023,11 +1024,10 @@ function placeBuilding(g, owner, type, c, finished) {
   const top = Math.max(...cells.map(k => level(g, k)));
   for (const k of cells) { if (level(g, k) < top) setLevel(g, k, top); setCell(g, k, 'K'); }
   const u = spawnUnit(g, owner, type);
-  Object.assign(u, footCenter(g, c, def.size), { cells, built: finished ? 1 : 0, hp: finished ? max : max * 0.25, queue: [], productionJobs: [], prog: 0, rally: null });
+  placeUnit(g, u, { ...footCenter(g, c, def.size), cells, built: finished ? 1 : 0, hp: finished ? max : max * 0.25, queue: [], productionJobs: [], prog: 0, rally: null });
   const footprints = g.buildingCells ??= new Map(), at = { id: u.id, owner, x: u.x, z: u.z };
   for (const k of cells) footprints.set(k, at); // Keep the footprint private after cancellation or destruction too.
   registerBuildingStructure(g, u);
-  updateGrid(g, u);
   return u;
 }
 // Types stay in queue for population and existing AI consumers. Paid identities travel alongside them.
@@ -1071,7 +1071,7 @@ function train(g, b, dt) {
 function produceUnit(g, b, owner, type) {
   const to = b.rally ?? g.players[owner].rally ?? { x: g.w * CELL / 2, z: g.h * CELL / 2 }, a = Math.atan2(to.z - b.z, to.x - b.x), r = UNITS[b.type].radius + 2;
   const u = spawnUnit(g, owner, type);
-  if (u.air) { Object.assign(u, { x: b.x, z: b.z }); updateGrid(g, u); return; }
+  if (u.air) { placeUnit(g, u, { x: b.x, z: b.z }); return; }
   stepOut(g, u, b, r, a);
   if (b.rally) { u.worldGoal = { ...b.rally }; u.path = findPath(g, u, b.rally); u.drift = 'rally'; }
   else if (isSkirmishBaseMode(g)) sendToRally(g, u);
@@ -1093,8 +1093,7 @@ function stepOut(g, u, at, r, a, origin = null) {
     if ((!labels || labels[spot] === home) && out.every(t => dist(t, cellCenter(g, spot)) > (UNITS[t.type].radius + def.radius) * 0.8)) c = spot;
   }
   if (c < 0) c = nearestFree(origin ? g : nav, at.x + Math.cos(a) * (r + def.radius), at.z + Math.sin(a) * (r + def.radius), block, origin);
-  Object.assign(u, cellCenter(g, c), { rot: a, aim: a }); startGhost(g, u, CFG.spawnGhost, TICK);
-  updateGrid(g, u);
+  placeUnit(g, u, { ...cellCenter(g, c), rot: a, aim: a }); startGhost(g, u, CFG.spawnGhost, TICK);
 }
 // two friends (own or allied) that overlap because one just stepped out pass through each other instead of locking up
 const ghostPair = (g, a, b) => allied(g, a.owner, b.owner) && ghosts(g, a, b, true);
@@ -1189,7 +1188,7 @@ function setupWorld(g, map) {
     const guard = WORLD_GUARDS[r.kind] ?? WORLD_GUARDS.rural;
     for (let n = 0; n < guard.length; n++) {
       const a = (n / guard.length) * 2 * Math.PI, u = spawnUnit(g, -1, guard[n], n), at = cellCenter(g, nearestFree(g, r.x + Math.cos(a) * 6, r.z + 3 + Math.sin(a) * 6));
-      Object.assign(u, at, { guardHome: at, autoRetreat: false, auto: false, holdPos: true }); updateGrid(g, u);
+      placeUnit(g, u, { ...at, guardHome: at, autoRetreat: false, auto: false, holdPos: true });
     }
   }
   fortifyGuards(g);
@@ -1293,7 +1292,7 @@ function endTrain(g, u) {
   [...u.cargo].forEach((id, i) => {
     const v = g.units.get(id); if (!v) return;
     const a = u.rot + Math.PI / 2 + (i / Math.max(1, n)) * 2 * Math.PI;
-    Object.assign(v, { x: u.x + Math.cos(a) * 5, z: u.z + Math.sin(a) * 5 });
+    placeUnit(g, v, { x: u.x + Math.cos(a) * 5, z: u.z + Math.sin(a) * 5 });
     leaveCarrier(g, v, u);
   });
   g.units.delete(u.id);
@@ -1596,7 +1595,7 @@ function setupSkirmishBases(g) {
   }
   // Starting troops existed before fortifications were placed. Move any trapped squad out of the footprints.
   for (const u of g.units.values()) if (!UNITS[u.type].structure && !u.air && (flagsAt(g, u.x, u.z) & MOVE)) {
-    Object.assign(u, cellCenter(g, nearestFree(g, u.x, u.z, blockOf(UNITS[u.type])))); updateGrid(g, u);
+    placeUnit(g, u, cellCenter(g, nearestFree(g, u.x, u.z, blockOf(UNITS[u.type]))));
   }
 }
 
@@ -1767,6 +1766,10 @@ function eyesFor(g, team) {
   };
 }
 
+// Puts a unit somewhere at once (a spawn spot, a garrison door, a station, a drop zone): sets the fields, x and z among
+// them, and keeps the spatial index current. Only spawnUnit and the movers (step's movement, separation, trains, planes,
+// the operative) update the index themselves; any other code that sets a position goes through here.
+function placeUnit(g, u, fields) { Object.assign(u, fields); updateGrid(g, u); return u; }
 function spawnUnit(g, owner, type, n = g.units.size) {
   const s = g.players[owner].spawn, a = n * 2.4;
   const c = nearestFree(g, s.x + Math.cos(a) * 4, s.z + Math.sin(a) * 4, blockOf(UNITS[type]), UNITS[type].naval ? null : s);
@@ -2168,7 +2171,7 @@ function leadSquad(g, u, op) {
 // A new soldier is one of the led squad's men while it has two or more; otherwise he comes from the HQ for MP.
 function spawnOperative(g, op, from = null) {
   const u = spawnUnit(g, op.owner, 'rifle');
-  if (from) { from.hp -= UNITS[from.type].hpPer; u.x = from.x; u.z = from.z; updateGrid(g, u); }
+  if (from) { from.hp -= UNITS[from.type].hpPer; placeUnit(g, u, { x: from.x, z: from.z }); }
   Object.assign(u, { hp: UNITS.rifle.hpPer, operative: op.key, auto: false, autoRetreat: false, holdFire: true, holdPos: true,
     vx: 0, vz: 0, vy: 0, jy: 0, crouch: false, weapon: op.input?.weapon ?? 0, mags: OPERATIVE_WEAPONS.map(w => w.mag), reloadT: 0, nades: OPERATIVE.nades, nadeT: 0 });
   op.unitId = u.id; op.input = null;
@@ -2196,8 +2199,7 @@ function stepPlane(g, u, dt) {
   const def = UNITS[u.type], a = u.air, A = CFG.air, base = airBase(g, u);
   u.cooldown -= dt; u.retarget -= dt; u.targetId = 0;
   if (a.state === 'base' || a.state === 'rearm') {
-    Object.assign(u, base);
-    updateGrid(g, u);
+    placeUnit(g, u, base);
     if (a.state === 'rearm') { u.hp = Math.min(def.hpPer, u.hp + def.hpPer * dt / A.rearm); if ((a.timer -= dt) <= 0) Object.assign(a, { state: 'base', fuel: A.station, ammo: def.ammo }); }
     return;
   }
@@ -2270,19 +2272,26 @@ const coverQ = (g, c) => {
 // chars: the map's cells in row order, w: its width (the client draws each type from the same answer)
 // buildings: the map's list; an entry on any cell of a house gives the whole house that type by name
 export function houseKinds(chars, w, buildings = []) {
-  const kind = new Uint8Array(chars.length), seen = new Uint8Array(chars.length);
-  const named = new Map(buildings.map(b => [b.y * w + b.x, CFG.houses.findIndex(h => h.name === b.kind)]).filter(([, k]) => k >= 0));
-  for (let c0 = 0; c0 < kind.length; c0++) {
-    if (chars[c0] !== 'B' || seen[c0]) continue;
-    const q = [c0]; seen[c0] = 1;
-    for (let i = 0; i < q.length; i++) for (const n of [q[i] - 1, q[i] + 1, q[i] - w, q[i] + w]) {
-      if (n < 0 || n >= kind.length || seen[n] || chars[n] !== 'B' || (Math.abs(n - q[i]) === 1 && Math.floor(n / w) !== Math.floor(q[i] / w))) continue;
-      seen[n] = 1; q.push(n);
-    }
-    const k = q.reduce((a, c) => named.get(c) ?? a, CFG.houses.findLastIndex(h => q.length >= h.min));
-    for (const c of q) kind[c] = k;
-  }
+  const kind = new Uint8Array(chars.length);
+  houseKindsWhere(c => chars[c] === 'B', chars.length, w, buildings, null, (q, k) => { for (const c of q) kind[c] = k; });
   return kind;
+}
+// houseKinds over the cells where isB(c), for the connected blocks that hold one of seeds (ascending cells; null: every
+// cell): each(cells, kind) per block. The client redoes only the blocks a newly found house cell touches.
+export function houseKindsWhere(isB, n, w, buildings = [], seeds = null, each) {
+  const seen = new Uint8Array(n);
+  const named = new Map(buildings.map(b => [b.y * w + b.x, CFG.houses.findIndex(h => h.name === b.kind)]).filter(([, k]) => k >= 0));
+  const visit = (c0) => {
+    if (!isB(c0) || seen[c0]) return;
+    const q = [c0]; seen[c0] = 1;
+    for (let i = 0; i < q.length; i++) for (const n2 of [q[i] - 1, q[i] + 1, q[i] - w, q[i] + w]) {
+      if (n2 < 0 || n2 >= n || seen[n2] || !isB(n2) || (Math.abs(n2 - q[i]) === 1 && Math.floor(n2 / w) !== Math.floor(q[i] / w))) continue;
+      seen[n2] = 1; q.push(n2);
+    }
+    each(q, q.reduce((a, c) => named.get(c) ?? a, CFG.houses.findLastIndex(h => q.length >= h.min)));
+  };
+  if (seeds) for (const c of seeds) visit(c);
+  else for (let c = 0; c < n; c++) visit(c);
 }
 // a structure cell's full hit points
 export const physicalWorldCell = (g, c) => composeWorldCell(g.ground?.[c] ?? g.chars[c], g.objects?.[c] ?? '.');
@@ -2408,8 +2417,7 @@ function coverSpot(g, u, from, now) {
 function exitBuilding(g, u) {
   if (u.garrison < 0) return;
   const c = nearestFree(g, u.x, u.z), p = cellCenter(g, c);
-  u.x = p.x; u.z = p.z; u.garrison = -1;
-  updateGrid(g, u);
+  placeUnit(g, u, { x: p.x, z: p.z, garrison: -1 });
 }
 // A squad gets out of its carrier c beside it. thrown: the carrier was wrecked under it, and it is hurt.
 function leaveCarrier(g, u, c, thrown = false) {
@@ -2417,8 +2425,7 @@ function leaveCarrier(g, u, c, thrown = false) {
   if (!u) return;
   u.riding = 0;
   const at = cellCenter(g, nearestFree(g, u.x, u.z, blockOf(UNITS[u.type]))), drowned = thrown && dist(u, at) > CFG.shoreReach;
-  Object.assign(u, at);
-  updateGrid(g, u);
+  placeUnit(g, u, at);
   if (drowned) { u.hp = 0; g.shots.push({ t: u.id, to: u.owner, x: u.x, z: u.z, k: 'hurt', kill: true }); return; }
   if (!thrown) return;
   u.hp -= UNITS[u.type].models * UNITS[u.type].hpPer * CFG.aid.evict;
@@ -3548,8 +3555,7 @@ export function command(g, slot, cmd, auto = false) {
     if (!path) return 'railCut';
     origin.next[p.team] = g.tick + Math.round(CFG.rail.every / TICK);
     const train = spawnUnit(g, slot, 'train');
-    Object.assign(train, { x: origin.x, z: origin.z, autoRetreat: false, rail: { path, i: 0, wait: CFG.rail.load, to: to.region, bridges: new Set(path.filter(at => g.chars[at.c] === '=').map(at => at.c)) } });
-    updateGrid(g, train);
+    placeUnit(g, train, { x: origin.x, z: origin.z, autoRetreat: false, rail: { path, i: 0, wait: CFG.rail.load, to: to.region, bridges: new Set(path.filter(at => g.chars[at.c] === '=').map(at => at.c)) } });
     for (const u of units.filter(u => dist(u, origin) <= CFG.rail.reach).sort((a, b) => dist(a, origin) - dist(b, origin)).slice(0, CFG.rail.cars)) {
       exitBuilding(g, u);
       Object.assign(u, { traffic: null, trafficWait: 0, moveOutcome: 'interrupted', moveOutcomeTick: g.tick, worldGoal: null, orders: [], entrench: null, face: null, path: [], attackId: 0, targetId: 0, nade: null, dig: null, enter: -1, board: 0, amove: null, fireAt: -1, build: 0, retreating: false, riding: train.id });
@@ -4345,7 +4351,7 @@ function sandboxSpawn(g, slot, cmd) {
   const horde = g.mode?.kind === 'horde', owner = !cmd.enemy ? slot : horde ? g.mode.slot : g.players.findIndex(p => !allied(g, p.slot, slot));
   if (owner < 0) return 'blocked';
   const u = spawnUnit(g, owner, cmd.unit);
-  if (!def.air) { Object.assign(u, cellCenter(g, nearestFree(g, cmd.x, cmd.z, blockOf(def)))); updateGrid(g, u); }
+  if (!def.air) placeUnit(g, u, cellCenter(g, nearestFree(g, cmd.x, cmd.z, blockOf(def))));
   if (horde && owner === g.mode.slot) {
     const b = g.units.get(g.mode.bunker);
     if (b && !def.air) command(g, owner, { t: 'amove', orders: [[u.id, b.x, b.z]] });
@@ -4899,7 +4905,7 @@ const SCENARIO_TOOLS = {
       if (![...g.units.values()].some(u => !u.air && dist(u,q) < Math.max(0.6, def.radius * 0.4))) position = q;
     }
     if (!position) return null;
-    const u = spawnUnit(g, side, type); Object.assign(u, position); updateGrid(g, u);
+    const u = placeUnit(g, spawnUnit(g, side, type), position);
     if (order.kind !== 'hold') command(g, side, { t: order.kind === 'attackMove' ? 'amove' : 'move', orders: [[u.id, (order.at[0] + 0.5) * CELL, (order.at[1] + 0.5) * CELL]] });
     else command(g, side, { t:'stop', ids:[u.id] });
     return u;
@@ -5252,7 +5258,7 @@ function stepStrikes(g, list, dt) {
         sp.units.forEach((type, i) => {
           if (g.players[s.owner].out || popOf(g, s.owner) + popUse(type) > popCap(g, s.owner)) return;
           const a = s.dir + i * 2 * Math.PI / sp.units.length, u = spawnUnit(g, s.owner, type);
-          Object.assign(u, cellCenter(g, nearestFree(g, s.x + Math.cos(a) * sp.spread, s.z + Math.sin(a) * sp.spread))); updateGrid(g, u);
+          placeUnit(g, u, cellCenter(g, nearestFree(g, s.x + Math.cos(a) * sp.spread, s.z + Math.sin(a) * sp.spread)));
           g.shots.push({ k: 'chutes', x: u.x, z: u.z, pub: true });
         });
       } else if (s.kind === 'cover') {
@@ -5295,82 +5301,7 @@ function stepStrikes(g, list, dt) {
 }
 
 // After a winner the sim keeps running (the server's closing hold shows the last seconds) without win checks or story.
-// One tick of a ground vehicle along its route (from step's unit loop): the hull's own motion (vehicleStep), backing
-// or sliding out when walled in, the fuel limit, the swept check against walls and units, ghosting past a friend that
-// boxes it in, and taking the next leg. route: what traffic lets it follow now; before: where it stood this tick.
-function driveVehicle(g, u, def, route, speed, dt, back, traffic, before, trafficView) {
-  const reverse = back || traffic.yielding && traffic.goal && Math.cos(Math.atan2(traffic.goal.z - u.z, traffic.goal.x - u.x) - u.rot) < -0.5;
-  if (u.motionClearance && (u.motionClearance.path !== u.path || g.tick > u.motionClearance.until || dist(u, u.motionClearance.goal) < 0.3)) u.motionClearance = null;
-  let next = vehicleStep(u, def, u.motionClearance ? [u.motionClearance.goal] : route, u.motionClearance ? Math.min(speed, 1.2) : speed, dt, u.motionClearance ? u.motionClearance.reverse : reverse);
-  if (!u.motionClearance && route.length && u.stuck > 0.3 && !sweptVehicleClear(g, before, { ...before, rot: next.rot }, def, blockOf(def))) {
-    for (const direction of [-1, 1]) {
-      const goal = { x: before.x + Math.cos(before.rot) * 2 * direction, z: before.z + Math.sin(before.rot) * 2 * direction, rot: before.rot };
-      if (!sweptVehicleClear(g, before, goal, def, blockOf(def))) continue;
-      const bearing = Math.atan2(route[0].z - goal.z, route[0].x - goal.x) + (reverse ? Math.PI : 0);
-      if (!sweptVehicleClear(g, goal, { ...goal, rot: bearing }, def, blockOf(def))) continue;
-      u.motionClearance = { goal, reverse: direction < 0, path: u.path, until: g.tick + 80 };
-      next = vehicleStep(u, def, [goal], Math.min(speed, 1.2), dt, direction < 0); break;
-    }
-    // walled in lengthwise too (a hull shoved off-centre and sideways in a narrow street): slide over, up to
-    // 1.5 m at 1.2 m/s, to where the turn fits. Separation already shoves hulls sideways, so this adds no new move.
-    if (!u.motionClearance) for (const side of [0.5, -0.5, 1, -1, 1.5, -1.5]) {
-      const at = { x: before.x - Math.sin(before.rot) * side, z: before.z + Math.cos(before.rot) * side, rot: before.rot };
-      const bearing = Math.atan2(route[0].z - at.z, route[0].x - at.x) + (reverse ? Math.PI : 0);
-      if (!sweptVehicleClear(g, before, at, def, blockOf(def)) || !sweptVehicleClear(g, at, { ...at, rot: bearing }, def, blockOf(def))) continue;
-      const k = Math.min(1, 1.2 * dt / Math.abs(side));
-      next = { ...next, x: before.x + (at.x - before.x) * k, z: before.z + (at.z - before.z) * k, rot: before.rot, moveSpeed: 0 }; break;
-    }
-  }
-  const fuelLimit = speed * dt, proposed = dist(next, before);
-  if ((u.convoy || u.logistics) && proposed > fuelLimit) { const f = fuelLimit / (proposed || 1); next.x = before.x + (next.x-before.x)*f; next.z = before.z + (next.z-before.z)*f; next.moveSpeed *= f; }
-  // Never allow a hull to rotate or travel through a cell during this tick.
-  let clearMotion = sweptVehicleClear(g, before, next, def, blockOf(def));
-  if (clearMotion) {
-    const nearby = gridFor(g).unordered(u, bodyRadius(def) + 9, v => v.id !== u.id && v.hp > 0 && !v.air && !v.riding && v.garrison < 0 && !ghostPair(g, u, v));
-    const blocker = nearby.find(v => {
-      const min = bodyRadius(def) + bodyRadius(UNITS[v.type]);
-      const dx = next.x - before.x, dz = next.z - before.z, t = Math.max(0, Math.min(1, ((v.x - before.x) * dx + (v.z - before.z) * dz) / (dx * dx + dz * dz || 1)));
-      const closest = Math.hypot(before.x + dx * t - v.x, before.z + dz * t - v.z);
-      return !(closest >= min - 1e-6 || dist(before, v) < min && dist(next, v) > dist(before, v));
-    });
-    clearMotion = !blocker;
-    // boxed in by a friend for a while (a crowded gate or street): pass through friends for a moment
-    if (blocker && allied(g, blocker.owner, u.owner) && u.stuck > TRAFFIC.ghost) startGhost(g, u, TRAFFIC.ghostTime, dt);
-  }
-  if (clearMotion) { u.x = next.x; u.z = next.z; u.rot = next.rot; u.moveSpeed = next.moveSpeed; }
-  else {
-    u.moveSpeed = 0;
-    const turned = { ...before, rot: next.rot };
-    if (sweptVehicleClear(g, before, turned, def, blockOf(def))) u.rot = next.rot;
-    u.trafficWait = (u.trafficWait ?? 0) + dt;
-  }
-  u.travelDir = next.travelDir;
-  // A bend is taken at speed (vehicleStep brakes to it): turn onto the next leg a little early, or just past the
-  // waypoint, where the hull has a clear straight line to the next one; otherwise on reaching the waypoint.
-  const nextLeg = route[1], near = route.length ? dist(u, route[0]) : Infinity, pace = Math.abs(u.moveSpeed);
-  const bend = nextLeg ? Math.abs(angleDelta(u.travelDir, Math.atan2(nextLeg.z - route[0].z, nextLeg.x - route[0].x))) : Math.PI;
-  const lead = bend < Math.PI / 2 ? pace / movementProfile(u.type, def).hullTurn * Math.tan(bend / 2) : 0;
-  const passed = near < 2 && Math.cos(Math.atan2(u.z - route[0]?.z, u.x - route[0]?.x) - u.travelDir) > 0;
-  const reached = near < Math.max(0.12, pace * dt * 1.5) || nextLeg && (near < lead || passed) && walkable(trafficView(), u, nextLeg, blockOf(def), bodyRadius(def));
-  if (reached && !traffic.yielding && !u.motionClearance) u.path.shift();
-}
-// One tick of infantry or a boat along its route (from step's unit loop), the counterpart of driveVehicle: straight legs
-// at full speed, the next waypoint taken on reaching it. Infantry responds on the command tick; boats keep their class
-// rules. A leg that runs into a blocked cell drops the route and asks for a new one shortly.
-function walkRoute(g, u, def, route, speed, dt, back, traffic, trafficView) {
-  if (def.infantry && !traffic.yielding) {
-    // Crowded squads can pass beside a waypoint. Keep required terrain corners and the exact final spot.
-    while (route.length > 1 && dist(u, route[0]) < 1 && walkable(trafficView(), u, route[1], blockOf(def) | WIRE)) route.shift();
-  }
-  let budget = speed * dt * (back ? CFG.behavior.reverseSpeed : 1);
-  while (budget > 0 && route.length) {
-    const wp = route[0], d = dist(u, wp), advance = Math.min(d, budget), next = { x: u.x + (wp.x - u.x) / (d || 1) * advance, z: u.z + (wp.z - u.z) / (d || 1) * advance };
-    if (!walkable(g, u, next, blockOf(def))) { u.repath = 0.2; if (!traffic.yielding) u.path = []; break; }
-    if (!back) u.rot = Math.atan2(wp.z - u.z, wp.x - u.x);
-    u.x = next.x; u.z = next.z; budget -= advance;
-    if (d <= advance + 1e-9) { if (traffic.yielding) break; route.shift(); } else break;
-  }
-}
+const { driveVehicle, walkRoute } = createMovers({ walkable, allied, blockOf, UNITS, CFG, WIRE });
 export function step(g) {
   for (const u of g.units.values()) if (u.structureId) syncBuildingSections(g, u);
   const dt = TICK;
@@ -5425,7 +5356,7 @@ export function step(g) {
     if (u.riding) {
       const c = g.units.get(u.riding);
       if (!c || c.hp <= 0) leaveCarrier(g, u, c, true);
-      else { Object.assign(u, { x: c.x, z: c.z, rot: c.rot, supp: 0, targetId: 0, still: 0 }); u.cd -= dt; updateGrid(g, u); continue; }
+      else { placeUnit(g, u, { x: c.x, z: c.z, rot: c.rot, supp: 0, targetId: 0, still: 0 }); u.cd -= dt; continue; }
     }
     if (u.cargo.length) u.cargo = u.cargo.filter(id => g.units.get(id)?.riding === u.id);
     if (def.infantry) u.supp = Math.max(0, u.supp - (inTrench(g, u) ? CFG.trench.rally : 8) * dt);
@@ -5503,7 +5434,7 @@ export function step(g) {
     if (u.enter >= 0) {
       const at = cellCenter(g, u.enter);
       if (g.chars[u.enter] !== 'B') u.enter = -1;
-      else if (dist(u, at) <= CELL * 1.6) { u.garrisonEntry={x:u.x,z:u.z}; Object.assign(u, { garrison: u.enter, enter: -1, board: 0, x: at.x, z: at.z, path: [] }); updateGrid(g, u); }
+      else if (dist(u, at) <= CELL * 1.6) { u.garrisonEntry={x:u.x,z:u.z}; placeUnit(g, u, { garrison: u.enter, enter: -1, board: 0, x: at.x, z: at.z, path: [] }); }
       else if (!u.path.length && u.repath <= 0) requestStepPath(g, u, at, 'enter');
     }
 
