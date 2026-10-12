@@ -14,7 +14,7 @@ for (const [label, rows, extents] of [
   ['lake', ['........', '........', '........', '...WW...', '...WW...', '........', '........', '........'], [0, 0, 16, 16]],
 ]) {
   const map = { w: rows[0].length, h: rows.length, rows }, grid = rows.map(row => [...row]);
-  const water = createWater(grid, map, () => 0), geometry = water.mesh.geometry;
+  const water = createWater(grid, map, () => 0), geometry = water.geometry;
   geometry.computeBoundingBox();
   assert.deepEqual([geometry.boundingBox.min.x, geometry.boundingBox.min.z, geometry.boundingBox.max.x, geometry.boundingBox.max.z], extents, label);
   assert.ok([...geometry.attributes.position.array, ...geometry.attributes.normal.array, ...geometry.attributes.flow.array].every(Number.isFinite), `${label}: finite water geometry`);
@@ -28,12 +28,12 @@ for (const [label, rows, extents] of [
   water.dispose();
 }
 
-// Scouting finds more water: the mask is redone only in tiles near the new water, ford and bridge, and comes out
+// Scouting finds more water: the mask is redone only in boxes around the new water, ford and bridge, and comes out
 // exactly as a fresh build of the whole map does (#58: redoing it whole took about 0.9 s on a Huge World map).
 {
   const W = 64, rows = Array.from({ length: W }, (_, y) => Array.from({ length: W }, (_, x) => (x === 20 && y < 12 ? 'W' : '.')).join(''));
   const map = { w: W, h: W, rows }, grid = rows.map(row => [...row]);
-  const maskOf = water => { const shader = { uniforms: {}, vertexShader: '#include <common>', fragmentShader: '#include <common>' }; water.mesh.material.onBeforeCompile(shader); return shader.uniforms.uMask.value.image.data; };
+  const maskOf = water => water.mask.image.data;
   const water = createWater(grid, map, () => 0);
   const found = [];
   for (let y = 12; y < 40; y++) { grid[y][20] = y === 30 ? 'F' : y === 35 ? '=' : 'W'; found.push([y * W + 20, grid[y][20]]); }
@@ -41,8 +41,8 @@ for (const [label, rows, extents] of [
   water.changed(found); water.tick(0);
   const fresh = createWater(grid, map, () => 0);
   assert.deepEqual(maskOf(water), maskOf(fresh), 'found water updates the mask exactly as a fresh build draws it');
-  // 4 texels a cell: the stream's soft bank spills over the tile edge into the texel row just above it
-  assert.ok(maskOf(water)[((48 * 4 - 1) * W * 4 + 50 * 4) * 4] > 50, 'the blur reaches across a tile edge');
+  // 4 texels a cell: the stream's soft bank spills into the texel row just above it
+  assert.ok(maskOf(water)[((48 * 4 - 1) * W * 4 + 50 * 4) * 4] > 50, 'the blur reaches past the changed cells');
   water.dispose(); fresh.dispose();
 }
 
@@ -52,13 +52,33 @@ for (const [label, rows, extents] of [
   const W = 32, rows = Array.from({ length: W }, (_, y) => Array.from({ length: W }, (_, x) => (y === 16 && x < 12 ? 'W' : '.')).join(''));
   const map = { w: W, h: W, rows }, grid = rows.map(row => [...row]), known = new Uint8Array(W * W);
   for (let c = 0; c < W * W; c++) known[c] = c % W < 12 ? 1 : 0; // explored: the first 12 columns
-  const coverage = (water, x, y) => { const sh = { uniforms: {}, vertexShader: '#include <common>', fragmentShader: '#include <common>' }; water.mesh.material.onBeforeCompile(sh); return sh.uniforms.uMask.value.image.data[(((y * 4 + 2) * W * 4) + x * 4 + 2) * 4]; };
+  const coverage = (water, x, y) => water.mask.image.data[(((y * 4 + 2) * W * 4) + x * 4 + 2) * 4];
   const water = createWater(grid, map, () => 0, { unknown: c => !known[c] }), beach = createWater(grid, map, () => 0);
   assert.ok(coverage(water, 12, 16) > 200 && coverage(beach, 12, 16) < 100, `the river runs on into undiscovered ground: ${coverage(water, 12, 16)} against ${coverage(beach, 12, 16)} with a shore`);
   for (let c = 0; c < W * W; c++) known[c] = 1; // the next columns turn out to be dry land
   water.changed([[16 * W + 12, '.']]); water.tick(0);
   assert.ok(coverage(water, 13, 16) < 100, 'discovered dry land gets its shore');
   water.dispose(); beach.dispose();
+  // discovered column by column, with more river found on the way and a stretch drying up, the shore under the fog
+  // comes out as a fresh build with the same discovery draws it (the open water is redone only around changes)
+  const scout = rows.map(row => [...row]), seen = new Uint8Array(W * W), unknown = c => !seen[c];
+  for (let c = 0; c < W * W; c++) seen[c] = c % W < 6 ? 1 : 0;
+  const stepped = createWater(scout, map, () => 0, { unknown });
+  for (let x = 6; x < 20; x++) {
+    const found = [];
+    for (let y = 0; y < W; y++) {
+      seen[y * W + x] = 1;
+      if (y === 16 && x >= 14) scout[y][x] = 'W';
+      if (x === 18 && y > 16 && y < 22) scout[y][x] = 'W';
+      found.push([y * W + x, scout[y][x]]);
+    }
+    if (x === 15) { scout[16][3] = '.'; found.push([16 * W + 3, '.']); }
+    stepped.changed(found); stepped.tick(0);
+    const whole = createWater(scout, map, () => 0, { unknown });
+    assert.deepEqual(stepped.mask.image.data, whole.mask.image.data, `the shore under the fog after discovering column ${x}`);
+    whole.dispose();
+  }
+  stepped.dispose();
 }
 
 // Removing a wet edge cell removes its continuation on the next water tick.
@@ -67,8 +87,10 @@ for (const [label, rows, extents] of [
   const water = createWater(grid, map, () => 0);
   grid[0][1] = grid[1][1] = '.';
   water.changed([[1, '.'], [5, '.']]); water.tick(0);
-  water.mesh.geometry.computeBoundingBox();
-  assert.equal(water.mesh.geometry.boundingBox.min.z, 0);
+  // no water is left, so no chunk draws any: nothing reaches past the edge
+  const position = water.geometry.attributes.position.array;
+  for (let i = 2; i < position.length; i += 3) assert.ok(position[i] >= 0, 'no water past the north edge');
+  assert.equal(water.mesh.children.length, 0, 'the dried chunk drops its mesh');
   water.dispose();
 }
 
@@ -97,7 +119,7 @@ for (const name of ['default', 'island-towns', 'river-towns', 'twin-valleys', 'k
   const map = JSON.parse(readFileSync(new URL(`./maps/${name}.json`, import.meta.url), 'utf8'));
   const water = createWater(map.rows.map(row => [...row]), map, () => 0);
   if (water) {
-    assert.ok(Array.from(water.mesh.geometry.attributes.position.array).every(Number.isFinite), `${name}: finite map water`);
+    assert.ok(Array.from(water.geometry.attributes.position.array).every(Number.isFinite), `${name}: finite map water`);
     water.dispose();
   }
 }

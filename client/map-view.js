@@ -24,11 +24,12 @@ const DRAW_INTERVAL = 1 / 30, MAX_DPR = 1.5;
 // crater in a fight) repaint it at most this often, in seconds
 const REPAINT = 3;
 
-// grid: terrain rows of cell chars, w and h in cells, geometry: the relief's (its uv spans the map), hAt(x, z),
+// grid: terrain rows of cell chars, w and h in cells, geometry: the relief's (its uv spans the map), or drape: the
+// relief's drape(material, options) for a relief drawn in chunks (client/relief.js), hAt(x, z),
 // fog: client/fog.js state or null, units: the live unit map, colorOf(slot) -> css color, title: the map's name,
 // camera, view: the WebGL canvas (the overlay goes right after it, under the HUD), state() -> { me, selected,
 // points: [{ x, z, owner }], strikes: the snapshot's strike rows }
-export function createMapView({ grid, w, h, geometry, hAt, fog, units, colorOf, title = '', camera, view, state }) {
+export function createMapView({ grid, w, h, geometry, drape, hAt, fog, units, colorOf, title = '', camera, view, state }) {
   const MW = w * CELL, MH = h * CELL;
   const PX = Math.max(2, Math.min(12, Math.floor(2048 / Math.max(w, h))));
   const W = w * PX, H = h * PX;
@@ -39,8 +40,9 @@ export function createMapView({ grid, w, h, geometry, hAt, fog, units, colorOf, 
   const texture = new THREE.CanvasTexture(paper);
   texture.colorSpace = THREE.SRGBColorSpace; texture.anisotropy = 8;
   const paperMat = new THREE.MeshBasicMaterial({ map: texture, transparent: true, opacity: 0, depthTest: false, depthWrite: false, fog: false, toneMapped: false });
-  const paperMesh = new THREE.Mesh(geometry, paperMat);
-  paperMesh.renderOrder = 1000;
+  // a drape is a group of chunk meshes, each with the render order (a group's own order would regroup the sorting)
+  const paperMesh = drape ? drape(paperMat, { renderOrder: 1000 }) : new THREE.Mesh(geometry, paperMat);
+  if (!drape) paperMesh.renderOrder = 1000;
 
   // the fog as a sepia wash: the fog texture's alpha is 0 seen, about 0.47 explored, about 0.73 never seen
   const washMat = new THREE.ShaderMaterial({
@@ -48,8 +50,9 @@ export function createMapView({ grid, w, h, geometry, hAt, fog, units, colorOf, 
     vertexShader: 'varying vec2 vUv; void main() { vUv = uv; gl_Position = projectionMatrix * modelViewMatrix * vec4(position, 1.0); }',
     fragmentShader: `uniform sampler2D map; uniform float k; varying vec2 vUv; void main() { float a = texture2D(map, vUv).a; gl_FragColor = vec4(${fog?.opaque ? 'vec3(0.04)' : 'vec3(0.55, 0.4, 0.22)'}, a * k); }`,
   });
-  const washMesh = new THREE.Mesh(geometry, washMat);
-  washMesh.renderOrder = 1001; washMesh.visible = !!fog;
+  const washMesh = drape ? drape(washMat, { renderOrder: 1001 }) : new THREE.Mesh(geometry, washMat);
+  if (!drape) washMesh.renderOrder = 1001;
+  washMesh.visible = !!fog;
 
   // the desk: one big plank-and-grain canvas with the paper's shadow on it, flat under the map
   const SPAN = 7, desk = document.createElement('canvas'); desk.width = desk.height = 2048;
@@ -254,6 +257,8 @@ export function createMapView({ grid, w, h, geometry, hAt, fog, units, colorOf, 
     get renderObject() { return renderObject; },
     // the relief replaced its geometry (a crater)
     setGeometry(g) { paperMesh.geometry = washMesh.geometry = g; drawAge = DRAW_INTERVAL; },
+    // a draped relief redrew some chunks: the overlay is drawn again on the next frame
+    redraw() { drawAge = DRAW_INTERVAL; },
     // the terrain changed (craters, wrecked houses): repainted the next time the map shows
     refresh() { dirty = true; },
     // every frame: zoom is the camera distance as a share of the widest zoom
@@ -279,7 +284,7 @@ export function createMapView({ grid, w, h, geometry, hAt, fog, units, colorOf, 
         drawnView.copy(camera.matrixWorld); drawnProjection.copy(camera.projectionMatrix);
       }
     },
-    dispose() { texture.dispose(); paperMat.dispose(); washMat.dispose(); deskTex.dispose(); deskMat.dispose(); deskMesh.geometry.dispose(); overlay.remove(); },
+    dispose() { paperMesh.userData.release?.(); washMesh.userData.release?.(); texture.dispose(); paperMat.dispose(); washMat.dispose(); deskTex.dispose(); deskMat.dispose(); deskMesh.geometry.dispose(); overlay.remove(); },
   };
 }
 

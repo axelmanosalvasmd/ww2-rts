@@ -1,0 +1,25 @@
+import assert from 'node:assert/strict';
+import { Receiver, packet, decode, chooseTransport } from './protocol.mjs';
+const r = new Receiver();
+r.bind('a');
+r.baseline({session:'a', revision:1, units:[{id:1, epoch:1, seq:0, x:0, z:0, rot:0}]});
+assert.equal(r.motion({session:'a', revision:1, id:1, epoch:1, seq:2, x:2, z:0, rot:0}), true);
+assert.equal(r.motion({session:'a', revision:1, id:1, epoch:1, seq:1, x:1, z:0, rot:0}), false);
+assert.equal(r.units.get(1).x, 2);
+console.log('PASS independent motion survives reorder');
+let checks=1;
+function check(name,fn){fn();checks++;console.log('PASS '+name);}
+const m=(seq,extra={})=>({session:'a',revision:1,id:1,epoch:1,seq,x:seq,z:0,rot:0,...extra});
+check('loss and duplicate have no delta dependency',()=>{assert(r.motion(m(9)));assert(!r.motion(m(9)));assert.equal(r.units.get(1).x,9);});
+check('missing baseline has zero buffered entities and requests recovery',()=>{const x=new Receiver();x.bind('a');assert(!x.motion(m(1)));assert(x.needsBaseline);assert.equal(x.units.size,0);});
+check('hide/remove baseline forbids resurrection',()=>{assert(r.baseline({session:'a',revision:2,units:[]}));assert(!r.motion(m(12)));assert(!r.motion(m(12,{revision:2})));assert.equal(r.units.size,0);});
+check('epoch changes reject stale generation',()=>{assert(r.baseline({session:'a',revision:3,units:[{id:1,epoch:2,seq:0,x:0,z:0,rot:0}]}));assert(!r.motion(m(13,{revision:3})));assert(r.motion(m(14,{revision:3,epoch:2})));});
+check('stale reliable baseline cannot override fresh motion',()=>{assert(r.baseline({session:'a',revision:4,units:[{id:1,epoch:2,seq:4,x:4,z:0,rot:0,hp:50}]}));assert.equal(r.units.get(1).x,14);assert.equal(r.units.get(1).hp,50);assert(!r.baseline({session:'a',revision:3,units:[]}));});
+check('future revision discarded then reliable baseline recovers',()=>{assert(!r.motion(m(20,{revision:5,epoch:2})));assert(r.needsBaseline);assert(r.baseline({session:'a',revision:5,units:[{id:1,epoch:2,seq:20,x:20,z:0,rot:0}]}));assert(!r.needsBaseline);assert.equal(r.units.get(1).x,20);});
+check('reconnect and replacement clear old state and reject old session',()=>{r.bind('b');assert.equal(r.units.size,0);assert(!r.motion(m(21)));assert(!r.baseline({session:'a',revision:100,units:[]}));assert(r.baseline({session:'b',revision:1,units:[]}));});
+check('size bounds malformed coordinates and no fragments',()=>{assert(packet(m(1)).length<=1000);assert.deepEqual(decode(packet(m(1))),m(1));assert.throws(()=>packet({text:'x'.repeat(1001)}),RangeError);assert.throws(()=>decode(new Uint8Array(1001)),RangeError);assert(!r.motion(m(NaN,{session:'b'})));});
+check('baseline validation is atomic',()=>{assert(!r.baseline({session:'b',revision:2,units:[{id:1}]}));assert.equal(r.revision,1);assert.equal(r.units.size,0);});
+check('default feature absence failure and reliable-only fallback',()=>{assert.equal(chooseTransport({}), 'websocket');for(const x of [{optIn:true},{optIn:true,supported:true,ready:true,reliability:'reliable-only'},{optIn:true,supported:true,ready:false,reliability:'supports-unreliable'}])assert.equal(chooseTransport(x),'websocket');assert.equal(chooseTransport({optIn:true,supported:true,ready:true,reliability:'supports-unreliable'}),'webtransport');});
+const {motionFor}=await import('./protocol.mjs');
+check('recipient whitelist contains no hp target or hidden rows',()=>{const p=motionFor('b',1,[{id:1,epoch:1,seq:1,x:1,z:0,rot:0,hp:100,target:99,secret:'private'}]);assert.deepEqual(Object.keys(decode(p[0])).sort(),['epoch','id','revision','rot','seq','session','x','z'].sort());assert.equal(motionFor('b',1,[]).length,0);});
+console.log(JSON.stringify({passed:checks,failed:0}));

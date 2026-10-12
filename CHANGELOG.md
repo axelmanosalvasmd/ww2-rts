@@ -5,6 +5,151 @@ AI-vs-AI runs (see DESIGN.md for the balance log). Add new entries under **Unrel
 
 ## Unreleased
 
+- Added optional Tailscale QUIC launch on loopback HTTP 3200, HTTPS/WSS 8443 and tailnet-only UDP 3201. `tailscale-entry.mjs` lets friends enter by IP and redirects to the secure hostname. Per-instance short-lived certificate pins and exact control/native origin checks protect the opt-in lane; remote-peer verification of this publishing source remains pending. See `docs/webtransport-playable.md`.
+
+- Added playable opt-in native QUIC motion with `start-webtransport-test.sh` and `/play?transport=webtransport`. Motion uses the actual seat's visible recipient rows, lifecycle acknowledgments and bounded independent datagrams. Reliable orders/state and motion recovery remain intact; no latency gain or full TCP head-of-line escape is claimed. Default startup and non-opt-in UI remain unchanged.
+
+- Kept the standalone transport fixture and locked native backend under `prototype/webtransport`, separate from the game adapter. Registered deterministic protocol, motion, startup-policy and test-registration checks. Fixed equal-tick duplicate acceptance after reliable catch-up, malformed authentication sessions surviving a cleared deadline, stale asynchronous native authentication updating replacement UI, and inherited child-test filters skipping real assertions.
+
+- Starting with `npm start` now advertises the Tailscale IPv4 address and game port in invite links instead of assuming an HTTPS proxy exists. An explicit `PUBLIC_URL` still overrides discovery. The existing Tailscale TCP forward supplies tailnet access while the game listens on localhost.
+
+- Merged with issue #58's terrain work from upstream, which built its own versions of three of the changes below.
+  One of each is kept, not both: the relief is drawn in the 64 x 64 chunks below (upstream rebuilt rows of the one
+  mesh and wrote the rebuilt span in place), the water mask is redrawn in boxes around changed cells and the water
+  mesh in chunks (upstream redrew the mask in 16-cell tiles, with the same exact-sum idea), and the 3D pieces are the
+  persistent per-kind meshes below (upstream rebuilt changed 32 x 32 parts and made every kind's mesh again). Kept
+  from upstream: World Conquest rivers running on under the fog (`unknown` cells within two of known water count as
+  water for the shore, now redone only around changed cells), the crop field recheck of only the changed blocks
+  (`refreshFields`, instead of the whole-map recompute and compare written here), the props refreshed per 16-cell
+  tile, the fog's drifting mist (now on the fog drapes), and the rule that pieces are redone only when a piece lies
+  within reach of a change (widened from two cells to the pieces' reach, the ground a change moves plus two).
+  `houseKindsWhere` in shared/sim.js gave way to `houseBlock` and `houseNames`, which the pieces use. Rewritten
+  tests: the structure check in test.js runs `createStructures` and its `update` (same steps, including a found
+  house cell gone again); the relief row check in test-terrain-relief.mjs now checks that an update redraws fewer
+  chunks than the map has; test-world.js's mask and fog river checks read `water.mask` (the water's mesh is now a
+  group of chunks). New check in test-world.js: a river discovered column by column under the fog, with more river
+  found and a stretch drying up, gives the same mask as a fresh build after every step (it fails when the open water
+  is redone only from the wet cells). Fixed a race in test-shards.js (from upstream, failed once in a full run): it
+  read `/api/rooms` once right after the second room's socket opened, before that game process had reported the
+  room; it now waits up to 10 s for the report. Left as they were, not in `node test.js`: the pending architecture
+  checks test-ai-terrain-pages.mjs, test-knowledge-journal.mjs, test-navigation-history.mjs and
+  test-observation-epoch.mjs fail before and after the merge (the journal one now gets past its "no scan" step,
+  since upstream journals team memory, and stops at "insertion order, not mutation order").
+
+- Scouting a Huge World Conquest map is smoother again: the 3D terrain pieces (houses, ruins, walls, hedges, trenches,
+  wire, bridges) and the minimap's terrain are now redone only around changed cells instead of from the whole map
+  four times a second. The pieces are kept in 32-cell chunks and still drawn as one batch per kind (same draw calls);
+  a change rebuilds the chunks within the relief's ground reach of it, the chunks holding the houses it touches and,
+  for a church that moves or a stone bridge that grows, the chunks of the cells whose look changed. Measured with the
+  same Huge map replay as the entries below (seat 0 scouting for 90 s, GPU WebGL, Low, runs alternated): before 22.4 /
+  21.2 / 22.8 / 21.7 FPS (frame-loop JS 21 / 23 / 21 / 22 ms, worst frame 81 / 83 / 81 / 85 ms); with the pieces
+  alone 25.5 / 25.8 FPS (16 / 16 ms, worst 65 / 68 ms); with the minimap as well 30.0 / 29.1 FPS (12.6 / 12.9 ms, worst
+  57 / 61 ms). In a 20 s profile the pieces fell from 2.2 s to 0.15 s and the minimap terrain from 1.06 s to 0.03 s.
+  Checked in that browser after scouting, paused: the pieces equal a forced whole rebuild (0 differing values over
+  14,225 instances in 22 kinds, same draw order, 0 of 2.9 M pixel bytes over the biggest town), and the minimap equals
+  a whole repaint (0 bytes). Over 27 classic maps and three generated World maps the chunked whole build gives exactly
+  the old builder's instances. Still not 60 FPS: drawing, prop placement, relief chunk rebuilds and the overlay field
+  remain (see DESIGN.md, Discovery cost on the Huge map).
+- Fixed: loading a saved match let the room step and send snapshots before everyone had the match's start, so the
+  loaded match ran a tick before opening paused and the browser threw two errors (`makeUnit`) on load.
+- New `test-structure-chunks.mjs` (in `node test.js`) checks the pieces against a fresh build after long bomb scars,
+  ruins across chunk borders, joined and split house blocks, a church moving near and far, sandbag works, a stone deck
+  spreading across chunks, a ramp at a bridge, water beside raised ground, learnt landmarks and damage stages, on a
+  small detailed map and on a map over 65536 cells, with picking, bounds and draw order; each reach case asserts the
+  change really alters pieces in the next chunk. `test-discovery-client.mjs` gains the minimap check and
+  `test-saves.mjs` the load order check. Found, left for later: the ground canvas painted tile by tile still differs
+  from a full repaint by about 2,900 of 4.2 M bytes in the browser; the raster alone matches exactly in node, so the
+  rest is in the drawn contour and trench strokes or the World tint, not located. The house-anchor rebuild in the
+  pieces is a guard that no current relief case reaches (the ground moves at most 1.4 cells from a change).
+
+- The ground relief and the water are now drawn in chunks of 64 x 64 cells, so newly seen or shelled terrain redraws
+  only the chunks around it instead of the whole map. Before, every snapshot with changed cells rebuilt the relief
+  mesh for the whole map (4.2 s of each 20 s while scouting the Huge World Conquest map), and every water change
+  rebuilt the whole water mesh (2.5 s). The ground height, unit placement and clicking on the ground follow a change
+  at once; on World Conquest maps (over 65536 cells) the drawn chunks follow over the next frames, about 4 ms of relief
+  and 3 ms of water work per frame, and neighbouring chunks are swapped in together so no crack opens. Smaller maps
+  redraw their few changed chunks at once. Fog of war, the paper map and the weather layers drape over the same
+  chunks. Water flow is computed per body of water instead of scanning the map once per body (same result).
+  Also, when discovered regions move crop fields on a World Conquest map, the ground repaints the cells whose field
+  changed instead of recomputing every cell of the map (about 70 ms, in 84 of 318 paints over 60 s of scouting).
+  Measured on 2026-10-11 by replaying the same Huge map autosave as the water mask fix below (three humans, 0 AI,
+  seat 0 sends its 68 units out for 90 s) in a separate headless Chromium on GPU WebGL (RTX 4060, ANGLE Vulkan, Low
+  graphics, 0.75 scale), runs alternated, medians after the first 10 s:
+  original 0.7 / 0.7 FPS (1,142 / 1,129 ms frame-loop JS); mask fix only 5.9 / 7.0 FPS (65 / 58 ms, worst frame
+  241 / 225 ms); chunks 19.9 / 17.2 FPS (22 / 26 ms, worst 127 / 135 ms); chunks with the review fixes 17.9 / 20.2
+  FPS (worst 134 / 124 ms); with the field repaint as well 36.7 / 21.3 FPS (17 / 23 ms, worst 72 / 86 ms).
+  Snapshots arrive at 4.9 per second in every build after the mask fix. While scouting about 10 of the 64 relief
+  chunks wait at any moment (at most 19); 1.5 s after the match is paused none are waiting.
+  Checked in that browser after 90 s of scouting, paused: the drawn relief equals every chunk rebuilt from the
+  current terrain (0 differences in positions, normals, paint and triangles, 0 of 2.9 M pixel bytes at a chunk
+  corner), the water chunks equal a fresh whole build (0 differences), the water mask equals a full redraw and its
+  partial uploads render like a full upload (0 pixel bytes differ). This replays one seat of one save; it is not the
+  live game's FPS, and it does not show the up to 400 ms a chunk may be held while a neighbour is rebuilt.
+  Fixed during validation: on small maps a chunk waiting to be redrawn made the ground height fall back from the
+  drawn cliff rocks and crater rims to the plain height grid, so trees, decals and rings placed right after a change
+  sat up to several metres off once the chunk was shown (240 of 4,293 sampled points after a crater); and a chunk
+  queued for more than 400 ms was shown as soon as it was built, beside a neighbour still to be redrawn, and two
+  waiting neighbours could be shown in different frames. The wait now counts from a chunk's build and waiting
+  neighbours are shown together.
+  New `test-terrain-chunks.mjs` (in `node test.js`) checks the scheduler (budget, coalescing, neighbours swapped
+  together, outdated builds dropped, the wait counted from the build, held groups shown whole, cancel), that a change
+  redraws only the chunks within reach, equality with a fresh build, the surface across chunk borders against a
+  one-chunk oracle, the ground on a small map right after a change, logical ground and picking before the redraw on a
+  large map, water chunks of other bodies left alone and shared water vertices. `test-discovery-client.mjs` gains a
+  check that moved crop fields repaint in place and equal a whole repaint. Rewritten tests: `test-discovery-client.mjs`
+  and `test-world.js` read the joined `water.geometry` instead of `water.mesh.geometry`; the dried-edge check in
+  `test-world.js` now asserts that the dried chunk drops its mesh. Changed for the eye: the high-quality fan triangles
+  (shading detail on slopes, small maps only) are budgeted per chunk instead of in row order for the whole map, and the
+  weather layers are culled per chunk.
+  Still slow, measured in a 20 s profile of the last build while scouting (main-thread seconds): 3D terrain pieces
+  rebuilt from the whole map every 0.25 s (2.2 s), relief chunk rebuilds (1.8 s, about 33 chunks a second because
+  scouts keep marking the same chunks), drawing (1.7 s), the minimap (1.3 s), prop placement (1.2 s), the relief's
+  whole-map water levels on a wet change (0.9 s), water flow fields (0.7 s) and the overlay terrain field (0.6 s).
+  Found, not fixed: the ground canvas painted tile by tile during scouting differs slightly from a full repaint of the
+  same cell layers (78,012 of 4.2 M bytes before the field repaint change, 2,851 after); the ground painter was not
+  changed by this slice.
+
+- Fixed: World Conquest on the Huge map dropped to under 1 FPS while scouts uncovered rivers. Every newly seen
+  water, ford or bridge cell redrew the whole water mask (2048 x 2048 texels, four blurred channels) and uploaded it
+  again, about a second of browser work per frame. Now the mask is redrawn and uploaded only around the changed
+  cells, in separate small boxes for scouts far apart, and the result is byte-for-byte what a full redraw makes.
+  Also, a snapshot no longer rebuilds the authored map layers (a clone of the whole map) to check planned works when
+  there are none; the placement check uses the live terrain layers it is given.
+  Measured by replaying the live match's 18-minute autosave (three humans, 0 AI) in a separate headless Chromium on
+  real GPU WebGL (ANGLE Vulkan), seat 0 sending its 68 units out to scout, two alternating 90 s runs each:
+  0.7 FPS / 1,170 ms frame-loop JS / 1.1 snapshots per second before, 6.4 and 10.6 FPS / 46 and 67 ms /
+  4.9 per second after (a third, profiled run: 14.9 FPS / 32 ms). Idle, the same save runs at 49 FPS either way.
+  One water change on that seat's real view took 840 and 1,030 ms in Node before, 90 and 85 ms after.
+  In the browser the live mask after 1,420 wet-cell updates matched a fresh full build (0 of 16.8 M bytes differ),
+  and drawing it with the partial uploads matched a full re-upload pixel for pixel. A ford that turns back into
+  river (or the reverse) now redraws its ford shading too; before, only a wet or dry change did.
+  New `test-discovery-client.mjs` (in `node test.js`) checks the local mask against a full rebuild, the size of the
+  redraw and upload, and that the placement check leaves the authored layers alone.
+  Left for later, measured in the same profile (seconds of main-thread time per 20 s while scouting): the relief
+  mesh is reassembled for the whole map on every snapshot with changed cells (4.2 s), ground painting (2.9 s), the
+  whole-map water geometry on each water change (2.5 s), 3D terrain pieces scanning the whole map every 0.25 s
+  (1.3 s), overlay terrain refresh (1.0 s) and the minimap (0.85 s). Found, not fixed: a snapshot handled before the
+  match's `start` throws in `makeUnit` (`world` is not made yet), seen once or twice while a save loads.
+
+- Fixed: snipers and commandos sometimes looked nearly uniform cream-white. When a squad went still and camouflaged,
+  each man's material was cloned to make it see-through, and three's `clone()` drops the shader patches that paint
+  the uniform texture and model textures, so the men drew in bare vertex colors. They stayed that way after being
+  revealed (opacity back to 1) and kept drawing themselves outside the instanced crowd. Now camouflage uses one
+  shared see-through copy per material that keeps those patches (`modelVariant` in client/model-textures.js), and a
+  revealed man gets his own material back and rejoins the crowd. New check `Camouflaged soldiers keep their uniform
+  texture and rejoin the crowd` in test.js. Found, left for later: building ghosts (enemy buildings last seen) also
+  use a plain `clone()`, so they draw faded without model textures.
+
+- Nearby-unit queries skip one more copy, with play unchanged. Local commit cee6de3 (stop-at-first existence
+  checks, results converted in place, a reused result buffer in crowd separation) was merged with the upstream
+  spatial index of issue #58 (B5, C3). Upstream's `has` / `hasHeavy` already stop at the first match, so the local
+  `some` was dropped in their favour, and the reused buffer was dropped because upstream's ordered queries build
+  each result from merged bucket runs. What remains of the local change: `candidates` turns its records into units
+  in the array it already owns instead of mapping them into a second one. The local benchmark (Classic 3.084 to
+  2.965 ms, Conquest 6.456 to 6.357 ms mean tick, six-AI Massive, 6,000 ticks) was measured against the old index and
+  does not carry over; the merged gain was not measured. The local existence check was rewritten for `has` and
+  `hasHeavy` (early exit, deleted, moved and replaced records); its buffer assertions were deleted with the buffer.
+
 - The last of issue #58's leftovers, with play unchanged (seeded Classic, Conquest and six-AI World runs end in the
   same state):
   - Anything that puts a unit somewhere at once (spawn spots, garrison doors, rail and train stops, paradrops,

@@ -1,4 +1,5 @@
 import * as THREE from 'three';
+import { createGameTransport } from './game-transport.js';
 import { createOperativeView } from './operative-view.js';
 import { worldLayers, composeWorldCell } from '../shared/world-layers.js';
 import { createRubbleDecals } from './rubble-decals.js';
@@ -28,7 +29,8 @@ import { setWind } from './wind.js';
 import { surface, setFogMap, setFogTime, fogMistShader } from './surfaces.js';
 import { createFog } from './fog.js';
 import { createWorldState } from './world-state.js';
-import { buildStructures as buildPieces, sandbagRing, hqCamp, buildingModel, PIECE_CELLS } from './structures.js';
+import { createStructures, sandbagRing, hqCamp, buildingModel, PIECE_CELLS } from './structures.js';
+import { createMinimapTerrain, MM_COLORS } from './minimap-terrain.js';
 import { createRelief } from './relief.js';
 import { gfx } from './gfx.js';
 import { rig, groundAt as marchGround } from './camera.js';
@@ -45,7 +47,7 @@ import { createAviation } from './aircraft.js';
 import { epilogue } from './epilogue.js';
 import { createObjectives } from './objectives.js';
 import { endgame } from './endgame.js';
-import { buildModel, animate, createBodies, setSurfaces, setBuildings, crowd, drawSoldiers, animationInterest, vehicleBody, updateBuildingBreach, releaseBuildingBreach, setRiders } from './unit-models.js';
+import { buildModel, animate, createBodies, setSurfaces, setBuildings, crowd, drawSoldiers, animationInterest, vehicleBody, updateBuildingBreach, releaseBuildingBreach, setRiders, camouflage } from './unit-models.js';
 import { releaseWheels, wheelMaterial } from './wheel-motion.js';
 import { loadModelTextures } from './model-textures.js';
 import { perf, renderScale } from './perf.js';
@@ -95,7 +97,7 @@ const EDIT = new URLSearchParams(location.search).has('edit'); // /?edit opens t
 const MAIN_ROOM = 'main';
 const address = roomAddress(location.hash, MAIN_ROOM), { room, seat } = address;
 if (location.hash !== address.hash) history.replaceState(null, '', location.pathname + location.search + address.hash);
-const roomLink = (base) => base + '/play#' + room;
+const roomLink = (base) => base + '/play' + (new URLSearchParams(location.search).get('transport') === 'webtransport' ? '?transport=webtransport' : '') + '#' + room;
 addEventListener('hashchange', () => location.reload()); // edited the #code by hand: go to that room
 // A room keeps its seat across tabs; an explicit seat suffix lets another person use this browser.
 const local = tryStore(() => localStorage), session = tryStore(() => sessionStorage);
@@ -145,7 +147,7 @@ $('name').value = entry.get('name')?.slice(0, 16) || tryStore(() => localStorage
 $('link').value = roomLink(location.origin);
 $('roomCode').value = room;
 // Room box: type a code to join (or make) that room; New room makes a private one
-const goRoom = (code) => { code = code.trim().toLowerCase(); if (!/^[a-z0-9]{3,12}$/.test(code)) { $('roomCode').value = room; return; } location.assign('/play#' + code + (seat ? '&seat=' + seat : '')); };
+const goRoom = (code) => { code = code.trim().toLowerCase(); if (!/^[a-z0-9]{3,12}$/.test(code)) { $('roomCode').value = room; return; } location.assign('/play' + (entry.get('transport') === 'webtransport' ? '?transport=webtransport' : '') + '#' + code + (seat ? '&seat=' + seat : '')); };
 $('joinRoom').onclick = () => goRoom($('roomCode').value);
 $('joinOperative').onclick = () => location.assign('/play?role=operative&commander=' + $('commanderSel').value + '#'+room);
 $('openOperative').onclick = () => window.open('/play?role=operative&commander=' + Math.max(0,me) + '#'+room, '_blank');
@@ -167,7 +169,7 @@ const observerControls = new Set(['fps', 'ping', 'resync', 'name', 'pause', 'res
 let snapshotAt = 0, snapshotGap = 100;
 const connection = createConnection({
   url: `${location.protocol === 'https:' ? 'wss' : 'ws'}://${location.host}/ws?room=${room}`,
-  hello: () => ({ t: 'hello', name: $('name').value, token, role: requestedRole, commander: requestedCommander, spectate: watching, listing }), // a spectator who reconnects keeps watching
+  hello: () => ({ t: 'hello', name: $('name').value, token, role: requestedRole, commander: requestedCommander, spectate: watching, listing, webtransport: entry.get('transport') === 'webtransport' }), // a spectator who reconnects keeps watching
 });
 setInterval(() => { const c = performance.now(); if (sendCmd({ t: 'ping', c, rtt, d: perf.diag() })) perf.pinged(c); }, 2000); // client/perf.js counts the unanswered ones as loss
 const sendCmd = (m) => {
@@ -464,13 +466,15 @@ const mesh = (geo, material, sx = 1, sy = 1, sz = 1, x = 0, y = 0, z = 0) => {
 
 // ---------- world ----------
 
-let world, MW = 0, MH = 0, fogOfWar = null, points = [], groundMesh = null, fogMesh = null, water = null, apron = null;
+let world, MW = 0, MH = 0, fogOfWar = null, points = [], groundMesh = null, fogMesh = null, fogMaterial = null, water = null, apron = null;
 const SHARED_GEOS = new Set(Object.values(GEO));
 
 // Ground height and the terrain surface come from client/relief.js: cliffs, eased slopes, river beds and banks.
 let relief = null, mapView = null, worldRegions = null, railways = null;
 function hAt(x, z) { return relief?.hAt(x, z) ?? 0; }
 const units = new Map(), selected = new Set(), groups = {}, fx = [];
+const gameTransport = createGameTransport({connection,units,optIn:entry.get('transport') === 'webtransport'});
+window.__gameTransport = gameTransport;
 let logisticsData = decodeLogistics({}, units, -1), logisticsOverlay = false, logisticsSelection = false;
 const logisticsAlerts = createLogisticsAlerts();
 const fps = createOperativeView({ camera, scene, renderer, units, ground: hAt, send: sendCmd, playing: () => lobbyState?.state === 'play', paused: () => paused, effects: () => effects, rtt: () => rtt });
@@ -492,7 +496,7 @@ function startGame(m, restored = null) {
   worldRegions?.dispose(); worldRegions = null; railways?.dispose(); railways = null;
   terrain?.ground.dispose();
   rubbleDecals?.dispose(); rubbleDecals = null; craterDecals?.dispose(); craterDecals = null;
-  relief?.dispose(); apron?.dispose(); fogMesh?.material.dispose(); fogMesh = null;
+  relief?.dispose(); apron?.dispose(); fogMesh?.userData.release?.(); fogMaterial?.dispose(); fogMesh = fogMaterial = null;
   for (const v of units.values()) releaseBuildingBreach(v);
   for (const v of ghosts.values()) releaseBuildingBreach(v);
   if (world) { scene.remove(world); disposeTree(world, SHARED_GEOS); fogOfWar?.dispose(); } // Play again reuses the page
@@ -523,9 +527,11 @@ function startGame(m, restored = null) {
   for (const [cell, ch, lv, st, data] of m.cells || []) { if (data) { terrain.groundGrid[Math.floor(cell / map.w)][cell % map.w] = data.ground; terrain.objectGrid[Math.floor(cell / map.w)][cell % map.w] = data.object; terrain.materials.set(cell, data.material); if (data.section) terrain.structuralSections.set(cell, data.section); } terrain.mineGrid[Math.floor(cell / terrain.w)][cell % terrain.w] = ch === 'N' ? 1 : 0; terrain.physicalGrid[Math.floor(cell / terrain.w)][cell % terrain.w] = ch === 'N' ? composeWorldCell(terrain.groundGrid[Math.floor(cell / terrain.w)][cell % terrain.w], terrain.objectGrid[Math.floor(cell / terrain.w)][cell % terrain.w]) : ch; if (map.discovered) { map.discovered[cell] = 1; rememberLook(map, cell, data); } terrain.grid[Math.floor(cell / map.w)][cell % map.w] = ch; terrain.state[cell] = st ?? 0; if (lv !== undefined) setLevel(map, cell, lv); }
   if (map.world) map.rows = terrain.grid.map(r => r.join(''));
   gp.paint(terrain.grid, terrain.state, terrain.groundGrid, terrain.objectGrid);
-  // the fog overlay shares the relief's live geometry, which a crater replaces
+  // The relief is drawn in chunks; in a match a change redraws its chunks a few per frame (relief.tick in the frame
+  // loop), while the logical ground (hAt, picking) follows at once. The fog overlay and the paper map drape over the
+  // same chunks and follow them.
   relief = createRelief(map, terrain.physicalGrid, { texture: gp.tex, isRoad: gp.isRoad, gfx, low: gfx.low || !!map.world,
-    onGeometry: geometry => { if (fogMesh) fogMesh.geometry = geometry; mapView?.setGeometry(geometry); } });
+    deferred: !EDIT, onPublish: () => mapView?.redraw() });
   const ground = relief.mesh;
   world.add(ground); groundMesh = ground;
   apron = createApron({ ground: gp, relief, grid: terrain.physicalGrid, map });
@@ -557,17 +563,18 @@ function startGame(m, restored = null) {
   // fog of war overlay: the server's mask of what my team sees (client/fog.js)
   fogOfWar = createFog(map.w, map.h, m.fog, EDIT, !!map.world);
   setFogMap(EDIT ? null : fogOfWar.texture, MW, MH); // walls, roofs and props darken in the fog too
-  const fog = fogMesh = new THREE.Mesh(ground.geometry, new THREE.MeshBasicMaterial({ map: fogOfWar.texture, transparent: true, depthWrite: false, polygonOffset: true, polygonOffsetFactor: -2, polygonOffsetUnits: -6 }));
-  fog.material.onBeforeCompile = fogMistShader;
-  fog.renderOrder = 1; fog.visible = !EDIT;
+  fogMaterial = new THREE.MeshBasicMaterial({ map: fogOfWar.texture, transparent: true, depthWrite: false, polygonOffset: true, polygonOffsetFactor: -2, polygonOffsetUnits: -6 });
+  fogMaterial.onBeforeCompile = fogMistShader;
+  const fog = fogMesh = relief.drape(fogMaterial, { renderOrder: 1 });
+  fog.visible = !EDIT;
   world.add(fog);
   // zoomed out, the paper war map (client/map-view.js, a prototype)
-  mapView?.dispose(); mapView = EDIT ? null : createMapView({ grid: terrain.grid, w: map.w, h: map.h, geometry: ground.geometry, hAt, fog: fogOfWar, units, colorOf: (slot) => css(look(slot).color), title: map.name || lobbyState?.mapName || '',
+  mapView?.dispose(); mapView = EDIT ? null : createMapView({ grid: terrain.grid, w: map.w, h: map.h, drape: relief.drape, hAt, fog: fogOfWar, units, colorOf: (slot) => css(look(slot).color), title: map.name || lobbyState?.mapName || '',
     camera, view: renderer.domElement, state: () => ({ me, selected, strikes: lastSnap?.strikes ?? [],
       regions: lastSnap?.world?.regions ?? [], teamColor: regionTeamColor,
       points: points.map((p, i) => ({ x: p.g.position.x, z: p.g.position.z, owner: lastSnap?.points[i]?.[0] ?? -1 })) }) });
   if (mapView) world.add(mapView.object);
-  atmos.start({ map, key: lobbyState?.mapName, ground, hAt, weather: m.weather, apron }); // mood, clouds, mist, weather, birds
+  atmos.start({ map, key: lobbyState?.mapName, ground, drape: relief.drape, hAt, weather: m.weather, apron }); // mood, clouds, mist, weather, birds
   wx.start(m.weather, atmos);
 
   m.spawns.forEach((sp, i) => { if (sp) world.add(buildHQ(sp, i)); });
@@ -598,8 +605,13 @@ let terrain = null;
 let props = null;
 let rubbleDecals = null, craterDecals = null; // craterDecals: World Conquest's lasting crater marks
 // big battles change cells every snapshot: the 3D pieces and the minimap's terrain are redone at most every 0.25 s
-// pieceCells: the cells whose pieces changed since the last rebuild (client/structures.js redoes the parts they reach)
-const terrainDue = { pieces: false, minimap: false, props: false, wait: 0, pieceCells: new Set() };
+const terrainDue = { pieces: false, minimap: false, props: false, wait: 0 };
+// the cells whose 3D pieces are due: their type, height or damage stage changed since the last redo, and cells whose
+// water level alone moved (the ground there may have too)
+const pieceCells = new Set(), pieceGround = new Set();
+// the same for the minimap's terrain, and cells where a railway was found (their pixel alone changes)
+const minimapCells = new Set(), minimapOwn = new Set();
+let structures = null;
 let propPreparation = null;
 const mergePropBox = (a, b) => !a ? b : !b ? a : [Math.min(a[0], b[0]), Math.min(a[1], b[1]), Math.max(a[2], b[2]), Math.max(a[3], b[3])];
 function terrainFrame(dt) {
@@ -630,14 +642,17 @@ function terrainFrame(dt) {
     } while (performance.now() < until);
   }
   if ((terrainDue.wait -= dt) > 0 || !(terrainDue.pieces || terrainDue.minimap || terrainDue.props)) return;
-  if (terrainDue.pieces && terrain) buildStructures({ cells: terrainDue.pieceCells });
-  terrainDue.pieceCells = new Set();
-  if (terrainDue.minimap) { mmImage = null; mapView?.refresh(); }
+  if (terrainDue.pieces && terrain) { structures.update(pieceCells, [...pieceGround]); pieceCells.clear(); pieceGround.clear(); }
+  if (terrainDue.minimap) { if (mmImage) mmTerrainView.update(minimapCells, minimapOwn); minimapCells.clear(); minimapOwn.clear(); mapView?.refresh(); }
   terrainDue.pieces = terrainDue.minimap = false; terrainDue.wait = 0.25;
 }
-// all 3D terrain pieces (client/structures.js), rebuilt from the grid whenever a cell changes
-function buildStructures(change = null) {
-  buildPieces(terrain.group, terrain.physicalGrid, lastStart.map.rows.map((row, y) => (row.includes('N') ? [...row].map((ch, x) => ch === 'N' ? composeWorldCell(terrain.groundGrid[y][x], terrain.objectGrid[y][x]) : ch).join('') : row)), hAt, terrain.state, lastStart.map.buildings, terrain.mineGrid, change);
+// all 3D terrain pieces (client/structures.js): built whole at the start, then redone around the cells that changed
+function buildStructures() {
+  const map = lastStart.map;
+  structures?.clear(); pieceCells.clear(); pieceGround.clear();
+  structures = createStructures({ group: terrain.group, grid: terrain.physicalGrid, hAt, cells: terrain.state, mineGrid: terrain.mineGrid, buildings: () => map.buildings, groundReach: relief.groundReach,
+    orig: (x, y) => { const ch = map.rows[y]?.[x]; return ch === 'N' ? composeWorldCell(terrain.groundGrid[y][x], terrain.objectGrid[y][x]) : ch; } });
+  structures.rebuild();
   if (!rubbleDecals) { rubbleDecals = createRubbleDecals({ parent: world, hAt, w: terrain.w, grid: terrain.objectGrid, materialAt: c => terrain.materials.get(c) }); rubbleDecals.update(terrain.objectGrid.flatMap((row, y) => row.flatMap((ch, x) => ch === 'R' ? [y * terrain.w + x] : []))); }
   if (!craterDecals && lastStart.map.world) { craterDecals = createCraterDecals({ parent: world, hAt, w: terrain.w, grid: terrain.grid }); craterDecals.update(terrain.grid.flatMap((row, y) => row.flatMap((ch, x) => ch === '+' ? [y * terrain.w + x] : []))); }
 }
@@ -659,13 +674,16 @@ function rememberLook(map, cell, data) {
 function hasPiece(x, y) {
   return PIECE_CELLS.has(terrain.physicalGrid[y]?.[x]) || terrain.mineGrid[y]?.[x] === 1 || lastStart.map.rows[y]?.[x] === 'B';
 }
+// within the pieces' reach (structures.reach: the ground a change moves, plus the cells a piece reads)
 function nearPiece(x, y) {
-  for (let dy = -2; dy <= 2; dy++) for (let dx = -2; dx <= 2; dx++) if (hasPiece(x + dx, y + dy)) return true;
+  const r = structures?.reach ?? 2;
+  for (let dy = -r; dy <= r; dy++) for (let dx = -r; dx <= r; dx++) if (hasPiece(x + dx, y + dy)) return true;
   return false;
 }
 
-// World Conquest: water runs on under ground this player has not discovered (client/water.js)
-const waterOptions = map => (map.world ? { unknown: c => !map.discovered?.[c] } : {});
+// World Conquest: water runs on under ground this player has not discovered (client/water.js). Outside the editor the
+// water chunks a change reaches are redrawn over the next frames.
+const waterOptions = map => ({ deferred: !EDIT, ...(map.world ? { unknown: c => !map.discovered?.[c] } : {}) });
 
 // bombs and shells lower the ground: patch the map's height rows
 function setLevel(map, cell, lv) {
@@ -681,16 +699,18 @@ function applyCells(cells) {
   groundVersion++;
   // Ground wear and scorching only change the paint. The relief, the 3D pieces, the scenery and the water are redone
   // only for cells whose type, height or damage stage changed: traffic wears many cells in a big battle.
-  const shaped = [], landmarks = lastStart.map.buildings?.length ?? 0, pieceCells = [];
+  const shaped = [], landmarks = lastStart.map.buildings?.length ?? 0, grounded = [];
   let pieces = false;
   for (const entry of cells) {
     const [cell, ch, lv, st = 0, data] = entry, x = cell % terrain.w, y = Math.floor(cell / terrain.w), heights = lastStart.map.heights;
     const physical = ch === 'N' ? composeWorldCell(data?.ground ?? terrain.groundGrid[y][x], data?.object ?? terrain.objectGrid[y][x]) : ch;
     const moved = terrain.grid[y][x] !== ch || terrain.physicalGrid[y][x] !== physical || (lv !== undefined && levelOf(heights?.[y]?.[x] ?? '0') !== lv);
     if (moved) shaped.push(entry);
-    const staged = ((terrain.state[cell] ^ st) >> 3 & 3) > 0;
+    const staged = ((terrain.state[cell] ^ st) >> 3 & 3) > 0; // damage stage; the shelling bits only repaint
     pieces ||= (moved && hasPiece(x, y)) || staged; // a piece stood here, or its damage stage changed
-    if (moved || staged) pieceCells.push(cell);
+    if (moved || staged) pieceCells.add(cell);
+    if (moved) minimapCells.add(cell);
+    if (data?.rail) { minimapOwn.add(cell); terrainDue.minimap = true; }
     terrain.grid[y][x] = ch; terrain.state[cell] = st;
     if (data) { terrain.groundGrid[y][x] = data.ground; terrain.objectGrid[y][x] = data.object; terrain.materials.set(cell, data.material); if (data.section) terrain.structuralSections.set(cell, data.section); } terrain.mineGrid[Math.floor(cell / terrain.w)][cell % terrain.w] = ch === 'N' ? 1 : 0; terrain.physicalGrid[Math.floor(cell / terrain.w)][cell % terrain.w] = ch === 'N' ? composeWorldCell(terrain.groundGrid[Math.floor(cell / terrain.w)][cell % terrain.w], terrain.objectGrid[Math.floor(cell / terrain.w)][cell % terrain.w]) : ch;
     if (lastStart.map.world) {
@@ -700,9 +720,6 @@ function applyCells(cells) {
     }
     if (lv !== undefined) setLevel(lastStart.map, cell, lv);
   }
-  // Scouting reveals mostly open ground, woods and water, which have no 3D pieces: the whole-map rebuild (about 20 ms
-  // on a Huge World map) runs only when a changed cell has a piece within two cells, or a landmark arrived.
-  pieces ||= (lastStart.map.buildings?.length ?? 0) !== landmarks || shaped.some(([cell]) => nearPiece(cell % terrain.w, Math.floor(cell / terrain.w)));
   terrain.ground.paint(terrain.grid, terrain.state, terrain.groundGrid, terrain.objectGrid, cells);
  // repaints only the tiles around changed cells
   if (shaped.length) {
@@ -714,10 +731,12 @@ function applyCells(cells) {
     }
     const boxes = [...tiles.values()].map(([x0, y0, x1, y1]) => [x0 * CELL, y0 * CELL, (x1 + 1) * CELL, (y1 + 1) * CELL]);
     const box = boxes.reduce(mergePropBox); // all of it, for props still being prepared
-    relief.update(shaped); props?.refresh(boxes);
+    // cells whose water level moved, perhaps far from the change: the ground there may have too
+    for (const c of relief.update(shaped)) { pieceGround.add(c); minimapCells.add(c); grounded.push(c); }
+    props?.refresh(boxes);
     if (propPreparation?.props) propPreparation.dirtyBox = mergePropBox(propPreparation.dirtyBox, box);
     if (!water && shaped.some(([, ch]) => 'WF='.includes(ch))) { water = createWater(terrain.physicalGrid, lastStart.map, hAt, waterOptions(lastStart.map)); if (water) world.add(water.mesh); }
-    else water?.changed(shaped); terrainDue.minimap = true; // the fog overlay follows the relief through onGeometry
+    else water?.changed(shaped); terrainDue.minimap = true; // the fog overlay drapes over the relief's chunks and follows them
     for (const b of boxes) refreshTerrain(...b);
   }
   const rubbleCells = new Set(cells.map(entry => entry[0]));
@@ -729,10 +748,11 @@ function applyCells(cells) {
     }
   }
   rubbleDecals?.update(rubbleCells); craterDecals?.update(rubbleCells);
-  if (pieces) {
-    terrainDue.pieces = true; // rebuilt at most 4 times a second (frame loop), only the parts these cells reach
-    for (const c of pieceCells) terrainDue.pieceCells.add(c);
-  }
+  // Scouting reveals mostly open ground, woods and water, which have no 3D pieces: the pieces are redone only when a
+  // changed cell or moved ground has a piece within their reach, or a landmark arrived.
+  const near = c => nearPiece(c % terrain.w, Math.floor(c / terrain.w));
+  pieces ||= (lastStart.map.buildings?.length ?? 0) !== landmarks || shaped.some(([cell]) => near(cell)) || grounded.some(near);
+  if (pieces) terrainDue.pieces = true; // redone at most 4 times a second (frame loop), only the chunks these cells reach
   coverPreview.dirty(); // cover marks follow new cells and shot-up walls
 }
 
@@ -921,6 +941,7 @@ function applySnapshot(s) {
     console.warn(`unit rows out of sync at tick ${s.tick}: holding ${worldState.size}, the server sent ${s.held[0]}; asking for a full resend`);
     resyncAt = performance.now(); sendCmd({ t: 'resync' });
   }
+  gameTransport.baseline(s);
   fogOfWar?.snapshot(s); // before the freeze: each fog change builds on the last one
   if (window.__freeze) return; // debug: hold the scene still (e.g. to inspect models)
   const arrived = performance.now();
@@ -964,7 +985,7 @@ function applySnapshot(s) {
     if (!isAir(type)) { const riding = !!(flags & RIDING_FLAG); v.root.visible = !riding && !(fps.active && id === s.operative?.id); v.bars.visible = !riding && !fps.active; if (riding) selected.delete(id); }
     // tank riders: the carrier draws its squads kneeling on the deck (client/unit-models.js), from the count in its flags
     if (def.riders) setRiders(v, flags & CARGO_FLAG ? flags >> CARGO_SHIFT & 3 : 0, look(owner), facOf(owner));
-    if (UNITS[type].camo && v.camo !== (flags & 256)) { v.camo = flags & 256; v.models.forEach(man => man.traverse(o => { if (o.isMesh && !o.material.userData.camo) { o.material = o.material.clone(); o.material.userData.camo = true; o.material.transparent = true; } if (o.isMesh) o.material.opacity = flags & 256 ? 0.45 : 1; })); }
+    if (UNITS[type].camo && v.camo !== (flags & 256)) { v.camo = flags & 256; camouflage(v, v.camo); }
     const frac = Math.max(0, hp / (def.models * def.hpPer));
     v.hpBar.scale.x = 2.3 * frac; v.hpBar.position.x = -1.15 * (1 - frac);
     const hpColor = frac > 0.5 ? look(owner).color : frac > 0.25 ? 0xe08a2a : 0xd02a1a, suppColor = supp >= 90 ? 0xff3b2a : 0xffd23a;
@@ -1225,12 +1246,14 @@ function paintTiles(group, segs, ghost) {
 // The ghost of your side's ordered works: what is still to dig, including what a squad is walking to or digging now,
 // fainter than the placement preview. Redrawn when the list changes or the ground under it does.
 // works: [project id or -1, 1 for wire, x, z, dir, kind (only for works under way)] from the snapshot.
-let works = [], worksKey = '', worksGroup = null, groundVersion = 0; // groundVersion: counts terrain updates, so dug cells leave the ghost
+let works = [], worksKey = '', worksGroup = null, worksShown = false, groundVersion = 0; // groundVersion: counts terrain updates, so dug cells leave the ghost
 function drawWorks(list = []) {
   works = list;
+  // nothing planned and nothing drawn: skip the placement state, which reads the whole map
+  if (!list.length && !worksShown && worksGroup?.parent === world) return;
   const key = list.join(';') + '@' + groundVersion, view = placementView();
   if (!world || !view || (key === worksKey && worksGroup?.parent === world)) return;
-  worksKey = key;
+  worksKey = key; worksShown = list.length > 0;
   if (worksGroup?.parent !== world) {
     worksGroup = new THREE.Group(); world.add(worksGroup);
     worksGroup.userData.cells = cellLayer({ depthTest: true }); worksGroup.add(worksGroup.userData.cells.group);
@@ -1753,18 +1776,13 @@ renderer.domElement.addEventListener('dblclick', (e) => {
 let lastT = performance.now();
 
 // ---------- minimap: rotated with the camera so "up" matches the screen ----------
-const MM_COLORS = { '.': [108, 118, 69], B: [150, 132, 100], H: [47, 74, 34], '#': [154, 149, 138], '+': [90, 79, 54], T: [62, 50, 34], W: [60, 93, 112], '=': [122, 90, 58], F: [106, 127, 122], R: [122, 114, 102], X: [96, 90, 70], Y: [84, 84, 78], D: [150, 128, 100], M: [92, 80, 58], N: [120, 96, 60], O: [38, 62, 30], A: [226, 220, 204] };
-let mmImage = null, mmFog = null, mmFogImg = null, mmFogOf = null, mmTimer = 0;
+let mmImage = null, mmFog = null, mmFogImg = null, mmFogOf = null, mmTimer = 0, mmTerrainView = null;
+// the minimap's terrain (client/minimap-terrain.js): painted whole here, then redone around changed cells (terrainFrame)
 function mmTerrain() {
   const w = terrain.w, h = terrain.grid.length, c = document.createElement('canvas'); c.width = w; c.height = h;
-  const x2 = c.getContext('2d'), img = x2.createImageData(w, h);
-  terrain.grid.forEach((row, y) => row.forEach((ch, x) => {
-    const lv = hAt((x + 0.5) * CELL, (y + 0.5) * CELL) / CFG.levelHeight, [r, g, b] = MM_COLORS[ch] ?? MM_COLORS['.'], k = 1 + lv * 0.12, i = (y * w + x) * 4;
-    img.data[i] = r * k; img.data[i + 1] = g * k; img.data[i + 2] = b * k; img.data[i + 3] = 255;
-  }));
-  for (const k of railways?.track() ?? []) { const i = k * 4; img.data[i] = 46; img.data[i + 1] = 40; img.data[i + 2] = 36; } // the railway, dark
-  x2.putImageData(img, 0, 0);
-  mmImage = c;
+  mmTerrainView = createMinimapTerrain({ w, h, grid: terrain.grid, canvas: c, reach: relief.groundReach,
+    height: (x, y) => hAt((x + 0.5) * CELL, (y + 0.5) * CELL) / CFG.levelHeight, onTrack: cell => !!railways?.onTrack(cell) });
+  mmImage = c; minimapCells.clear(); minimapOwn.clear();
 }
 function mmBasis() {
   const W = $('minimap').width, S = W / Math.hypot(MW, MH), r = { x: Math.cos(cam.yaw), z: -Math.sin(cam.yaw) }, f = { x: -Math.sin(cam.yaw), z: -Math.cos(cam.yaw) };
@@ -1862,7 +1880,7 @@ function drawMinimap() {
   alerts.drawPings(c, S);
   pings.drawMinimap(c, S);
   // what the camera sees
-  const corners = rig.corners(relief?.geometry);
+  const corners = rig.corners(relief?.version);
   if (corners.length === 4) { c.beginPath(); corners.forEach((p, i) => (i ? c.lineTo(p.x, p.z) : c.moveTo(p.x, p.z))); c.closePath(); c.strokeStyle = '#fff8'; c.lineWidth = 1.5 / S; c.stroke(); }
 }
 {
@@ -1914,6 +1932,8 @@ let ambienceTimer = 0;
 renderer.setAnimationLoop(() => {
   const now = performance.now(), dt = Math.min(0.1, (now - lastT) / 1000); lastT = now;
   const sdt = epilogue.frame(dt, cam); // screen time: slower once the match is decided, and the camera glides there
+  // terrain chunks redrawn after discovery or craters, a few milliseconds' worth a frame (client/chunk-jobs.js)
+  relief?.tick(4);
   water?.tick(now);
   // camera
   if (!fps.active) rig.update(dt);

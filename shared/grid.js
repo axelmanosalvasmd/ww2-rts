@@ -105,7 +105,9 @@ export class SpatialGrid {
         result = runs[0];
       }
     } else if (ordered && !sorted) result.sort(byOrder);
-    return result.map(record => record.unit);
+    // result is this query's own array (a bucket run or a merge), so convert in place: no second allocation
+    for (let i = 0; i < result.length; i++) result[i] = result[i].unit;
+    return result;
   }
   radius(at, radius, match = () => true) {
     return this.candidates(at, radius, true, u => Math.hypot(u.x - at.x, u.z - at.z) <= radius && match(u));

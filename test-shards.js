@@ -30,8 +30,11 @@ try {
   await until(() => friend.messages.some(m => m.t === 'lobby' && m.players?.length === 2), 'both players of a room meet in one game process');
   await connect(b, 1, { listing: { public: true, title: 'On the second process' } });
   await until(() => clients[2].readyState === 1, 'the second room opens');
-  const listed = (await (await fetch(base + '/api/rooms')).json()).rooms;
-  assert.deepEqual(listed.map(r => r.title).sort(), ['On the first process', 'On the second process'], 'the public lobby lists the rooms of both game processes');
+  // a game process reports its rooms to the first one after the socket opens: wait for the report, not a fixed moment
+  const titles = async () => (await (await fetch(base + '/api/rooms')).json()).rooms.map(r => r.title).sort();
+  let listed = await titles();
+  for (const end = Date.now() + 10000; listed.length < 2 && Date.now() < end; listed = await titles()) await new Promise(r => setTimeout(r, 20));
+  assert.deepEqual(listed, ['On the first process', 'On the second process'], 'the public lobby lists the rooms of both game processes');
   host.send({ t: 'start' });
   await until(() => host.messages.some(m => m.t === 's') && friend.messages.some(m => m.t === 's'), 'the match runs in its game process and both players get snapshots');
   console.log('game processes: rooms routed, listed and run');

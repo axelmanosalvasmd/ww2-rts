@@ -400,16 +400,25 @@ export function createAtmosphere({ scene, renderer, camera, cam }) {
   let enabled = true, on = false, moodName = DEFAULT_MOOD, M = MOODS[DEFAULT_MOOD], t = 0, ground = null, groundGeo = null, MW = 0, MH = 0;
   let hAt = () => 0;
 
+  // cloudBoard and cover hold the layers over the map's own ground: drapes over a chunked relief (client/relief.js), or
+  // one mesh on a plain ground's geometry
   const cloudMat = cloudMaterial();
-  const cloudBoard = new THREE.Mesh(new THREE.BufferGeometry(), cloudMat);
+  const cloudBoard = new THREE.Group();
   const cloudApron = new THREE.Mesh(new THREE.BufferGeometry(), cloudMat);
-  for (const m of [cloudBoard, cloudApron]) { m.renderOrder = 0.6; m.raycast = () => {}; m.frustumCulled = false; root.add(m); }
+  cloudApron.renderOrder = 0.6; cloudApron.raycast = () => {}; cloudApron.frustumCulled = false;
+  root.add(cloudBoard, cloudApron);
 
   // wet ground, mud and lying snow, under the cloud shade
   const coverMat = coverMaterial(cloudMat.uniforms.tNoise.value);
-  const cover = new THREE.Mesh(new THREE.BufferGeometry(), coverMat);
-  cover.renderOrder = 0.58; cover.raycast = () => {}; cover.frustumCulled = false;
+  const cover = new THREE.Group();
   root.add(cover);
+  let surfaces = [];
+  // the ground's surface in a material: a drape that follows the relief's chunks, or a mesh on its geometry
+  function surface(holder, material, renderOrder, drape, g) {
+    const layer = drape ? drape(material, { renderOrder }) : new THREE.Mesh(g.geometry, material);
+    if (!drape) { layer.renderOrder = renderOrder; layer.raycast = () => {}; layer.frustumCulled = false; }
+    holder.add(layer); surfaces.push(layer);
+  }
 
   const coverApron = new THREE.Mesh(new THREE.BufferGeometry(), coverMat);
   coverApron.renderOrder = 0.58; coverApron.raycast = () => {}; coverApron.frustumCulled = false;
@@ -504,7 +513,8 @@ export function createAtmosphere({ scene, renderer, camera, cam }) {
   }
 
   // weather: the match's weather row from the server ([now] or [now, next, seconds]); none in the editor
-  function start({ map, key, ground: g, hAt: h, weather, apron }) {
+  // drape: the relief's drape(material, options) when the ground is drawn in chunks
+  function start({ map, key, ground: g, drape = null, hAt: h, weather, apron }) {
     ground = g; hAt = h;
     // map size: a PlaneGeometry's own, or the fixed bounds client/relief.js gives its geometry (x and z from 0)
     const prm = g.geometry.parameters, box = g.geometry.boundingBox;
@@ -519,9 +529,10 @@ export function createAtmosphere({ scene, renderer, camera, cam }) {
     Object.assign(cur, goal); hazeNow.copy(hazeGoal); // a match starts in its weather, no easing in
     applyMood();
 
-    cloudBoard.geometry = g.geometry;
+    for (const layer of surfaces) { layer.userData.release?.(); layer.removeFromParent(); }
+    surfaces = [];
+    surface(cloudBoard, cloudMat, 0.6, drape, g); surface(cover, coverMat, 0.58, drape, g);
     cloudBoard.position.copy(g.position); cloudBoard.position.y += 0.06; cloudBoard.rotation.copy(g.rotation);
-    cover.geometry = g.geometry;
     cover.position.copy(g.position); cover.position.y += 0.05; cover.rotation.copy(g.rotation);
     coverMat.uniforms.tMask.value?.dispose();
     coverMat.uniforms.tMask.value = groundMask(map);
@@ -560,9 +571,10 @@ export function createAtmosphere({ scene, renderer, camera, cam }) {
   function update(dt) {
     if (!on || !ground) return;
     t = (t + dt) % 10000;
-    // Digging swaps the terrain geometry; the apron keeps its shared position buffers.
+    // Digging swaps a plain ground's geometry (a chunked relief's drapes follow it themselves); the apron keeps its
+    // shared position buffers.
     if (ground.geometry !== groundGeo) {
-      cloudBoard.geometry = cover.geometry = ground.geometry;
+      for (const layer of surfaces) if (layer.isMesh) layer.geometry = ground.geometry;
       groundGeo = ground.geometry;
     }
     // ease toward the weather (about 8 s to settle), then fade the rain or snow out and the next one in

@@ -1,5 +1,15 @@
 # Three Crossroads: design decisions
 
+## Playable isolated WebTransport test build
+
+Tailnet launch uses a separate loopback HTTP/WSS backend on 3200, additive Tailscale Serve HTTPS on 8443, and native UDP QUIC bound exclusively to the current Tailscale IPv4 on 3201. IP entry on 3202 redirects to the secure hostname. Explicit remote mode validates current IP and HTTPS hostname; both local and remote WSS Host/Origin and QUIC request Origin/path are checked. Per-instance seven-day P-256 certificate pins are delivered over the authorized control connection, with private keys outside source. Existing instances are not restarted by publishing. Local renderer/native browser smoke is verified; remote-peer browser/UDP reachability of this revision remains pending. See `docs/webtransport-playable.md`.
+
+This separate build adds `WW2_WEBTRANSPORT=1` and `/play?transport=webtransport`. Recipient motion is extracted from actual `snapshotFor` rows before `unitDelta`, never from global units. Single-use grants bind the native QUIC session to the current WebSocket and seat. Reliable snapshots acknowledge membership revisions before datagrams can flow. Match/start, reconnect and replacement reset generation; old/future revisions and unknown IDs cannot create units. Datagrams are self-contained whitelisted motion rows capped at 1000 bytes, with at most 32 writes pending. Reliable incremental snapshots, all commands, removals, fog and durable state remain unchanged. Motion is additive: TCP still carries it for recovery. Browser native QUIC join/start/move, refresh, restart and fallback were exercised in a bounded sandbox. No latency win, TCP HOL escape, peer access or production readiness is claimed. See `docs/webtransport-playable.md`. The earlier standalone fixture is preserved below for provenance.
+
+## Standalone WebTransport experiment
+
+`prototype/webtransport` is deliberately not connected to the game. Reliable recipient baselines and orders use WebSocket; optional motion uses native browser HTTP/3 datagrams. Independent per-entity motion rows carry session, lifecycle revision, entity epoch and sequence, with a 1000-byte cap. Membership is defined only by a reliable recipient baseline; unknown entities and stale revisions are discarded without buffering. A newer reliable baseline preserves fresher motion in the same entity epoch. Baseline recovery, socket replacement and fallback are exercised in isolated tests. Local measurements do not justify integration or a latency-gain claim. See `docs/webtransport-prototype.md` for evidence and remaining integration requirements.
+
 WW2 tactics RTS in the browser for three friends. Decided 2026-09-30.
 
 ## Bug audit repairs (2026-10-07)
@@ -1276,6 +1286,8 @@ or big celebratory banners. Corners 0 to 2 px, 1 px hairlines, 13 to 15 px body 
   bridge cells, painted from a mask texture (shoreline, depth guess, fords, bridges) with a per-vertex flow
   direction. It draws first in the see-through pass and writes no depth, so fog of war, smoke and effects draw over
   it. `changed(cells)` rebuilds it after a bridge or bank change, `tick(now)` animates it, Graphics Low freezes it.
+  The mask is redrawn only around changed water, ford and bridge cells, and the surface is drawn in 64-cell chunks
+  (see Discovery cost on the Huge map).
 - As built, round 2 (aviation visuals): `client/aircraft.js` (`createAviation`) builds each faction's fighter,
   ground-attack plane and bomber as one merged vertex-colored mesh plus propellers, and draws plane units (bank,
   shadow, damage smoke), the Classic airfield, support planes crossing the map, flak bursts and shoot-downs. main.js
@@ -1426,7 +1438,8 @@ holds against its red and green, so bare ground keeps its color. Graphics Low sk
   order. The keyboard handler still swallows the first key during the glide (left for later).
 
 ## Relief, structures and atmosphere (round 4, 2026-10-01)
-- Relief module: `client/relief.js` (`createRelief(map, grid, { texture, isRoad, gfx, low, onGeometry, material })`)
+- Relief module: `client/relief.js` (`createRelief(map, grid, { texture, isRoad, gfx, low, deferred, onPublish, material })`;
+  `onGeometry` was replaced by drapes when the relief was split into chunks, see Discovery cost on the Huge map)
   builds the board surface from the sim's cell levels and returns `{ mesh, geometry, hAt, update(cells), stats,
   dispose }`. The geometry is in world space (y up, x and z from 0 to the map size) with a fixed bounding box, and its
   UVs match the ground canvas and the fog texture (`v = 1 - z / MH`). `hAt(x, z)` is the one ground height for units,
@@ -1583,14 +1596,11 @@ the page. Adding text to the game means adding its Spanish to `client/es.js`.
   `relabelNear` (flood the cells within two of them, join each piece to the outside regions it reaches, fresh labels
   above N), and a region reached by two pieces (a possible split) or more changes floods the whole map. Labels only
   mean same or different region; nothing may read their values.
-- Structure pieces (2026-10-11, issue #58): `client/structures.js` keeps its instances in parts, one per house
-  (by rectangle, kind and type) and one per 32 x 32 cells for everything else (hedges, walls, trenches, wire, traps,
-  mines, hospitals, rubble, bridges), and joins them into one InstancedMesh per kind. `buildStructures(..., { cells })`
-  redoes the parts within two cells of the changed cells. The map-wide inputs are compared rather than trusted: the
-  house footprint (a flip redoes the blocks of the connected footprint it touches, `relayBlocks`, then the quick
-  church, barn and terrace pass), each cell's house colours (rubble), the stone bridge
-  spans and the spoil tips; cells whose value changed are redone too. A builder that reads further than two cells away
-  must widen that margin, or parts go stale.
+- Structure pieces (2026-10-11, issue #58): upstream's version (parts per house and per 32 x 32 cells, joined into a
+  new InstancedMesh per kind on every change, a two-cell margin) was replaced in the merge by `createStructures`
+  (see 3D terrain pieces under Discovery cost on the Huge map): persistent per-kind meshes, only touched kinds copied,
+  and a margin of the relief's ground reach plus two. A builder that reads further than two cells from its cell must
+  widen that margin, or chunks go stale.
 - Plain JS ES modules, no build step. Deps: `ws` (server), `three` (client).
 - Server-authoritative: `shared/sim.js` runs at 20 Hz on the server and snapshots go out at 10 Hz (every 3 or 4
   ticks while a room falls behind, see round 3 above).
@@ -2671,13 +2681,13 @@ handles when a same-sized backing canvas is reused.
 World Conquest fields follow the ground discovered so far. A field block (10 by 8 cells) reads only its own cells
 and one biome sample inside it, so after a reveal `paint` rechecks only the blocks holding the changed cells and
 repaints the cells whose field changed with the rest (`refreshFields` in `client/ground.js`); a full recheck runs only
-on a full paint. The 3D pieces (`client/structures.js`) are still rebuilt for the whole map, but only when a changed
-cell had or has a piece within two cells (`PIECE_CELLS`), its damage stage changed, or a landmark arrived.
+on a full paint. The 3D pieces (`client/structures.js`) are redone only when a changed cell had or has a piece
+within `structures.reach` (`PIECE_CELLS`; the ground a change moves plus two cells), ground they stand on moved, its
+damage stage changed, or a landmark arrived.
 
-The relief mesh (`client/relief.js`) is assembled from rows of cells whose vertices are kept between rebuilds. An
-update rebuilds the rows within seven of every dirty cell and copies the others; the fan-detail budget, the one input
-all rows share, is replayed over every row's runs and a row whose fans change is rebuilt too, so the mesh always
-equals a full build. `stats.rowsRebuilt` and `stats.geometryMs` report the last rebuild.
+The relief mesh (`client/relief.js`) is drawn in 64 x 64 cell chunks (Discovery cost on the Huge map); upstream's
+row-by-row rebuild with in-place span uploads was replaced by them in the merge. `stats.chunksMarked` reports how
+many chunks the last update marked.
 
 The corpse module owns its fallen geometry and instance buffers. The camera chooses near or far fallen detail,
 with the existing soldier distance thresholds and 4 m hysteresis. Frustum tests use transformed fallen bounds,
@@ -2697,6 +2707,101 @@ every new search, retaining current terrain, wear, weather and bunker insertion,
 economy or balance rule changed. `node test.js` includes the focused performance checks; CI also runs
 `node test-world.js`. `tools/test-render-browser.html` provides the native WebGL adapter check when served from the
 repository root by a local static server.
+
+## Discovery cost on the Huge map (2026-10-10)
+
+A 512 x 512 World Conquest map makes whole-map client work expensive: every snapshot that brings changed cells must
+cost about its cells, not the map. The water mask (`client/water.js`, 4 texels per cell) keeps wet, ford and bridge
+flags per cell and redraws the four channels only in boxes around changed cells. A box reaches 12 texels (the widest
+blur, radius 4 run three times) past its cells and blurs a window 12 texels wider again, so it equals a whole-map
+blur exactly: the inputs are 0 or 1 and every running sum is exact in double precision. Boxes closer than their
+windows merge; scouts far apart stay separate. Only those texture rows go to the GPU (`addUpdateRange`), after the
+first full upload.
+
+The placement check for planned works (`placementState`) builds the authored map layers only when the caller gives
+no live layers, and main.js skips it while there are no works to draw.
+
+Measured by replaying the live match's autosave in a separate headless Chromium on GPU WebGL with one seat scouting:
+0.7 FPS and 1.2 s of frame-loop JS before, 6 to 15 FPS and 32 to 67 ms after. The rest of the discovery cost is
+whole-map derived work: the relief mesh reassembled per snapshot, ground painting, the water geometry, 3D terrain
+pieces every 0.25 s, the overlay terrain field and the minimap. Chunked relief and water geometry are the next step.
+
+### Chunked relief and water (2026-10-10, measured 2026-10-11)
+
+Built while a live match was running and measured afterwards by replaying the same Huge map autosave (seat 0 sends
+its 68 units out for 90 s; separate headless Chromium, RTX 4060 through ANGLE Vulkan, Low graphics, 0.75 scale; runs
+alternated, medians after the first 10 s). FPS: original 0.7 / 0.7, mask fix only 5.9 / 7.0, chunks 19.9 / 17.2,
+chunks with the review fixes 17.9 / 20.2, plus the local field repaint 36.7 / 21.3 (worst frame 72 / 86 ms against
+124 to 135 ms without it). Snapshots arrive at 4.9 per second in all builds after the mask fix. In the browser, after
+scouting and a pause, the drawn relief equals every chunk rebuilt from the current terrain and the water chunks equal
+a fresh whole build (0 differences in every attribute, 0 differing pixel bytes at a chunk corner). One seat of one
+save in a headless browser; not the live game's FPS.
+
+- The relief (`client/relief.js`) and the water (`client/water.js`) draw the map in square chunks of 64 cells, one
+  mesh each. `relief.mesh` is a group of chunk meshes; its own `geometry` holds only the fixed map bounds (the sun and
+  the weather read the map size from it) and its `raycast` answers for the whole surface. `water.mesh` is a group with
+  a mesh for each chunk that holds water. `relief.geometry` and `water.geometry` join the chunks into one geometry for
+  tests and tools; they copy every chunk, so nothing calls them per frame.
+- The logical terrain changes at once: `update(cells)` rewrites the cell heights, normals and water levels as before,
+  so `hAt`, picking and `waterAt` are current in the same call. It then marks the chunks that draw those cells: every
+  chunk within 7 cells of a changed cell (a scar's run looks 5 cells around a lip, plus the point's own cell and a
+  wall's far side) and within 1 cell of a reshaped one (walls read their neighbour's heights). The water marks the
+  chunks holding the four vertices of each cell whose water line, flow, raised span or wet flag changed, and 3 to 4
+  cells around a dent beside a span that lies on the ground (the relief moves up to 3 cells around a dent).
+- `client/chunk-jobs.js` rebuilds the marked chunks. With `deferred` (main.js in a match, not the editor or the lobby
+  backdrop) `relief.tick(4)` and `water.tick` build for about their budget per frame (at least one chunk, which may
+  take longer). Marks coalesce. A chunk marked again after its build drops that build, so an older state never
+  replaces a newer one. A built chunk waits while a neighbour, or a waiting built neighbour, still has to build, so
+  both sides of a shared edge are swapped in the same frame and no crack opens. Touching built chunks wait as one group,
+  and the group is shown whole once its oldest build has waited 400 ms, so steady changes nearby cannot hold it back.
+  The wait counts from a chunk's first build since it was last shown, not from its mark: time queued behind other
+  chunks does not use it up, and marking it again does not restart it. While scouting the Huge map about 10 of the 64
+  relief chunks wait at a time; a crack can show only where a group's 400 ms run out beside a chunk still to build. `dispose()` (a new match, Play again) cancels everything queued; nothing
+  builds or shows after it. Without `deferred` (tests, tools, the editor) the chunks are rebuilt inside the update.
+- Only maps over 65536 cells (World Conquest) defer the relief. On smaller maps `hAt` and picking read the drawn
+  detail triangles (cliff rocks, ragged rims), so the few marked chunks are rebuilt inside `update()`: props, decals
+  and overlay rings placed right after an update must not sit on ground that moves when its chunk is shown (deferring
+  them did, by up to several metres beside a crater). On the large maps the relief has no detail triangles and the
+  logical surface always answers, so it is current while chunks wait. (The skip of waiting chunks' detail triangles in
+  picking stays as a guard.)
+- Other layers drape over the relief's chunks: `relief.drape(material, { renderOrder })` returns a group with one mesh
+  per chunk sharing its geometry, updated as chunks are swapped. The fog of war overlay, the paper map and wash
+  (`createMapView({ drape })`), and the cloud shade and wet ground (`atmos.start({ drape })`) use it; `onPublish`
+  tells the paper map to redraw. Drape meshes are frustum culled per chunk (the weather layers were not culled as one
+  map-sized mesh; their shaders do not move vertices). The apron and the camera's corner cache follow
+  `relief.version`, which changes with the logical terrain.
+- Seams: each cell still makes its own vertices from the shared logical arrays, so a cell's edge matches its
+  neighbour's in another chunk exactly as within one chunk. Flat runs stop at chunk borders (their extra edge vertices
+  are collinear). The high-quality fan triangles (extra shading detail on sloped cells) were given out in row order
+  against one budget for the map; now each chunk gets the map budget's share by area, so a chunk's fans no longer
+  depend on the rest of the map. Rocks, fillers and scenery are placed by position hashes and do not change.
+- Water flow is still computed for the whole map on a wet or bridge change (each body's flow runs between its far
+  ends), but each body is now walked through its own cells instead of scanning the map once per body, and the result
+  is the same: the far end is the first cell in cell order at the greatest distance, as before. Only chunks whose
+  vertices changed are rebuilt; extending a river can still change the flow, and so the chunks, along the whole body.
+- Ground painting (`client/ground.js`): on World Conquest the crop fields follow the discovered regions. A change of
+  fields used to recompute every cell's paint layers (about 70 ms on 512 x 512, in a quarter of the paints while
+  scouting); a field only colours its own cell, so the cells whose field changed are now added to the changed cells.
+- Left whole-map, measured in a 20 s profile while scouting with all of the above (main-thread seconds): 3D terrain
+  pieces rebuilt from the whole map every 0.25 s (2.2 s), relief chunk rebuilds (1.8 s; scouts re-mark the same
+  chunks, about 33 builds a second), drawing (1.7 s), the minimap (1.3 s), prop placement (1.2 s), the relief's
+  whole-map water levels on a wet change (0.9 s), the water flow fields (0.7 s) and the overlay terrain field (0.6 s).
+  A published chunk's GPU upload is not split across frames.
+- 3D terrain pieces (`client/structures.js`, 2026-10-11): `createStructures` keeps each kind's instances per 32-cell
+  chunk and copies the touched kinds into one InstancedMesh each (capacity grows by a quarter, update ranges, bounds
+  from per-chunk boxes, draw order fixed by kind). House layout is cached per connected footprint block (its greedy
+  rectangles and type depend only on its cells, `houseBlock` in shared/sim.js); churches are picked over all blocks'
+  rectangles in row order on each update. `update(changed, moved)` lays out again the blocks touching a changed cell,
+  rebuilds the chunks within `relief.groundReach + 2` of changed cells and of cells whose water level moved
+  (`relief.update` returns them), the chunks holding houses near those, and the chunks of cells whose block, church
+  or stone span changed. groundReach is 3 on maps over 65536 cells (the cells update re-reads) and SCAR_REACH +
+  PICK_REACH on small maps (drawn detail); measured, the ground never moved more than 1.4 cells from a change.
+  main.js passes the changed cells collected since the last 0.25 s redo; the minimap terrain
+  (`client/minimap-terrain.js`) repaints the same way in 64-cell tiles.
+- Left whole-map after that, 20 s profile while scouting (main-thread seconds): drawing 1.9, prop placement
+  (`candidateBatches`) 1.5, relief chunk rebuilds 1.4, overlay terrain field 0.7, ground paint 0.5. 29 to 30 FPS
+  median, worst frame 57 to 61 ms on the replay; not smooth 60. Next measured steps: props candidate batches around
+  changes, then rate-limiting relief chunks re-marked by scouts (holds seams, so test with the scheduler rules).
 
 ## Model finish and Blender workflow (2026-10-03)
 

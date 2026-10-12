@@ -25,6 +25,7 @@ import { createTickMeter, recordTick, tickStats } from './tickmeter.js';
 import { createDiag, cleanClient } from './server/diag.js';
 import { startShards } from './server/shards.js';
 import { createRoomTick } from './server/room-tick.js';
+import { webTransportConfig } from './server/webtransport-config.js';
 
 const PORT = +(process.env.PORT || 3000), HOST = process.env.HOST || '127.0.0.1';
 const diag = process.env.WW2_DIAG === '1' ? createDiag({ dir: join(import.meta.dirname, 'logs') }) : null;
@@ -38,12 +39,23 @@ export const clock = {
   setTimeout: (fn, ms) => setTimeout(fn, ms),
   clearTimeout: (timer) => clearTimeout(timer),
 };
-// the address friends use: PUBLIC_URL, else this machine's Tailscale HTTPS name (served by `tailscale serve`)
+// The address friends use: PUBLIC_URL, else this machine's Tailscale IPv4 and game port.
+// Direct access requires HOST bound to that IP, or Tailscale Serve forwarding to localhost.
 let PUBLIC_URL = process.env.PUBLIC_URL || '';
-if (!PUBLIC_URL) execFile('tailscale', ['status', '--json'], (err, out) => {
-  try { const name = JSON.parse(out).Self.DNSName.replace(/\.$/, ''); if (name) PUBLIC_URL = 'https://' + name; } catch {}
+if (!PUBLIC_URL) execFile('tailscale', ['ip', '-4'], (err, out) => {
+  if (err) return;
+  const ip = out.trim();
+  if (/^(?:\d{1,3}\.){3}\d{1,3}$/.test(ip)) PUBLIC_URL = `http://${ip}:${PORT}`;
 });
 const ROOT = import.meta.dirname;
+let wtStatus;
+if (process.env.WW2_WEBTRANSPORT === '1' && process.env.WW2_WT_TAILNET === '1') {
+  const { execFileSync } = await import('node:child_process');
+  wtStatus = JSON.parse(execFileSync('tailscale', ['status', '--json'], { encoding: 'utf8' }));
+}
+const wtConfig = webTransportConfig(process.env, { host: HOST, shards: SHARDS, publicUrl: PUBLIC_URL || `http://127.0.0.1:${PORT}`, status: wtStatus });
+const WT_ORIGIN = wtConfig?.allowedOrigin;
+export const gameLane = wtConfig ? await (await import('./prototype/webtransport/game-server.mjs')).startGameLane(wtConfig) : null;
 const MAP = JSON.parse(readFileSync(join(ROOT, 'maps/default.json'), 'utf8'));
 const TUTORIAL_SPAWNS = JSON.parse(readFileSync(join(ROOT, 'maps/tutorial.json'), 'utf8')).spawns;
 const MAPS = join(ROOT, 'maps'), MAP_NAME = /^[a-z0-9-]{1,32}$/;
@@ -224,6 +236,8 @@ function watchGame(g, terrainMemory = new Map(), terrainPending = new Set(g.cell
 // share one stream (room.watchNet), sent in full again when one joins.
 const LISTS = ['wrecks', 'nodes'];
 function trimmed(room, net, msg, cache) {
+  const owner = room.players.find(p => p.net === net);
+  if (owner?.motionBinding) gameLane?.publish(owner.motionBinding, msg);
   if (room.mode === 'world') {
     Object.assign(msg, unitDelta(net.sent, msg.units, net.full));
     for (const k of LISTS) {
@@ -446,7 +460,9 @@ async function loadRoom(room, id, host) {
   room.players = players;
   restoreAIMemories(g, ai);
   for (let i = 0; i < players.length; i++) if (!players[i].ai) { resetAI(g, i); resetCommander(g, i); }
-  room.state = 'play';
+  // claimed like startMatch: the room loop skips a starting room, so the loaded match neither steps nor sends a
+  // snapshot before beginMatch has sent everyone its start
+  room.state = 'play'; room.starting = {};
   await beginMatch(room, map, g, host);
   return true;
 }
@@ -456,7 +472,7 @@ function sendStart(room, i, watcher) {
   const world = room.game.mode?.kind === 'world';
   if (watcher && world) { watcher.net = { sent: new Map(), full: true }; watcher.worldView = null; }
   else if (watcher) { if (room.watchNet) room.watchNet.full = true; }
-  else room.players[i].net = { sent: new Map() };
+  else { room.players[i].net = { sent: new Map() }; gameLane?.reset(room.players[i].motionBinding); }
   const g = watcher ? (world ? worldWatchGame(room.game, watcher) : watchGame(room.game)) : room.game;
   const ws = (watcher ?? room.players[i]).ws, players = world ? room.game.players.slice(0, room.players.length) : room.game.players;
   const team = room.game.players[i].team;
@@ -575,7 +591,7 @@ function scheduleSeatCleanup(room, player) {
 }
 
 // compression cuts a late-game snapshot about threefold (11.6 KB to 3.7 KB); small messages go as they are
-export const wss = new WebSocketServer({ ...(PRIMARY ? { noServer: true } : { server, path: '/ws' }), maxPayload: 16 * 1024, perMessageDeflate: { threshold: 1024 } });
+export const wss = new WebSocketServer({ ...(PRIMARY ? { noServer: true } : { server, path: '/ws' }), ...(WT_ORIGIN ? {verifyClient: ({origin,req}) => origin === WT_ORIGIN && req.headers.host === new URL(WT_ORIGIN).host} : {}), maxPayload: 16 * 1024, perMessageDeflate: { threshold: 1024 } });
 wss.on('connection', (ws, req) => {
   const code = new URL(req.url, 'http://x').searchParams.get('room') || '';
   if (!/^[a-z0-9]{3,12}$/i.test(code)) return ws.close(1008, 'bad room');
@@ -610,6 +626,8 @@ wss.on('connection', (ws, req) => {
       else if (room.spectators.length < MAX_SPECTATORS) room.spectators.push(me = { token, name, ws }); // no seat to take, or asked to watch
       else { send(ws, { t: 'full', reason: room.state === 'play' ? 'started' : 'seats' }); return ws.close(); }
       room.emptySince = null;
+      if (gameLane && msg.webtransport === true && room.players.includes(me) && !me.ai) me.motionBinding = gameLane.bind(room, me, ws);
+      else if (msg.webtransport === true) send(ws, {t:'wtUnavailable',reason: gameLane ? 'spectators and operatives use WebSocket' : 'server WebTransport disabled'});
       lobby(room);
       if (room.state !== 'lobby' && room.game) me.role === 'operative' ? sendOperativeStart(room, me) : room.players.includes(me) ? sendStart(room, room.players.indexOf(me)) : sendStart(room, 0, me);
       if (room.pause?.reason === 'drop' && room.pause.player === me) resumeRoom(room);
@@ -618,6 +636,7 @@ wss.on('connection', (ws, req) => {
     }
     const slot = room.players.indexOf(me), seated = slot >= 0, host = isHost(room, me);
     if (me.ws !== ws || (!seated && !room.spectators.includes(me) && !(room.operatives ?? []).includes(me))) return; // a replaced socket may still be open for a moment; a freed seat has no slot
+    if (msg.t === 'wtAck') { if (me.motionBinding) gameLane?.ack(me.motionBinding,msg); return; }
     if (msg.t === 'ping') {
       if ('x' in msg || 'z' in msg) return mapPing(room, me, slot, msg, send);
       if (Number.isFinite(msg.rtt)) me.rtt = Math.min(9999, Math.max(0, Math.round(msg.rtt)));
@@ -711,6 +730,7 @@ wss.on('connection', (ws, req) => {
       send(ws, { t: 'left' }); ws.close();
     } else if (seated && room.state === 'play' && room.game && !room.pause) {
       const reason = command(room.game, slot, msg);
+      if (gameLane && !reason) gameLane.stats.orders++;
       if (reason && allowDeny(me, clock.now())) send(ws, { t: 'deny', cmd: msg.t, reason });
     }
   });

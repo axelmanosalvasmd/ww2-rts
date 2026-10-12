@@ -59,8 +59,13 @@ try {
   host.send({ t: 'end' });
   await waitFor(() => host.last('lobby')?.state === 'lobby', 'back in the lobby');
   const starts = host.messages.filter(m => m.t === 'start').length;
+  // the room loop keeps ticking while the save loads and the lobby is sent: the new match must not step or send a
+  // snapshot before its start (a client has no world to put the units in until then)
+  const sent = host.messages.length;
   host.send({ t: 'loadSave', id: listed.id });
-  await waitFor(() => host.messages.filter(m => m.t === 'start').length > starts, 'the loaded match starts');
+  await waitFor(() => { server.tickRooms(); return host.messages.filter(m => m.t === 'start').length > starts; }, 'the loaded match starts');
+  const after = host.messages.slice(sent).map(m => m.t);
+  assert.ok(!after.slice(0, after.indexOf('start')).includes('s'), `no snapshot before the start (${after.join(' ')})`);
   assert.equal(room.game.tick, savedTick, 'the match resumes from its saved tick');
   assert.ok(room.pause, 'and waits for the host to resume it');
   assert.ok(room.players[1].ai && room.players[0].token === 'host-token', 'seats come back: the AI as an AI, the host in its own seat');

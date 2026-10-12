@@ -185,7 +185,8 @@ export function rememberPlacementTerrain(map, cells = []) {
 }
 
 export function placementState(s, map, grid, teams, layers) {
-  const chars = grid.flat(), w = map.w, h = map.h, us = snapshotUnits(s), authored = worldLayers(map), ground = layers?.groundGrid?.flat() ?? authored.ground, objects = layers?.objectGrid?.flat() ?? authored.objects;
+  // the authored layers only when the caller has no live ones: building them clones the whole map
+  const chars = grid.flat(), w = map.w, h = map.h, us = snapshotUnits(s), authored = layers?.groundGrid && layers?.objectGrid ? null : worldLayers(map), ground = layers?.groundGrid?.flat() ?? authored.ground, objects = layers?.objectGrid?.flat() ?? authored.objects;
   const g = { w, h, chars, ground, objects, mode: s.mode, logisticsEnabled: s.logistics?.enabled === true, world: s.world ? { regions: s.world.regions, railYard: rememberPlacementTerrain(map).railYard } : undefined, naval: map.naval === true, flags: chars.map((ch, c) => TERRAIN[ch === 'N' ? composeWorldCell(ground[c], objects[c]) : ch] ?? 0),
     height: Array.from({ length: w * h }, (_, c) => levelOf(map.heights?.[Math.floor(c / w)]?.[c % w] ?? '0')),
     smokes: (s.smokes ?? []).map(([x, z, r]) => ({ x, z, r })),

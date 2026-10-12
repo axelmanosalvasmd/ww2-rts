@@ -4,9 +4,16 @@ import * as THREE from 'three';
 import { CELL, CFG, levelOf } from '../shared/sim.js';
 import { createWaterLevels, WATER_LIFT } from './water-levels.js';
 import { createReliefMaterial } from './relief-material.js';
+import { createChunkJobs } from './chunk-jobs.js';
 export { createReliefMaterial } from './relief-material.js';
 
 const S = 4, STRIDE = 25;
+// The surface is drawn in square chunks of CHUNK cells, one mesh each. A chunk's triangles read cells up to
+// SCAR_REACH away (a scar's run looks five cells around a lip, plus the point's own cell and a wall's far side), and
+// a detail triangle covers cells up to PICK_REACH from the cell that owns it (cliff rocks, shifted lips).
+const CHUNK = 64;
+export const SCAR_REACH = 7, PICK_REACH = 3;
+const noRaycast = () => {};
 const hash = (a, b, k) => { const s = Math.sin(a * 127.1 + b * 311.7 + k * 74.7) * 43758.5453; return s - Math.floor(s); };
 // Fractured rock models, built once: a lumpy sphere cut by cleavage planes. The +z cut is the flat
 // weathered face turned toward the low ground; the +y cut is a ledge. Displacement depends only on
@@ -56,17 +63,33 @@ export function createRelief(map, grid = map.rows, options = {}) {
   const heights = new Float32Array(n * STRIDE), normals = new Float32Array(n * STRIDE * 3);
   const nx = new Uint8Array(n), nz = new Uint8Array(n), flat = new Uint8Array(n);
   const ragged = new Uint8Array(n);
-  let detailPicks = new Map();
   const controls = new Float32Array(n * 9), roadCorners = new Float32Array(n * 4);
   const tangents = new Float32Array(n * 18);
   const hx = new Float64Array(4), hz = new Float64Array(4), dhx = new Float64Array(4), dhz = new Float64Array(4);
   const waterSource = createWaterLevels(map);
   let water, depth, low = !!options.low;
   const material = options.material ?? createReliefMaterial(options.texture ?? null, { low });
-  const mesh = new THREE.Mesh(new THREE.BufferGeometry(), material);
-  mesh.receiveShadow = true;
-  mesh.castShadow = false; // seen from above the ground hardly shades itself; it still takes the shadows of all else
-  const stats = { vertices: 0, triangles: 0, cliffEdges: 0, buildMs: 0, updateMs: 0, cellsUpdated: 0 };
+  // mesh: a group of one mesh per chunk. Its own geometry holds no triangles, only the map's fixed bounds, which
+  // the sun and the weather read for the map size; its raycast below answers for the whole surface.
+  const bounds = new THREE.BufferGeometry();
+  bounds.boundingBox = new THREE.Box3(new THREE.Vector3(0, -12, 0), new THREE.Vector3(w * CELL, 12, h * CELL));
+  bounds.boundingSphere = new THREE.Sphere(new THREE.Vector3(w * CELL / 2, 0, h * CELL / 2), Math.hypot(w * CELL / 2, h * CELL / 2, 12));
+  const mesh = new THREE.Group();
+  mesh.geometry = bounds; mesh.material = material;
+  const chunkSide = options.chunk ?? CHUNK; // cells per chunk side (tests may draw a map as one chunk)
+  const cols = Math.ceil(w / chunkSide), rows = Math.ceil(h / chunkSide), now = options.now ?? (() => performance.now());
+  const chunks = Array.from({ length: cols * rows }, (_, i) => {
+    const cx = i % cols, cz = (i - cx) / cols, part = new THREE.Mesh(new THREE.BufferGeometry(), material);
+    part.receiveShadow = true;
+    part.castShadow = false; // seen from above the ground hardly shades itself; it still takes the shadows of all else
+    part.raycast = noRaycast; // the group's raycast covers every chunk
+    mesh.add(part);
+    return { x0: cx * chunkSide, z0: cz * chunkSide, x1: Math.min(w, (cx + 1) * chunkSide), z1: Math.min(h, (cz + 1) * chunkSide), mesh: part, picks: new Map(), vertices: 0, triangles: 0, cliffEdges: 0 };
+  });
+  const chunkOf = c => Math.floor(Math.floor(c / w) / chunkSide) * cols + Math.floor(c % w / chunkSide);
+  const drapes = new Set();
+  let merged = null, version = 0;
+  const stats = { vertices: 0, triangles: 0, cliffEdges: 0, buildMs: 0, updateMs: 0, cellsUpdated: 0, chunks: cols * rows, chunksMarked: 0 };
   const baseValues = new Float32Array(25), baseDx = new Float32Array(25), baseDz = new Float32Array(25);
   const waterDx = new Float32Array(9), waterDz = new Float32Array(9);
   const out = new Float64Array(6), ids = new Int32Array(4), weights = new Float64Array(4), dxs = new Float64Array(4), dzs = new Float64Array(4);
@@ -457,23 +480,39 @@ export function createRelief(map, grid = map.rows, options = {}) {
     }
   }
 
+  // Detail triangles (cliff rocks, ragged rims) are indexed per chunk by the cells they cover; a cell's list can come
+  // from a neighbouring chunk too. A chunk waiting to be redrawn shows triangles older than the logical terrain, so
+  // they are skipped, and while the cell's own chunk waits the logical surface (the node grid and its walls) answers.
+  const detailed = c => n <= 65536 && !jobs.pending(chunkOf(c));
+  // Only maps that answer from the logical surface alone redraw later: on a small map hAt reads the drawn detail, and
+  // props, decals and rings placed right after an update must not sit on ground that moves when its chunk is shown.
+  const deferred = !!options.deferred && n > 65536;
+  function eachPick(c, visit) {
+    const x = c % w, z = Math.floor(c / w);
+    for (let cz = Math.max(0, Math.floor((z - PICK_REACH) / chunkSide)); cz <= Math.min(rows - 1, Math.floor((z + PICK_REACH) / chunkSide)); cz++)
+      for (let cx = Math.max(0, Math.floor((x - PICK_REACH) / chunkSide)); cx <= Math.min(cols - 1, Math.floor((x + PICK_REACH) / chunkSide)); cx++) {
+        const chunk = chunks[cz * cols + cx], bucket = chunk.picks.get(c);
+        if (!bucket || jobs.pending(cz * cols + cx)) continue;
+        const p = chunk.mesh.geometry.attributes.position.array, indices = chunk.mesh.geometry.index.array;
+        for (const t of bucket) visit(p, indices, t);
+      }
+  }
+
   function hAt(x, z) {
     const u = clamp(x / CELL, 0, w), v = clamp(z / CELL, 0, h), ix = Math.min(w - 1, Math.floor(u)), iz = Math.min(h - 1, Math.floor(v));
     const c = iz * w + ix;
-    const candidates = detailPicks.get(c);
-    if (candidates) {
-      const p = mesh.geometry.attributes.position.array, indices = mesh.geometry.index.array;
+    if (detailed(c)) {
       let top = -Infinity;
-      for (const t of candidates) {
+      eachPick(c, (p, indices, t) => {
         const a = indices[t] * 3, b = indices[t + 1] * 3, d = indices[t + 2] * 3;
         const bx = p[b] - p[a], bz = p[b + 2] - p[a + 2], dx = p[d] - p[a], dz = p[d + 2] - p[a + 2];
         const determinant = bx * dz - bz * dx;
-        if (determinant >= -1e-10) continue; // Downward-facing or vertical triangles do not support the ground ray.
+        if (determinant >= -1e-10) return; // Downward-facing or vertical triangles do not support the ground ray.
         const px = x - p[a], pz = z - p[a + 2];
         const s = (px * dz - pz * dx) / determinant, t0 = (bx * pz - bz * px) / determinant;
         if (s >= -1e-7 && t0 >= -1e-7 && s + t0 <= 1 + 1e-7)
           top = Math.max(top, p[a + 1] + (p[b + 1] - p[a + 1]) * s + (p[d + 1] - p[a + 1]) * t0);
-      }
+      });
       if (top > -Infinity) return top;
     }
     if (flat[c] === 2) { out[0] = levels[c] * CFG.levelHeight; out[1] = out[2] = 0; roadSample(u, v, c); return out[0]; }
@@ -490,12 +529,10 @@ export function createRelief(map, grid = map.rows, options = {}) {
     return water.wl[c] + WATER_LIFT;
   }
 
-  // The mesh is assembled from rows of cells, each row's vertices kept between rebuilds: an update rebuilds only the
-  // rows it reaches (touched, a set of row numbers) and copies the rest. A whole-map rebuild after every scouted cell
-  // cost 5 to 30 ms on a Huge World map (#58). The fan-detail budget is the one input shared by all rows: it is
-  // replayed over every row's runs, and a row whose fans change is rebuilt too, so the result matches a full rebuild.
-  let rows = null;
-  function rebuildGeometry(touched = null) {
+  // The triangles of the cells in chunk i: their surface, the cliff walls they own (toward +x and +z), the rock fillers
+  // at their northwest corners and the index of their detail triangles. Reads the logical arrays as they are now.
+  function buildChunk(i) {
+    const { x0, z0, x1, z1 } = chunks[i], cells = (x1 - x0) * (z1 - z0);
     const cornerShifts = new Map();
     function cornerShift(x, z) {
       x = clamp(x, 0, w); z = clamp(z, 0, h);
@@ -556,14 +593,13 @@ export function createRelief(map, grid = map.rows, options = {}) {
       return rocks;
     }
     // Merge flat row runs. Extra edge vertices on their neighbours are collinear, so no seams open.
-    function planRow(z) {
-    const runs = [], walls = [], fillers = [];
+    const runs = [], walls = [];
     let vertices = 0, triangles = 0;
-    for (let x = 0; x < w; x++) {
+    for (let z = z0; z < z1; z++) for (let x = x0; x < x1; x++) {
       const c = z * w + x;
       if (flat[c] === 1) {
         let end = x + 1;
-        while (end < w && end - x < 32 && flat[z * w + end] === 1 && heights[(z * w + end) * STRIDE] === heights[c * STRIDE]) end++;
+        while (end < x1 && end - x < 32 && flat[z * w + end] === 1 && heights[(z * w + end) * STRIDE] === heights[c * STRIDE]) end++;
         runs.push([c, end - x, 1, 1, false]); vertices += 4; triangles += 2; x = end - 1;
       } else if (flat[c] === 2) {
         runs.push([c, 1, 1, 1, false]); vertices += 5; triangles += 4;
@@ -572,7 +608,7 @@ export function createRelief(map, grid = map.rows, options = {}) {
       }
     }
     let cliffEdges = 0;
-    for (let x = 0; x < w; x++) {
+    for (let z = z0; z < z1; z++) for (let x = x0; x < x1; x++) {
       const c = z * w + x;
       for (let axis = 0; axis < 2; axis++) {
         if ((axis === 0 && x + 1 >= w) || (axis === 1 && z + 1 >= h)) continue;
@@ -595,7 +631,8 @@ export function createRelief(map, grid = map.rows, options = {}) {
     // A diagonal run steps cell by cell. Each notch (one low cell with high ground on three sides) fills
     // with a rock pile and each tooth (one high cell) is wrapped in a rock column, which smooths the run's
     // outline seen from the low ground.
-    if (n <= 65536 && z >= 1) for (let x = 1; x < w; x++) {
+    const fillers = [];
+    if (n <= 65536) for (let z = Math.max(1, z0); z < z1; z++) for (let x = Math.max(1, x0); x < x1; x++) {
       const quad = [levels[(z - 1) * w + x - 1], levels[(z - 1) * w + x], levels[z * w + x - 1], levels[z * w + x]];
       const bottom = Math.min(...quad), high = quad.filter(v => v >= bottom + 2);
       const notch = high.length === 3, top = Math.min(...high);
@@ -615,19 +652,16 @@ export function createRelief(map, grid = map.rows, options = {}) {
         bottom * CFG.levelHeight, top * CFG.levelHeight, rocks]);
       for (const rock of rocks) { vertices += rock.model.length; triangles += rock.model.length / 3; }
     }
-    return { runs, walls, fillers, vertices, triangles, cliffEdges, data: null };
-    }
-    if (!rows || !touched) rows = Array.from({ length: h }, (_, z) => planRow(z));
-    else for (const z of touched) rows[z] = planRow(z);
-    // Fan detail goes to the first rough runs, in map order, while the budget lasts.
-    let extra = Math.max(0, Math.min(150000, Math.floor(n * 5)) - rows.reduce((sum, row) => sum + row.triangles, 0));
-    for (const row of rows) for (const run of row.runs) {
+    // the map's budget of fan triangles, shared out by area, so a chunk's fans do not depend on the rest of the map
+    let extra = Math.max(0, Math.min(Math.floor(150000 * cells / n), cells * 5) - triangles);
+    if (!low) for (const run of runs) {
       const [c, , xs, zs] = run, cost = xs * zs * 2;
-      const fan = !low && !(flat[c] || torn[c] || (xs < 4 && zs < 4) || Number.isFinite(water.wl[c]) || cost > extra);
-      if (fan) extra -= cost;
-      if (run[4] !== fan) { run[4] = fan; row.data = null; }
+      if (flat[c] || torn[c] || (xs < 4 && zs < 4) || Number.isFinite(water.wl[c]) || cost > extra) continue;
+      run[4] = true; vertices += xs * zs; triangles += cost; extra -= cost;
     }
-    let pos, normal, uv, paint, scar, index, detail, vi = 0, ti = 0;
+    const pos = new Float32Array(vertices * 3), normal = new Float32Array(vertices * 3), uv = new Float32Array(vertices * 2), paint = new Float32Array(vertices * 4), scar = new Float32Array(vertices), index = new Uint32Array(triangles * 3);
+    const detail = new Uint8Array(vertices);
+    let vi = 0, ti = 0;
     function vertex(x, z, height, nxv, nyv, nzv, rock = 0, lip = 0, foot = 0, damp = 0, dug = 0) {
       const k = vi++;
       pos[k * 3] = x; pos[k * 3 + 1] = height; pos[k * 3 + 2] = z;
@@ -669,11 +703,6 @@ export function createRelief(map, grid = map.rows, options = {}) {
       return vertex((x + u) * CELL + sx, (z + v) * CELL + sz, heights[node], normals[node * 3], normals[node * 3 + 1], normals[node * 3 + 2], 0, lip, foot, water.wet[c] ? 1 : 0, scarHere);
     }
     const tri = (a, b, c) => { index[ti++] = a; index[ti++] = b; index[ti++] = c; };
-    function emitRow({ runs, walls, fillers, vertices, triangles }) {
-    for (const run of runs) if (run[4]) { vertices += run[2] * run[3]; triangles += run[2] * run[3] * 2; }
-    pos = new Float32Array(vertices * 3); normal = new Float32Array(vertices * 3); uv = new Float32Array(vertices * 2);
-    paint = new Float32Array(vertices * 4); scar = new Float32Array(vertices); index = new Uint32Array(triangles * 3);
-    detail = new Uint8Array(vertices); vi = 0; ti = 0;
     for (const [c, width, xs, zs, fan] of runs) {
       const start = vi;
       if (flat[c] === 1) {
@@ -767,25 +796,9 @@ export function createRelief(map, grid = map.rows, options = {}) {
       }
     }
     for (const [cx, cz, ox, oz, footY, topY, rocks] of fillers) for (const rock of rocks) placeRock(rock, cx, cz, footY, topY, ox, oz, 0);
-    return { pos, normal, uv, paint, scar, index, detail, vi, ti };
-    }
-    let vertices = 0, triangles = 0, cliffEdges = 0;
-    stats.rowsRebuilt = 0;
-    for (const row of rows) { if (!row.data) { row.data = emitRow(row); row.fresh = true; stats.rowsRebuilt++; } vertices += row.data.vi; triangles += row.data.ti; cliffEdges += row.cliffEdges; }
-    pos = new Float32Array(vertices * 3); normal = new Float32Array(vertices * 3); uv = new Float32Array(vertices * 2);
-    paint = new Float32Array(vertices * 4); scar = new Float32Array(vertices); index = new Uint32Array(triangles); detail = new Uint8Array(vertices);
-    vi = 0; ti = 0;
-    let v0 = Infinity, v1 = 0, t0 = Infinity, t1 = 0; // the span the rebuilt rows cover
-    for (const row of rows) {
-      const d = row.data;
-      if (row.fresh) { v0 = Math.min(v0, vi); t0 = Math.min(t0, ti); v1 = vi + d.vi; t1 = ti + d.ti; row.fresh = false; }
-      pos.set(d.pos.subarray(0, d.vi * 3), vi * 3); normal.set(d.normal.subarray(0, d.vi * 3), vi * 3); uv.set(d.uv.subarray(0, d.vi * 2), vi * 2);
-      paint.set(d.paint.subarray(0, d.vi * 4), vi * 4); scar.set(d.scar.subarray(0, d.vi), vi); detail.set(d.detail.subarray(0, d.vi), vi);
-      for (let i = 0; i < d.ti; i++) index[ti + i] = d.index[i] + vi;
-      vi += d.vi; ti += d.ti;
-    }
+    const geo = new THREE.BufferGeometry();
     // Index only reshaped cliff patches. Ordinary ground keeps the inexpensive cell contact query.
-    detailPicks = new Map();
+    const picks = new Map();
     if (n <= 65536) for (let t = 0; t < ti; t += 3) {
       const a = index[t], b = index[t + 1], c = index[t + 2];
       if (!detail[a] && !detail[b] && !detail[c] && paint[a * 4] !== 1) continue;
@@ -795,35 +808,40 @@ export function createRelief(map, grid = map.rows, options = {}) {
       const maxZ = clamp(Math.floor(Math.max(pos[a * 3 + 2], pos[b * 3 + 2], pos[c * 3 + 2]) / CELL), 0, h - 1);
       for (let z = minZ; z <= maxZ; z++) for (let x = minX; x <= maxX; x++) {
         const key = z * w + x;
-        let bucket = detailPicks.get(key);
-        if (!bucket) detailPicks.set(key, bucket = []);
+        let bucket = picks.get(key);
+        if (!bucket) picks.set(key, bucket = []);
         bucket.push(t);
       }
     }
-    stats.vertices = vi; stats.triangles = ti / 3; stats.cliffEdges = cliffEdges;
-    // Same totals as the mesh drawn now: rows past the rebuilt ones keep their place, so only the span from the first
-    // to the last rebuilt row is written and sent to the GPU, instead of a whole new mesh on every change (#58).
-    const old = mesh.geometry, at = old.attributes;
-    stats.inPlace = !!(old.index && at.position?.count === vi && old.index.count === ti && v1 > 0);
-    if (stats.inPlace) {
-      const put = (attribute, source, size) => {
-        attribute.array.set(source.subarray(v0 * size, v1 * size), v0 * size);
-        attribute.addUpdateRange(v0 * size, (v1 - v0) * size); attribute.needsUpdate = true;
-      };
-      put(at.position, pos, 3); put(at.normal, normal, 3); put(at.uv, uv, 2); put(at.reliefPaint, paint, 4); put(at.reliefScar, scar, 1);
-      old.index.array.set(index.subarray(t0, t1), t0); old.index.addUpdateRange(t0, t1 - t0); old.index.needsUpdate = true;
-      return;
-    }
-    const geo = new THREE.BufferGeometry();
     geo.setAttribute('position', new THREE.BufferAttribute(pos.subarray(0, vi * 3), 3)); geo.setAttribute('normal', new THREE.BufferAttribute(normal.subarray(0, vi * 3), 3)); geo.setAttribute('uv', new THREE.BufferAttribute(uv.subarray(0, vi * 2), 2)); geo.setAttribute('reliefPaint', new THREE.BufferAttribute(paint.subarray(0, vi * 4), 4)); geo.setAttribute('reliefScar', new THREE.BufferAttribute(scar.subarray(0, vi), 1)); geo.setIndex(new THREE.BufferAttribute(index.subarray(0, ti), 1));
-    // Fixed bounds avoid another full vertex scan on every crater.
-    geo.boundingBox = new THREE.Box3(new THREE.Vector3(0, -12, 0), new THREE.Vector3(w * CELL, 12, h * CELL));
-    geo.boundingSphere = new THREE.Sphere(new THREE.Vector3(w * CELL / 2, 0, h * CELL / 2), Math.hypot(w * CELL / 2, h * CELL / 2, 12));
-    const previous = mesh.geometry; mesh.geometry = geo; options.onGeometry?.(geo); previous.dispose();
+    // a chunk's own bounds (one scan of its vertices), so the camera and the shadow pass skip chunks out of view
+    geo.computeBoundingBox(); geo.computeBoundingSphere();
+    return { geometry: geo, picks, vertices: vi, triangles: ti / 3, cliffEdges };
   }
 
+  // Shows a rebuilt chunk: its mesh and every drape over it take the new geometry, and the old one is freed.
+  function publishChunk(i, result) {
+    const chunk = chunks[i], previous = chunk.mesh.geometry;
+    chunk.mesh.geometry = result.geometry; chunk.picks = result.picks;
+    for (const layer of drapes) layer.meshes[i].geometry = result.geometry;
+    stats.vertices += result.vertices - chunk.vertices; stats.triangles += result.triangles - chunk.triangles; stats.cliffEdges += result.cliffEdges - chunk.cliffEdges;
+    chunk.vertices = result.vertices; chunk.triangles = result.triangles; chunk.cliffEdges = result.cliffEdges;
+    previous.dispose(); merged?.dispose(); merged = null;
+  }
+  const jobs = createChunkJobs({ cols, rows, build: buildChunk, publish: publishChunk, discard: result => result.geometry.dispose(), now });
+  // the chunks holding any cell within r cells of cell c
+  function markAround(c, r) {
+    const x = c % w, z = Math.floor(c / w);
+    jobs.markBox(Math.floor((x - r) / chunkSide), Math.floor((z - r) / chunkSide), Math.floor((x + r) / chunkSide), Math.floor((z + r) / chunkSide));
+  }
+  function flush() { if (jobs.flush()) options.onPublish?.(); }
+
+  // cells: changed cell indices or [cell, ...] rows, already written into grid and map.heights. The logical surface
+  // (hAt, picking, waterAt) follows at once. The drawn chunks follow at once too, or with options.deferred (maps over
+  // 65536 cells) over the
+  // next tick() calls.
   function update(cells) {
-    const t0 = performance.now(), dirty = new Set();
+    const t0 = now(), dirty = new Set();
     for (const entry of cells) {
       const c = typeof entry === 'number' ? entry : entry[0], x = c % w, z = Math.floor(c / w);
       for (let j = Math.max(0, z - 3); j <= Math.min(h - 1, z + 3); j++) for (let i = Math.max(0, x - 3); i <= Math.min(w - 1, x + 3); i++) dirty.add(j * w + i);
@@ -835,8 +853,10 @@ export function createRelief(map, grid = map.rows, options = {}) {
       return !!oldWater.wet[c] !== 'WF='.includes(ch) || !!oldWater.bridges[c] !== (ch === '=');
     });
     if (wetChanged) readWater();
+    const wetMoved = [];
     for (let c = 0; wetChanged && c < n; c++) if (oldWater.wl[c] !== water.wl[c] && !(Number.isNaN(oldWater.wl[c]) && Number.isNaN(water.wl[c]))) {
       const x = c % w, z = Math.floor(c / w);
+      wetMoved.push(c);
       for (let j = Math.max(0, z - 1); j <= Math.min(h - 1, z + 1); j++) for (let i = Math.max(0, x - 1); i <= Math.min(w - 1, x + 1); i++) dirty.add(j * w + i);
     }
     for (const c of dirty) readCell(c);
@@ -844,11 +864,49 @@ export function createRelief(map, grid = map.rows, options = {}) {
     for (const c of dirty) controlCell(c);
     for (const c of dirty) tangentCell(c);
     for (const c of dirty) buildCell(c);
-    // Crater lips read the scar shape up to six cells away (scarRun, touch), so a change moves vertices that far.
-    const touched = new Set();
-    for (const c of dirty) { const z = Math.floor(c / w); for (let j = Math.max(0, z - 7); j <= Math.min(h - 1, z + 7); j++) touched.add(j); }
-    const tg = performance.now(); rebuildGeometry(touched); stats.geometryMs = performance.now() - tg;
-    stats.cellsUpdated = dirty.size; stats.updateMs = performance.now() - t0;
+    // the chunks that draw these cells: the lips and scars around a changed cell, and the walls beside a reshaped one
+    for (const entry of cells) markAround(typeof entry === 'number' ? entry : entry[0], SCAR_REACH);
+    for (const c of dirty) markAround(c, 1);
+    version++; stats.chunksMarked = jobs.waiting;
+    if (!deferred) flush();
+    stats.cellsUpdated = dirty.size; stats.updateMs = now() - t0;
+    return wetMoved; // cells whose water level moved, perhaps far from the change (client/structures.js redoes around them)
+  }
+
+  // Another material over the relief's own surface (fog of war, the paper map, cloud shade): one mesh per chunk on the
+  // chunk's geometry, following it as chunks are redrawn. release() stops following and takes it out of the scene.
+  function drape(drapeMaterial, { renderOrder = 0, frustumCulled = true } = {}) {
+    const group = new THREE.Group(), entry = { meshes: chunks.map(chunk => {
+      const part = new THREE.Mesh(chunk.mesh.geometry, drapeMaterial);
+      part.renderOrder = renderOrder; part.frustumCulled = frustumCulled; part.raycast = noRaycast;
+      group.add(part);
+      return part;
+    }) };
+    drapes.add(entry);
+    group.userData.release = () => { drapes.delete(entry); group.removeFromParent(); };
+    return group;
+  }
+
+  // The whole surface as one geometry, as one mesh drew it before chunks: for tests and tools, not for frames (it
+  // copies every chunk). Anything still queued is drawn first.
+  function wholeGeometry() {
+    flush();
+    if (merged) return merged;
+    const parts = chunks.map(chunk => chunk.mesh.geometry), layout = { position: 3, normal: 3, uv: 2, reliefPaint: 4, reliefScar: 1 };
+    const vertices = parts.reduce((sum, g) => sum + g.attributes.position.count, 0), indices = parts.reduce((sum, g) => sum + g.index.count, 0);
+    const out = Object.fromEntries(Object.entries(layout).map(([key, size]) => [key, new Float32Array(vertices * size)])), index = new Uint32Array(indices);
+    let vi = 0, ti = 0;
+    for (const g of parts) {
+      for (const [key, size] of Object.entries(layout)) out[key].set(g.attributes[key].array, vi * size);
+      const source = g.index.array;
+      for (let k = 0; k < source.length; k++) index[ti + k] = source[k] + vi;
+      vi += g.attributes.position.count; ti += source.length;
+    }
+    merged = new THREE.BufferGeometry();
+    for (const [key, size] of Object.entries(layout)) merged.setAttribute(key, new THREE.BufferAttribute(out[key], size));
+    merged.setIndex(new THREE.BufferAttribute(index, 1));
+    merged.boundingBox = bounds.boundingBox.clone(); merged.boundingSphere = bounds.boundingSphere.clone();
+    return merged;
   }
 
   const pickA = new THREE.Vector3(), pickB = new THREE.Vector3(), pickC = new THREE.Vector3();
@@ -887,7 +945,7 @@ export function createRelief(map, grid = map.rows, options = {}) {
       return target.set((c % w + i / S) * CELL, heights[c * STRIDE + j * 5 + i], (Math.floor(c / w) + j / S) * CELL);
     }
     function wall(c, axis) {
-      if (n <= 65536) return; // Detailed walls are queried from their rendered triangles below.
+      if (detailed(c)) return; // Detailed walls are queried from their rendered triangles below.
       const neighbor = c + (axis === 0 ? 1 : w);
       if (Math.abs(levels[c] - levels[neighbor]) < 2) return;
       for (let k = 0; k < S; k++) {
@@ -903,15 +961,12 @@ export function createRelief(map, grid = map.rows, options = {}) {
       }
     }
     function surface(c) {
-      const bucket = detailPicks.get(c);
-      if (bucket) {
-        const p = mesh.geometry.attributes.position.array, indices = mesh.geometry.index.array;
-        for (const t of bucket) {
-          pickA.fromArray(p, indices[t] * 3); pickB.fromArray(p, indices[t + 1] * 3); pickC.fromArray(p, indices[t + 2] * 3);
-          triangle(pickA, pickB, pickC);
-        }
-      }
-      if (ragged[c]) return;
+      const live = detailed(c);
+      if (live) eachPick(c, (p, indices, t) => {
+        pickA.fromArray(p, indices[t] * 3); pickB.fromArray(p, indices[t + 1] * 3); pickC.fromArray(p, indices[t + 2] * 3);
+        triangle(pickA, pickB, pickC);
+      });
+      if (live && ragged[c]) return;
       const xs = nx[c], zs = nz[c], stepX = S / xs, stepZ = S / zs;
       if (flat[c] === 2) {
         node(pickA, c, 0, 0); node(pickB, c, S, 0); node(pickC, c, 0, S); node(pickD, c, S, S); node(pickMid, c, S / 2, S / 2);
@@ -941,17 +996,42 @@ export function createRelief(map, grid = map.rows, options = {}) {
     }
   };
 
-  const t0 = performance.now();
+  // The terrain known at the start is drawn whole, before the match shows.
+  const t0 = now();
   for (let c = 0; c < n; c++) readCell(c);
   for (let z = 0; z <= h; z++) for (let x = 0; x <= w; x++) readQuad(x, z);
   readWater();
   for (let c = 0; c < n; c++) controlCell(c);
   for (let c = 0; c < n; c++) tangentCell(c);
   for (let c = 0; c < n; c++) buildCell(c);
-  rebuildGeometry(); stats.buildMs = performance.now() - t0;
+  for (let i = 0; i < chunks.length; i++) publishChunk(i, buildChunk(i));
+  stats.buildMs = now() - t0;
+  // a settings change redraws every chunk at once
   const unsubscribe = options.gfx?.onChange(() => {
-    low = options.gfx.low || !!map.world; material.userData.setLow?.(low); rebuildGeometry();
+    low = options.gfx.low || !!map.world; material.userData.setLow?.(low);
+    for (let i = 0; i < chunks.length; i++) jobs.mark(i);
+    flush();
   });
-  return { mesh, get geometry() { return mesh.geometry; }, hAt, waterAt, update, stats,
-    dispose() { unsubscribe?.(); mesh.geometry.dispose(); if (!options.material) material.dispose(); } };
+  // how far from a changed cell hAt can move: the cells update() reads again, or on a small map the drawn detail
+  // (a triangle reads cells SCAR_REACH from its own cell and covers cells PICK_REACH away)
+  const groundReach = n <= 65536 ? SCAR_REACH + PICK_REACH : 3;
+  return { mesh, get geometry() { return wholeGeometry(); }, hAt, waterAt, update, stats, drape, flush, groundReach,
+    // the logical terrain's version: changes on every update(), before the drawn chunks follow
+    get version() { return version; },
+    // chunks still to redraw (deferred)
+    get pending() { return jobs.waiting; },
+    get jobs() { return jobs.stats; },
+    // with options.deferred: redraw queued chunks for about budgetMs; returns the chunks shown
+    tick(budgetMs = 4) {
+      const count = jobs.run(budgetMs);
+      if (count) options.onPublish?.();
+      return count;
+    },
+    dispose() {
+      unsubscribe?.(); jobs.cancel();
+      for (const layer of drapes) layer.meshes[0]?.parent?.userData.release?.();
+      for (const chunk of chunks) { chunk.mesh.removeFromParent(); chunk.mesh.geometry.dispose(); }
+      merged?.dispose(); merged = null; bounds.dispose();
+      if (!options.material) material.dispose();
+    } };
 }
