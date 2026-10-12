@@ -1,0 +1,8 @@
+{
+  "dependencies": {
+    "@fails-components/webtransport": "^1.6.9",
+    "@fails-components/webtransport-transport-http3-quiche": "^1.6.9",
+    "playwright-core": "^1.64.0",
+    "ws": "^8.22.0"
+  }
+}

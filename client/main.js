@@ -1,4 +1,5 @@
 import * as THREE from 'three';
+import { createGameTransport } from './game-transport.js';
 import { createOperativeView } from './operative-view.js';
 import { worldLayers, composeWorldCell } from '../shared/world-layers.js';
 import { createRubbleDecals } from './rubble-decals.js';
@@ -96,7 +97,7 @@ const EDIT = new URLSearchParams(location.search).has('edit'); // /?edit opens t
 const MAIN_ROOM = 'main';
 const address = roomAddress(location.hash, MAIN_ROOM), { room, seat } = address;
 if (location.hash !== address.hash) history.replaceState(null, '', location.pathname + location.search + address.hash);
-const roomLink = (base) => base + '/play#' + room;
+const roomLink = (base) => base + '/play' + (new URLSearchParams(location.search).get('transport') === 'webtransport' ? '?transport=webtransport' : '') + '#' + room;
 addEventListener('hashchange', () => location.reload()); // edited the #code by hand: go to that room
 // A room keeps its seat across tabs; an explicit seat suffix lets another person use this browser.
 const local = tryStore(() => localStorage), session = tryStore(() => sessionStorage);
@@ -146,7 +147,7 @@ $('name').value = entry.get('name')?.slice(0, 16) || tryStore(() => localStorage
 $('link').value = roomLink(location.origin);
 $('roomCode').value = room;
 // Room box: type a code to join (or make) that room; New room makes a private one
-const goRoom = (code) => { code = code.trim().toLowerCase(); if (!/^[a-z0-9]{3,12}$/.test(code)) { $('roomCode').value = room; return; } location.assign('/play#' + code + (seat ? '&seat=' + seat : '')); };
+const goRoom = (code) => { code = code.trim().toLowerCase(); if (!/^[a-z0-9]{3,12}$/.test(code)) { $('roomCode').value = room; return; } location.assign('/play' + (entry.get('transport') === 'webtransport' ? '?transport=webtransport' : '') + '#' + code + (seat ? '&seat=' + seat : '')); };
 $('joinRoom').onclick = () => goRoom($('roomCode').value);
 $('joinOperative').onclick = () => location.assign('/play?role=operative&commander=' + $('commanderSel').value + '#'+room);
 $('openOperative').onclick = () => window.open('/play?role=operative&commander=' + Math.max(0,me) + '#'+room, '_blank');
@@ -168,7 +169,7 @@ const observerControls = new Set(['fps', 'ping', 'resync', 'name', 'pause', 'res
 let snapshotAt = 0, snapshotGap = 100;
 const connection = createConnection({
   url: `${location.protocol === 'https:' ? 'wss' : 'ws'}://${location.host}/ws?room=${room}`,
-  hello: () => ({ t: 'hello', name: $('name').value, token, role: requestedRole, commander: requestedCommander, spectate: watching, listing }), // a spectator who reconnects keeps watching
+  hello: () => ({ t: 'hello', name: $('name').value, token, role: requestedRole, commander: requestedCommander, spectate: watching, listing, webtransport: entry.get('transport') === 'webtransport' }), // a spectator who reconnects keeps watching
 });
 setInterval(() => { const c = performance.now(); if (sendCmd({ t: 'ping', c, rtt, d: perf.diag() })) perf.pinged(c); }, 2000); // client/perf.js counts the unanswered ones as loss
 const sendCmd = (m) => {
@@ -472,6 +473,8 @@ const SHARED_GEOS = new Set(Object.values(GEO));
 let relief = null, mapView = null, worldRegions = null, railways = null;
 function hAt(x, z) { return relief?.hAt(x, z) ?? 0; }
 const units = new Map(), selected = new Set(), groups = {}, fx = [];
+const gameTransport = createGameTransport({connection,units,optIn:entry.get('transport') === 'webtransport'});
+window.__gameTransport = gameTransport;
 let logisticsData = decodeLogistics({}, units, -1), logisticsOverlay = false, logisticsSelection = false;
 const logisticsAlerts = createLogisticsAlerts();
 const fps = createOperativeView({ camera, scene, renderer, units, ground: hAt, send: sendCmd, playing: () => lobbyState?.state === 'play', paused: () => paused, effects: () => effects, rtt: () => rtt });
@@ -938,6 +941,7 @@ function applySnapshot(s) {
     console.warn(`unit rows out of sync at tick ${s.tick}: holding ${worldState.size}, the server sent ${s.held[0]}; asking for a full resend`);
     resyncAt = performance.now(); sendCmd({ t: 'resync' });
   }
+  gameTransport.baseline(s);
   fogOfWar?.snapshot(s); // before the freeze: each fog change builds on the last one
   if (window.__freeze) return; // debug: hold the scene still (e.g. to inspect models)
   const arrived = performance.now();

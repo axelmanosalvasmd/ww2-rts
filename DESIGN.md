@@ -1,5 +1,15 @@
 # Three Crossroads: design decisions
 
+## Playable isolated WebTransport test build
+
+Tailnet launch uses a separate loopback HTTP/WSS backend on 3200, additive Tailscale Serve HTTPS on 8443, and native UDP QUIC bound exclusively to the current Tailscale IPv4 on 3201. IP entry on 3202 redirects to the secure hostname. Explicit remote mode validates current IP and HTTPS hostname; both local and remote WSS Host/Origin and QUIC request Origin/path are checked. Per-instance seven-day P-256 certificate pins are delivered over the authorized control connection, with private keys outside source. Existing instances are not restarted by publishing. Local renderer/native browser smoke is verified; remote-peer browser/UDP reachability of this revision remains pending. See `docs/webtransport-playable.md`.
+
+This separate build adds `WW2_WEBTRANSPORT=1` and `/play?transport=webtransport`. Recipient motion is extracted from actual `snapshotFor` rows before `unitDelta`, never from global units. Single-use grants bind the native QUIC session to the current WebSocket and seat. Reliable snapshots acknowledge membership revisions before datagrams can flow. Match/start, reconnect and replacement reset generation; old/future revisions and unknown IDs cannot create units. Datagrams are self-contained whitelisted motion rows capped at 1000 bytes, with at most 32 writes pending. Reliable incremental snapshots, all commands, removals, fog and durable state remain unchanged. Motion is additive: TCP still carries it for recovery. Browser native QUIC join/start/move, refresh, restart and fallback were exercised in a bounded sandbox. No latency win, TCP HOL escape, peer access or production readiness is claimed. See `docs/webtransport-playable.md`. The earlier standalone fixture is preserved below for provenance.
+
+## Standalone WebTransport experiment
+
+`prototype/webtransport` is deliberately not connected to the game. Reliable recipient baselines and orders use WebSocket; optional motion uses native browser HTTP/3 datagrams. Independent per-entity motion rows carry session, lifecycle revision, entity epoch and sequence, with a 1000-byte cap. Membership is defined only by a reliable recipient baseline; unknown entities and stale revisions are discarded without buffering. A newer reliable baseline preserves fresher motion in the same entity epoch. Baseline recovery, socket replacement and fallback are exercised in isolated tests. Local measurements do not justify integration or a latency-gain claim. See `docs/webtransport-prototype.md` for evidence and remaining integration requirements.
+
 WW2 tactics RTS in the browser for three friends. Decided 2026-09-30.
 
 ## Bug audit repairs (2026-10-07)

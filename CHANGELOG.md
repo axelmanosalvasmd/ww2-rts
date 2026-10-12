@@ -5,6 +5,14 @@ AI-vs-AI runs (see DESIGN.md for the balance log). Add new entries under **Unrel
 
 ## Unreleased
 
+- Added optional Tailscale QUIC launch on loopback HTTP 3200, HTTPS/WSS 8443 and tailnet-only UDP 3201. `tailscale-entry.mjs` lets friends enter by IP and redirects to the secure hostname. Per-instance short-lived certificate pins and exact control/native origin checks protect the opt-in lane; remote-peer verification of this publishing source remains pending. See `docs/webtransport-playable.md`.
+
+- Added playable opt-in native QUIC motion with `start-webtransport-test.sh` and `/play?transport=webtransport`. Motion uses the actual seat's visible recipient rows, lifecycle acknowledgments and bounded independent datagrams. Reliable orders/state and motion recovery remain intact; no latency gain or full TCP head-of-line escape is claimed. Default startup and non-opt-in UI remain unchanged.
+
+- Kept the standalone transport fixture and locked native backend under `prototype/webtransport`, separate from the game adapter. Registered deterministic protocol, motion, startup-policy and test-registration checks. Fixed equal-tick duplicate acceptance after reliable catch-up, malformed authentication sessions surviving a cleared deadline, stale asynchronous native authentication updating replacement UI, and inherited child-test filters skipping real assertions.
+
+- Starting with `npm start` now advertises the Tailscale IPv4 address and game port in invite links instead of assuming an HTTPS proxy exists. An explicit `PUBLIC_URL` still overrides discovery. The existing Tailscale TCP forward supplies tailnet access while the game listens on localhost.
+
 - Merged with issue #58's terrain work from upstream, which built its own versions of three of the changes below.
   One of each is kept, not both: the relief is drawn in the 64 x 64 chunks below (upstream rebuilt rows of the one
   mesh and wrote the rebuilt span in place), the water mask is redrawn in boxes around changed cells and the water

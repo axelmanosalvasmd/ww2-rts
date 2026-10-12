@@ -92,7 +92,11 @@ if (!isMainThread && workerData?.pool) {
   const { spawn } = await import('node:child_process');
   const { files, cwd, timeoutMs, jobs } = workerData.pool, queue = [...files];
   const one = file => new Promise(resolve => {
-    const start = performance.now(), child = spawn(process.execPath, [file], { cwd, stdio: ['ignore', 'pipe', 'pipe'] });
+    const env = { ...process.env };
+    // The parent already selected this file. Its inner checks must all execute.
+    delete env.WW2_TEST_SHARD;
+    delete env.WW2_TEST_ONLY;
+    const start = performance.now(), child = spawn(process.execPath, [file], { cwd, env, stdio: ['ignore', 'pipe', 'pipe'] });
     let output = '', timedOut = false;
     child.stdout.on('data', d => { output += d; }); child.stderr.on('data', d => { output += d; });
     const timer = setTimeout(() => { timedOut = true; child.kill('SIGKILL'); }, timeoutMs);
